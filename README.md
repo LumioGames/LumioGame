@@ -4,9 +4,9 @@
 
 ## 架构基线
 
-- Baseline：`LGE-V1.0-2026-08-27`
+- Baseline：`LGE-V1.2-2026-08-27`
 - 唯一架构源：`LumioGameEngineArchitecture`
-- 本地镜像：[`docs/architecture/LumioGameEngine_Architecture_v1.0.md`](docs/architecture/LumioGameEngine_Architecture_v1.0.md)
+- 本地镜像：[`docs/architecture/LumioGameEngine_Architecture_v1.2.md`](docs/architecture/LumioGameEngine_Architecture_v1.2.md)
 - ADR 索引：[`docs/architecture/ADR_INDEX.md`](docs/architecture/ADR_INDEX.md)
 - 最终 Review 合并稿：[`docs/architecture/LumioGameEngine_V3_Architecture_Review_Final_2026-08-27.md`](docs/architecture/LumioGameEngine_V3_Architecture_Review_Final_2026-08-27.md)
 
