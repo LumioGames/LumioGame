@@ -1,0 +1,755 @@
+# 1. Executive Verdict
+
+  总体结论：NOT_READY
+
+  评审范围为七个仓库本地 main：
+
+  LumioNativeCore@961c6e1、LumioVoxelEngine@4466202、LumioCoreEngine@2fd97cb、
+  LumioGameRuntime@1d59c0e、LumioServer@41a0c2b、LumioClient@15aba5c、LumioGame@2280a35。
+
+  评审事实基线：
+
+  - 七个仓库工作树均干净。
+  - 每个仓库 git ls-tree -r main 仅有 5 个受跟踪文件：README、LICENSE、架构文档、CODEOWNERS、策略
+    workflow。
+
+  - 没有 Cargo.toml、.csproj、.sln、.rs、.cs、Schema、IDL、生成器、测试夹具或 lumio CLI。
+  - 七份架构文档 SHA-1 均为 826f1f7b...；七份策略 workflow SHA-1 均为 410e017f...。
+  - repository-policy.yml:12-27 只检查文档存在和标题，逐仓库执行均可通过；它不会编译、生成、运行或
+    验证任何架构行为。
+
+  最大的三个风险
+
+  1. 权威一致性协议没有冻结：Tick、Revision、Snapshot、Replication、Entity 生命周期和 Cross-World
+     Commit 都只有概念描述。
+
+  2. 生命周期所有权冲突：Runtime、Server、Game、VoxelEngine 同时声称拥有 World、Session、Migration
+     或 Hot Reload 的部分生命周期。
+
+  3. 跨语言与发布链路不可执行：C ABI、CoreCLR/ALC、Generated Contract、Manifest、兼容矩阵和失败恢复
+     没有可运行实现。
+
+  当前最适合开始开发的范围
+
+  - NativeCore 的独立 Kernel、Handle、错误码和 ABI 原型。
+  - VoxelEngine 的 Chunk/Revision/Mutation 单机原型。
+  - GameRuntime 的纯 Headless ECS Scheduler 原型。
+  - 这些工作必须先以最小 API Contract、Golden Test 和 Determinism Harness 为边界。
+
+  当前不应该开始的范围
+
+  - Server/Client 主干集成。
+  - GAS Prediction/Correction/Rollback。
+  - 带 Voxel 的真实 Gameplay。
+  - LocalEmbedded 作为 DS 等价测试环境。
+  - 生产 Migration、Hot Reload、移动端双角色模式。
+  - 100 玩家性能结论或 Remote DS 发布。
+
+  下文架构行号以 LumioNativeCore/docs/architecture/LumioGameEngine_Architecture_v0.3.md 为代表，因
+  为七份文件内容完全相同。
+
+  # 2. Findings
+
+  ## P0
+
+  ### [P0] v0.3 尚未成为可执行架构基线
+
+  位置： 七仓库架构文档第 1-3 行；各仓库 repository-policy.yml:12-27。
+  问题： 文档称其为共同架构基线，但同时明确“本文不替代具体 API 设计”；仓库中没有任何实现、项目文
+  件、Schema 或生成器。
+  影响： 依赖方向、ABI、线程、序列化和生命周期只能靠人工约定，无法证明兼容性；CI 可以在完全没有运行
+  时代码的情况下通过。
+  证据： 七个 main 分支均只有 5 个 tracked files；策略 workflow 只执行 test -s 和 grep。
+  建议： 先冻结可生成的 API Contract、建立最小构建工程和跨仓库集成 CI，再允许 Runtime/Server/Game
+  主干开发。
+
+  ### [P0] World、Session、Migration 的所有权互相覆盖
+
+  位置： LumioGameRuntime/README.md:17-23；LumioServer/README.md:17-20,27-28；LumioGame/
+  README.md:20,29；LumioVoxelEngine/README.md:20。
+  问题： Runtime 声称拥有 GameWorld/ReplicaWorld 和 SimulationSession 生命周期；Server 声称拥有
+  WorldSlot -> SimulationSession 并驱动 GameWorld、Cross-World 和 Migration；Game 又定义 GameWorld/
+  ReplicaWorld 创建销毁；VoxelEngine 说世界由各 Host 创建、Tick、迁移和销毁。
+  影响： 无法确定谁负责单一写入、销毁顺序、Snapshot 一致切面、失败回收和重试，极易出现双重销毁、竞
+  态或半迁移状态。
+  建议： 固定 RACI：Server 只拥有进程、Slot、Session 编排；Runtime 拥有 ECS World；VoxelEngine 拥有
+  Voxel World；Game 只提供 Factory、注册和语义 Migration Hook；Client 拥有本地 Replica，Server 只保
+  存远端句柄。
+
+  ### [P0] Tick、Processor 调度和确定性没有可执行定义
+
+  **位置：**架构文档第 127-132 行；LumioGameRuntime/README.md:106-110；LumioServer/
+  README.md:66,98。
+  问题： 文档只说 Processor 注册 Query、Role、Phase、读写集合，网络线程和 Native Job 通过 Queue 进
+  入 Tick，但没有定义固定时间步、Phase 顺序、队列合并顺序、Job 完成屏障、CommandBuffer 冲突、迟到输
+  入或错误处理。TickId 只在第 98 行出现一次。
+  影响： Rust/C#、SIMD、并行 Job 和 GAS 可能产生跨平台差异；预测回滚和 Replay 无法复现第一个差异
+  Tick。
+  建议： 冻结 SimulationTickContract：固定 dt、Ingress/Simulate/Prepare/Commit/Projection/Egress 阶
+  段、单一排序键、Job barrier、容量耗尽策略、随机数和确定性数学规则。
+
+  ### [P0] Cross-World Prepare/Commit 不是完整事务协议
+
+  **位置：**架构文档第 94-103 行；LumioVoxelEngine/README.md:24-31,97-101；LumioGameRuntime/
+  README.md:30,110。
+  问题： 当前只有“带 TickId 的 Prepare、收集结果、同 Tick Commit、失败后可重试”四步，没有 TxId、参
+  与者 Token、预留/锁定、读版本、超时、幂等键、崩溃恢复、提交日志或补偿语义。
+  影响： GameWorld 资源可能已扣除而 Voxel mutation 冲突，或者重复重试导致重复扣费/重复建造；异步
+  Chunk Load 也可能跨 Tick，不能保证同 Tick 原子性。
+  建议： 明确是“真正原子提交”还是 Saga。最小方案应包含 TxId=(SessionId,TickId,CommandSeq)、Game/
+  Voxel 预留、预期 Revision、Coordinator Journal、幂等 Commit、Abort/Compensation、超时和断电恢复测
+  试。
+
+  ### [P0] NetEntityId、LocalEntityId 和 Replication Mapping 不能覆盖实体生命周期
+
+  **位置：**架构文档第 107-125 行；LumioClient/README.md:17-26,53-55,86-101；LumioGame/
+  README.md:26-30,47。
+  问题： 双层 ID 只描述了概念；NetEntityId 的 authority、session epoch、回收、重连、迁移、Replay 和
+  tombstone 未定义。Mapping 只说明“哪些字段投影”，没有 Create/Destroy、Entity 子集、Ownership
+  Transfer、Authority Transfer、字段缺省、旧 Revision 拒绝和重复消息处理。
+  影响： ID 重用会让旧包修改新实体；重连可能生成幽灵实体；不对称 Component 无法确定何时创建或销毁。
+  建议： 冻结 Entity Schema 和状态机。NetEntityId 至少应包含 Session/World Epoch、Authority、
+  Sequence、Generation；Mapping 应覆盖 entity/component/field/role 四层，并生成 spawn、despawn、
+  transfer 和 stale-update 测试。
+
+  ### [P0] Rust/C# ABI 只有要求清单，没有规范
+
+  位置： LumioNativeCore/README.md:41-45,89-91；LumioVoxelEngine/README.md:44,58；LumioCoreEngine/
+  README.md:40,53-65。
+  问题： 文档要求 Header、size_of、对齐、错误码和 Capability，但仓库中没有 Header 或绑定；没有定义
+  repr(C)、调用约定、枚举/布尔宽度、字节序、指针有效期、分配器配对、UTF-8、panic 边界、取消和线程亲
+  和性。
+  影响： P/Invoke、Typed Buffer、Handle 和异步结果存在未定义行为、GC Pin 泄漏、Use-after-free、Rust
+  panic 跨 ABI 传播等风险。
+  建议： 以生成 Header 为唯一来源，定义结构版本、长度、allocator/free、Handle Generation、错误映射
+  和线程规则；添加多平台 ABI Layout/Smoke Test。CoreEngine 只能组合，不应重新定义底层布局。
+
+  ### [P0] CoreCLR、AssemblyLoadContext 和 Hot Reload 没有单一控制者
+
+  **位置：**架构文档第 198-204 行；LumioGameRuntime/README.md:21,33,44,111；LumioServer/
+  README.md:7,13,20,27。
+  问题： Runtime 声称提供 Hot Reload Host、ALC 回收监测和异常隔离；Server 又拥有 CoreCLR、Gameplay
+  Assembly 启动、激活、热更和升级编排。LocalEmbedded 还要求同一进程同时加载 ServerGameplay.dll 和
+  ClientGameplay.dll，但没有定义独立 ALC、共享 Contract Assembly 或静态状态隔离。
+  影响： 旧 ALC 可能因 Timer、Task、事件订阅、静态字段或 Native Handle 无法卸载；托管异常可能终止
+  DS；Server/Client 同名类型可能发生 Assembly Identity 冲突。
+  建议： Server/Client Host 拥有实际 CoreCLR/ALC；Runtime 只提供抽象生命周期 API。定义 Quiesce、取
+  消异步任务、清理订阅和 Handle、异常分类、ALC 回收验证以及每 Role 独立加载上下文。
+
+  ### [P0] GAS Framework 在 API 冻结前混入了网络和玩法假设
+
+  **位置：**架构文档第 134-155 行；LumioGameRuntime/README.md:17-35,92-95。
+  问题： Runtime 一次性声明 Ability、Effect、Attribute、Tag、Stack、持续时间、依赖、Authority、
+  Prediction、Correction、Rollback、Snapshot、Replication 和 Determinism，但没有定义状态所有权、
+  Handle 语义、Effect Stack 规则、触发链循环检测、公式数值模型或回滚副作用。
+  影响： Gameplay Content 会绑定未稳定 API；同一 Ability 在 Server、Client、Replay 中可能有不同状
+  态；GAS 状态和 ECS Component 可能形成两份真相。
+  建议： 保留 Runtime 中的宿主无关 GAS Core；把网络预测/复制做成 Adapter。开发前冻结 Handle、状态
+  机、Stack/Cancel、依赖图、触发深度、确定性公式、Prediction Key、权威确认、Snapshot Projection 和
+  Rollback Side-effect Policy。
+
+  ### [P0] 发布兼容性和启动拒绝无法自动执行
+
+  **位置：**架构文档第 262-289 行；LumioCoreEngine/README.md:82-86；LumioGame/README.md:118-122。
+  问题： Manifest 只列出字段，没有规范文件、哈希算法、规范化序列化、签名信任根、Key Rotation、兼容
+  级别、生成器版本或字段增删规则。六个仓库存在 v0.1.0 标签而当前 main 已是 v0.3 架构提交，
+  LumioCoreEngine 没有版本标签。
+  影响： 同一 GameReleaseId 不能证明 Runtime/ABI/Wire/Gameplay/Content 兼容；错误包可能被加载；生产
+  回滚和客户端重连策略不确定。
+  建议： 建立 Manifest.schema.json、规范化 JSON、SHA-256、签名和信任链；分别定义 ABI、Managed API、
+  Wire Protocol、Gameplay Schema、Save/Content Schema、Migration 的兼容矩阵。生成时间等非确定字段必
+  须与可复现 Artifact Hash 分离。
+
+  ## P1
+
+  ### [P1] Contract 的来源和构建顺序存在重复与潜在环依赖
+
+  位置： LumioVoxelEngine/README.md:44,58；LumioCoreEngine/README.md:22-24,40,53；LumioGameRuntime/
+  README.md:49,61；LumioServer/README.md:54；LumioClient/README.md:55；LumioGame/README.md:53-64。
+  问题： VoxelEngine 生成 Voxel ABI 和 C# P/Invoke，CoreEngine 又生成统一 Managed Binding 并重新导
+  出 Voxel Contract；Game 生成 Gameplay Contract，而 Server/Client 同时消费 Game Contract，Game 又
+  编译依赖 Server/Client 的公开契约。
+  影响： 可能出现重复类型、重复 MessageId、绑定版本漂移，或者 Game 与 Host 的构建环。
+  建议： 先用分层不可变 Artifact 打断环：Native/Voxel ABI -> CoreEngine Package -> Runtime Adapter
+  -> Host Wire Contract -> Game Gameplay Contract。必要时再建立独立 Contracts 包，不要先增加新的运
+  行时抽象。
+
+  ### [P1] LocalEmbedded 还不能证明覆盖 Dedicated Server 路径
+
+  **位置：**架构文档第 175-194、233-242 行；LumioGameRuntime/README.md:73；LumioServer/
+  README.md:102；LumioClient/README.md:67。
+  问题： 文档称 InMemoryTransport 仍经过消息边界，但没有要求经过相同的字节编码、MTU/分片、压缩、队
+  列、线程调度和错误路径。PureHeadless 又明确“不加载 Native”，而同一 Scenario 被要求包含 Voxel 能
+  力。
+  影响： Local 测试可能绕过序列化、网络时序、权限和进程故障；PureHeadless 无法运行需要真实 Voxel
+  Port 的 Scenario。
+  建议： InMemoryTransport 必须使用同一 Wire Codec，并提供确定性延迟、丢包、乱序、重复、断线、重连
+  和队列满模拟；PureHeadless 需要语义等价的 Fake Voxel Port 或显式 Capability-Gated Scenario。
+
+  ### [P1] 网络线程、背压、认证和错误传播未定义
+
+  位置： LumioServer/README.md:17,24-26,66,98-100；LumioClient/README.md:24-26,102；架构文档第 132
+  行。
+  问题： 文档列出可靠/不可靠通道、Buffer Pool、限流和认证状态，但没有队列容量、溢出策略、包序号、
+  Fragmentation、Ack/重传语义、加密/防重放、线程亲和性或错误分类。
+  影响： 网络抖动可能阻塞 Simulation Tick；重试会重复执行 Command；不受信任的 Payload 可能造成内存
+  和 CPU DoS。
+  建议： 冻结 Wire Envelope、序列号、可靠性、Auth/Integrity、长度上限、Backpressure 策略，并将网络
+  错误映射为可重试、可拒绝、可致命三类结果。
+
+  ### [P1] Migration 和崩溃恢复没有一致性边界
+
+  **位置：**架构文档第 206-213 行；LumioServer/README.md:70,101；LumioGame/README.md:41,87,131。
+  问题： 当前顺序是停接入、冻结 Tick、导出 Snapshot、先后执行 Game/Voxel Migration，但没有描述在途
+  Transaction、网络 Ack、Chunk Load、Snapshot 原子切面、Journal、Checkpoint、失败恢复或重连客户端。
+  影响： GameWorld 已迁移而 VoxelWorld 未迁移，或新旧客户端在重连时收到不兼容 Snapshot；失败时只能
+  人工停服。
+  建议： 建立统一 Migration State Machine，先排空或持久化在途事务，导出成对的 Game/Voxel Snapshot
+  和 Journal，执行可验证迁移，原子切换；失败时恢复旧 Artifact 和旧 Snapshot。
+
+  ### [P1] Voxel Revision、Chunk Streaming 和 AOI 边界不够明确
+
+  位置： LumioVoxelEngine/README.md:15-18,24-31,97-101；LumioGameRuntime/README.md:23,30；架构文档
+  第 92-103、260 行。
+  问题： Revision 没有定义是全局、每 Chunk 还是每 Mutation；没有说明单调性、冲突比较、Chunk Loading
+  状态、查询在缺 Chunk 时的结果，以及 Runtime Coordinator 是否允许阻塞 Voxel。AOI 策略可以放在
+  VoxelEngine 或 Coordinator，边界不确定。
+  影响： Client Correction、跨 World 事务和 Voxel-aware AOI 可能读取不同版本；异步 Streaming 会破坏
+  确定性和 Tick 预算。
+  建议： 定义 WorldRevision、ChunkRevision、Snapshot Revision 的关系；Port 只提供有界、可取消、版本
+  化的查询；记录 AOI/Streaming 的预算和一致性级别。
+
+  ### [P1] Replay、State Hash 和可观测性只有输出名称
+
+  **位置：**架构文档第 244-260 行；LumioGameRuntime/README.md:90-96；LumioGame/README.md:102-116；
+  LumioNativeCore/README.md:74-79。
+  问题： 文档要求导出 Command Stream、Snapshot、State Hash、Metrics 和结构化日志，但没有定义
+  Canonical Serialization、哈希范围、实体排序、浮点策略、Trace Schema 或 Artifact 获取方式；
+  NativeCore 还把 State Hash 写成“适用时”。
+  影响： 无法定位第一个差异 Tick，也无法在另一台机器重建失败环境；Native、ECS、GAS、Voxel 和网络状
+  态可能各自有不同哈希。
+  建议： 采用分层 State Hash：Session -> World -> Entity -> Component/GAS/Voxel Chunk，并排除缓存和
+  表现状态；所有记录带 GameReleaseId/SessionId/WorldSlotId/TickId/TxId/SnapshotSeq。
+
+  ### [P1] 统一 CLI、跨仓库 CI 和文档同步没有归属
+
+  **位置：**架构文档第 217-229、313-318 行；LumioGame/README.md:104-138；策略 workflow 第 12-27
+  行。
+  问题： lumio test 只被描述，没有可执行文件、退出码、结果 Schema 或 owner；七个仓库各自复制架构文
+  档，没有同步校验；CI 不运行构建、生成器、测试、ABI Smoke 或 Host Matrix。
+  影响： 同一 Scenario 无法自动切换 Host；文档可能悄然分叉；主干可以在无实现状态下持续通过。
+  建议： 先由 LumioGame 或独立 Tooling 包拥有 CLI；建立根级锁定清单、生成物校验、跨仓库构建矩阵、文
+  档 SHA 校验和必需状态检查。
+
+  ### [P1] DS 资源隔离、持久化和 OOM 恢复未定义
+
+  位置： LumioServer/README.md:17-24,41-44,85-99；架构文档第 251-258 行。
+  问题： Server 列出 WorldSlot、Watchdog、资源预算和 Crash 信息，但没有每 Slot CPU/内存/队列配额、
+  持久化 Snapshot/WAL、重启策略、优雅停服超时或 OOM 降级行为。
+  影响： 一个房间可能耗尽进程资源；崩溃后无法恢复一致 Session；故障注入目标无法验收。
+  建议： 定义 Slot Quota、Admission、Snapshot Checkpoint、Crash Recovery、OOM 处置和 Soak Test。
+
+  ### [P1] MobileLocal 的平台可行性尚未证明
+
+  **位置：**架构文档第 44-50、166-177 行；LumioGameRuntime/README.md:13,88；LumioClient/
+  README.md:82。
+  问题： 移动端第一阶段要求完整双 Role、双 ECS World、双 Voxel World，并依赖 C# Gameplay 热更；没有
+  AOT/JIT、ALC、Trimming、Native Buffer、线程和内存能力矩阵。
+  影响： 受限平台可能无法使用当前 CoreCLR/热更路径；双角色状态和 GC/native 缓冲会显著增加峰值内存和
+  线程压力。
+  建议： 将 MobileLocal 设为 Capability Profile，先验证目标平台加载模型和硬预算；在验证前不纳入第一
+  阶段完成标准。
+
+  ## P2/P3
+
+  ### [P2] 通用抽象和后端替换边界可能过早
+
+  位置： LumioGameRuntime/README.md:27-33,48-51；LumioNativeCore/README.md:23-29；LumioClient/
+  README.md:29。
+  问题： 在没有一个可运行游戏切片前，已经同时定义 HostApi、ManagedApi、Typed Channel、Capability、
+  Coordinator、通用 GAS、Native Snapshot/Delta、多个 Host Profile。ECS Storage、Transport 和
+  Renderer 的稳定 SPI 仍未定义。
+  影响： 抽象会围绕假设而不是实际复用场景冻结，后续替换 ECS 存储、网络实现或 CoreCLR Host 的成本上
+  升。
+  建议： 先实现一个具体切片；只冻结逻辑 Query/Command/Port，不把 Archetype、Wire Codec 或平台细节暴
+  露到稳定 API。
+
+  ### [P3] 代码所有权和策略覆盖不足
+
+  位置： 七仓库 .github/CODEOWNERS 均只有 * @Go1c；策略 workflow 仅为文档检查。
+  问题： 没有 Native、Runtime、协议、Host、Gameplay 的分域审查责任，也没有发布/安全/Schema 的必需检
+  查。
+  影响： 架构边界变更缺乏专门审查。
+  建议： 在进入实现期后按领域配置 CODEOWNERS 和必需 CI 状态。
+
+  # 3. Repository Responsibility Review
+
+  “当前拥有”以下均指 README 的声明；当前没有实际实现可验证。
+
+   仓库                  LumioNativeCore
+   应该拥有              通用 Rust Kernel、内存/Job、空间算法、基础 ABI
+   当前拥有（文档声明）  另含 Snapshot/Delta、碰撞、导航、压缩、序列化
+   不应该拥有            Voxel、ECS、GAS、网络、CoreCLR、Gameplay
+   风险                  通用 Codec 可能变成 Wire/领域语义黑洞
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioVoxelEngine
+   应该拥有              VoxelWorld、Chunk、Revision、Mutation、Streaming、Voxel ABI
+   当前拥有（文档声明）  另含客户端平台库、回放、跨 World Prepare 摘要、AOI 组合
+   不应该拥有            Gameplay、Session、Socket、CoreCLR
+   风险                  与 CoreEngine、Runtime Coordinator 职责重叠
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioCoreEngine
+   应该拥有              锁版本、构建、聚合、签名、Loader、Manifest
+   当前拥有（文档声明）  统一 C ABI、Managed Binding、Loader 和错误/Capability
+   不应该拥有            Voxel 逻辑、ECS、GAS、Gameplay
+   风险                  可能成为 ABI、绑定、发布的职责黑洞
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioGameRuntime
+   应该拥有              ECS、Scheduler、World API、通用 Coordinator、GAS Core
+   当前拥有（文档声明）  另含 Replica 生命周期、SimulationSession、预测复制、ALC 监测、Replay 工具
+   不应该拥有            Socket、实际 CoreCLR Host、Voxel 数据、玩法语义
+   风险                  与 Server、Client、Game 多重重叠
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioServer
+   应该拥有              DS 进程、网络、Session/Slot、CoreCLR 编排、权威 Tick
+   当前拥有（文档声明）  另声称拥有每 Session World/Replication/Migration 状态并驱动其提交
+   不应该拥有            ECS Storage、Voxel 内部、Gameplay 规则
+   风险                  可能与 Runtime/Voxel/Game 形成双重 owner
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioClient
+   应该拥有              Connection、Replica Apply、Prediction、平台 Adapter、Bot
+   当前拥有（文档声明）  另拥有 VoxelReplica 生命周期、RPC 解析、Renderer 生命周期
+   不应该拥有            Server 权威、Native/Wire/Gameplay Schema 定义
+   风险                  与 Runtime/Voxel/协议层边界不清
+  ─────────────────────────────────────────────────────────────────────────────────────────────────
+   仓库                  LumioGame
+   应该拥有              Server/Client Content、Component、Mapping、语义 Migration、Scenario、发布
+                         输入
+   当前拥有（文档声明）  另定义 World 创建销毁、Snapshot Projection、最终组装和升级语义
+   不应该拥有            Runtime、Host、Native、网络、Voxel 内部
+   风险                  可能成为 Runtime/Host/Build 黑洞
+
+  需要移动或拆分的职责
+
+  - 实际 CoreCLR/ALC 控制权移到 Server/Client Host；Runtime 只保留生命周期接口和回收协议。
+  - World 数据和生命周期分别由 Runtime、VoxelEngine 持有；Server 只编排 Session/Slot；Game 只提供
+    Factory 和语义 Hook。
+
+  - VoxelEngine 的“客户端平台库”移到 CoreEngine；VoxelEngine 只发布领域 crate、ABI 和数据格式。
+  - CoreEngine 保持聚合发布层，但不能成为 Native/Voxel ABI 的第二个规范来源。
+  - 先用版本化 Contract Artifact 解决依赖环，不建议现在合并七个仓库。
+  - 只有在具体复用场景成立后，再考虑拆分 GAS Core、GAS Net Adapter 或独立 Tooling 仓库。
+
+  # 4. System Architecture Review
+
+  ## World / Session
+
+  分离 GameWorld、Authoritative VoxelWorld、Client ReplicaWorld 的方向正确，且禁止共享 ECS World 的
+  规则合理（架构第 70-103 行）。
+
+  但生命周期、Snapshot 切面、Tick 顺序和事务恢复没有定义。SimulationSession 应是编排上下文，不应同
+  时成为所有 World 数据的 owner。需要明确：
+
+  Allocated -> Loading -> Prepared -> Running -> Paused/Draining -> Snapshotting -> Migrating ->
+  Stopped/Failed
+
+  跨 World 操作不能依赖同步调用；应通过 Coordinator 队列、Revision 预条件和可恢复 Journal。Game 状
+  态至少要记录对应的 Voxel Revision，必要时使用 (GameRevision, VoxelRevision) 或 Revision Vector。
+
+  ## ECS / Entity
+
+  双层 ID 和非对称 Component 是正确基础，不应强制 Server/Client 镜像。
+
+  但当前不足以支持：
+
+  - 重连、Replay、迁移、Respawn 和 ID 回收。
+  - Entity 子集投影、Ownership/Authority Transfer。
+  - 字段转换、量化、缺省值、未知字段和旧 Revision。
+  - 多 Processor CommandBuffer 的确定性合并。
+  - 并行读写冲突、动态 Query、错误和取消。
+
+  “System 可选”本身没有问题，前提是 Processor Registry 能提供稳定 ID、依赖图、读写集合、执行结果和
+  诊断信息。Archetype/Storage 应隐藏在逻辑 Query/Command API 后，否则未来替换存储后端会被破坏。
+
+  ## GAS
+
+  GAS Core 放在 Runtime 是合理的，前提是只提供跨游戏、宿主无关的状态机；网络 Prediction、Snapshot
+  和 Replication 应通过明确 Adapter 接入。
+
+  开发前必须冻结：
+
+  - Ability/Effect/Attribute/Tag 的状态所有权。
+  - GAS 与 ECS Component 的单一真相关系。
+  - Handle 的 ContentId、InstanceId、Generation、World/Release Epoch。
+  - Effect Stack、持续时间、刷新、取消、依赖和循环检测。
+  - 公式数值类型、舍入和跨平台确定性。
+  - Prediction Key 与 Input Command Sequence 的绑定。
+  - Authority Confirm/Reject、Correction、Rollback 范围。
+  - Snapshot 中权威、预测、临时状态的投影。
+  - 热更和 Migration 时 GAS 实例的序列化格式。
+
+  ## Server / Client
+
+  Rust Server Host + C# Gameplay 的组合可行，网络回调进入 Queue 的方向也正确（LumioServer/
+  README.md:66,98）。
+
+  尚未定义：
+
+  - Network、IO、Native Job、Gameplay Tick 的线程拓扑。
+  - Queue 容量、背压、批处理和错误传播。
+  - RPC Envelope、Snapshot/Delta、Ack、Baseline、Resync、Fragmentation。
+  - Client 输入序号、预测历史、校正顺序和 GAS 回滚顺序。
+  - DS Slot 隔离、Watchdog、优雅停服和重启恢复。
+  - Wire、Runtime、Gameplay Schema、ABI 的兼容层级。
+
+  当前明确不支持 Listen Server（LumioServer/README.md:9）。这不是问题，只要它是有意决策。长期影响
+  是：玩家托管必须启动独立 DS 进程，增加启动、IPC、内存和平台限制，但能保持权威边界和作弊模型简单。
+  应写入 ADR，不要让 LocalEmbedded 演变成可接受远程连接的第三种模式。
+
+  ## Native / Managed Boundary
+
+  底层 Rust 与托管 C# 的方向合理；禁止 Lua/未经契约的反射桥接也应保留（架构第 52、303-309 行）。
+
+  当前缺少：
+
+  - ABI 布局、调用约定、字节序、分配器和错误映射。
+  - Handle、Buffer、String、Task 的所有权与生命周期。
+  - C# GC Pin、Native Job 取消、世界销毁后的异步结果。
+  - Rust panic、C# Exception 和进程级故障隔离。
+  - CoreEngine Loader 的进程单例、重复加载、静态链接符号隔离和引用计数。
+
+  ## Host Profile
+
+  Host Profile 的方向正确，但应从固定名称升级为“能力描述”：
+
+  - 是否加载 Native。
+  - 是否具备真实网络或确定性网络模拟。
+  - 是否支持 Voxel。
+  - 是否支持热更、Replay、Renderer、AOT。
+  - CPU、内存、Chunk、Entity、Queue 上限。
+
+  PureHeadless 若不能提供语义等价的 Voxel Port，就不能承诺所有 Voxel Scenario 不改代码即可运行。
+  LocalSplitProcess 应早于 RemoteDS 和 MobileLocal，用于验证进程、端口和资源隔离。
+
+  ## Update / Migration
+
+  同一 GameReleaseId 是必要条件，不是兼容性证明。语义兼容由 Game 决定，但 Framework 仍必须验证：
+
+  - Schema 和 ABI 结构安全。
+  - Migration 输出中的 Handle、引用、Revision 和资源上限。
+  - 生成物与 Manifest Hash。
+  - 确定性和 Replay 结果。
+  - 客户端重连和旧包拒绝策略。
+
+  Native ABI 变化应要求进程重启；开发期 Gameplay 热更不能被当作生产无缝升级。
+
+  ## Testing / Observability
+
+  测试目标清晰，但当前实现为空。缺少：
+
+  - Unit、Property、Fuzz、Stress、Soak、Golden、Cross-platform ABI Test。
+  - 同一 Scenario 在 PureHeadless、NativeHeadless、LocalEmbedded、Split Process 的能力差异。
+  - 分层 State Hash 和第一个差异 Tick 定位。
+  - 丢包、乱序、延迟、重复、断线、重连、Chunk Load Failure、Migration Failure、ABI Mismatch、Hot
+    Reload Failure、OOM 的故障矩阵。
+
+  - 统一日志、Metrics、Trace、Snapshot、Replay 格式。
+  - 由一次失败自动拉取精确 Artifact、容器/工具链、随机种子、数据集和故障配置的机制。
+
+  100 名真实玩家可以作为第一阶段工作负载，但不能作为唯一容量结论。还需要 1/10/100/500/1000 Bot 的曲
+  线、明确 p95/p99 和内存/队列预算。
+
+  # 5. Missing Design Decisions
+
+   优先级    缺失设计            所属仓库            为什么必须补                 建议产物
+  ━━━━━━━━  ━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━
+   P0        World/Session/      Runtime、           消除双重 owner 和销毁竞态    ADR + State
+             Role 生命周期与     Server、Voxel、                                  Machine +
+             RACI                Game                                             Sequence Diagram
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        Tick、Phase、       Runtime、           保证 ECS/GAS/Replay 一致     API Contract +
+             Determinism、Job    Server、Client                                   Determinism
+             Barrier                                                              Harness
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        Cross-World         Runtime、Voxel      防止半提交、重复提交和冲     State Machine +
+             Transaction/                            突覆盖                       Failure Matrix
+             Revision
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        Entity Identity/    Runtime、           支持重连、迁移、Replay、     Schema +
+             Mapping/Transfer    Client、Game        非对称实体                   Generated
+                                                                                  Mapping Tests
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        RPC/Snapshot/       Server、Client、    预测、校正和版本握手的基     IDL + Wire
+             Delta/Ack/Resync    Game                础                           Compatibility
+             Wire Protocol                                                        Matrix
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        Rust ABI、          NativeCore、        防止 ABI/GC/线程未定义行     C Header + ABI
+             Managed             Voxel、Core、       为                           Golden Test
+             Adapter、Handle/    Runtime
+             Buffer 生命周期
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        CoreCLR/ALC/Hot     Server、Client、    防止 DS 崩溃和旧程序集泄     State Machine +
+             Reload/Exception    Runtime             漏                           Unload/Crash
+             隔离                                                                 Fixture
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        GAS Core、          Runtime、           防止 Content 绑定不稳定      API Contract +
+             Prediction、        Client、Game        API                          Golden Scenarios
+             Rollback 语义
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P0        Manifest、签名、    Core、Game、        实现启动拒绝和发布回滚       JSON Schema +
+             兼容矩阵、生成器    Server、Client                                   Signed Fixture
+             版本
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        Voxel Global/       Voxel、Runtime      确定异步加载和 AOI 一致性    API Contract +
+             Chunk Revision                                                       Benchmark
+             与 Streaming                                                         Definition
+             Port
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        Local Transport     Server、Client、    让 LocalEmbedded 具有测试    Transport
+             和故障模拟模型      Tooling             价值                         Contract + Fault
+                                                                                  Matrix
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        Replay、State       Runtime、Game、     定位首个差异并重建环境       Replay Format +
+             Hash、Trace/        Tooling                                          Golden Fixture
+             Metric Schema
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        CLI、Root           Game 或 Tooling     让七仓库能被统一构建和验     CLI Spec + CI
+             Lockfile、跨仓库                        收                           Matrix
+             CI
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        DS Slot Quota、     Server、Core        支持故障恢复和资源隔离       SLO + Failure
+             Snapshot                                                             Matrix
+             Persistence、OOM
+             策略
+  ────────  ──────────────────  ──────────────────  ───────────────────────────  ──────────────────
+   P1        Mobile/AOT/         Client、            验证 MobileLocal 是否可行    Platform ADR +
+             Memory              Runtime、Server                                  Device Benchmark
+             Capability
+             Matrix
+
+  # 6. Development Readiness Gate
+
+   项目                          判断                   进入条件
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   NativeCore                    CONDITIONALLY_READY    只做独立 Kernel/ABI 原型；先冻结错误、
+                                                        Handle、Buffer、线程 Contract
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   VoxelEngine                   CONDITIONALLY_READY    只做 Chunk/Revision/Mutation 单测；暂不承
+                                                        诺跨 World 事务
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   CoreEngine                    NOT_READY              必须先有两个下层可构建 Artifact、Loader
+                                                        Contract 和 Manifest Schema
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   GameRuntime ECS               CONDITIONALLY_READY    先实现纯 Headless Tick、Query、
+                                                        CommandBuffer、Entity Golden Test
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   GameRuntime GAS               NOT_READY              先冻结 GAS Core、Handle、确定性和
+                                                        Prediction Contract
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   Server Host                   NOT_READY              依赖 Wire、CoreCLR、线程、资源和恢复协议
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   Client Replica                NOT_READY              依赖 Entity Mapping、Snapshot、Ack、
+                                                        Prediction/Rollback 协议
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   LocalEmbedded                 NOT_READY              必须使用同一字节 Codec 和故障可控
+                                                        Transport
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   Gameplay Content              NOT_READY              只能准备 Fixture，不能依赖未冻结 Runtime/
+                                                        GAS API
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   Replay/Test Infrastructure    NOT_READY              先定义 Canonical Hash、Replay Format 和
+                                                        CLI 结果 Schema
+  ────────────────────────────  ─────────────────────  ────────────────────────────────────────────
+   Performance Infrastructure    CONDITIONALLY_READY    可以先做测量框架；不能发布性能结论或 100
+                                                        玩家 SLO
+
+  # 7. 最小开发切片
+
+  下面是一个准入测试设计，不是代码实现。
+
+  ## 场景：PlaceBlock
+
+  Server Component
+
+  BuildAuthority
+    wood: u16
+    build_permission: server-only Tag
+
+  Client Components
+
+  BuildReplica
+    confirmed_wood: u16
+    last_confirmed_tx: TxId
+
+  BuildPreview
+    target: BlockCoord
+    pending_tx: TxId
+
+  不对称 Replication Mapping
+
+  Server.BuildAuthority.wood
+    -> Client.BuildReplica.confirmed_wood
+
+  Server.build_permission
+    -> 不复制
+
+  Client.BuildPreview
+    -> 仅本地存在
+
+  ## World
+
+  - Server GameWorld：拥有 BuildAuthority 和 GAS 权威状态。
+  - Server Authoritative VoxelWorld：拥有 Chunk、Block、ChunkRevision。
+  - Client ReplicaWorld：拥有 BuildReplica、BuildPreview。
+  - Client VoxelReplicaWorld：只通过 Snapshot/Mutation Result 更新。
+  - Server/Client 使用不同 LocalEntityId，但共享同一个带 Epoch 的 NetEntityId。
+
+  ## GAS Ability
+
+  PlaceBlockAbility：
+
+  1. Client 根据输入创建预测 Pending 状态。
+  2. Client 发送带 InputSeq、TxId 和目标坐标的 Command。
+  3. Server 验证权限、资源和目标 Chunk。
+  4. Server 通过 Coordinator 发起 Cross-World Prepare。
+
+  ## Cross-World Prepare/Commit
+
+  TxId = (SessionId, TickId, InputSeq)
+
+  Prepare(GameWorld):
+    校验 wood
+    预留 1 wood
+    返回 GameRevision + ReservationToken
+
+  Prepare(VoxelWorld):
+    校验 ChunkRevision
+    预留 Block Mutation
+    返回 ChunkRevision + ReservationToken
+
+  Commit:
+    Coordinator 按固定顺序提交两个 Reservation
+    写入 Journal
+    返回 new GameRevision + new ChunkRevision
+
+  Failure:
+    任一 Prepare 失败 -> Abort
+    Commit 中断 -> 按 Journal 恢复或执行补偿
+    重试必须使用同一 TxId，不能重复扣费
+
+  ## LocalEmbedded
+
+  - 同进程 Server Role 和 Client Role。
+  - 两套 ECS World、两套 Voxel World。
+  - 只加载一套 CoreEngine Native Package。
+  - InMemoryTransport 使用与 DS 相同的序列化字节和 Envelope。
+  - 可注入固定 seed 的延迟、丢包、乱序、重复、断线和重连。
+
+  ## Headless Scenario
+
+  BuildOneBlockScenario：
+
+  - 一个玩家 Entity、一个 Bot、一个 Chunk。
+  - 执行成功建造、Revision 冲突、重复 Command、连接中断四个用例。
+  - 验证资源只扣一次、Block 最终状态唯一、Client 最终 Correction 正确。
+  - 在 PureHeadless 使用语义等价 Fake Voxel Port；在 NativeHeadless 使用真实 VoxelEngine。
+
+  ## Replay
+
+  记录：
+
+  GameReleaseId
+  CoreEngine Hash
+  Runtime/Gameplay Contract Hash
+  Seed
+  Command Stream
+  Wire Envelope
+  Game Snapshot
+  Voxel Chunk Snapshot
+  Tx Journal
+  State Hash
+
+  Replay 必须报告第一个差异的 TickId、World、NetEntityId、Component 或 ChunkRevision。
+
+  ## 性能基线
+
+  先测 1、10、100 个并发模拟客户端，再扩展 Bot：
+
+  - Server/Client Tick p50/p95/p99。
+  - Processor、GAS、Voxel Query、Replication 时间。
+  - Queue 深度、Chunk Streaming、Snapshot 大小。
+  - CPU、峰值内存、Native Allocation、GC 暂停。
+  - 丢包、重传、帧时间和端到端延迟。
+
+  100 玩家只能是工作负载，不应在没有预算和重复测量前称为容量上限。
+
+  ## GameRelease 校验
+
+  Manifest 必须包含：
+
+  GameReleaseId
+  ServerGameplay Hash
+  ClientGameplay Hash
+  Gameplay Contract Hash
+  Runtime API
+  CoreEngine ABI/Capability
+  Voxel Schema/Migration
+  Config/Content Hash
+
+  Server/Client Handshake 中 GameReleaseId、Schema、ABI 或 Capability 不匹配时拒绝加入。
+
+  # 8. 最终建议
+
+  ## 未来 2-3 个架构迭代周期
+
+   周期         目标
+  ━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   第 1 周期    冻结 RACI、Tick、Entity、Wire、ABI、Manifest 和 Cross-World Transaction；建立构建
+                工程、生成器和 CI
+  ───────────  ────────────────────────────────────────────────────────────────────────────────────
+   第 2 周期    实现 NativeCore/VoxelEngine 最小闭环、Runtime ECS、Revision、LocalEmbedded、同
+                Codec Transport 和 Replay
+  ───────────  ────────────────────────────────────────────────────────────────────────────────────
+   第 3 周期    接入 Server/Client Host、GAS Core、Prediction/Correction、Migration、Split Process
+                和性能曲线；之后再评估 RemoteDS/MobileLocal
+
+  必须先冻结的协议
+
+  - Tick/Phase/Determinism。
+  - World/Session 生命周期。
+  - NetEntityId/LocalEntityId/Replication Mapping。
+  - Cross-World Transaction/Revision。
+  - RPC/Snapshot/Ack/Resync。
+  - Rust ABI/Managed Adapter。
+  - CoreCLR/Hot Reload。
+  - Manifest/Compatibility Matrix。
+  - Replay/State Hash。
+
+  可以边开发边演进的部分
+
+  - ECS 内部 Storage 和 Archetype 布局。
+  - Native SIMD、压缩和空间索引实现。
+  - Renderer Adapter。
+  - AOI/Streaming 的启发式策略。
+  - 可靠传输的具体实现。
+  - 移动端资源调优。
+
+  应该推迟的复杂能力
+
+  - 复杂 Effect Trigger Graph。
+  - 多 Chunk、跨 Session、跨服事务。
+  - 生产无缝 Migration。
+  - Player-hosted DS 的移动端启动。
+  - MobileLocal 的完整性能承诺。
+  - 深度 Voxel-aware AOI 优化。
+
+  不建议引入的抽象
+
+  - 未经 Contract 的反射或脚本控制平面。
+  - 共享 Server/Client ECS World。
+  - 把 Native Handle 直接暴露给 Gameplay。
+  - 没有失败语义的泛化“2PC”框架。
+  - 全局无界 Event Bus。
+  下一轮 ADR 清单
+
+  ADR-001 World Ownership/Lifecycle、ADR-002 Tick and Determinism、ADR-003 Cross-World
