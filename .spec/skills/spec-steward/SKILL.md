@@ -28,7 +28,7 @@ description: 维护本仓库 .spec/ 的结构并把改动沉淀进知识库—�
    - 怎么做（流程 / 规范）→ `knowledge/standards/`（见 `knowledge/README.md`）
    - 某功能的设计 / 记录 → `knowledge/features/<领域>/…`（见 `knowledge/README.md`）
    - 一个职能角色 → `agents/`（先过 `AGENTS.md` 的准入门槛「隔离本身即是产出价值」，再照 `reviewer` 范例写，正文承载判断；frontmatter 见下面第 3 步，禁令见 `rules/system.md`）
-   - 可复用方法 → `skills/<name>/SKILL.md`（目录名即 skill 名；description 只写触发条件、不概括流程——概括流程的 description 会让 agent 照描述走捷径、跳过正文）
+   - 可复用方法 → `skills/<name>/SKILL.md`（目录名即 skill 名；description 是**宿主的路由依据**，必须让人一眼判断「什么时候该加载我」——句式 `<做什么>[——<范围 / 边界>]。当<触发场景>时使用。`（破折号段可选，范围或边界需要点明时才写）；**不写操作步骤与判据数值**，那些进正文，写进 description 才会让 agent 照描述走捷径、跳过正文）
 2. **放对位置 + 命名**（agent 文件 `<name>.agent.md`、skill 目录 `skills/<name>/`；均 kebab、全局唯一，且目录 / 文件名与 frontmatter `name` 一致）。
 3. **写 frontmatter**：
    - agents：仅 `name` + `description`
