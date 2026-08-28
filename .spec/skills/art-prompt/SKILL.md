@@ -5,7 +5,7 @@ description: 把美术方向翻译成 AI 出图提示词(Midjourney / Stable Dif
 
 # Art Prompt(AI 出图提示词)
 
-把美术方向系统地翻译成 AI 出图 prompt。方向权威在 [art-director](../art-director/SKILL.md),规范基准在 `knowledge/standards/art-direction.md`(落点定义见 [art-bible](../art-bible/SKILL.md))——本技能只做翻译,不做定调。
+把美术方向系统地翻译成 AI 出图 prompt。方向权威在 [art-director](../art-director/SKILL.md),规范基准在 `docs/specs/art-direction.md`(落点定义见 [art-bible](../art-bible/SKILL.md))——本技能只做翻译,不做定调。
 
 ## 何时使用
 
@@ -41,11 +41,7 @@ description: 把美术方向翻译成 AI 出图提示词(Midjourney / Stable Dif
 
 ### 工具参数映射
 
-出图工具未定,骨架保持通用;首次实际使用某工具时在此表补该工具一行(画幅 / 风格参考 / 负向 / seed 的对应参数),不预写详表。
-
-| 工具 | 映射 |
-|---|---|
-| (通用兜底) | 画幅与风格化强度写进 prompt 文字;负向以 "avoid: …" 表达;无 seed 能力时靠风格锚 + 同批同描述保持一致 |
+出图工具未定,骨架保持通用:画幅与风格化强度写进 prompt 文字;负向以 "avoid: …" 表达;无 seed 能力时靠风格锚 + 同批同描述保持一致。首次实际使用某工具时在本节补该工具的参数对应(画幅 / 风格参考 / 负向 / seed),届时再建表——不预留空表。
 
 ## 注意事项(Pitfalls)
 
