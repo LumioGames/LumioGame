@@ -10,7 +10,10 @@
 | 文档 | 状态 | 一句话 |
 |---|---|---|
 | [product-direction.md](product-direction.md) | 设计中 | 产品定位、三层目标用户、差异化与三款产品阶梯——定方向、判取舍前查 |
-| [art-direction.md](art-direction.md) | 设计中 | 美术风格规范:方块尺寸、角色规格、相机、光照与配色——做美术决策或评审资产时查 |
+| [worldview.md](worldview.md) | 设计中 | 世界观设定「动物玩偶派对」:世界规则、表现基线与三款产品落地——做内容与美术决策前查 |
+| [art-style-pitch.md](art-style-pitch.md) | 比稿中 | 美术风格三方向比稿探索稿:比稿边界、候选对比与评审判据——比稿期做美术判断时查 |
+| [art-style-prompts.md](art-style-prompts.md) | 比稿中 | 比稿出图 prompt 包 v0.1:三方向 × 九条 prompt 全文与变体——拿去 AI 出图时查 |
+| [art-direction.md](art-direction.md) | 已推翻·存档 | 旧美术风格规范,降级为比稿方向 B 详细参考(ADR 0007)——仅存档,不构成生产依据 |
 | [ugc-ladder.md](ugc-ladder.md) | 设计中 | UGC 五级阶梯与开放节奏——设计创作能力、判断开放时机时查 |
 | [risks-and-engine-asks.md](risks-and-engine-asks.md) | 设计中 | 策划侧风险清单与提给引擎侧的硬需求——立项前确认可行性时查 |
 
