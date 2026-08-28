@@ -33,3 +33,4 @@
 | [0003](0003-design-director-skill-family.md) | 策划总监做成 design-* 技能族而非子 Agent | 生效 |
 | [0004](0004-art-skill-family-iteration-1.md) | art-* 第一次迭代:骨架对齐实际文档、技术合规门禁前置 | 生效 |
 | [0005](0005-skill-description-as-routing-basis.md) | skill 的 description 改为「宿主路由依据」口径 | 生效 |
+| [0006](0006-bomber-hat-scoring-rolling-room.md) | 炸弹人核心循环改为帽子计分乱斗,会话模型改为滚动房间 | 生效 |
