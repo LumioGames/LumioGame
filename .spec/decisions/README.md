@@ -29,3 +29,7 @@
 | 编号 | 决策 | 状态 |
 |------|------|------|
 | [0001](0001-art-director-skill-family.md) | 美术总监做成 art-* 技能族而非子 Agent | 生效 |
+| [0002](0002-design-specs-landing-point.md) | 策划案与美术规范统一落 docs/specs/ | 生效 |
+| [0003](0003-design-director-skill-family.md) | 策划总监做成 design-* 技能族而非子 Agent | 生效 |
+| [0004](0004-art-skill-family-iteration-1.md) | art-* 第一次迭代:骨架对齐实际文档、技术合规门禁前置 | 生效 |
+| [0005](0005-skill-description-as-routing-basis.md) | skill 的 description 改为「宿主路由依据」口径 | 生效 |
