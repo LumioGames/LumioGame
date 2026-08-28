@@ -172,7 +172,7 @@ Runtime/Server/Client 均未发包前，跨仓引用方式（ProjectReference �
 
 ### 6.3 Hash 口径（ADR-041，架构仓 `packages/canonical/canonical-digest-profile.json`）
 
-- 凡本仓产出需进 digest 的规范化 JSON（Config/Content Hash 的规范化输入等），一律遵守 **`CanonicalJsonV1`**：成员按 code point 升序、`AsciiEscaped`、拒绝重复/未知成员、**`numbers: IntegerOnly`（非整数构建期失败）**；digest 为 SHA-256、无 framing。
+- 凡本仓产出需进 digest 的规范化 JSON（Config/Content Hash 的规范化输入等），一律遵守 **`CanonicalJsonV1`**：成员按 code point 升序、`AsciiEscaped`、拒绝重复/未知成员、**`numbers: IntegerOnly`（非整数构建期失败）**；digest 为 SHA-256，framing 取 profile 原词 `PrefixFreeOverCanonicalBytes`——域分离靠输入对象内的 `digestDomain` 成员、不加外部 framing 头（Manifest 域例外：其输入是不带 `digestDomain` 成员的 CoreEngineManifestBody 本体）。
 - ADR-041 已冻结的 digestDomain 只有五个：`Manifest / ArtifactSet / ArtifactIndex / TargetProfile / CapabilitySet`。**`snapshotId`、`mappingSetHash` 不在其覆盖范围，不得引用为 digest 口径**；Config/Content Hash 的专属 domainTag 尚未注册，处置见 [`mvp-placevoxel-content-spec.md`](mvp-placevoxel-content-spec.md) §6.3。
 
 ## 7. 首批实现卡拆卡蓝图（验收第 3 条）

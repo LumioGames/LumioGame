@@ -135,7 +135,7 @@ material-palette v1
 
 ### 6.3 Config/Content Hash 口径（ADR-041 现状消费）
 
-- 规范化与摘要遵守架构仓 `packages/canonical/canonical-digest-profile.json`：`CanonicalJsonV1`（成员 code point 升序、`AsciiEscaped`、拒绝重复/未知成员、**`numbers: IntegerOnly`——非整数构建期失败**）+ SHA-256 无 framing。§6.1/§6.2 全部数值设计为整数即源于此。
+- 规范化与摘要遵守架构仓 `packages/canonical/canonical-digest-profile.json`：`CanonicalJsonV1`（成员 code point 升序、`AsciiEscaped`、拒绝重复/未知成员、**`numbers: IntegerOnly`——非整数构建期失败**）+ SHA-256（framing 取 profile 原词 `PrefixFreeOverCanonicalBytes`：域分离靠输入对象内 `digestDomain` 成员、不加外部 framing 头；Manifest 域例外无该成员）。§6.1/§6.2 全部数值设计为整数即源于此。
 - ADR-041 冻结的 digestDomain 仅五个（`Manifest / ArtifactSet / ArtifactIndex / TargetProfile / CapabilitySet`）；**Config/Content 尚无专属 domainTag**。本设计按现状消费：ReleaseManifest 的 `ConfigHash + ContentHash` 以 canonical bytes 的 SHA-256 计算，domainTag 缺位记为显式假设（A7）；若需要注册新 domainTag，属公共契约变更——停下、卡上标 BLOCKED 上报。
 - `snapshotId`、`mappingSetHash` 不在 ADR-041 覆盖范围，本文不引用它们作为 digest 口径。
 
