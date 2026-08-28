@@ -25,7 +25,8 @@
 
 - **调度取向:快 > 稳 > 好。** 默认并行:文件集互不重叠即并行扇出;能继承上下文的 fork 优先于冷启动 worker;串行只留给有依赖或文件重叠的工作。
 - **默认流程:** 创造性工作(新功能 / 建组件 / 改行为)→ `brainstorming` 出设计共识 → `writing-plans` 出实现计划(设计落 `docs/specs/`、计划落 `docs/plans/`,均为功能级工作产物;跨宿主任务状态真值仍是 `.spec/tasks/`,计划内 checkbox 只是执行内部进度)→ `subagent-driven-development` 逐任务执行(每任务两级审查:spec 合规 + 代码质量;无子代理宿主按其 Inline Fallback 降级);修 bug / 排障先 `systematic-debugging` 找根因再动手;多张独立卡并行扇出仍走 `task-breakdown` + wave(见「并行边界与合入」)。交付 → 收口门槛机器验证 + `verification-before-completion`(证据先于声称);整体收口审查按「派活模板」触发 `reviewer`(默认快审、显式要求才深审),退回按 `receiving-code-review` 处理。分级见 [`agents/reviewer.agent.md`](agents/reviewer.agent.md)。
-- **美术向工作:** 涉及游戏美术(整体风格 / 2D UI / 原画 / 特效 / TA / 3D 场景)的讨论定调、规范沉淀、AI 出图 prompt 与资产评审,一律路由 [`skills/art-director`](skills/art-director/SKILL.md) 技能族(hub 内再分发 art-bible / art-prompt / art-review);美术规范落 `knowledge/standards/`,方向级决策照常记 `decisions/`。
+- **美术向工作:** 涉及游戏美术(整体风格 / 2D UI / 原画 / 特效 / TA / 3D 场景)的讨论定调、规范沉淀、AI 出图 prompt 与资产评审,一律路由 [`skills/art-director`](skills/art-director/SKILL.md) 技能族(hub 内再分发 art-bible / art-prompt / art-review);美术规范落 `docs/specs/`(见 ADR-0002),方向级决策照常记 `decisions/`。
+- **策划向工作:** 涉及游戏策划(玩法 / 系统 / 数值 / 关卡 / 商业化 / UGC)的方向讨论定调、策划案沉淀、需求翻译与方案评审,一律路由 [`skills/design-director`](skills/design-director/SKILL.md) 技能族(hub 内再分发 design-doc / design-request / design-review);策划案落 `docs/specs/`,策划需求落 Workflow 平台,方向级决策照常记 `decisions/`。
 - **快速模式(收口白名单,默认优先尝试):** 纯文档 / 纯注释 / 纯配置数据 / 机械套用既有模式 / revert / 生成物随源更新 / 有效 diff < 20 行(去空行注释)——lint + 测试直接收口,交付附一行豁免声明,不派任何 agent。判定须机器可判(文件类型 + diff 行数),拿不准 = 快审。**红线面永不快速**:触碰 `rules/`、鉴权、安全面、可执行配置(如 hooks)的改动至少快审。
 - **审查闭环:** 交付即待审;completed 由主 loop 在 reviewer 通过(或按豁免跳过)后标记;高风险改动审查通过前**不得提交**。
 - **派 worker 三选一:** ① 多个互不依赖任务可并行 ② 改动大到撑爆编排上下文 ③ 需要隔离的干净实现环境。

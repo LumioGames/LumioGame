@@ -1,0 +1,23 @@
+# Specs(策划案与设计文档 · 导航)
+
+本目录是**功能级工作产物**的落点:策划案、美术规范、产品方向文档。一行一篇,按需下钻。
+
+> 落点规则、文档骨架与数值来源纪律以 `design-doc` 技能为单一权威,此处不复述。
+> 决策记录不放这里——ADR 的唯一落点是 [`.spec/decisions/`](../../.spec/decisions/README.md)。
+
+## 平台级(跨产品共用)
+
+| 文档 | 状态 | 一句话 |
+|---|---|---|
+| [product-direction.md](product-direction.md) | 设计中 | 产品定位、三层目标用户、差异化与三款产品阶梯——定方向、判取舍前查 |
+| [art-direction.md](art-direction.md) | 设计中 | 美术风格规范:方块尺寸、角色规格、相机、光照与配色——做美术决策或评审资产时查 |
+| [ugc-ladder.md](ugc-ladder.md) | 设计中 | UGC 五级阶梯与开放节奏——设计创作能力、判断开放时机时查 |
+| [risks-and-engine-asks.md](risks-and-engine-asks.md) | 设计中 | 策划侧风险清单与提给引擎侧的硬需求——立项前确认可行性时查 |
+
+## 产品
+
+| 文档 | 状态 | 一句话 |
+|---|---|---|
+| [bomber/design.md](bomber/design.md) | 设计中 | 体素炸弹人完整设计稿:地图、操作、炸弹机制、道具与数值框架——首发产品(阶梯 ①) |
+| [bedwars/direction.md](bedwars/direction.md) | 设计中(方向级) | 起床战争俯视改编方向稿:以水平空隙替代垂直落差——阶梯 ② |
+| [duckoff/direction.md](duckoff/direction.md) | 设计中(方向级) | 逃离鸭科夫方向稿:撤离玩法与跨局存档诉求——阶梯 ③ |
