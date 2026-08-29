@@ -114,7 +114,7 @@ C 玩具质感   → 材质分层:角色毛绒/软胶高光,地形亚光积木
 **口径分两级,不发明**:
 
 - **架构仓发布物(权威)**:基线 [`LGE-V1.4`](../architecture/LumioGameEngine_Architecture_v1.4.md) §2.1 仓库职责表——`LumioVoxelEngine` 只拥有 VoxelWorld / Chunk / Block / Revision / Mutation / Streaming / Snapshot 等**数据层**能力,渲染不在其中;客户端渲染归 `LumioClient`(`unity-adapter`,「更多 Renderer」列为后置项,v1.4 §16)。
-- **本仓策划侧调研(待确认,非承诺依据)**:渲染现状为空白、Unity 工程与渲染管线均未选型([`risks-and-engine-asks.md`](risks-and-engine-asks.md) A3)。该文 §0 自述其「引擎现状」来自 2026-08-28 仓库调研,**须与引擎侧当面确认后才能作为承诺依据**,且可能与引擎侧在途工作不同步。下面第 2、3 条结论建立在这一级上,确认前按待验证处理。
+- **本仓策划侧调研(待确认,非承诺依据)**:渲染现状为空白、Unity 工程与渲染管线均未选型([`risks-and-engine-asks.md`](risks-and-engine-asks.md) A3)。该文 §0 自述其「引擎现状」来自 2026-08-28 仓库调研,**须与引擎侧当面确认后才能作为承诺依据**,且可能与引擎侧在途工作不同步。下面第 2 条结论建立在这一级上,确认前按待验证处理(第 1、3 条不依赖它)。
 
 由此得三条结论,先于分方向对照:
 
