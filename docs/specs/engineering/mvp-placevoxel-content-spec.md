@@ -152,7 +152,7 @@ material-palette v1
 | A5 | CrossWorldTxnV1、十三相、`GasAndEventFinalize` 唯一 Commit Point 按 v1.4 §4/§6 由 Runtime `coordination`/`simulation` 提供；Game 只消费 | v1.4 §4.5、§6.2 |
 | A6 | `IVoxelWorldPort` 提供带 Revision 只读查询与 CrossWorldTxn 置块/清块；MaterialId 对 Voxel 不透明 | README「职责」；v1.4 §6 |
 | A7 | Config/Content Hash 按 §6.3 口径、暂无专属 digestDomain；Runtime Config Port 消费 typed binary table 与 `ConfigRevision` | v1.4 §11.3；ADR-041 现状 |
-| A8 | C# generated 面经本仓 `Lumio.Game.GeneratedContracts` 单点消费（**分层纪律**，非 TFM 约束）；设计不依赖 generated 类型/validator 存在。ADR-048 后 catalog-only 已不成立，现状以 §6.1 为准 | [`module-scaffolding-design.md`](module-scaffolding-design.md) §6 |
+| A8 | C# generated 面经本仓 `Lumio.Game.GeneratedContracts` 单点消费（**分层纪律**，非 TFM 约束）；**凡 generated 面已提供者必须委托使用、不得另造**（ADR-048 published rule，含 `ProtocolGate.Evaluate`；gate 不校验角色权限，不足则 BLOCKED 上报不得本地补表）；同时设计不因 generated 面缺失或收窄而阻塞。现状以 §6.1 为准 | [`module-scaffolding-design.md`](module-scaffolding-design.md) §6 |
 
 ## 8. Scenario 与 Headless 测试面
 

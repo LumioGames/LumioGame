@@ -141,7 +141,7 @@ src/Lumio.Game.GeneratedContracts ────> Lumio.Gen.*（架构源 generate
 - 任何工程对 `LumioNativeCore` / `LumioVoxelEngine` 源码建立 Compile-Time 依赖；Voxel 只经 Runtime `IVoxelWorldPort`。
 - 引用 `LumioServer` / `LumioClient` 实现源码；只允许其**公开 Host/Adapter Contract**。
 - `ServerGameplay` ↔ `ClientGameplay` 互相引用；Unity/HybridCLR 类型出现在适配层以外。
-- 手写重复 MessageId、Serializer、ABI 定义（Architecture Gate；生成物只读）。
+- 手写重复 MessageId、Serializer、ABI 定义，或手写已闭合契约的类型本体与 ADR-022 gate 判定（Architecture Gate；生成物只读；委托口径见 §6.2-1）。
 - Gameplay 读取 `IsOffline`/平台/Transport 实现分叉规则；只依赖 Role、Command、Event、Port、Capability。
 
 ### 4.2 跨仓引用方式
@@ -166,8 +166,12 @@ Runtime/Server/Client 均未发包前，跨仓引用方式（ProjectReference �
 
 ### 6.2 消费假设（设计约束）
 
-1. **本仓设计不依赖「generated 类型 / validator 存在」这一前提。** Gameplay 生产程序集不直接引用 `Lumio.Gen.*`；目录/状态表/注册表数据只经根 `src/Lumio.Game.GeneratedContracts` 单点适配（对齐 GameRuntime 同名工程惯例），供 mapping/scenario 校验与测试消费。
-2. **单点引用是分层纪律，不是 TFM 兼容性的产物。** 双 TFM 落地后「`netstandard2.1` 目标无法引用 generated 包」已不成立（§6.1），本条原先据此推出的「硬理由」作废；相应地，原「需要架构源发布多 TFM 产物 → 本仓停下、卡上标 BLOCKED 上报」的条款**一并删除**——其前置条件已由 `99f94fb` 满足，不再构成停工事由。仍保留 `src/Lumio.Game.GeneratedContracts` 为唯一引用点，理由换为**依赖方向纪律**：generated artifact 是架构源的外部产物，其形态由架构所有者单方演进（ADR-048 一次就把 catalog-only 改成了含类型本体与可执行 validator），把消费收敛到一个适配工程可使此类演进的爆炸半径止于该工程，不扩散到十个 Gameplay 程序集的引用图；这与 §3.2「两端交集 API 面从第一天收窄」同向。适配工程维持单 TFM `net10.0` 是取舍而非约束（其消费方 mapping/scenario 校验与测试都在 net10.0 侧）——若日后需向 `netstandard2.1` 侧供数，本仓自行改双 TFM 即可，不再需要架构源做任何事。
+1. **凡 generated 面已提供者，必须委托使用，不得另造。** ADR-048 的 Owner/consumers 行明列 `LumioGame`，其正文引述的两条已发布规则——「a repository **must not invent a public contract**, and it **must use the generated validator**」——因而直接约束本仓：已闭合契约的生成类型本体（`Lumio.Gen.ContractTypes` 的 `ContractBodies.cs`）与 ADR-022 gate 执行体（`Lumio.Gen.ProtocolPermissionValidator` 的 `ProtocolGate.Evaluate`）一律**委托消费**——不手写等价 DTO、不手写 gate 判定、不转抄常量。与 LumioServer 同一口径（TD 裁决 2026-08-29：R-00273 不得手写 `MvpEnvelopeDocument` DTO、R-00276 不得手写 permission gate 执行体）。
+
+   - **gate 能力边界（红线）**：`ProtocolGate` 只校验「`messageId` 已注册为 `MessageType`」，**不校验角色→消息权限**——ADR-048 §2 明写架构源尚无 role→message 权限表，「the gate therefore checks registration and stops」。若本仓发现仅此不够，**停下、卡上标 BLOCKED 上报**，**不得**本地补一张 role→message 权限表：那既是发明公共契约，也抢跑仍 blocked 的 D-009 dispatch 面。
+
+   - **架构韧性（原条文的保留部分）**：原「本仓设计不依赖 generated 类型 / validator 存在」写于 catalog-only 时期，一句话同时承载两层含义，现按 TD 裁决拆开——**韧性含义保留**：设计路径不建立在「generated 面必然丰富」之上，上游再次收窄或延期时本仓不阻塞；**「不使用、自行实现一份」的含义作废**，它与本条 published rule 冲突，且自造等于发明第二套定义、必然漂移。韧性是**容错**，不是**回避**。
+2. **单点引用是分层纪律，不是 TFM 兼容性的产物。** 双 TFM 落地后「`netstandard2.1` 目标无法引用 generated 包」已不成立（§6.1），本条原先据此推出的「硬理由」作废；相应地，原「需要架构源发布多 TFM 产物 → 本仓停下、卡上标 BLOCKED 上报」的条款**一并删除**——其前置条件已由 `99f94fb` 满足，不再构成停工事由。Gameplay 生产程序集不直接引用 `Lumio.Gen.*`，目录/状态表/注册表数据与 §6.2-1 要求委托使用的类型本体、gate 执行体，一律只经根 `src/Lumio.Game.GeneratedContracts` 单点适配（对齐 GameRuntime 同名工程惯例），供 mapping/scenario 校验与测试消费。**该工程是消费通道，不是再实现层**：只做引用转发与形状适配，不得在其中复制 generated 面的定义或判定逻辑——否则单点引用就成了单点重造，与 §6.2-1 冲突。保留它为唯一引用点的理由换为**依赖方向纪律**：generated artifact 是架构源的外部产物，其形态由架构所有者单方演进（ADR-048 一次就把 catalog-only 改成了含类型本体与可执行 validator），把消费收敛到一个适配工程可使此类演进的爆炸半径止于该工程，不扩散到十个 Gameplay 程序集的引用图；这与 §3.2「两端交集 API 面从第一天收窄」同向。适配工程维持单 TFM `net10.0` 是取舍而非约束（其消费方 mapping/scenario 校验与测试都在 net10.0 侧）——若日后需向 `netstandard2.1` 侧供数，本仓自行改双 TFM 即可，不再需要架构源做任何事。
 3. generated 面能力边界仍在演进：ADR-048（Status: Draft，additive within `LGE-V1.4-2026-08-27`）已交付类型本体与可执行 validator，但其覆盖面（八个已闭合契约 + ADR-022 gate）未必等于本仓所需面；边界仍以架构所有者裁决为准，裁决落地后本节按新基线更新，更新前一切按现状消费。
 
 ### 6.3 Hash 口径（ADR-041，架构仓 `packages/canonical/canonical-digest-profile.json`）
@@ -194,4 +198,4 @@ Runtime/Server/Client 均未发包前，跨仓引用方式（ProjectReference �
 - **Windows 侧 SDK 解析验证未执行；缺口不消解、不豁免。** TD 裁决（2026-08-29 第四节）不采信「用户 2026-08-28 明确豁免」——卡面上只有交付方转述、无用户本人落地记录；改按义务归属划线：本卡只把 pin 写进设计文档、并未在仓内落地 `global.json`，故双机实测义务**下移**给实际写入仓配置的 S1 卡，作为其硬验收项（§7 S1 ①）。macOS 半边已独立复跑坐实（arm64 / macOS 26.5.2 / dotnet 10.0.400）。
 - 跨仓引用机制（§4.2）留给 S1 定案——Runtime/Server/Client 发包节奏当前不可预期，设计期锁机制会立即过时。
 - generated 面能力边界与 Config/Content 专属 digestDomain 均待架构所有者裁决（§6.2、§6.3）；裁决前按现状消费。
-- **§6.2-1「本仓设计不依赖 generated 类型 / validator 存在」写于 catalog-only 时期**；ADR-048 落地后两者均已存在（§6.1）。该条作为保守约束仍然成立（不依赖 ≠ 不可用），但「本仓是否应改为直接消费 generated 类型 / validator」属**设计结论变更**，不在本次事实更正范围——已随本次更正上报 TD 总调度，待裁决后更新本节与 §6.2。
+- **（已裁决，留档）§6.2-1 的处置**：原「不依赖 generated 类型 / validator 存在」写于 catalog-only 时期。TD 裁决（2026-08-29）核实 ADR-048 的 Owner/consumers 行明列 `LumioGame`、published rule「must use the generated validator」对本仓生效，该句已按裁决拆写——韧性含义保留、「自行实现一份」含义作废、「凡已提供者必须委托使用」补为设计约束，`ProtocolGate` 的角色权限边界与 BLOCKED 条件一并记入 §6.2-1。本条不再是 gap。
