@@ -17,6 +17,13 @@
 | [ugc-ladder.md](ugc-ladder.md) | 设计中 | UGC 五级阶梯与开放节奏——设计创作能力、判断开放时机时查 |
 | [risks-and-engine-asks.md](risks-and-engine-asks.md) | 设计中 | 策划侧风险清单与提给引擎侧的硬需求——立项前确认可行性时查 |
 
+## 工程(本仓 C# 落地)
+
+| 文档 | 状态 | 一句话 |
+|---|---|---|
+| [engineering/module-scaffolding-design.md](engineering/module-scaffolding-design.md) | 设计中 | 模块脚手架设计:10 子模块目录、C# 工程基线(global.json/Build.props 族)、依赖边界与首批拆卡蓝图——建工程、拆脚手架卡前查 |
+| [engineering/mvp-placevoxel-content-spec.md](engineering/mvp-placevoxel-content-spec.md) | 设计中 | MVP 内容规格:PlaceVoxelAbility(挖/放方块)GAS 内容、Mapping、最小 config/content 面与 Runtime 接口假设——做 MVP 内容卡前查 |
+
 ## 产品
 
 | 文档 | 状态 | 一句话 |
