@@ -152,7 +152,7 @@ material-palette v1
 | A5 | CrossWorldTxnV1、十三相、`GasAndEventFinalize` 唯一 Commit Point 按 v1.4 §4/§6 由 Runtime `coordination`/`simulation` 提供；Game 只消费 | v1.4 §4.5、§6.2 |
 | A6 | `IVoxelWorldPort` 提供带 Revision 只读查询与 CrossWorldTxn 置块/清块；MaterialId 对 Voxel 不透明 | README「职责」；v1.4 §6 |
 | A7 | Config/Content Hash 按 §6.3 口径、暂无专属 digestDomain；Runtime Config Port 消费 typed binary table 与 `ConfigRevision` | v1.4 §11.3；ADR-041 现状 |
-| A8 | C# generated 面 catalog-only、经本仓 `Lumio.Game.GeneratedContracts` 单点消费；设计不依赖 generated 类型/validator 存在 | [`module-scaffolding-design.md`](module-scaffolding-design.md) §6 |
+| A8 | C# generated 面经本仓 `Lumio.Game.GeneratedContracts` 单点消费（**分层纪律**，非 TFM 约束）；设计不依赖 generated 类型/validator 存在。ADR-048 后 catalog-only 已不成立，现状以 §6.1 为准 | [`module-scaffolding-design.md`](module-scaffolding-design.md) §6 |
 
 ## 8. Scenario 与 Headless 测试面
 
@@ -186,4 +186,4 @@ material-palette v1
 - R-00159/R-00172 未开工，§7 假设待 Runtime 面落地后逐条复核；失配处置已内联在 §7 前言。
 - Config/Content 专属 digestDomain 缺位（§6.3），待架构所有者裁决。
 - Dig 扩展与 material-palette 为 MVP 内容级设计，未经产品数值评审；占位默认值只为链路验收。
-- Windows 侧工程基线验证未执行，用户 2026-08-28 明确豁免（详见 [`module-scaffolding-design.md`](module-scaffolding-design.md) §8）。
+- Windows 侧工程基线验证未执行；缺口不消解、不豁免，义务下移给 S1 实现卡（TD 裁决 2026-08-29 第四节，详见 [`module-scaffolding-design.md`](module-scaffolding-design.md) §8）。
