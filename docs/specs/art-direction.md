@@ -1,8 +1,10 @@
-# 美术风格规范
+# 美术风格规范（已推翻 · 存档）
 
-> **状态**：设计中
+> **状态**：已推翻（[ADR 0007](../../.spec/decisions/0007-art-style-reset-three-way-pitch.md)），存档待取代
 > **适用范围**：Lumio 全线产品（统一视觉语言）
 > **上游**：[`product-direction.md`](product-direction.md)
+
+> **本稿地位**：2026-08-28 用户定调时推翻归零。以下全文**降级为比稿方向 B（明快硬描边）的详细参考**，其中具体条款（俯角取值、1 格 = 1 米、硬描边缝合等）一律视为**待比稿确认的假设**，不构成生产依据。当前权威见 [`art-style-pitch.md`](art-style-pitch.md)（比稿中）与 [`worldview.md`](worldview.md)（世界观已定调）；比稿定调后由正式规范取代本稿。
 
 ## 0. 唯一目标
 
