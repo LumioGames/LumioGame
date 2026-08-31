@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "tool": "lumio-hello-integration/launcher",
+  "createdAt": "2026-08-31T14:45:22.799Z",
+  "build": {
+    "buildId": "ab12bf280961a39632022f7c6f3be78f",
+    "abiHash": "1dfc86dad1ebbd8d6196d16946a9eb8542e951c83fa5e6163f696abee831fb8e",
+    "binarySha256": "b34ab90a4825c5a53d914cf11ce7a46e65a08c2f931cc01c7e9c837aee8cfa05",
+    "source": "C:\\Work\\LumioGames\\LumioGameEngineArchitecture\\.run\\ab12bf280961a39632022f7c6f3be78f\\win-x64\\build-info.json"
+  },
+  "artifacts": {
+    "serverExe": {
+      "path": "C:\\Work\\LumioGames\\LumioServer\\target\\debug\\lumio-server.exe",
+      "bytes": 3312640,
+      "sha256": "3f5f49f26c7cb8709db69d69a4d2a17e87c0dad53f2af21c3df795f2483b3e87"
+    },
+    "nativeDll": {
+      "path": "C:\\Work\\LumioGames\\LumioGameEngineArchitecture\\.run\\ab12bf280961a39632022f7c6f3be78f\\win-x64\\lumio_engine_native.dll",
+      "bytes": 166912,
+      "sha256": "b34ab90a4825c5a53d914cf11ce7a46e65a08c2f931cc01c7e9c837aee8cfa05"
+    },
+    "buildInfo": {
+      "path": "C:\\Work\\LumioGames\\LumioGameEngineArchitecture\\.run\\ab12bf280961a39632022f7c6f3be78f\\win-x64\\build-info.json",
+      "bytes": 529,
+      "sha256": "bfb0eae21fe1119ec8207e8299b1a403037a2422758a5cb060ba961759c894de"
+    },
+    "runtimeDll": {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime\\modules\\hello\\entry\\bin\\Debug\\net10.0\\Lumio.GameRuntime.HelloEntry.dll",
+      "bytes": 10752,
+      "sha256": "fc096ad8aacbc0caae6806e8ce2e26598b67e3d811c3b479cd95291a6345389e"
+    },
+    "runtimeConfig": {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime\\modules\\hello\\entry\\bin\\Debug\\net10.0\\Lumio.GameRuntime.HelloEntry.runtimeconfig.json",
+      "bytes": 305,
+      "sha256": "4ce55550bffe2e763ef3d418b5566fc16d1290811d9a8fd98f5a6a6cbd378f2b"
+    },
+    "botDll": {
+      "path": "C:\\Work\\LumioGames\\LumioClient\\modules\\hello\\host\\bin\\Debug\\net10.0\\Lumio.Client.HelloBot.dll",
+      "bytes": 6656,
+      "sha256": "4ff4ff933d31345a72e56bc6e911f9951cb9cf49c31e470c0918fe2ef306ef16"
+    },
+    "contract": {
+      "path": "C:\\Work\\LumioGames\\LumioGameEngineArchitecture\\engine\\wire\\hello-wire-v1.json",
+      "bytes": 9625,
+      "sha256": "c05cd05c38cf9196b1cbc593a2defdf30e676680f5b75adde55d9ddf4e16912e"
+    }
+  },
+  "webAssets": {
+    "root": "C:\\Work\\LumioGames\\LumioClient\\modules\\web\\hello",
+    "fileCount": 4,
+    "totalBytes": 26812,
+    "files": [
+      {
+        "path": "contract.json",
+        "bytes": 9625,
+        "sha256": "c05cd05c38cf9196b1cbc593a2defdf30e676680f5b75adde55d9ddf4e16912e"
+      },
+      {
+        "path": "hello-client.js",
+        "bytes": 14211,
+        "sha256": "fb39816bba9984bdb3102f1ba28553031f660a418e7a07a7c579cff3fe78cb49"
+      },
+      {
+        "path": "index.html",
+        "bytes": 1205,
+        "sha256": "f5183556fe85d22da18d1a95f9afc585ec315511b1f5428ab975fd984ff8714a"
+      },
+      {
+        "path": "style.css",
+        "bytes": 1771,
+        "sha256": "cf0786d36282f0190cfeaac5420e7f0215e1d33adc61ff92f570c5e70ddc9d4f"
+      }
+    ]
+  },
+  "entry": {
+    "type": "Lumio.GameRuntime.HelloEntry.HelloEntry, Lumio.GameRuntime.HelloEntry",
+    "method": "LumioHelloEntry",
+    "hostfxr": "C:\\Users\\g923\\.dotnet\\host\\fxr\\10.0.11\\hostfxr.dll"
+  }
+}

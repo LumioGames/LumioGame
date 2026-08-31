@@ -1,0 +1,18 @@
+{"contractId":"lumio.hello-wire.v1","kind":"server_listening","pid":2384,"port":49911,"ts":1788187524244}
+{"kind":"session_open","remote":"127.0.0.1:49913","sessionId":"s-1","ts":1788187524515}
+{"clientName":"lumio-bot","kind":"handshake_accepted","role":"bot","sessionId":"s-1","ts":1788187524532}
+{"kind":"baseline_sent","revision":0,"sessionId":"s-1","tickId":0,"ts":1788187524532}
+{"kind":"baseline_acked","revision":0,"sessionId":"s-1","ts":1788187524538}
+{"kind":"session_open","remote":"127.0.0.1:63199","sessionId":"s-2","ts":1788187524954}
+{"clientName":"lumio-browser","kind":"handshake_accepted","role":"browser","sessionId":"s-2","ts":1788187524960}
+{"kind":"baseline_sent","revision":0,"sessionId":"s-2","tickId":0,"ts":1788187524960}
+{"kind":"baseline_acked","revision":0,"sessionId":"s-2","ts":1788187524967}
+{"kind":"ingress_received","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","sender":"browser","sequence":1,"sessionId":"s-2","ts":1788187524967}
+{"deltaCount":1,"kind":"tick_committed","revision":1,"senders":["browser"],"tickId":1,"ts":1788187524972}
+{"kind":"delta_routed","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","revision":1,"sender":"browser","sequence":1,"sessionId":"s-1","tickId":1,"ts":1788187524972}
+{"kind":"ingress_received","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","sender":"bot","sequence":1,"sessionId":"s-1","ts":1788187524980}
+{"deltaCount":1,"kind":"tick_committed","revision":2,"senders":["bot"],"tickId":2,"ts":1788187524980}
+{"kind":"delta_routed","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","revision":2,"sender":"bot","sequence":1,"sessionId":"s-2","tickId":2,"ts":1788187524980}
+{"code":"client_closed","kind":"session_closed","sessionId":"s-2","ts":1788187525163}
+{"code":"server_shutdown","kind":"session_closed","sessionId":"s-1","ts":1788187525312}
+{"kind":"server_shutdown","reason":"shutdown signal","sessions":1,"ts":1788187525314}

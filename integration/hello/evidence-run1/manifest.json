@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "tool": "lumio-hello-integration/launcher",
+  "createdAt": "2026-08-31T14:45:27.624Z",
+  "conclusion": "SUCCESS",
+  "failure": null,
+  "release": {
+    "manifest": "release-manifest.json",
+    "build": {
+      "buildId": "ab12bf280961a39632022f7c6f3be78f",
+      "abiHash": "1dfc86dad1ebbd8d6196d16946a9eb8542e951c83fa5e6163f696abee831fb8e",
+      "binarySha256": "b34ab90a4825c5a53d914cf11ce7a46e65a08c2f931cc01c7e9c837aee8cfa05",
+      "source": "C:\\Work\\LumioGames\\LumioGameEngineArchitecture\\.run\\ab12bf280961a39632022f7c6f3be78f\\win-x64\\build-info.json"
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "ok": true,
+      "serverPort": 58687,
+      "staticPort": 58688,
+      "processes": [
+        {
+          "name": "server",
+          "pid": 1204,
+          "exitCode": 0,
+          "killed": false
+        },
+        {
+          "name": "static-server",
+          "pid": 22256,
+          "exitCode": 0,
+          "killed": false
+        },
+        {
+          "name": "bot",
+          "pid": 1984,
+          "exitCode": 0,
+          "killed": false
+        }
+      ],
+      "botConnect": {
+        "connected": true,
+        "waitedMs": 210
+      },
+      "browser": {
+        "ok": true,
+        "channel": "chrome",
+        "browserPid": null,
+        "url": "http://127.0.0.1:58688/index.html?ws=ws%3A%2F%2F127.0.0.1%3A58687%2F&role=browser",
+        "net": {
+          "pageErrors": 0,
+          "requestFailed": 0,
+          "badResponses": 0
+        },
+        "consolePath": "C:\\Work\\LumioGames\\LumioGame\\integration\\hello\\evidence-run1\\round-1\\browser-console.ndjson"
+      },
+      "verify": {
+        "ok": true,
+        "failures": 0,
+        "summary": {
+          "audit": {
+            "events": 18,
+            "ingress": 2,
+            "tick": 2,
+            "delta": 2
+          },
+          "botTrace": {
+            "events": 9,
+            "deltaReceived": 1
+          },
+          "browser": {
+            "received": 1,
+            "latencyMaxMs": 1
+          },
+          "bot": {
+            "received": 1,
+            "latencyMaxMs": 12
+          }
+        },
+        "reportPath": "C:\\Work\\LumioGames\\LumioGame\\integration\\hello\\evidence-run1\\round-1\\verify-report.json",
+        "failureSample": []
+      },
+      "error": null,
+      "durationMs": 1375
+    },
+    {
+      "round": 2,
+      "ok": true,
+      "serverPort": 49911,
+      "staticPort": 49912,
+      "processes": [
+        {
+          "name": "server",
+          "pid": 2384,
+          "exitCode": 0,
+          "killed": false
+        },
+        {
+          "name": "static-server",
+          "pid": 15988,
+          "exitCode": 0,
+          "killed": false
+        },
+        {
+          "name": "bot",
+          "pid": 8048,
+          "exitCode": 0,
+          "killed": false
+        }
+      ],
+      "botConnect": {
+        "connected": true,
+        "waitedMs": 213
+      },
+      "browser": {
+        "ok": true,
+        "channel": "chrome",
+        "browserPid": null,
+        "url": "http://127.0.0.1:49912/index.html?ws=ws%3A%2F%2F127.0.0.1%3A49911%2F&role=browser",
+        "net": {
+          "pageErrors": 0,
+          "requestFailed": 0,
+          "badResponses": 0
+        },
+        "consolePath": "C:\\Work\\LumioGames\\LumioGame\\integration\\hello\\evidence-run1\\round-2\\browser-console.ndjson"
+      },
+      "verify": {
+        "ok": true,
+        "failures": 0,
+        "summary": {
+          "audit": {
+            "events": 18,
+            "ingress": 2,
+            "tick": 2,
+            "delta": 2
+          },
+          "botTrace": {
+            "events": 9,
+            "deltaReceived": 1
+          },
+          "browser": {
+            "received": 1,
+            "latencyMaxMs": 2
+          },
+          "bot": {
+            "received": 1,
+            "latencyMaxMs": 10
+          }
+        },
+        "reportPath": "C:\\Work\\LumioGames\\LumioGame\\integration\\hello\\evidence-run1\\round-2\\verify-report.json",
+        "failureSample": []
+      },
+      "error": null,
+      "durationMs": 1154
+    }
+  ],
+  "comparison": {
+    "ok": true,
+    "failures": [],
+    "comparison": {
+      "browser": {
+        "directionsRound1": [
+          "bot"
+        ],
+        "directionsRound2": [
+          "bot"
+        ],
+        "perDirection": {
+          "bot": {
+            "round1": {
+              "sender": "bot",
+              "sequence": 1,
+              "tickId": 2,
+              "revision": 2,
+              "payloadSha256": "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+              "latencyMs": 1
+            },
+            "round2": {
+              "sender": "bot",
+              "sequence": 1,
+              "tickId": 2,
+              "revision": 2,
+              "payloadSha256": "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+              "latencyMs": 2
+            }
+          }
+        }
+      },
+      "bot": {
+        "directionsRound1": [
+          "browser"
+        ],
+        "directionsRound2": [
+          "browser"
+        ],
+        "perDirection": {
+          "browser": {
+            "round1": {
+              "sender": "browser",
+              "sequence": 1,
+              "tickId": 1,
+              "revision": 1,
+              "payloadSha256": "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+              "latencyMs": 12
+            },
+            "round2": {
+              "sender": "browser",
+              "sequence": 1,
+              "tickId": 1,
+              "revision": 1,
+              "payloadSha256": "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+              "latencyMs": 10
+            }
+          }
+        }
+      }
+    },
+    "rule": "契约 process.evidence.roundsComparison:方向/sender/revision/payloadSha256/tickId 必须一致;latencyMs 只需均 <1000"
+  },
+  "residuals": {
+    "ok": true,
+    "failures": [],
+    "warnings": [
+      "未能获取 chromium PID(当前 Playwright 版本无 Browser.process),以 close()+镜像扫描兜底"
+    ],
+    "scannedPids": [
+      18844,
+      19336,
+      18736,
+      12776,
+      19128,
+      21424,
+      5732,
+      4104
+    ]
+  },
+  "evidenceFiles": [
+    {
+      "path": "launcher.ndjson",
+      "bytes": 2501,
+      "sha256": "4afc6cb2f21f6ba7ca5505183a4cc8744e3449b0c579b35fa9c8e215081d6261"
+    },
+    {
+      "path": "release-manifest.json",
+      "bytes": 3281,
+      "sha256": "90a5ab98f85619ec46001bd2cd6aaf35555bd2395e661433a6556d37585359cf"
+    },
+    {
+      "path": "round-1/bot-result.json",
+      "bytes": 486,
+      "sha256": "e5051e409db2fdf813960de01ec205bd684cc347ad643f3d86f86b36a94d71bc"
+    },
+    {
+      "path": "round-1/bot-trace.ndjson",
+      "bytes": 1026,
+      "sha256": "6887b16d7c04b903decfd2f91db829115433bb7e51e59163970a4e6ba9249158"
+    },
+    {
+      "path": "round-1/bot.log",
+      "bytes": 43,
+      "sha256": "3330069a4bacc96cd01a1835ce81ee4d0a393a5e047ac56a6b87c9c4fedddc19"
+    },
+    {
+      "path": "round-1/browser-console.ndjson",
+      "bytes": 154,
+      "sha256": "479e2388cfc0eb57367a1ae7a2a72a058277fbeb249a601b9dc5a46837f16bbb"
+    },
+    {
+      "path": "round-1/browser-result.json",
+      "bytes": 489,
+      "sha256": "109ca603b2d8f827276cea341fb6437c8d10d18660a5b43b2eeb1105b49c6fbb"
+    },
+    {
+      "path": "round-1/hello-received.png",
+      "bytes": 37013,
+      "sha256": "aaeaf08f06c97f6725a5a6ff3db619070abbdbfb36ffc89d22df2b6eda17dc95"
+    },
+    {
+      "path": "round-1/server-audit.ndjson",
+      "bytes": 2044,
+      "sha256": "30608942222f0acbc35b986bf3ab357deab200db4a6a0963f50abb7d3b5edb2f"
+    },
+    {
+      "path": "round-1/server-ready.json",
+      "bytes": 60,
+      "sha256": "9f621db362f45e7a2d23a6a87a3fcfa671f62759d9a44e5217317241794d40da"
+    },
+    {
+      "path": "round-1/server.log",
+      "bytes": 150,
+      "sha256": "0b85f22e16bd929645ebeb1d31d3603bcbf9f903dae5dd20e13f2ca49b963738"
+    },
+    {
+      "path": "round-1/static-ready.json",
+      "bytes": 15,
+      "sha256": "32f0462c3fb1a67d221b947bf338611a4b3344a00fc201a88382dc5bf6b63750"
+    },
+    {
+      "path": "round-1/static-server.log",
+      "bytes": 28,
+      "sha256": "a4f707d9c48aeedd12901c1873a3d722c435cff8aa20013e3f4a1077e04c4431"
+    },
+    {
+      "path": "round-1/trace.zip",
+      "bytes": 103047,
+      "sha256": "c96b5162197440d192706de51e8cd8415f4294b6aca2c59055021848a35b7d04"
+    },
+    {
+      "path": "round-1/verify-report.json",
+      "bytes": 354,
+      "sha256": "1280cd1f0f4f9369bb05699864a7c6e39e622e8342d065a7c846692873528392"
+    },
+    {
+      "path": "round-2/bot-result.json",
+      "bytes": 486,
+      "sha256": "a85bd942698e849dadf8b1c0100c10dcee1380a1411d6bfece9d6bedaf5eedcc"
+    },
+    {
+      "path": "round-2/bot-trace.ndjson",
+      "bytes": 1026,
+      "sha256": "ee17111744de77c04e74833b1e58b8a6dbb65dc5fa5619a6165c86afe6f00bde"
+    },
+    {
+      "path": "round-2/bot.log",
+      "bytes": 43,
+      "sha256": "a8eb29390e1de9ccc5fa3ad9f312bfdbe6a9073d50d36feb4549a1429c0b7caf"
+    },
+    {
+      "path": "round-2/browser-console.ndjson",
+      "bytes": 154,
+      "sha256": "f4d302cd288a36e7a955baaf2787b9ce681fb7a5e816a183fe4649ce229af850"
+    },
+    {
+      "path": "round-2/browser-result.json",
+      "bytes": 489,
+      "sha256": "9fad94bc5d83068669c8893f6f2f4c4198d3eb3ebb62d336db5664b9e97f1de8"
+    },
+    {
+      "path": "round-2/hello-received.png",
+      "bytes": 36947,
+      "sha256": "08537f915cd092c224cd5243b7860210fc88db12b377711cd713162b0f713e27"
+    },
+    {
+      "path": "round-2/server-audit.ndjson",
+      "bytes": 2044,
+      "sha256": "4b7d917dee1e6a6420baa377c5b79b61f62f5b92ca2575f7480481b7ad184c98"
+    },
+    {
+      "path": "round-2/server-ready.json",
+      "bytes": 60,
+      "sha256": "b5207df8baac47248858214a885af01e776c1ffd5eaf23707e086d8d8df0dc9e"
+    },
+    {
+      "path": "round-2/server.log",
+      "bytes": 150,
+      "sha256": "05c1e991705be8c1d2b3dae10f7099f975aaf554da72056ed0f6b750bb9d74ab"
+    },
+    {
+      "path": "round-2/static-ready.json",
+      "bytes": 15,
+      "sha256": "ddd230e71b5df156aa8ed2bcc79dc9ca496034b34d427efb29d213cad6752f7e"
+    },
+    {
+      "path": "round-2/static-server.log",
+      "bytes": 28,
+      "sha256": "79a1b35d6993ef95030902a18497e5b1bf1de17117c49800e05d0cce9cf948b3"
+    },
+    {
+      "path": "round-2/trace.zip",
+      "bytes": 121111,
+      "sha256": "bbe608afd83a1ec469e3bc7c24e566ad6209e8ecf93c95dd5627a86fd2f4aa2e"
+    },
+    {
+      "path": "round-2/verify-report.json",
+      "bytes": 354,
+      "sha256": "0a575b78db905d88c31b69e0e82f664c27e06260b8c4ba9def5107c03e6c3bee"
+    }
+  ]
+}
