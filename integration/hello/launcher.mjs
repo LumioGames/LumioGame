@@ -544,18 +544,23 @@ async function finalize(ctx, release) {
   say(`残留进程检查 ok=${residuals.ok} failures=${residuals.failures.length}`)
   for (const f of residuals.failures) say(`  残留: ${f}`)
 
+  const ok = !ctx.failure && ctx.rounds.length === ROUNDS && ctx.rounds.every((r) => r.ok) && comparison.ok && residuals.ok
+  const conclusion = ok ? 'SUCCESS' : 'FAILED'
+  // finalize 日志行必须在 evidenceFiles 哈希之前落盘：launcher.ndjson 本身在证据清单里，
+  // 之后再追加行会让 manifest 记录的哈希与磁盘终态永不一致（审查 P2 修正）。
+  logEvent(ctx, { step: 'finalize', conclusion })
+
   const evidenceFiles = []
   for (const p of walkFiles(ctx.outDir)) {
     if (p === join(ctx.outDir, 'manifest.json')) continue
     evidenceFiles.push({ path: relative(ctx.outDir, p).replaceAll('\\', '/'), bytes: statSync(p).size, sha256: await sha256File(p) })
   }
 
-  const ok = !ctx.failure && ctx.rounds.length === ROUNDS && ctx.rounds.every((r) => r.ok) && comparison.ok && residuals.ok
   const manifest = {
     schemaVersion: 1,
     tool: 'lumio-hello-integration/launcher',
     createdAt: new Date().toISOString(),
-    conclusion: ok ? 'SUCCESS' : 'FAILED',
+    conclusion,
     failure: ctx.failure ?? (ctx.rounds.find((r) => !r.ok)?.error ?? null),
     release: release ? { manifest: 'release-manifest.json', build: release.manifest.build } : null,
     rounds: ctx.rounds,
@@ -564,8 +569,7 @@ async function finalize(ctx, release) {
     evidenceFiles,
   }
   writeFileSync(join(ctx.outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
-  logEvent(ctx, { step: 'finalize', conclusion: manifest.conclusion })
-  say(`manifest.json 写出,结论 ${manifest.conclusion}(evidence 文件 ${evidenceFiles.length} 个)`)
+  say(`manifest.json 写出,结论 ${conclusion}(evidence 文件 ${evidenceFiles.length} 个)`)
   return ok
 }
 
