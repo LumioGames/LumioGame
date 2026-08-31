@@ -21,7 +21,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { appendFileSync, copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -86,7 +86,8 @@ function safeReadText(p) {
 }
 
 function safeReadJson(p) {
-  try { return JSON.parse(readFileSync(p, 'utf8')) } catch { return null }
+  // 容忍 UTF-8 BOM（PowerShell 5.1 的 utf8 写出带 BOM；上游已改 BOM-less，这里兜底）
+  try { return JSON.parse(readFileSync(p, 'utf8').replace(/^﻿/, '')) } catch { return null }
 }
 
 function tail(text, lines = 30) {
@@ -394,6 +395,8 @@ async function verifyRoundFiles(release, roundDir) {
 
 async function runRound(ctx, n, release) {
   const roundDir = join(ctx.outDir, `round-${n}`)
+  // 重建轮目录：复用旧证据目录时，残留的 ready-file 会被 waitForReadyFile 立即读成新端口。
+  rmSync(roundDir, { recursive: true, force: true })
   mkdirSync(roundDir, { recursive: true })
   const t0 = Date.now()
   const R = { round: n, ok: false, serverPort: null, staticPort: null, processes: [], botConnect: null, browser: null, verify: null, error: null, durationMs: null }
