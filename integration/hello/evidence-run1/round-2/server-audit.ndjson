@@ -1,0 +1,18 @@
+{"contractId":"lumio.hello-wire.v1","kind":"server_listening","pid":11596,"port":63465,"ts":1788188336508}
+{"kind":"session_open","remote":"127.0.0.1:63467","sessionId":"s-1","ts":1788188336777}
+{"clientName":"lumio-bot","kind":"handshake_accepted","role":"bot","sessionId":"s-1","ts":1788188336794}
+{"kind":"baseline_sent","revision":0,"sessionId":"s-1","tickId":0,"ts":1788188336794}
+{"kind":"baseline_acked","revision":0,"sessionId":"s-1","ts":1788188336800}
+{"kind":"session_open","remote":"127.0.0.1:64172","sessionId":"s-2","ts":1788188337186}
+{"clientName":"lumio-browser","kind":"handshake_accepted","role":"browser","sessionId":"s-2","ts":1788188337192}
+{"kind":"baseline_sent","revision":0,"sessionId":"s-2","tickId":0,"ts":1788188337192}
+{"kind":"baseline_acked","revision":0,"sessionId":"s-2","ts":1788188337194}
+{"kind":"ingress_received","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","sender":"browser","sequence":1,"sessionId":"s-2","ts":1788188337194}
+{"deltaCount":1,"kind":"tick_committed","revision":1,"senders":["browser"],"tickId":1,"ts":1788188337199}
+{"kind":"delta_routed","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","revision":1,"sender":"browser","sequence":1,"sessionId":"s-1","tickId":1,"ts":1788188337199}
+{"kind":"ingress_received","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","sender":"bot","sequence":1,"sessionId":"s-1","ts":1788188337207}
+{"deltaCount":1,"kind":"tick_committed","revision":2,"senders":["bot"],"tickId":2,"ts":1788188337207}
+{"kind":"delta_routed","payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","revision":2,"sender":"bot","sequence":1,"sessionId":"s-2","tickId":2,"ts":1788188337208}
+{"code":"client_closed","kind":"session_closed","sessionId":"s-2","ts":1788188337409}
+{"code":"server_shutdown","kind":"session_closed","sessionId":"s-1","ts":1788188337554}
+{"kind":"server_shutdown","reason":"shutdown signal","sessions":1,"ts":1788188337556}

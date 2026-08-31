@@ -1,0 +1,8 @@
+{"ts":"2026-08-31T14:58:55.060Z","step":"prepare","buildId":"ab12bf280961a39632022f7c6f3be78f","artifacts":7,"webFiles":4}
+{"ts":"2026-08-31T14:58:55.061Z","round":1,"step":"round-start"}
+{"ts":"2026-08-31T14:58:56.421Z","round":1,"step":"verify-pre-shutdown","ok":false,"failures":3}
+{"ts":"2026-08-31T14:58:56.438Z","round":1,"step":"round-end","ok":true,"durationMs":1377}
+{"ts":"2026-08-31T14:58:56.439Z","round":2,"step":"round-start"}
+{"ts":"2026-08-31T14:58:57.553Z","round":2,"step":"verify-pre-shutdown","ok":false,"failures":3}
+{"ts":"2026-08-31T14:58:57.570Z","round":2,"step":"round-end","ok":true,"durationMs":1131}
+{"ts":"2026-08-31T14:58:59.849Z","step":"finalize","conclusion":"SUCCESS"}

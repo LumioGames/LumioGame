@@ -1,0 +1,9 @@
+{"kind":"bot_started","receivedAtMs":1788188335354,"pid":19620,"role":"bot","serverUrl":"ws://127.0.0.1:55098/"}
+{"kind":"handshake_ack","receivedAtMs":1788188335425,"role":"bot","accepted":true}
+{"kind":"connected","receivedAtMs":1788188335425,"sessionId":"s-1"}
+{"kind":"baseline_received","receivedAtMs":1788188335427,"revision":0,"tickId":0,"helloLogCount":0}
+{"kind":"baseline_ack_sent","receivedAtMs":1788188335427,"revision":0}
+{"kind":"delta_received","receivedAtMs":1788188336053,"sender":"browser","sequence":1,"tickId":1,"revision":1,"payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","latencyMs":14}
+{"kind":"command_sent","receivedAtMs":1788188336055,"sender":"bot","sequence":1,"payloadSha256":"a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e","sentAtMs":1788188336055}
+{"kind":"command_result","receivedAtMs":1788188336055,"ok":true,"detail":"command delivered"}
+{"kind":"bot_finished","receivedAtMs":1788188336425,"exitOk":true,"receivedBySender":{"browser":1}}
