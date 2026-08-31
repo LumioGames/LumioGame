@@ -10,7 +10,7 @@
 - ADR 索引：[`docs/architecture/ADR_INDEX.md`](docs/architecture/ADR_INDEX.md)
 - 最终 Review 合并稿：[`docs/architecture/LumioGameEngine_V3_Architecture_Review_Final_2026-08-27.md`](docs/architecture/LumioGameEngine_V3_Architecture_Review_Final_2026-08-27.md)
 
-`LumioGame` 位于依赖图最上层，把稳定 Runtime、Server、Client、CoreEngine 和 Voxel Port 组合成具体游戏。它同时产出同一 `ProductId + GameReleaseId` 下的 Server Gameplay、Client Gameplay、Component Schema、Replication Mapping、配置、内容、Scenario、Migration 和签名发布清单。
+`LumioGame` 位于依赖图最上层，把 `LumioEngineSDK`、Server、Client 和玩法内容组合成具体游戏。它同时产出同一 `ProductId + GameReleaseId` 下的 Server Gameplay、Client Gameplay、Component Schema、Replication Mapping、配置、内容、Scenario、Migration 和签名发布清单。
 
 本仓库拥有玩法语义，不拥有 Native、Voxel 内部、网络连接、Host 进程或 Runtime 生命周期。A 游戏 1.1、BOE 2.1 等产品/版本可以同时发布，但每个 Session 只绑定一个精确 Release。
 
