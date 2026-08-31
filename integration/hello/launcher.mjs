@@ -6,8 +6,10 @@
  *   node launcher.mjs --server-exe <lumio-server.exe> --native-dir <架构仓 .run/<BuildId>/win-x64> \
  *     --runtime-dir <LumioGameRuntime modules/hello/entry 构建输出> --bot-dll <Lumio.Client.HelloBot.dll> \
  *     --web-dir <LumioClient modules/web/hello/> --contract <hello-wire-v1.json> --out <evidenceDir>
- * 可选覆盖:--entry-type/--entry-method(Runtime hello entry 的入口类型/方法,默认 HelloEntry/Run,
- *   以 Runtime worker 交付为准) --hostfxr(--) --dotnet(默认 dotnet);
+ * 可选覆盖:--entry-type/--entry-method(Runtime hello entry 的入口类型/方法,默认
+ *   Lumio.GameRuntime.HelloEntry.HelloEntry, Lumio.GameRuntime.HelloEntry / LumioHelloEntry——
+ *   method 段必须是托管方法名,不是 UnmanagedCallersOnly 的 EntryPoint 别名)
+ *   --hostfxr(默认 C:/Users/g923/.dotnet/host/fxr/10.0.11/hostfxr.dll) --dotnet(默认 dotnet);
  *   环境变量等价物:LUMIO_ENTRY_TYPE / LUMIO_ENTRY_METHOD / LUMIO_HOSTFXR / LUMIO_DOTNET。
  *
  * 一轮(round)流程:server → static-server → bot → Playwright 真实 Chromium → bot result →
@@ -233,8 +235,11 @@ async function prepare(ctx) {
   const contractCopy = join(webDir, 'contract.json')
   copyFileSync(contractPath, contractCopy)
 
-  const entryType = String(A['entry-type'] ?? process.env.LUMIO_ENTRY_TYPE ?? 'HelloEntry')
-  const entryMethod = String(A['entry-method'] ?? process.env.LUMIO_ENTRY_METHOD ?? 'Run')
+  // MS-00002 实测钉死：hostfxr 的 load_assembly_and_get_function_pointer 按托管方法名解析，
+  // 因此 entry-method 必须是 "LumioHelloEntry"（方法名），不是 UnmanagedCallersOnly 的
+  // EntryPoint 别名 "lumio_hello_entry"（传别名 → 0x80131513 MissingMethod → ClrInitFailed）。
+  const entryType = String(A['entry-type'] ?? process.env.LUMIO_ENTRY_TYPE ?? 'Lumio.GameRuntime.HelloEntry.HelloEntry, Lumio.GameRuntime.HelloEntry')
+  const entryMethod = String(A['entry-method'] ?? process.env.LUMIO_ENTRY_METHOD ?? 'LumioHelloEntry')
   const dotnetBin = String(A.dotnet ?? process.env.LUMIO_DOTNET ?? 'dotnet')
 
   const artifacts = {}
