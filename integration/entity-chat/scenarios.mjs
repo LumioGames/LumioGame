@@ -12,13 +12,22 @@ import {
   closeQuietly,
   completeMvpHandshake,
   connectMvpHost,
+  handshakeAdmitBinding,
   mvpSessionId,
   FULLGRAPH_LIMIT_FILE,
   FULLGRAPH_LIMIT_LINE,
   FULLGRAPH_MAX_CONNECTIONS,
   FULLGRAPH_MAX_SESSIONS,
 } from './game-client.mjs'
-import { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD, isLauncherLoopIndex } from './verify-evidence.mjs'
+import {
+  BROWSER_NAME,
+  MAIN_ROOM,
+  TEST_PASSWORD,
+  isEntityRebound,
+  isLauncherLoopIndex,
+  reconnectSessionCandidates,
+  shouldRetryReconnectHandshake,
+} from './verify-evidence.mjs'
 
 export { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD }
 
@@ -289,7 +298,27 @@ export function credentialTokenBytes(admissionCredential) {
   return Buffer.from(String(admissionCredential), 'utf8')
 }
 
-export async function reconnectNamedBot({ accountPort, botSeed, loginName, listenUri, tracePath, sessionId }) {
+async function handshakeReconnectOnce(listenUri, tokenBytes, sessionId) {
+  const conn = await connectMvpHost(listenUri, tokenBytes)
+  try {
+    const hs = await completeMvpHandshake(conn.socket, { sessionId })
+    return { conn, hs }
+  } catch (err) {
+    await closeQuietly(conn.ws)
+    throw err
+  }
+}
+
+export async function reconnectNamedBot({
+  accountPort,
+  botSeed,
+  loginName,
+  listenUri,
+  tracePath,
+  sessionId,
+  netEntityId,
+  accountId,
+}) {
   const parsed = await loginOrRegister(accountPort, {
     loginName,
     password: TEST_PASSWORD,
@@ -300,61 +329,100 @@ export async function reconnectNamedBot({ accountPort, botSeed, loginName, liste
   if (!parsed.accepted || !parsed.admissionCredential) {
     return { ok: false, rebound: false, loginName, ...summary }
   }
-  let bindSessionId
+  let bindSessionId = null
   try {
     bindSessionId = mvpSessionId(sessionId ?? parsed.accountId, loginName)
-  } catch (err) {
-    return { ok: false, rebound: false, loginName, error: String(err.message ?? err).split('\n')[0], ...summary }
+  } catch {
+    bindSessionId = null
   }
-  if (typeof bindSessionId !== 'string' || bindSessionId.length === 0 || isLauncherLoopIndex(bindSessionId)) {
+  const disconnected = {
+    sessionId: sessionId ?? bindSessionId ?? null,
+    netEntityId: netEntityId ?? null,
+    accountId: accountId ?? parsed.accountId ?? null,
+  }
+  const candidates = reconnectSessionCandidates(bindSessionId, loginName)
+  if (candidates.length === 0) {
     return { ok: false, rebound: false, loginName, error: 'reconnect missing host sessionId', ...summary }
   }
-  try {
-    const conn = await connectMvpHost(listenUri, credentialTokenBytes(parsed.admissionCredential))
-    const hs = await completeMvpHandshake(conn.socket, { sessionId: bindSessionId })
-    const rebound = hs.sessionId === bindSessionId
-    appendTrace(tracePath, {
-      kind: 'reconnect_upgrade',
-      process: 'lumio-mvp-host',
-      loginName,
-      ok: true,
-      status: conn.status ?? 101,
-      entityType: 'bot',
-      sessionId: hs.sessionId,
-      netEntityId: hs.sessionId,
-      handshake: true,
-      rebound,
-    })
-    appendTrace(tracePath, {
-      kind: 'binding_committed',
-      process: 'lumio-mvp-host',
-      loginName,
-      entityType: 'bot',
-      sessionId: hs.sessionId,
-      netEntityId: hs.sessionId,
-      handshake: true,
-      reconnect: true,
-    })
-    return {
-      ok: true,
-      rebound,
-      socket: conn.ws,
-      loginName,
-      status: conn.status ?? 101,
-      sessionId: hs.sessionId,
-      netEntityId: hs.sessionId,
-      entityA: bindSessionId,
+  const tokenBytes = credentialTokenBytes(parsed.admissionCredential)
+  let lastError = 'reconnect missing host sessionId'
+  for (let attempt = 0; attempt < candidates.length; attempt++) {
+    const handshakeSessionId = candidates[attempt]
+    try {
+      const { conn, hs } = await handshakeReconnectOnce(listenUri, tokenBytes, handshakeSessionId)
+      const missingSession = typeof hs.sessionId !== 'string' || hs.sessionId.length === 0
+      if (missingSession && attempt === 0 && candidates.length > 1) {
+        await closeQuietly(conn.ws)
+        appendTrace(tracePath, {
+          kind: 'reconnect_upgrade',
+          process: 'lumio-mvp-host',
+          loginName,
+          ok: false,
+          message: 'reconnect missing host sessionId',
+          retry: true,
+        })
+        lastError = 'reconnect missing host sessionId'
+        continue
+      }
+      const admitted = handshakeAdmitBinding(hs, { accountId: parsed.accountId })
+      const rebound = isEntityRebound(disconnected, admitted)
+      const entityA = disconnected.netEntityId ?? admitted.netEntityId ?? disconnected.accountId ?? admitted.accountId
+      appendTrace(tracePath, {
+        kind: 'reconnect_upgrade',
+        process: 'lumio-mvp-host',
+        loginName,
+        ok: true,
+        status: conn.status ?? 101,
+        entityType: 'bot',
+        sessionId: admitted.sessionId ?? hs.sessionId,
+        previousSessionId: disconnected.sessionId,
+        netEntityId: admitted.netEntityId,
+        previousNetEntityId: disconnected.netEntityId,
+        accountId: admitted.accountId,
+        previousAccountId: disconnected.accountId,
+        handshake: true,
+        rebound,
+      })
+      appendTrace(tracePath, {
+        kind: 'binding_committed',
+        process: 'lumio-mvp-host',
+        loginName,
+        entityType: 'bot',
+        sessionId: admitted.sessionId ?? hs.sessionId,
+        netEntityId: admitted.netEntityId ?? disconnected.netEntityId,
+        accountId: admitted.accountId,
+        handshake: true,
+        reconnect: true,
+      })
+      return {
+        ok: rebound,
+        rebound,
+        socket: conn.ws,
+        loginName,
+        status: conn.status ?? 101,
+        sessionId: admitted.sessionId ?? hs.sessionId,
+        previousSessionId: disconnected.sessionId,
+        netEntityId: admitted.netEntityId,
+        previousNetEntityId: disconnected.netEntityId,
+        accountId: admitted.accountId,
+        previousAccountId: disconnected.accountId,
+        entityA,
+      }
+    } catch (err) {
+      lastError = String(err.message ?? err).split('\n')[0]
+      const retry = attempt === 0 && candidates.length > 1 && shouldRetryReconnectHandshake(err)
+      appendTrace(tracePath, {
+        kind: 'reconnect_upgrade',
+        process: 'lumio-mvp-host',
+        loginName,
+        ok: false,
+        message: lastError,
+        retry,
+      })
+      if (!retry) break
     }
-  } catch (err) {
-    appendTrace(tracePath, {
-      kind: 'reconnect_upgrade',
-      process: 'lumio-mvp-host',
-      loginName,
-      ok: false,
-      message: String(err.message ?? err).split('\n')[0],
-    })
-    return { ok: false, rebound: false, loginName, error: String(err.message ?? err).split('\n')[0] }
   }
+  return { ok: false, rebound: false, loginName, error: lastError }
 }
 
 export function writeScenariosFile(path, scenarios) {

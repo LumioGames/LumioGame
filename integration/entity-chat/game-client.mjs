@@ -291,6 +291,29 @@ export async function sendWsJson(socket, payload) {
   })
 }
 
+export function handshakeAdmitBinding(hs, extra = {}) {
+  const sources = [hs, hs?.snapshot, hs?.snapshot?.body, hs?.serverHandshake, hs?.serverHandshake?.body, extra]
+  let sessionId = null
+  let netEntityId = null
+  let accountId = null
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue
+    if (sessionId == null && typeof src.sessionId === 'string' && src.sessionId.length > 0) sessionId = src.sessionId
+    if (netEntityId == null && typeof src.netEntityId === 'string' && src.netEntityId.length > 0) netEntityId = src.netEntityId
+    if (accountId == null && typeof src.accountId === 'string' && src.accountId.length > 0) accountId = src.accountId
+    const binding = src.binding ?? src.bindingRecord
+    if (binding && typeof binding === 'object') {
+      if (netEntityId == null && typeof binding.netEntityId === 'string' && binding.netEntityId.length > 0) {
+        netEntityId = binding.netEntityId
+      }
+      if (accountId == null && typeof binding.accountId === 'string' && binding.accountId.length > 0) {
+        accountId = binding.accountId
+      }
+    }
+  }
+  return { sessionId, netEntityId, accountId }
+}
+
 export async function completeMvpHandshake(socket, { sessionId, timeoutMs = 10000 } = {}) {
   attachWsBuffer(socket)
   const first = await recvWsJson(socket, timeoutMs)
@@ -311,8 +334,11 @@ export async function completeMvpHandshake(socket, { sessionId, timeoutMs = 1000
   const boundSessionId = typeof second.sessionId === 'string' && second.sessionId.length > 0
     ? second.sessionId
     : sessionId
+  const binding = handshakeAdmitBinding({ sessionId: boundSessionId, serverHandshake: first, snapshot: second })
   return {
-    sessionId: boundSessionId,
+    sessionId: binding.sessionId ?? boundSessionId,
+    netEntityId: binding.netEntityId,
+    accountId: binding.accountId,
     serverHandshake: first,
     snapshot: second,
   }

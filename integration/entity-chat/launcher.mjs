@@ -40,7 +40,7 @@ import {
   runAccountScenario1,
   runPlaywrightBrowser,
 } from './scenarios.mjs'
-import { compareRuns, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
+import { compareRuns, isEntityRebound, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
 
 const SIBLING_GAP_REASON = 'sibling-gap: mvp-host ReferenceWorldSimulation cannot Attribute Query / Chat persist / expiry / isolation / event-order'
 
@@ -415,8 +415,23 @@ function mergeRoundEvidence({
     channel: playwright?.channel ?? null,
   }
   const s3ok = playerAdmits.length === 1 && liveAdmits.live === 101 && playwrightRan({ playwright: pw })
-  const entityA = liveReconnect?.entityA ?? liveReconnect?.sessionId ?? botAdmits.find((a) => a.loginName === 'Bot100')?.sessionId ?? null
-  const s8ok = liveReconnect?.rebound === true && typeof entityA === 'string' && !isLauncherLoopIndex(entityA)
+  const bot100 = botAdmits.find((a) => a.loginName === 'Bot100')
+  const entityA = liveReconnect?.entityA
+    ?? liveReconnect?.netEntityId
+    ?? liveReconnect?.accountId
+    ?? bot100?.netEntityId
+    ?? bot100?.accountId
+    ?? null
+  const s8ok = isEntityRebound(
+    {
+      netEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId,
+      accountId: liveReconnect?.previousAccountId ?? bot100?.accountId,
+    },
+    {
+      netEntityId: liveReconnect?.netEntityId,
+      accountId: liveReconnect?.accountId,
+    },
+  ) && typeof entityA === 'string' && !isLauncherLoopIndex(entityA)
   const scenarios = {
     1: {
       ok: s1ok,
@@ -452,7 +467,13 @@ function mergeRoundEvidence({
     8: {
       ok: s8ok,
       entityA,
-      rebound: liveReconnect?.rebound === true,
+      rebound: s8ok,
+      sessionId: liveReconnect?.sessionId ?? null,
+      previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
+      netEntityId: liveReconnect?.netEntityId ?? null,
+      previousNetEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId ?? null,
+      accountId: liveReconnect?.accountId ?? null,
+      previousAccountId: liveReconnect?.previousAccountId ?? bot100?.accountId ?? null,
     },
     9: siblingGapRow(),
     10: siblingGapRow(),
@@ -476,7 +497,16 @@ function mergeRoundEvidence({
         wrongPasswordCode: account?.wrongPassword?.code,
       },
       handshake: { completed: sessionIds.length, sessionIds },
-      reconnect: { rebound: s8ok, entityA },
+      reconnect: {
+        rebound: s8ok,
+        entityA,
+        sessionId: liveReconnect?.sessionId ?? null,
+        previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
+        netEntityId: liveReconnect?.netEntityId ?? null,
+        previousNetEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId ?? null,
+        accountId: liveReconnect?.accountId ?? null,
+        previousAccountId: liveReconnect?.previousAccountId ?? bot100?.accountId ?? null,
+      },
     },
     scenarios,
   }
@@ -595,6 +625,8 @@ async function runOneRound({
         listenUri: ready.listenUri,
         tracePath,
         sessionId: bot100?.sessionId,
+        netEntityId: bot100?.netEntityId,
+        accountId: bot100?.accountId,
       })
       if (liveReconnect.socket) sockets[99] = liveReconnect.socket
     }

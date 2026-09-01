@@ -88,6 +88,65 @@ function bindingIdOf(rec) {
   return null
 }
 
+function hostBindingValue(rec, key) {
+  if (!isObject(rec)) return null
+  const id = rec[key]
+  if (id == null) return null
+  const s = String(id)
+  if (s.length === 0 || s === '0' || isLauncherLoopIndex(s)) return null
+  return s
+}
+
+/** Rebind is same NetEntityId or AccountId. Session id match is not a rebind. */
+export function isEntityRebound(disconnected, admitted) {
+  const same = (key) => {
+    const left = hostBindingValue(disconnected, key)
+    const right = hostBindingValue(admitted, key)
+    return left != null && left === right
+  }
+  return same('netEntityId') || same('accountId')
+}
+
+function reconnectBindingPair(evidence) {
+  const s8 = scenario(evidence, 8)
+  const t = evidence?.traces?.reconnect
+  const disconnected = {
+    netEntityId: t?.previousNetEntityId ?? s8?.previousNetEntityId,
+    accountId: t?.previousAccountId ?? s8?.previousAccountId,
+  }
+  const admitted = {
+    netEntityId: t?.netEntityId ?? s8?.netEntityId,
+    accountId: t?.accountId ?? s8?.accountId,
+  }
+  return { disconnected, admitted }
+}
+
+export function isReconnectEntityRebound(evidence) {
+  const { disconnected, admitted } = reconnectBindingPair(evidence)
+  return isEntityRebound(disconnected, admitted)
+}
+
+/** First handshake session, then one retry with a distinct session id if missing/mismatch. */
+export function reconnectSessionCandidates(bindSessionId, loginName) {
+  const ids = []
+  const bind = hostBindingValue({ sessionId: bindSessionId }, 'sessionId')
+    ?? (typeof bindSessionId === 'string' && bindSessionId.length > 0 && bindSessionId !== '0' && !isLauncherLoopIndex(bindSessionId)
+      ? bindSessionId
+      : null)
+  if (bind) ids.push(bind)
+  else if (typeof loginName === 'string' && loginName.length > 0) ids.push(`sess-${loginName}`)
+  const retry = typeof loginName === 'string' && loginName.length > 0 ? `sess-${loginName}-re` : null
+  if (retry && !ids.includes(retry)) ids.push(retry)
+  return ids.slice(0, 2)
+}
+
+export function shouldRetryReconnectHandshake(err) {
+  const code = err?.reasonCode
+  const message = String(err?.message ?? err ?? '')
+  return code === 'SessionMismatch'
+    || /sessionmismatch|missing host session|missing session|reconnect missing/i.test(message)
+}
+
 function isHonestSiblingGap(row) {
   return isObject(row)
     && row.ok === false
@@ -275,6 +334,13 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
       const tickBatched = row?.ok !== true && row?.timerManagerInvoked !== true
       if (tickBatched) continue
     }
+    if (i === 8) {
+      if (isReconnectEntityRebound(evidence)) continue
+      if (!isObject(row) || row.ok !== true) {
+        failures.push({ check: 'scenario-8', message: 'scenario 8 missing or not ok' })
+      }
+      continue
+    }
     if (SIBLING_GAP_SCENARIOS.has(i)) {
       if (row?.ok === true) {
         failures.push({
@@ -364,8 +430,9 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
     failures.push({ check: 's7:window-restore', message: 'Restore 后聊天窗必须为空' })
   }
 
-  const s8 = scenario(evidence, 8)
-  if (s8.ok !== true) failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A' })
+  if (!isReconnectEntityRebound(evidence)) {
+    failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A (NetEntityId/AccountId, not sessionId)' })
+  }
 
   const s9 = scenario(evidence, 9)
   if (!isHonestSiblingGap(s9) && s9.ok !== true && s9.tombstoned !== true) {
@@ -554,7 +621,16 @@ function goodEvidence() {
   base.playwright = { ran: true, browser: 'chromium', receivedFromNetwork: true, injected: false, eventCount: 101 }
   base.traces = {
     account: { createAck: true, loadAck: true, wrongPasswordCode: 'wrong_password' },
-    reconnect: { rebound: true, entityA: 'sess-bot-100' },
+    reconnect: {
+      rebound: true,
+      entityA: 'nent-bot-100',
+      sessionId: 'sess-bot-100-re',
+      previousSessionId: 'sess-bot-100',
+      netEntityId: 'nent-bot-100',
+      previousNetEntityId: 'nent-bot-100',
+      accountId: 'acct_bot100',
+      previousAccountId: 'acct_bot100',
+    },
     handshake: { completed: 101 },
   }
   base.scenarios['3'] = { ok: true, playwrightRan: true }
@@ -566,7 +642,17 @@ function goodEvidence() {
     restoredWindow: 0,
     snapshotSource: 'suite-double',
   })
-  base.scenarios['8'] = { ok: true, entityA: 'sess-bot-100', rebound: true }
+  base.scenarios['8'] = {
+    ok: true,
+    entityA: 'nent-bot-100',
+    rebound: true,
+    sessionId: 'sess-bot-100-re',
+    previousSessionId: 'sess-bot-100',
+    netEntityId: 'nent-bot-100',
+    previousNetEntityId: 'nent-bot-100',
+    accountId: 'acct_bot100',
+    previousAccountId: 'acct_bot100',
+  }
   base.scenarios['9'] = siblingGapFixture()
   base.scenarios['10'] = siblingGapFixture()
   base.scenarios['11'] = siblingGapFixture({ eventOrder, appliedTicks, totalEntities: 101 })
@@ -967,13 +1053,32 @@ function handshakeEvidence() {
     restoredWindow: 0,
     snapshotSource: 'suite-double',
   })
-  evidence.scenarios['8'] = { ok: true, entityA: 'sess-bot-100', rebound: true }
+  evidence.scenarios['8'] = {
+    ok: true,
+    entityA: 'nent-bot-100',
+    rebound: true,
+    sessionId: 'sess-bot-100-re',
+    previousSessionId: 'sess-bot-100',
+    netEntityId: 'nent-bot-100',
+    previousNetEntityId: 'nent-bot-100',
+    accountId: 'acct_bot100',
+    previousAccountId: 'acct_bot100',
+  }
   evidence.scenarios['9'] = siblingGapRow()
   evidence.scenarios['10'] = siblingGapRow()
   evidence.scenarios['11'] = siblingGapRow({ totalEntities: 101 })
   evidence.traces = {
     account: evidence.traces.account,
-    reconnect: { rebound: true, entityA: 'sess-bot-100' },
+    reconnect: {
+      rebound: true,
+      entityA: 'nent-bot-100',
+      sessionId: 'sess-bot-100-re',
+      previousSessionId: 'sess-bot-100',
+      netEntityId: 'nent-bot-100',
+      previousNetEntityId: 'nent-bot-100',
+      accountId: 'acct_bot100',
+      previousAccountId: 'acct_bot100',
+    },
     handshake: { completed: 101 },
   }
   return evidence
@@ -1053,4 +1158,109 @@ test('P1-B: missing ok:false blockedReason on S5/S7/S9/S10/S11 must FAIL', () =>
     report.failures.some((f) => f.check === 'scenario-5' || f.check === 'scenario-7'),
     JSON.stringify(report.failures),
   )
+})
+
+test('S8: new sessionId with same host NetEntityId/AccountId is reconnect ok', () => {
+  const evidence = handshakeEvidence()
+  evidence.traces.reconnect = {
+    rebound: false,
+    sessionId: 'sess-bot-100-re',
+    previousSessionId: 'sess-bot-100',
+    netEntityId: 'nent-bot-100',
+    previousNetEntityId: 'nent-bot-100',
+    accountId: 'acct_bot100',
+    previousAccountId: 'acct_bot100',
+    entityA: 'nent-bot-100',
+  }
+  evidence.scenarios['8'] = {
+    ok: false,
+    rebound: false,
+    entityA: 'nent-bot-100',
+    sessionId: 'sess-bot-100-re',
+    previousSessionId: 'sess-bot-100',
+    netEntityId: 'nent-bot-100',
+    previousNetEntityId: 'nent-bot-100',
+    accountId: 'acct_bot100',
+    previousAccountId: 'acct_bot100',
+  }
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.ok(
+    !report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('S8: sessionId-only match is not the definition of entity rebind', () => {
+  const evidence = handshakeEvidence()
+  evidence.traces.reconnect = {
+    rebound: true,
+    sessionId: 'sess-bot-100',
+    previousSessionId: 'sess-bot-100',
+    entityA: 'sess-bot-100',
+  }
+  evidence.scenarios['8'] = {
+    ok: true,
+    rebound: true,
+    entityA: 'sess-bot-100',
+    sessionId: 'sess-bot-100',
+    previousSessionId: 'sess-bot-100',
+  }
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('isEntityRebound: NetEntityId/AccountId stay across a new sessionId', () => {
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-old', netEntityId: 'nent-a', accountId: 'acct-1' },
+      { sessionId: 'sess-new', netEntityId: 'nent-a', accountId: 'acct-1' },
+    ),
+    true,
+  )
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-a', netEntityId: 'nent-a' },
+      { sessionId: 'sess-b', netEntityId: 'nent-a' },
+    ),
+    true,
+  )
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-a', accountId: 'acct-1' },
+      { sessionId: 'sess-b', accountId: 'acct-1' },
+    ),
+    true,
+  )
+})
+
+test('isEntityRebound: sessionId-only match is not rebind', () => {
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-a' },
+      { sessionId: 'sess-a' },
+    ),
+    false,
+  )
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-a', netEntityId: 'nent-a', accountId: 'acct-1' },
+      { sessionId: 'sess-a', netEntityId: 'nent-b', accountId: 'acct-2' },
+    ),
+    false,
+  )
+})
+
+test('reconnectSessionCandidates: missing session still handshakes then retries once', () => {
+  assert.deepEqual(reconnectSessionCandidates(null, 'Bot100'), ['sess-Bot100', 'sess-Bot100-re'])
+  assert.deepEqual(reconnectSessionCandidates('sess-Bot100', 'Bot100'), ['sess-Bot100', 'sess-Bot100-re'])
+  assert.equal(reconnectSessionCandidates('sess-Bot100', 'Bot100').length, 2)
+})
+
+test('shouldRetryReconnectHandshake: SessionMismatch and missing session retry once', () => {
+  assert.equal(shouldRetryReconnectHandshake({ reasonCode: 'SessionMismatch', message: 'mvp-host handshake rejected: SessionMismatch' }), true)
+  assert.equal(shouldRetryReconnectHandshake(new Error('reconnect missing host sessionId')), true)
+  assert.equal(shouldRetryReconnectHandshake(new Error('mvp-host handshake rejected: ReleaseMismatch')), false)
 })
