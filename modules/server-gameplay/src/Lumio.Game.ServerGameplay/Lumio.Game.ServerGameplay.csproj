@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GameProductionProject>true</GameProductionProject>
+    <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
+    <AssemblyName>Lumio.Game.ServerGameplay</AssemblyName>
+    <RootNamespace>Lumio.Game.ServerGameplay</RootNamespace>
+    <NoWarn>$(NoWarn);CA1510</NoWarn>
+  </PropertyGroup>
+</Project>

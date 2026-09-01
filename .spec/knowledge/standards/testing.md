@@ -35,14 +35,18 @@ metadata:
 
 ## 项目测试栈与命令
 
-当前仓库尚未提交 Gameplay 实现工程；现阶段默认验证为：
+默认验证为 spec-lint 加上 Server Gameplay 单元测试：
 
 ```text
 node .spec/tools/spec-lint.mjs
 node --test .spec/tools/spec-lint.test.mjs
+dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj --nologo
+dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
 ```
 
-首次引入实现工程时，必须把具体单元测试、Scenario/Headless 测试和 formatter/analyzer 命令加入收口门槛。公共 Contract 变更还必须在 `LumioGameEngineArchitecture` 安装 `requirements-dev.txt` 后运行 `python3 tools/lumio_contract.py validate`。
+测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。本机若 SDK 装在 user-local（`DOTNET_ROOT`，HKLM 无 InstallLocation），MTP apphost 可能报 `.NET location: Not found` 并以退出码 5 跑 0 个测试；此时用同一 dll 的 `dotnet exec …/Lumio.Game.ServerGameplay.Tests.dll` 作为可复现执行器，不得把 0-test 当成通过。
+
+公共契约以架构源 `engine/wire/*.json` + `eng/verify-wire.mjs` 为闸门；已删除的 `tools/lumio_contract.py` 不再调用。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
 
 ## 本仓 Headless / 契约测试面
 

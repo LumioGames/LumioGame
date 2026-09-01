@@ -1,0 +1,25 @@
+<Project>
+  <Target Name="ValidateGameBuildProfile" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <_GamePackageNames>@(PackageReference)</_GamePackageNames>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('xunit'))">true</_GameHasTestPackage>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('nunit'))">true</_GameHasTestPackage>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('mstest'))">true</_GameHasTestPackage>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('microsoft.testing'))">true</_GameHasTestPackage>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('microsoft.net.test'))">true</_GameHasTestPackage>
+      <_GameHasTestPackage Condition="$([System.String]::Copy('$(_GamePackageNames)').ToLowerInvariant().Contains('coverlet'))">true</_GameHasTestPackage>
+    </PropertyGroup>
+
+    <Error
+      Condition="'$(GameProductionProject)' == 'true' and ('$(IsTestProject)' == 'true' or '$(_GameHasTestPackage)' == 'true')"
+      Text="GAME_BUILD_PROFILE_INVALID production projects cannot reference test packages or set IsTestProject=true." />
+
+    <Error
+      Condition="'$(GameTestProject)' == 'true' and (('$(TargetFrameworks)' != '' and '$(TargetFrameworks)' != 'net10.0') or ('$(TargetFrameworks)' == '' and '$(TargetFramework)' != 'net10.0'))"
+      Text="GAME_BUILD_PROFILE_INVALID test projects must target net10.0 only; multi-target or non-net10.0 targets are not allowed." />
+
+    <Error
+      Condition="('$(GameProductionProject)' == 'true' or '$(GameTestProject)' == 'true') and '$(LangVersion)' != '14.0'"
+      Text="GAME_BUILD_PROFILE_INVALID LangVersion must remain 14.0 for game projects; actual value is $(LangVersion)." />
+  </Target>
+</Project>

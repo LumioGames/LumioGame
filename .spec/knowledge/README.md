@@ -26,8 +26,7 @@ metadata:
 | 文档 | 一句话 |
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
-
-> 暂无正式功能文档。
+| [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 字段声明与 SetMessage——查 persist-only last-message、下一 Tick 提交与有界输入 reject |
 
 ## lessons(经验教训 · 复发问题暂存区)
 
