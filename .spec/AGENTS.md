@@ -30,7 +30,7 @@
 - **快速模式(收口白名单,默认优先尝试):** 纯文档 / 纯注释 / 纯配置数据 / 机械套用既有模式 / revert / 生成物随源更新 / 有效 diff < 20 行(去空行注释)——lint + 测试直接收口,交付附一行豁免声明,不派任何 agent。判定须机器可判(文件类型 + diff 行数),拿不准 = 快审。**红线面永不快速**:触碰 `rules/`、鉴权、安全面、可执行配置(如 hooks)的改动至少快审。
 - **审查闭环:** 交付即待审;completed 由主 loop 在 reviewer 通过(或按豁免跳过)后标记;高风险改动审查通过前**不得提交**。
 - **派 worker 三选一:** ① 多个互不依赖任务可并行 ② 改动大到撑爆编排上下文 ③ 需要隔离的干净实现环境。
-- **收口门槛:** `node .spec/tools/spec-lint.mjs && node --test .spec/tools/spec-lint.test.mjs`；涉及仓库边界或架构镜像时还必须复现 `.github/workflows/repository-policy.yml` 的检查，公共契约变更必须在 `LumioGameEngineArchitecture` 通过 `python3 tools/lumio_contract.py validate`；交付前必须通过。
+- **收口门槛:** `node .spec/tools/spec-lint.mjs && node --test .spec/tools/spec-lint.test.mjs && dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj`；涉及仓库边界或架构镜像时还必须复现 `.github/workflows/repository-policy.yml` 的检查，公共契约变更必须在 `LumioGameEngineArchitecture` 通过 `python3 tools/lumio_contract.py validate`；交付前必须通过。
 - **并行边界与合入:** 任务文件集**互不重叠**才可并行(最小化冲突),重叠必串行;拆解产物按 wave 分批扇出,批间串行。并行 worker 各在独立 git worktree 实现(Claude Code 用 Agent 工具的 worktree 隔离),reviewer 审 worktree 相对基线的完整 diff,通过后主 loop 合入主工作区,未过审不合入,冲突退回实现方。多宿主并存时共享任务真值是 `.spec/tasks/`,宿主内置任务工具只作个人草稿。
 - **派活模板:** worker 派遣与 reviewer 触发的 prompt 骨架见 [`knowledge/standards/dispatch.md`](knowledge/standards/dispatch.md)。
 - **交回物格式(全仓单一权威):** ① 改动清单;② **验证证据**——命令与关键输出,不得只声称「已通过」;③ known gaps;④ 知识沉淀落点(或声明无需沉淀)。拆解类交任务卡集合,②以自检结论 + 待澄清项代替;reviewer 交审查报告(见 [`agents/reviewer.agent.md`](agents/reviewer.agent.md))。

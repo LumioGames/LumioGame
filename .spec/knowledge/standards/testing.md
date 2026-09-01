@@ -28,7 +28,7 @@ metadata:
 
 ## 验收标准（Definition of Done）
 
-- [ ] 收口门槛命令全绿（当前至少执行 `node .spec/tools/spec-lint.mjs` 与 `node --test .spec/tools/spec-lint.test.mjs`）。
+- [ ] 收口门槛命令全绿（见 `AGENTS.md`「收口门槛」：spec-lint 与 Server Gameplay 单元测试）。
 - [ ] 新增 / 修改行为有测试覆盖；bug 修复留有回归测试。
 - [ ] 无 lint / 类型错误、无调试残留。
 - [ ] 相关知识文档已更新（见 [`workflow.md`](./workflow.md)）。
@@ -44,9 +44,9 @@ dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.Se
 dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
 ```
 
-测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。本机若 SDK 装在 user-local（`DOTNET_ROOT`，HKLM 无 InstallLocation），MTP apphost 可能报 `.NET location: Not found` 并以退出码 5 跑 0 个测试；此时用同一 dll 的 `dotnet exec …/Lumio.Game.ServerGameplay.Tests.dll` 作为可复现执行器，不得把 0-test 当成通过。
+测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。xUnit v3 要求 apphost；user-local SDK（无 HKLM `InstallLocation`）下 `dotnet test --project` 可能以退出码 5 跑 0 个测试。此时把 `DOTNET_ROOT` 设为 `dotnet.exe` 所在目录，或对已构建 dll 使用 `dotnet exec`。不得把「运行了零个测试」当成通过。
 
-公共契约以架构源 `engine/wire/*.json` + `eng/verify-wire.mjs` 为闸门；已删除的 `tools/lumio_contract.py` 不再调用。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
+公共契约变更必须在架构源 `LumioGameEngineArchitecture` 通过其契约闸门（见 `AGENTS.md`「收口门槛」）；本仓只消费冻结 JSON，不另写协议。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
 
 ## 本仓 Headless / 契约测试面
 
