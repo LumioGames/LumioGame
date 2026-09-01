@@ -820,6 +820,15 @@ test('好包:101 计数来自 host audit 去重而非常数', () => {
 
 test('好包缺 InputCommand envelope 字段必须 FAIL', () => {
   const ev = goodEvidence()
+  ev.scenarios['6'] = {
+    ok: true,
+    timerManagerInvoked: true,
+    cadence: 'client-timer-manager',
+    messageType: 'InputCommand',
+    mappingId: 'chat.input',
+    payload: '020000006767',
+    payloadSha256: '5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab',
+  }
   delete ev.scenarios['6'].mappingId
   delete ev.scenarios['6'].payloadSha256
   const report = verifyRun(ev, goodAudit())
