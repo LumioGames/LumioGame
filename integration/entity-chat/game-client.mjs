@@ -292,7 +292,8 @@ export async function sendWsJson(socket, payload) {
 }
 
 export function handshakeAdmitBinding(hs, extra = {}) {
-  const sources = [hs, hs?.snapshot, hs?.snapshot?.body, hs?.serverHandshake, hs?.serverHandshake?.body, extra]
+  void extra
+  const sources = [hs, hs?.snapshot, hs?.snapshot?.body, hs?.serverHandshake, hs?.serverHandshake?.body]
   let sessionId = null
   let netEntityId = null
   let accountId = null
@@ -450,5 +451,31 @@ test('websocket text frames round-trip through masked encode and decode', () => 
   assert.equal(decoded.fin, true)
   assert.equal(decoded.payload.toString('utf8'), payload.toString('utf8'))
   assert.equal(decoded.rest.length, 0)
+})
+
+test('handshakeAdmitBinding copies netEntityId only from Handshake/FullSnapshot/binding', () => {
+  const fromBody = handshakeAdmitBinding({
+    sessionId: 'sess-Bot100',
+    snapshot: { messageType: 'FullSnapshot', body: { netEntityId: 'nent_host1' } },
+  })
+  assert.equal(fromBody.sessionId, 'sess-Bot100')
+  assert.equal(fromBody.netEntityId, 'nent_host1')
+
+  const fromBinding = handshakeAdmitBinding({
+    sessionId: 'sess-Bot100',
+    snapshot: { binding: { netEntityId: 'nent_host2', accountId: 'acct_host' } },
+  })
+  assert.equal(fromBinding.netEntityId, 'nent_host2')
+  assert.equal(fromBinding.accountId, 'acct_host')
+})
+
+test('handshakeAdmitBinding does not alias sessionId or login extra as host binding', () => {
+  const aliased = handshakeAdmitBinding(
+    { sessionId: 'sess-Bot100' },
+    { accountId: 'acct_login', netEntityId: 'nent_forged' },
+  )
+  assert.equal(aliased.sessionId, 'sess-Bot100')
+  assert.equal(aliased.netEntityId, null)
+  assert.equal(aliased.accountId, null)
 })
 

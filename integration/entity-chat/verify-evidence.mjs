@@ -97,14 +97,54 @@ function hostBindingValue(rec, key) {
   return s
 }
 
-/** Rebind is same NetEntityId or AccountId. Session id match is not a rebind. */
+/** Host NetEntityId is nent_* / nent-*. Loop index and sess-* session aliases are not. */
+export function isHostNetEntityId(id) {
+  if (id == null) return false
+  const s = String(id)
+  if (s.length === 0 || s === '0' || isLauncherLoopIndex(s)) return false
+  if (/^sess[-_]/i.test(s)) return false
+  return /^nent[-_]/i.test(s)
+}
+
+export const S8_NENT_GAP_REASON = 'sibling-gap: FullSnapshot / 17-key host-audit / test-control do not project ConnectionBinding.NetEntityId (nent_*)'
+
+function isHonestS8Gap(row) {
+  if (!isObject(row) || row.ok !== false) return false
+  const reason = row.blockedReason
+  if (typeof reason !== 'string' || reason.length === 0) return false
+  if (/ReferenceWorldSimulation/i.test(reason)) return false
+  return /netentityid|nent[_-]|connectionbinding/i.test(reason)
+    && /fullsnapshot|17-key|test-control|host-audit|project/i.test(reason)
+}
+
+function s8NetEntityIdAliasedToSession(evidence) {
+  const s8 = scenario(evidence, 8)
+  const t = evidence?.traces?.reconnect
+  const pairs = [
+    [t?.netEntityId ?? s8?.netEntityId, t?.sessionId ?? s8?.sessionId],
+    [t?.previousNetEntityId ?? s8?.previousNetEntityId, t?.previousSessionId ?? s8?.previousSessionId],
+  ]
+  return pairs.some(([nent, sess]) => nent != null && sess != null && String(nent) === String(sess) && !isHostNetEntityId(nent))
+}
+
+function s8PaintedWithoutHostNent(evidence) {
+  const s8 = scenario(evidence, 8)
+  if (!isObject(s8) || s8.ok !== true) return false
+  const t = evidence?.traces?.reconnect
+  const entityA = t?.entityA ?? s8.entityA
+  const netEntityId = t?.netEntityId ?? s8.netEntityId
+  const previousNetEntityId = t?.previousNetEntityId ?? s8.previousNetEntityId
+  if (typeof entityA === 'string' && /^sess[-_]/i.test(entityA)) return true
+  if (!isHostNetEntityId(netEntityId) || !isHostNetEntityId(previousNetEntityId)) return true
+  if (s8NetEntityIdAliasedToSession(evidence)) return true
+  return false
+}
+
+/** Rebind is same host NetEntityId. Session id or login AccountId match is not a rebind. */
 export function isEntityRebound(disconnected, admitted) {
-  const same = (key) => {
-    const left = hostBindingValue(disconnected, key)
-    const right = hostBindingValue(admitted, key)
-    return left != null && left === right
-  }
-  return same('netEntityId') || same('accountId')
+  const left = disconnected?.netEntityId
+  const right = admitted?.netEntityId
+  return isHostNetEntityId(left) && isHostNetEntityId(right) && String(left) === String(right)
 }
 
 function reconnectBindingPair(evidence) {
@@ -257,7 +297,7 @@ function recordAdmit(byId, rec) {
   byId.set(id, type)
 }
 
-/** Distinct netEntityId census from mvp-host process audit. A lone {total:101} is ignored. */
+/** Distinct Handshake/Admit binding census from mvp-host process audit. Session ids are not NetEntityId. A lone {total:101} is ignored. */
 export function censusFromHostAudit(auditText) {
   const byId = new Map()
   for (const { ev } of parseNdjson(auditText)) {
@@ -335,7 +375,12 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
       if (tickBatched) continue
     }
     if (i === 8) {
-      if (isReconnectEntityRebound(evidence)) continue
+      if (isHonestS8Gap(row)) continue
+      if (isReconnectEntityRebound(evidence) && !s8PaintedWithoutHostNent(evidence)) continue
+      if (row?.ok === true) {
+        failures.push({ check: 'scenario-8', message: 'scenario 8 ok:true without host NetEntityId (nent_*)' })
+        continue
+      }
       if (!isObject(row) || row.ok !== true) {
         failures.push({ check: 'scenario-8', message: 'scenario 8 missing or not ok' })
       }
@@ -430,8 +475,10 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
     failures.push({ check: 's7:window-restore', message: 'Restore 后聊天窗必须为空' })
   }
 
-  if (!isReconnectEntityRebound(evidence)) {
-    failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A (NetEntityId/AccountId, not sessionId)' })
+  if (!isHonestS8Gap(scenario(evidence, 8))) {
+    if (s8PaintedWithoutHostNent(evidence) || s8NetEntityIdAliasedToSession(evidence) || !isReconnectEntityRebound(evidence)) {
+      failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A (host NetEntityId, not sessionId or login AccountId)' })
+    }
   }
 
   const s9 = scenario(evidence, 9)
@@ -963,7 +1010,6 @@ function handshakeAdmitList() {
       loginName: `Bot${String(i).padStart(2, '0')}`,
       connectionId: String(i),
       sessionId,
-      netEntityId: sessionId,
       handshake: true,
     })
   }
@@ -976,7 +1022,6 @@ function handshakeAdmitList() {
     loginName: BROWSER_NAME,
     connectionId: '101',
     sessionId: 'sess-player-001',
-    netEntityId: 'sess-player-001',
     handshake: true,
   })
   return admits
@@ -1212,7 +1257,7 @@ test('S8: sessionId-only match is not the definition of entity rebind', () => {
   )
 })
 
-test('isEntityRebound: NetEntityId/AccountId stay across a new sessionId', () => {
+test('isEntityRebound: same host NetEntityId across a new sessionId is rebind', () => {
   assert.equal(
     isEntityRebound(
       { sessionId: 'sess-old', netEntityId: 'nent-a', accountId: 'acct-1' },
@@ -1227,13 +1272,114 @@ test('isEntityRebound: NetEntityId/AccountId stay across a new sessionId', () =>
     ),
     true,
   )
+})
+
+test('isEntityRebound: AccountId-only is not rebind', () => {
   assert.equal(
     isEntityRebound(
       { sessionId: 'sess-a', accountId: 'acct-1' },
       { sessionId: 'sess-b', accountId: 'acct-1' },
     ),
-    true,
+    false,
   )
+})
+
+test('isEntityRebound: sess-* netEntityId alias is not host rebind', () => {
+  assert.equal(
+    isEntityRebound(
+      { sessionId: 'sess-Bot100', netEntityId: 'sess-Bot100' },
+      { sessionId: 'sess-Bot100', netEntityId: 'sess-Bot100' },
+    ),
+    false,
+  )
+  assert.equal(
+    isEntityRebound(
+      { netEntityId: 'sess-Bot100', accountId: 'acct_login' },
+      { netEntityId: 'sess-Bot100', accountId: 'acct_login' },
+    ),
+    false,
+  )
+})
+
+function liveRunS8ShapeEvidence() {
+  const evidence = handshakeEvidence()
+  const s8 = {
+    ok: true,
+    entityA: 'sess-Bot100',
+    rebound: true,
+    sessionId: 'sess-Bot100',
+    previousSessionId: 'sess-Bot100',
+    netEntityId: null,
+    previousNetEntityId: 'sess-Bot100',
+    accountId: 'acct_20bd71abf730f8fdcb9e0e165e2460f2',
+    previousAccountId: 'acct_20bd71abf730f8fdcb9e0e165e2460f2',
+  }
+  evidence.scenarios['8'] = s8
+  evidence.traces.reconnect = { ...s8 }
+  return evidence
+}
+
+test('S8: live-run-s8 shape (sess entityA, null nent, login accountId) must FAIL rebind', () => {
+  const report = verifyRun(liveRunS8ShapeEvidence(), handshakeBindingAudit())
+  assert.equal(report.ok, false)
+  assert.ok(
+    report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    JSON.stringify(report.failures),
+  )
+  assert.ok(
+    !report.failures.some((f) => f.check === 'host:mvp' || f.check.startsWith('census')),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('S8: netEntityId aliased to sessionId must FAIL rebind', () => {
+  const evidence = handshakeEvidence()
+  const s8 = {
+    ok: true,
+    rebound: true,
+    entityA: 'sess-Bot100',
+    sessionId: 'sess-Bot100',
+    previousSessionId: 'sess-Bot100',
+    netEntityId: 'sess-Bot100',
+    previousNetEntityId: 'sess-Bot100',
+    accountId: 'acct_login',
+    previousAccountId: 'acct_login',
+  }
+  evidence.scenarios['8'] = s8
+  evidence.traces.reconnect = { ...s8 }
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('S8: honest ok:false + blockedReason for missing nent projection is allowed', () => {
+  const evidence = handshakeEvidence()
+  evidence.scenarios['8'] = {
+    ok: false,
+    rebound: false,
+    entityA: null,
+    sessionId: 'sess-Bot100',
+    previousSessionId: 'sess-Bot100',
+    netEntityId: null,
+    previousNetEntityId: null,
+    blockedReason: S8_NENT_GAP_REASON,
+  }
+  evidence.traces.reconnect = {
+    rebound: false,
+    entityA: null,
+    sessionId: 'sess-Bot100',
+    previousSessionId: 'sess-Bot100',
+    netEntityId: null,
+    previousNetEntityId: null,
+  }
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.ok(
+    !report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    JSON.stringify(report.failures),
+  )
+  assert.equal(report.ok, true, JSON.stringify(report.failures))
 })
 
 test('isEntityRebound: sessionId-only match is not rebind', () => {

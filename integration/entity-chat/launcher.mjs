@@ -40,7 +40,7 @@ import {
   runAccountScenario1,
   runPlaywrightBrowser,
 } from './scenarios.mjs'
-import { compareRuns, isEntityRebound, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
+import { compareRuns, isEntityRebound, isHostNetEntityId, isLauncherLoopIndex, parseNdjson, playwrightRan, S8_NENT_GAP_REASON, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
 
 const SIBLING_GAP_REASON = 'sibling-gap: mvp-host ReferenceWorldSimulation cannot Attribute Query / Chat persist / expiry / isolation / event-order'
 
@@ -416,22 +416,16 @@ function mergeRoundEvidence({
   }
   const s3ok = playerAdmits.length === 1 && liveAdmits.live === 101 && playwrightRan({ playwright: pw })
   const bot100 = botAdmits.find((a) => a.loginName === 'Bot100')
-  const entityA = liveReconnect?.entityA
-    ?? liveReconnect?.netEntityId
-    ?? liveReconnect?.accountId
-    ?? bot100?.netEntityId
-    ?? bot100?.accountId
-    ?? null
+  const previousNent = isHostNetEntityId(liveReconnect?.previousNetEntityId)
+    ? liveReconnect.previousNetEntityId
+    : (isHostNetEntityId(bot100?.netEntityId) ? bot100.netEntityId : null)
+  const admittedNent = isHostNetEntityId(liveReconnect?.netEntityId) ? liveReconnect.netEntityId : null
   const s8ok = isEntityRebound(
-    {
-      netEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId,
-      accountId: liveReconnect?.previousAccountId ?? bot100?.accountId,
-    },
-    {
-      netEntityId: liveReconnect?.netEntityId,
-      accountId: liveReconnect?.accountId,
-    },
-  ) && typeof entityA === 'string' && !isLauncherLoopIndex(entityA)
+    { netEntityId: previousNent },
+    { netEntityId: admittedNent },
+  )
+  const entityA = s8ok ? previousNent : (isHostNetEntityId(admittedNent) ? admittedNent : null)
+  const s8blocked = s8ok ? null : (liveReconnect?.blockedReason ?? S8_NENT_GAP_REASON)
   const scenarios = {
     1: {
       ok: s1ok,
@@ -468,12 +462,13 @@ function mergeRoundEvidence({
       ok: s8ok,
       entityA,
       rebound: s8ok,
+      ...(s8blocked ? { blockedReason: s8blocked } : {}),
       sessionId: liveReconnect?.sessionId ?? null,
       previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
-      netEntityId: liveReconnect?.netEntityId ?? null,
-      previousNetEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId ?? null,
+      netEntityId: admittedNent,
+      previousNetEntityId: previousNent,
       accountId: liveReconnect?.accountId ?? null,
-      previousAccountId: liveReconnect?.previousAccountId ?? bot100?.accountId ?? null,
+      previousAccountId: liveReconnect?.previousAccountId ?? null,
     },
     9: siblingGapRow(),
     10: siblingGapRow(),
@@ -502,10 +497,10 @@ function mergeRoundEvidence({
         entityA,
         sessionId: liveReconnect?.sessionId ?? null,
         previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
-        netEntityId: liveReconnect?.netEntityId ?? null,
-        previousNetEntityId: liveReconnect?.previousNetEntityId ?? bot100?.netEntityId ?? null,
+        netEntityId: admittedNent,
+        previousNetEntityId: previousNent,
         accountId: liveReconnect?.accountId ?? null,
-        previousAccountId: liveReconnect?.previousAccountId ?? bot100?.accountId ?? null,
+        previousAccountId: liveReconnect?.previousAccountId ?? null,
       },
     },
     scenarios,
@@ -626,7 +621,6 @@ async function runOneRound({
         tracePath,
         sessionId: bot100?.sessionId,
         netEntityId: bot100?.netEntityId,
-        accountId: bot100?.accountId,
       })
       if (liveReconnect.socket) sockets[99] = liveReconnect.socket
     }

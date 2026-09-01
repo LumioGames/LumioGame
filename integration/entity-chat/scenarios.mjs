@@ -22,8 +22,10 @@ import {
 import {
   BROWSER_NAME,
   MAIN_ROOM,
+  S8_NENT_GAP_REASON,
   TEST_PASSWORD,
   isEntityRebound,
+  isHostNetEntityId,
   isLauncherLoopIndex,
   reconnectSessionCandidates,
   shouldRetryReconnectHandshake,
@@ -116,7 +118,7 @@ export async function admitLiveConnections({ listenUri, tokenBytes, clients, des
           process: 'lumio-mvp-host',
           connectionId: String(i),
           sessionId: hs.sessionId,
-          netEntityId: hs.sessionId,
+          netEntityId: hs.netEntityId ?? null,
           handshake: true,
           snapshotMessageType: hs.snapshot?.messageType ?? 'FullSnapshot',
           ...(entityType ? { entityType } : {}),
@@ -317,7 +319,6 @@ export async function reconnectNamedBot({
   tracePath,
   sessionId,
   netEntityId,
-  accountId,
 }) {
   const parsed = await loginOrRegister(accountPort, {
     loginName,
@@ -337,8 +338,7 @@ export async function reconnectNamedBot({
   }
   const disconnected = {
     sessionId: sessionId ?? bindSessionId ?? null,
-    netEntityId: netEntityId ?? null,
-    accountId: accountId ?? parsed.accountId ?? null,
+    netEntityId: isHostNetEntityId(netEntityId) ? netEntityId : null,
   }
   const candidates = reconnectSessionCandidates(bindSessionId, loginName)
   if (candidates.length === 0) {
@@ -364,24 +364,25 @@ export async function reconnectNamedBot({
         lastError = 'reconnect missing host sessionId'
         continue
       }
-      const admitted = handshakeAdmitBinding(hs, { accountId: parsed.accountId })
+      const admitted = handshakeAdmitBinding(hs)
       const rebound = isEntityRebound(disconnected, admitted)
-      const entityA = disconnected.netEntityId ?? admitted.netEntityId ?? disconnected.accountId ?? admitted.accountId
+      const hostNent = rebound
+        ? disconnected.netEntityId
+        : (isHostNetEntityId(admitted.netEntityId) ? admitted.netEntityId : null)
       appendTrace(tracePath, {
         kind: 'reconnect_upgrade',
         process: 'lumio-mvp-host',
         loginName,
-        ok: true,
+        ok: rebound,
         status: conn.status ?? 101,
         entityType: 'bot',
         sessionId: admitted.sessionId ?? hs.sessionId,
         previousSessionId: disconnected.sessionId,
-        netEntityId: admitted.netEntityId,
+        netEntityId: admitted.netEntityId ?? null,
         previousNetEntityId: disconnected.netEntityId,
-        accountId: admitted.accountId,
-        previousAccountId: disconnected.accountId,
         handshake: true,
         rebound,
+        ...(rebound ? {} : { blockedReason: S8_NENT_GAP_REASON }),
       })
       appendTrace(tracePath, {
         kind: 'binding_committed',
@@ -389,8 +390,7 @@ export async function reconnectNamedBot({
         loginName,
         entityType: 'bot',
         sessionId: admitted.sessionId ?? hs.sessionId,
-        netEntityId: admitted.netEntityId ?? disconnected.netEntityId,
-        accountId: admitted.accountId,
+        netEntityId: admitted.netEntityId ?? null,
         handshake: true,
         reconnect: true,
       })
@@ -402,11 +402,11 @@ export async function reconnectNamedBot({
         status: conn.status ?? 101,
         sessionId: admitted.sessionId ?? hs.sessionId,
         previousSessionId: disconnected.sessionId,
-        netEntityId: admitted.netEntityId,
+        netEntityId: admitted.netEntityId ?? null,
         previousNetEntityId: disconnected.netEntityId,
-        accountId: admitted.accountId,
-        previousAccountId: disconnected.accountId,
-        entityA,
+        accountId: admitted.accountId ?? null,
+        entityA: hostNent,
+        ...(rebound ? {} : { blockedReason: S8_NENT_GAP_REASON }),
       }
     } catch (err) {
       lastError = String(err.message ?? err).split('\n')[0]
