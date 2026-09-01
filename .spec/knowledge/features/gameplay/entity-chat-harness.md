@@ -21,7 +21,8 @@ metadata:
 - **Bot 启动器**：`Lumio.Game.EntityChat.Suite` 可对 Account Server 发 `123456` 测试口令与工具凭证；启动器主路径先对 mvp-host 做 101 路活升级。
 - **证据**：census 必须来自 mvp-host 进程 audit；Browser 必须有 Playwright 实跑；无历史快照必须有可含历史的材料。
 - **BLOCKED**：容量 503 / Admission 未入 FullGraph / origin/main dll 缺失时写 `blocked.json`（`FullGraphComposition.cs` MaxConnections/MaxSessions + 实测错误），退出码 1，不回退 r-00344，不伪造 SUCCESS。
-- **census**：FullGraph 17-key audit（`kind:state` seq 0 NativeReady）加上 101 路活升级的 per-connection 列表即可；不得要求发明 `entity_admitted`，也不得接受无列表的 `{total:101}`。
+- **census**：必须来自 Handshake/Admit 绑定（host-audit 非空 `sessionId` / admit·bind effect，或 admit-trace binding ids）。HTTP 101 的 launcher 循环下标 `"1"`..`"101"` 不是 NetEntityId。不得要求发明 `entity_admitted`，也不得接受无列表的 `{total:101}`。
+- **ChatComponent / C-2 缺口**：Attribute Query、Chat persist、expiry、isolation、event-order 在 mvp-host `ReferenceWorldSimulation` 上不可执行时，S5/S7/S9/S10/S11 必须 `ok: false` + `blockedReason`（与 S6 Timer 相同诚实口径）；不得把 `GameRoomHost` 自评分写成 SUCCESS。
 
 ## 待解决
 

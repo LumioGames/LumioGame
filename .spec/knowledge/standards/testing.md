@@ -53,7 +53,7 @@ node --test integration/entity-chat/verify-evidence.mjs
 node integration/entity-chat/launcher.mjs --out <evidenceDir>
 ```
 
-两轮对比实体数 / event order / applied Tick。SUCCESS 仅当 sibling `lumio-mvp-host` 实际准入 101 路活连接且两轮场景证据一致。容量 503、Admission 未入 FullGraph、origin/main Account Server / mvp-host 产物缺失必须记 BLOCKED（`blocked.json` + 文件:行 + 实测错误），不得回退 r-00344，不得用 `GameRoomHost` 伪造 SUCCESS。FullGraph 生产常量是 `MaxConnections = 128` / `MaxSessions = 128`。
+两轮对比实体数 / event order / applied Tick。SUCCESS 仅当 sibling `lumio-mvp-host` 实际准入 101 路活连接（HTTP 101 之后完成 `lumio.mvp.v0` Handshake，host-audit 有非空 sessionId / admit effect）且两轮场景证据一致。容量 503、Admission 未入 FullGraph、origin/main Account Server / mvp-host 产物缺失必须记 BLOCKED（`blocked.json` + 文件:行 + 实测错误），不得回退 r-00344，不得用 `GameRoomHost` 伪造 SUCCESS。ChatComponent/C-2 缺口场景必须 `ok: false` + `blockedReason`。FullGraph 生产常量是 `MaxConnections = 128` / `MaxSessions = 128`。
 
 公共契约变更必须在架构源 `LumioGameEngineArchitecture` 通过其契约闸门（见 `AGENTS.md`「收口门槛」）；本仓只消费冻结 JSON，不另写协议。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
 

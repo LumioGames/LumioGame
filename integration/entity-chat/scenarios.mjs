@@ -10,13 +10,15 @@ import { loginOrRegister, summarizeLogin } from './account-client.mjs'
 import { allBotLoginNames, issueBotToolCredential } from './bot-credential.mjs'
 import {
   closeQuietly,
+  completeMvpHandshake,
   connectMvpHost,
+  mvpSessionId,
   FULLGRAPH_LIMIT_FILE,
   FULLGRAPH_LIMIT_LINE,
   FULLGRAPH_MAX_CONNECTIONS,
   FULLGRAPH_MAX_SESSIONS,
 } from './game-client.mjs'
-import { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD } from './verify-evidence.mjs'
+import { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD, isLauncherLoopIndex } from './verify-evidence.mjs'
 
 export { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD }
 
@@ -90,19 +92,35 @@ export async function admitLiveConnections({ listenUri, tokenBytes, clients, des
     const loginName = client?.loginName ?? null
     try {
       const conn = await connectMvpHost(listenUri, token)
-      sockets.push(conn.ws)
-      const rec = {
-        index: i,
-        ok: true,
-        protocol: conn.protocol,
-        status: conn.status ?? 101,
-        process: 'lumio-mvp-host',
-        connectionId: String(i),
-        ...(entityType ? { entityType } : {}),
-        ...(loginName ? { loginName } : {}),
+      try {
+        const sessionId = mvpSessionId(client?.sessionId ?? client?.accountId, loginName)
+        if (typeof sessionId !== 'string' || sessionId.length === 0 || isLauncherLoopIndex(sessionId)) {
+          throw new Error(`mvp-host Handshake skipped: missing host sessionId for ${loginName ?? i}`)
+        }
+        const hs = await completeMvpHandshake(conn.socket, { sessionId })
+        sockets.push(conn.ws)
+        const rec = {
+          index: i,
+          ok: true,
+          protocol: conn.protocol,
+          status: conn.status ?? 101,
+          process: 'lumio-mvp-host',
+          connectionId: String(i),
+          sessionId: hs.sessionId,
+          netEntityId: hs.sessionId,
+          handshake: true,
+          snapshotMessageType: hs.snapshot?.messageType ?? 'FullSnapshot',
+          ...(entityType ? { entityType } : {}),
+          ...(loginName ? { loginName } : {}),
+          ...(client?.accountId ? { accountId: client.accountId } : {}),
+        }
+        admits.push(rec)
+        appendTrace(tracePath, { kind: 'connection_upgrade', index: i, ok: true, status: rec.status, process: rec.process, loginName, entityType })
+        appendTrace(tracePath, { kind: 'binding_committed', ...rec })
+      } catch (hsErr) {
+        await closeQuietly(conn.ws)
+        throw hsErr
       }
-      admits.push(rec)
-      appendTrace(tracePath, { kind: 'connection_upgrade', ...rec })
     } catch (err) {
       const rec = {
         index: i,
@@ -271,7 +289,7 @@ export function credentialTokenBytes(admissionCredential) {
   return Buffer.from(String(admissionCredential), 'utf8')
 }
 
-export async function reconnectNamedBot({ accountPort, botSeed, loginName, listenUri, tracePath }) {
+export async function reconnectNamedBot({ accountPort, botSeed, loginName, listenUri, tracePath, sessionId }) {
   const parsed = await loginOrRegister(accountPort, {
     loginName,
     password: TEST_PASSWORD,
@@ -282,8 +300,19 @@ export async function reconnectNamedBot({ accountPort, botSeed, loginName, liste
   if (!parsed.accepted || !parsed.admissionCredential) {
     return { ok: false, rebound: false, loginName, ...summary }
   }
+  let bindSessionId
+  try {
+    bindSessionId = mvpSessionId(sessionId ?? parsed.accountId, loginName)
+  } catch (err) {
+    return { ok: false, rebound: false, loginName, error: String(err.message ?? err).split('\n')[0], ...summary }
+  }
+  if (typeof bindSessionId !== 'string' || bindSessionId.length === 0 || isLauncherLoopIndex(bindSessionId)) {
+    return { ok: false, rebound: false, loginName, error: 'reconnect missing host sessionId', ...summary }
+  }
   try {
     const conn = await connectMvpHost(listenUri, credentialTokenBytes(parsed.admissionCredential))
+    const hs = await completeMvpHandshake(conn.socket, { sessionId: bindSessionId })
+    const rebound = hs.sessionId === bindSessionId
     appendTrace(tracePath, {
       kind: 'reconnect_upgrade',
       process: 'lumio-mvp-host',
@@ -291,8 +320,31 @@ export async function reconnectNamedBot({ accountPort, botSeed, loginName, liste
       ok: true,
       status: conn.status ?? 101,
       entityType: 'bot',
+      sessionId: hs.sessionId,
+      netEntityId: hs.sessionId,
+      handshake: true,
+      rebound,
     })
-    return { ok: true, rebound: true, socket: conn.ws, loginName, status: conn.status ?? 101 }
+    appendTrace(tracePath, {
+      kind: 'binding_committed',
+      process: 'lumio-mvp-host',
+      loginName,
+      entityType: 'bot',
+      sessionId: hs.sessionId,
+      netEntityId: hs.sessionId,
+      handshake: true,
+      reconnect: true,
+    })
+    return {
+      ok: true,
+      rebound,
+      socket: conn.ws,
+      loginName,
+      status: conn.status ?? 101,
+      sessionId: hs.sessionId,
+      netEntityId: hs.sessionId,
+      entityA: bindSessionId,
+    }
   } catch (err) {
     appendTrace(tracePath, {
       kind: 'reconnect_upgrade',

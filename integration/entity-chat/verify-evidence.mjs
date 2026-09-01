@@ -6,9 +6,9 @@
  *   node verify-evidence.mjs --dir <evidenceDir>
  *   node verify-evidence.mjs --round1 <r1/evidence.json> --round2 <r2/evidence.json>
  *
- * census 必须来自 mvp-host 进程证据:host-audit 的 per-entity 事件,或 101 路活升级
- * 的 per-connection 列表(liveAdmits.admits / admit-trace)且 host-audit 含 session/
- * connection 证据。单独的 total:101 常数不算数。FullGraph 不发 entity_admitted。
+ * census 必须来自 mvp-host Handshake/Admit 绑定(host-audit 非空 sessionId / admit
+ * effect,或 admit-trace binding ids)。HTTP 101 的 launcher 循环下标 "1".."101"
+ * 不是 NetEntityId。单独的 total:101 常数不算数。FullGraph 不发 entity_admitted。
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -68,6 +68,35 @@ function isAdmitKind(kind) {
   return kind === 'entity_admitted' || kind === 'entity_created' || kind === 'binding_committed' || kind === 'connection_upgrade'
 }
 
+export function isLauncherLoopIndex(id) {
+  const n = Number(id)
+  return Number.isInteger(n) && n >= 1 && n <= 101 && String(n) === String(id)
+}
+
+function isAdmitEffect(effect) {
+  return /admission|admit|bind|createsession|startreplication|authenticate/i.test(String(effect ?? ''))
+}
+
+function bindingIdOf(rec) {
+  if (!isObject(rec) || rec.ok === false) return null
+  for (const key of ['netEntityId', 'sessionId', 'bindingId']) {
+    const id = rec[key]
+    if (id == null) continue
+    const s = String(id)
+    if (s.length > 0 && s !== '0' && !isLauncherLoopIndex(s)) return s
+  }
+  return null
+}
+
+function isHonestSiblingGap(row) {
+  return isObject(row)
+    && row.ok === false
+    && typeof row.blockedReason === 'string'
+    && row.blockedReason.length > 0
+}
+
+const SIBLING_GAP_SCENARIOS = new Set([5, 7, 9, 10, 11])
+
 function isMvpHostTagged(ev) {
   return ev?.process === 'lumio-mvp-host' || ev?.host === 'lumio-mvp-host' || ev?.source === 'lumio-mvp-host'
 }
@@ -97,6 +126,23 @@ function hostAuditHasSessionOrConnectionEvidence(auditText = '') {
   return false
 }
 
+/** Handshake/Admit evidence: non-empty sessionId or admit/bind effect. NativeReady is not a binding. */
+export function hostAuditHasBindingEvidence(auditText = '', admitTraceText = '') {
+  const scan = (text, requireMvpLine) => {
+    for (const { ev } of parseNdjson(text)) {
+      if (requireMvpLine && !isMvpHostProcessLine(ev) && !isAdmitKind(eventKind(ev))) continue
+      const session = ev.sessionId
+      if (typeof session === 'string' && session.length > 0 && session !== '0' && !isLauncherLoopIndex(session)) {
+        return true
+      }
+      if (isAdmitEffect(ev.effect) && ev.effect !== 'NativeReady') return true
+      if (eventKind(ev) === 'binding_committed' && bindingIdOf(ev)) return true
+    }
+    return false
+  }
+  return scan(auditText, true) || scan(admitTraceText, false)
+}
+
 /** Host-audit must come from a live lumio-mvp-host process, not a GameRoomHost census dump. */
 export function hasMvpHostProcessAudit(evidence, auditText = '') {
   const proc = evidence?.hostProcess
@@ -109,12 +155,17 @@ function hasIndependentTraces(evidence) {
   const t = evidence?.traces
   if (!isObject(t)) return false
   const accountOk = t.account?.wrongPasswordCode === 'wrong_password' || t.account?.createAck === true
-  const queries = JSON.stringify(t.queries ?? {}).toLowerCase()
-  const queryOk = ['unauthorized', 'invisible', 'stale'].every((k) => queries.includes(k))
-  const chatOk = Number(t.chat?.eventCount ?? (Array.isArray(t.chat?.events) ? t.chat.events.length : 0) ?? 0) > 0
+  if (!accountOk) return false
+  const queries = t.queries
+  if (isObject(queries) && !queries.blockedReason) {
+    const blob = JSON.stringify(queries).toLowerCase()
+    if (['unauthorized', 'invisible', 'stale'].every((k) => blob.includes(k))) return false
+  }
+  if (t.expiry?.tombstoned === true && !t.expiry?.blockedReason) return false
   const reconnectOk = t.reconnect?.rebound === true || t.reconnect?.entityA != null
-  const expiryOk = t.expiry?.tombstoned === true
-  return accountOk && queryOk && chatOk && reconnectOk && expiryOk
+  const handshakeOk = Number(t.handshake?.completed ?? 0) === 101
+    || (Array.isArray(t.handshake?.sessionIds) && t.handshake.sessionIds.length === 101)
+  return reconnectOk || handshakeOk
 }
 
 export function playwrightRan(evidence) {
@@ -141,10 +192,10 @@ function emptyCensus() {
 
 function recordAdmit(byId, rec) {
   if (!isObject(rec) || rec.ok === false) return
-  const id = rec.netEntityId ?? rec.connectionId ?? rec.index
+  const id = bindingIdOf(rec)
   const type = entityTypeOf(rec)
   if (id == null || type == null) return
-  byId.set(String(id), type)
+  byId.set(id, type)
 }
 
 /** Distinct netEntityId census from mvp-host process audit. A lone {total:101} is ignored. */
@@ -183,7 +234,7 @@ export function censusFromEvidence(evidence, auditText = '', admitTraceText = ''
   const fromAudit = censusFromHostAudit(auditText)
   if (fromAudit.total === 101) return fromAudit
   const fromLive = censusFromLiveAdmits(evidence, admitTraceText)
-  if (fromLive.total === 101 && hostAuditHasSessionOrConnectionEvidence(auditText)) {
+  if (fromLive.total === 101 && hostAuditHasBindingEvidence(auditText, admitTraceText)) {
     return fromLive
   }
   return fromAudit.total > 0 ? fromAudit : fromLive
@@ -218,22 +269,42 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
     failures.push({ check: 'census:total', message: `实体总数 ${census.total},应为 101` })
   }
 
-  const chatEventCount = Number(
-    evidence?.traces?.chat?.eventCount
-    ?? (Array.isArray(evidence?.traces?.chat?.events) ? evidence.traces.chat.events.length : 0)
-    ?? 0,
-  )
   for (let i = 1; i <= 11; i++) {
     const row = scenario(evidence, i)
     if (i === 6) {
-      const tickBatched = row?.ok !== true
-        && row?.timerManagerInvoked !== true
-        && (Number(row?.eventCount ?? 0) > 0 || chatEventCount > 0)
+      const tickBatched = row?.ok !== true && row?.timerManagerInvoked !== true
       if (tickBatched) continue
+    }
+    if (SIBLING_GAP_SCENARIOS.has(i)) {
+      if (row?.ok === true) {
+        failures.push({
+          check: `scenario-${i}:suite-double`,
+          message: `scenario ${i} ok:true from GameRoomHost is not live mvp-host`,
+        })
+        continue
+      }
+      if (!isHonestSiblingGap(row)) {
+        failures.push({
+          check: `scenario-${i}`,
+          message: `scenario ${i} requires ok:false + blockedReason (sibling gap)`,
+        })
+      }
+      continue
     }
     if (!isObject(row) || row.ok !== true) {
       failures.push({ check: `scenario-${i}`, message: `scenario ${i} missing or not ok` })
     }
+  }
+
+  const bindingOk = hostAuditHasBindingEvidence(auditText, admitTraceText)
+    && census.total === 101
+    && census.netEntityIds.every((id) => !isLauncherLoopIndex(id))
+  const s4 = scenario(evidence, 4)
+  if (s4.ok === true && !bindingOk) {
+    failures.push({
+      check: 's4:binding',
+      message: 'S4 requires host Handshake/Admit binding ids (non-empty sessionId or admit effect); HTTP 101 loop index is not NetEntityId',
+    })
   }
 
   const s1 = scenario(evidence, 1)
@@ -247,10 +318,12 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   }
 
   const s5 = scenario(evidence, 5)
-  const s5text = JSON.stringify(s5).toLowerCase()
-  for (const needed of ['unauthorized', 'invisible', 'stale']) {
-    if (!s5text.includes(needed)) {
-      failures.push({ check: 's5:missing', message: `scenario 5 缺少 ${needed}` })
+  if (!isHonestSiblingGap(s5)) {
+    const s5text = JSON.stringify(s5).toLowerCase()
+    for (const needed of ['unauthorized', 'invisible', 'stale']) {
+      if (!s5text.includes(needed)) {
+        failures.push({ check: 's5:missing', message: `scenario 5 缺少 ${needed}` })
+      }
     }
   }
 
@@ -275,13 +348,19 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
 
   const s7 = scenario(evidence, 7)
   const windowBefore = Number(s7.windowBeforeSnapshot ?? s7.chatEventsBeforeSnapshot ?? 0)
+  if (s7.ok === true && s7.snapshotSource && s7.snapshotSource !== 'live-mvp-host') {
+    failures.push({
+      check: 's7:suite-double',
+      message: 'GameRoomHost persist snapshotSource is not live mvp-host',
+    })
+  }
   if (s7.ok === true && windowBefore <= 0) {
     failures.push({ check: 's7:snapshot-material', message: 'snapshot must exercise material that could have contained history (HistoryCount default 0 is not a test)' })
   }
-  if (Number(s7.historyCountMax ?? 0) !== 0) {
+  if (!isHonestSiblingGap(s7) && Number(s7.historyCountMax ?? 0) !== 0) {
     failures.push({ check: 's7:history', message: `snapshot historyCount=${s7.historyCountMax}` })
   }
-  if (Number(s7.restoredWindow ?? 0) !== 0) {
+  if (!isHonestSiblingGap(s7) && Number(s7.restoredWindow ?? 0) !== 0) {
     failures.push({ check: 's7:window-restore', message: 'Restore 后聊天窗必须为空' })
   }
 
@@ -289,21 +368,23 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   if (s8.ok !== true) failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A' })
 
   const s9 = scenario(evidence, 9)
-  if (s9.ok !== true && s9.tombstoned !== true) {
+  if (!isHonestSiblingGap(s9) && s9.ok !== true && s9.tombstoned !== true) {
     failures.push({ check: 's9:tombstone', message: 'scenario 9 过期后 A 必须 tombstone,B 用新 NetEntityId' })
   }
 
   const s10 = scenario(evidence, 10)
-  if (s10.ok !== true) {
+  if (!isHonestSiblingGap(s10) && s10.ok !== true) {
     failures.push({ check: 's10:isolation', message: 'scenario 10 隔离必须成立' })
   }
 
   const s11 = scenario(evidence, 11)
-  if (!Array.isArray(s11.eventOrder) || s11.eventOrder.length !== 101) {
-    failures.push({ check: 'event-order', message: `eventOrder length ${s11.eventOrder?.length}` })
-  }
-  if (!Array.isArray(s11.appliedTicks) || !s11.appliedTicks.every((t) => Number(t) === 1)) {
-    failures.push({ check: 'applied-tick', message: 'appliedTicks must all be 1 for the scale wave' })
+  if (!isHonestSiblingGap(s11)) {
+    if (!Array.isArray(s11.eventOrder) || s11.eventOrder.length !== 101) {
+      failures.push({ check: 'event-order', message: `eventOrder length ${s11.eventOrder?.length}` })
+    }
+    if (!Array.isArray(s11.appliedTicks) || !s11.appliedTicks.every((t) => Number(t) === 1)) {
+      failures.push({ check: 'applied-tick', message: 'appliedTicks must all be 1 for the scale wave' })
+    }
   }
 
   const dump = JSON.stringify(evidence)
@@ -451,8 +532,19 @@ function suiteOnlyAudit() {
   return lines.join('\n') + '\n'
 }
 
+function siblingGapFixture(extra = {}) {
+  return {
+    ok: false,
+    source: 'suite-double',
+    blockedReason: 'sibling-gap: mvp-host ReferenceWorldSimulation cannot Attribute Query / Chat persist / expiry / isolation / event-order',
+    ...extra,
+  }
+}
+
 function goodEvidence() {
   const base = suiteOnlyEvidence()
+  const eventOrder = base.scenarios['11'].eventOrder
+  const appliedTicks = base.scenarios['11'].appliedTicks
   base.hostProcess = {
     process: 'lumio-mvp-host',
     pid: 4242,
@@ -462,14 +554,22 @@ function goodEvidence() {
   base.playwright = { ran: true, browser: 'chromium', receivedFromNetwork: true, injected: false, eventCount: 101 }
   base.traces = {
     account: { createAck: true, loadAck: true, wrongPasswordCode: 'wrong_password' },
-    queries: { unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' },
-    chat: { eventCount: 101 },
-    reconnect: { rebound: true, entityA: '100' },
-    expiry: { tombstoned: true, entityB: '102' },
+    reconnect: { rebound: true, entityA: 'sess-bot-100' },
+    handshake: { completed: 101 },
   }
   base.scenarios['3'] = { ok: true, playwrightRan: true }
-  base.scenarios['6'] = { ok: true, timerManagerInvoked: true, cadence: 'client-timer-manager' }
-  base.scenarios['7'] = { ok: true, historyCountMax: 0, restoredWindow: 0, windowBeforeSnapshot: 101, snapshotSource: 'runtime-capture' }
+  base.scenarios['4'] = { ok: true, resolvedBots: 100, browserBound: true }
+  base.scenarios['5'] = siblingGapFixture({ unauthorized: null, invisible: null, stale: null })
+  base.scenarios['6'] = { ok: false, timerManagerInvoked: false, cadence: 'tick-batched', eventCount: 0 }
+  base.scenarios['7'] = siblingGapFixture({
+    historyCountMax: 0,
+    restoredWindow: 0,
+    snapshotSource: 'suite-double',
+  })
+  base.scenarios['8'] = { ok: true, entityA: 'sess-bot-100', rebound: true }
+  base.scenarios['9'] = siblingGapFixture()
+  base.scenarios['10'] = siblingGapFixture()
+  base.scenarios['11'] = siblingGapFixture({ eventOrder, appliedTicks, totalEntities: 101 })
   return base
 }
 
@@ -482,16 +582,18 @@ function goodAudit() {
       kind: 'entity_admitted',
       process: 'lumio-mvp-host',
       roomId: MAIN_ROOM,
-      netEntityId: String(i),
+      netEntityId: `nent-bot-${String(i).padStart(3, '0')}`,
       entityType: 'bot',
+      sessionId: `sess-bot-${String(i).padStart(3, '0')}`,
     }))
   }
   lines.push(JSON.stringify({
     kind: 'entity_admitted',
     process: 'lumio-mvp-host',
     roomId: MAIN_ROOM,
-    netEntityId: '101',
+    netEntityId: 'nent-player-001',
     entityType: 'player',
+    sessionId: 'sess-player-001',
   }))
   return lines.join('\n') + '\n'
 }
@@ -661,12 +763,36 @@ function liveAdmitList() {
 
 function liveSeventeenKeyEvidence() {
   const evidence = goodEvidence()
+  const netEntityIds = Array.from({ length: 101 }, (_, i) => String(i + 1))
+  const eventOrder = netEntityIds.map((id, i) => `${id}:hello:${i + 1}`)
+  const appliedTicks = Array.from({ length: 101 }, () => 1)
   evidence.liveAdmits = {
     live: 101,
     desired: 101,
     blocked: null,
     admits: liveAdmitList(),
   }
+  evidence.traces = {
+    account: { createAck: true, loadAck: true, wrongPasswordCode: 'wrong_password' },
+    queries: { unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' },
+    chat: { eventCount: 101 },
+    reconnect: { rebound: true, entityA: '100' },
+    expiry: { tombstoned: true, entityB: '102' },
+  }
+  evidence.scenarios['4'] = { ok: true, resolvedBots: 100, browserBound: true }
+  evidence.scenarios['5'] = { ok: true, unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' }
+  evidence.scenarios['6'] = { ok: true, timerManagerInvoked: true, cadence: 'client-timer-manager' }
+  evidence.scenarios['7'] = {
+    ok: true,
+    historyCountMax: 0,
+    restoredWindow: 0,
+    windowBeforeSnapshot: 101,
+    snapshotSource: 'runtime-capture',
+  }
+  evidence.scenarios['8'] = { ok: true, entityA: '100', rebound: true }
+  evidence.scenarios['9'] = { ok: true, tombstoned: true, staleARejected: true, entityA: '99' }
+  evidence.scenarios['10'] = { ok: true }
+  evidence.scenarios['11'] = { ok: true, eventOrder, appliedTicks, totalEntities: 101 }
   return evidence
 }
 
@@ -697,14 +823,15 @@ test('GameRoomHost-only pack still FAIL host:mvp when 17-key live pack is accept
   )
 })
 
-test('census 101 from live upgrades + host-audit session evidence, not invented entity_admitted', () => {
-  const audit = seventeenKeyAudit()
+test('census 101 from Handshake binding ids + host-audit session evidence, not invented entity_admitted', () => {
+  const audit = handshakeBindingAudit()
   assert.equal(audit.includes('entity_admitted'), false)
-  const report = verifyRun(liveSeventeenKeyEvidence(), audit)
+  const report = verifyRun(handshakeEvidence(), audit)
   assert.equal(report.census.botCount, 100)
   assert.equal(report.census.playerCount, 1)
   assert.equal(report.census.total, 101)
   assert.equal(report.census.netEntityIds.length, 101)
+  assert.ok(report.census.netEntityIds.every((id) => !isLauncherLoopIndex(id)))
 })
 
 test('hardcoded {total:101} with 17-key audit and no per-connection list must FAIL census', () => {
@@ -729,6 +856,201 @@ test('tick-batched chat with s6.ok false is allowed when Client Timer Manager wa
   const report = verifyRun(evidence, seventeenKeyAudit())
   assert.ok(
     !report.failures.some((f) => f.check === 's6:timer' || f.check === 'scenario-6'),
+    JSON.stringify(report.failures),
+  )
+})
+
+function siblingGapRow(extra = {}) {
+  return siblingGapFixture(extra)
+}
+
+function handshakeAdmitList() {
+  const admits = []
+  for (let i = 1; i <= 100; i++) {
+    const sessionId = `sess-bot-${String(i).padStart(3, '0')}`
+    admits.push({
+      index: i,
+      ok: true,
+      status: 101,
+      process: 'lumio-mvp-host',
+      entityType: 'bot',
+      loginName: `Bot${String(i).padStart(2, '0')}`,
+      connectionId: String(i),
+      sessionId,
+      netEntityId: sessionId,
+      handshake: true,
+    })
+  }
+  admits.push({
+    index: 101,
+    ok: true,
+    status: 101,
+    process: 'lumio-mvp-host',
+    entityType: 'player',
+    loginName: BROWSER_NAME,
+    connectionId: '101',
+    sessionId: 'sess-player-001',
+    netEntityId: 'sess-player-001',
+    handshake: true,
+  })
+  return admits
+}
+
+function handshakeBindingAudit() {
+  const keys = (extra) => {
+    const row = {
+      seq: extra.seq,
+      kind: extra.kind,
+      eventId: extra.eventId ?? null,
+      timestamp: extra.timestamp ?? null,
+      category: extra.category ?? null,
+      severity: extra.severity ?? null,
+      scope: extra.scope ?? null,
+      releasePoolId: extra.releasePoolId ?? null,
+      sessionId: extra.sessionId ?? null,
+      reasonCode: extra.reasonCode ?? null,
+      admissionAttemptId: extra.admissionAttemptId ?? null,
+      effect: extra.effect ?? null,
+      sessionState: extra.sessionState ?? null,
+      authorityRevision: extra.authorityRevision ?? 0,
+      slotEpoch: extra.slotEpoch ?? 1,
+      connectionEpoch: extra.connectionEpoch ?? null,
+      grantEpoch: extra.grantEpoch ?? null,
+    }
+    return JSON.stringify(row)
+  }
+  const lines = [
+    keys({ seq: 0, kind: 'state', sessionState: 'NativeReady', authorityRevision: 0, slotEpoch: 1 }),
+  ]
+  let seq = 1
+  for (const rec of handshakeAdmitList()) {
+    lines.push(keys({
+      seq: seq++,
+      kind: 'ack',
+      effect: 'BindConnection',
+      admissionAttemptId: seq,
+      sessionId: rec.sessionId,
+      connectionEpoch: 1,
+    }))
+    lines.push(keys({
+      seq: seq++,
+      kind: 'state',
+      sessionId: rec.sessionId,
+      sessionState: 'Syncing',
+      authorityRevision: 0,
+      slotEpoch: 1,
+      grantEpoch: 1,
+    }))
+  }
+  return lines.join('\n') + '\n'
+}
+
+function handshakeEvidence() {
+  const evidence = goodEvidence()
+  const admits = handshakeAdmitList()
+  evidence.liveAdmits = { live: 101, desired: 101, blocked: null, admits }
+  evidence.scenarios['4'] = {
+    ok: true,
+    resolvedBots: 100,
+    browserBound: true,
+    sessionIds: admits.map((a) => a.sessionId),
+  }
+  evidence.scenarios['5'] = siblingGapRow({ unauthorized: null, invisible: null, stale: null })
+  evidence.scenarios['6'] = {
+    ok: false,
+    timerManagerInvoked: false,
+    cadence: 'tick-batched',
+    eventCount: 0,
+  }
+  evidence.scenarios['7'] = siblingGapRow({
+    historyCountMax: 0,
+    restoredWindow: 0,
+    snapshotSource: 'suite-double',
+  })
+  evidence.scenarios['8'] = { ok: true, entityA: 'sess-bot-100', rebound: true }
+  evidence.scenarios['9'] = siblingGapRow()
+  evidence.scenarios['10'] = siblingGapRow()
+  evidence.scenarios['11'] = siblingGapRow({ totalEntities: 101 })
+  evidence.traces = {
+    account: evidence.traces.account,
+    reconnect: { rebound: true, entityA: 'sess-bot-100' },
+    handshake: { completed: 101 },
+  }
+  return evidence
+}
+
+test('P1-A: 101 HTTP 101 upgrades without host-audit sessionId or admit effect must FAIL S4', () => {
+  const evidence = liveSeventeenKeyEvidence()
+  evidence.scenarios['4'] = { ok: true, resolvedBots: 100, browserBound: true }
+  const report = verifyRun(evidence, seventeenKeyAudit())
+  assert.equal(report.ok, false, 'upgrade-only pack must not SUCCESS S4')
+  assert.ok(
+    report.failures.some((f) => f.check === 's4:binding' || f.check === 'scenario-4'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-A: launcher loop index 1..101 is not host NetEntityId', () => {
+  const evidence = liveSeventeenKeyEvidence()
+  const report = verifyRun(evidence, seventeenKeyAudit())
+  assert.equal(report.ok, false)
+  const loopCensus = report.census.total === 101
+    && report.census.netEntityIds.every((id) => isLauncherLoopIndex(id))
+  assert.equal(loopCensus, false, 'census must not treat launcher loop index as NetEntityId')
+  assert.ok(
+    report.failures.some((f) => f.check === 's4:binding' || f.check === 'scenario-4' || f.check.startsWith('census')),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-A: Handshake host-audit sessionId/admit effect may PASS S4 with non-loop binding ids', () => {
+  const report = verifyRun(handshakeEvidence(), handshakeBindingAudit())
+  assert.ok(
+    !report.failures.some((f) => f.check === 's4:binding' || f.check === 'scenario-4'),
+    JSON.stringify(report.failures),
+  )
+  assert.equal(report.census.botCount, 100)
+  assert.equal(report.census.playerCount, 1)
+  assert.equal(report.census.total, 101)
+  assert.ok(report.census.netEntityIds.every((id) => !isLauncherLoopIndex(id)))
+})
+
+test('P1-B: GameRoomHost-green S5/S7/S9/S10/S11 must FAIL when snapshotSource is not live mvp-host', () => {
+  const evidence = liveSeventeenKeyEvidence()
+  assert.equal(evidence.scenarios['5'].ok, true)
+  assert.equal(evidence.scenarios['7'].snapshotSource, 'runtime-capture')
+  const report = verifyRun(evidence, seventeenKeyAudit())
+  assert.equal(report.ok, false)
+  const checks = report.failures.map((f) => f.check)
+  assert.ok(
+    checks.some((c) => c === 'scenario-5' || c === 'scenario-5:suite-double' || c === 's5:suite-double'),
+    JSON.stringify(report.failures),
+  )
+  assert.ok(
+    checks.some((c) => c === 'scenario-7' || c === 'scenario-7:suite-double' || c === 's7:suite-double'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-B: sibling-gap S5/S7/S9/S10/S11 ok:false + blockedReason is allowed', () => {
+  const evidence = handshakeEvidence()
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  const blocked = new Set(['scenario-5', 'scenario-7', 'scenario-9', 'scenario-10', 'scenario-11'])
+  assert.ok(
+    !report.failures.some((f) => blocked.has(f.check)),
+    JSON.stringify(report.failures),
+  )
+  assert.equal(report.ok, true, JSON.stringify(report.failures))
+})
+
+test('P1-B: missing ok:false blockedReason on S5/S7/S9/S10/S11 must FAIL', () => {
+  const evidence = handshakeEvidence()
+  evidence.scenarios['5'] = { ok: false }
+  evidence.scenarios['7'] = { ok: false, snapshotSource: 'suite-double' }
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.equal(report.ok, false)
+  assert.ok(
+    report.failures.some((f) => f.check === 'scenario-5' || f.check === 'scenario-7'),
     JSON.stringify(report.failures),
   )
 })

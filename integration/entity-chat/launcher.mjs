@@ -40,7 +40,9 @@ import {
   runAccountScenario1,
   runPlaywrightBrowser,
 } from './scenarios.mjs'
-import { compareRuns, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
+import { compareRuns, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
+
+const SIBLING_GAP_REASON = 'sibling-gap: mvp-host ReferenceWorldSimulation cannot Attribute Query / Chat persist / expiry / isolation / event-order'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../..')
@@ -223,18 +225,32 @@ function startMvpHost({ command, commandArgs, logPath, extraEnv = {} }) {
 }
 
 function auditHasSessionAdmission(auditText) {
-  for (const line of String(auditText ?? '').split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-    try {
-      const ev = JSON.parse(trimmed)
-      const session = ev.sessionId
-      if (typeof session === 'string' && session.length > 0 && session !== '0') return true
-      if (ev.kind === 'state' && ev.sessionState) return true
-      if (ev.effect && /admission/i.test(String(ev.effect))) return true
-    } catch { /* skip */ }
+  for (const { ev } of parseNdjson(auditText)) {
+    const session = ev.sessionId
+    if (typeof session === 'string' && session.length > 0 && session !== '0' && !isLauncherLoopIndex(session)) {
+      return true
+    }
+    if (ev.effect && /admit|bind|createsession|authenticate/i.test(String(ev.effect))) return true
   }
   return false
+}
+
+function siblingGapRow(extra = {}) {
+  return {
+    ok: false,
+    source: 'suite-double',
+    blockedReason: SIBLING_GAP_REASON,
+    ...extra,
+  }
+}
+
+function isBindingAdmit(rec) {
+  return rec?.ok === true
+    && rec.handshake === true
+    && typeof rec.sessionId === 'string'
+    && rec.sessionId.length > 0
+    && rec.sessionId !== '0'
+    && !isLauncherLoopIndex(rec.sessionId)
 }
 
 function startAccountServer({ dll, storePath, logPath, admissionSeedHex, botPublicHex }) {
@@ -374,10 +390,6 @@ function runGameplaySuite({ outDir, accountDll }) {
   }
 }
 
-function scenarioRow(obj, n) {
-  return obj?.[String(n)] ?? obj?.[n] ?? {}
-}
-
 function mergeRoundEvidence({
   hostProcess,
   liveAdmits,
@@ -388,20 +400,12 @@ function mergeRoundEvidence({
   suiteEvidence,
   liveReconnect,
 }) {
-  const suiteSc = suiteEvidence?.scenarios ?? {}
   const s1ok = account?.create?.accepted === true
     && account?.load?.accepted === true
     && account?.wrongPassword?.code === 'wrong_password'
-  const botAdmits = (liveAdmits.admits ?? []).filter((a) => a.ok && a.entityType === 'bot')
-  const playerAdmits = (liveAdmits.admits ?? []).filter((a) => a.ok && a.entityType === 'player')
-  const s5 = scenarioRow(suiteSc, 5)
-  const s6 = scenarioRow(suiteSc, 6)
-  const s7 = scenarioRow(suiteSc, 7)
-  const s8suite = scenarioRow(suiteSc, 8)
-  const s9 = scenarioRow(suiteSc, 9)
-  const s10 = scenarioRow(suiteSc, 10)
-  const s11 = scenarioRow(suiteSc, 11)
-  const eventCount = Number(s6.eventCount ?? (Array.isArray(s11.eventOrder) ? s11.eventOrder.length : 0) ?? 0)
+  const botAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'bot')
+  const playerAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'player')
+  const sessionIds = (liveAdmits.admits ?? []).filter(isBindingAdmit).map((a) => a.sessionId)
   const pw = {
     ran: playwright?.ran === true,
     browser: playwright?.browser ?? '',
@@ -411,8 +415,8 @@ function mergeRoundEvidence({
     channel: playwright?.channel ?? null,
   }
   const s3ok = playerAdmits.length === 1 && liveAdmits.live === 101 && playwrightRan({ playwright: pw })
-  const s8ok = s8suite.ok === true || liveReconnect?.rebound === true
-  const windowBefore = Number(s7.windowBeforeSnapshot ?? eventCount)
+  const entityA = liveReconnect?.entityA ?? liveReconnect?.sessionId ?? botAdmits.find((a) => a.loginName === 'Bot100')?.sessionId ?? null
+  const s8ok = liveReconnect?.rebound === true && typeof entityA === 'string' && !isLauncherLoopIndex(entityA)
   const scenarios = {
     1: {
       ok: s1ok,
@@ -429,49 +433,30 @@ function mergeRoundEvidence({
     },
     4: {
       ok: botAdmits.length === 100 && playerAdmits.length === 1
+        && sessionIds.length === 101
+        && sessionIds.every((id) => !isLauncherLoopIndex(id))
         && (botLogins ?? []).every((b) => b.accepted && b.accountId)
         && browser?.accepted === true,
       resolvedBots: botAdmits.length,
       browserBound: playerAdmits.length === 1,
+      sessionIds,
     },
-    5: {
-      ok: s5.ok === true,
-      unauthorized: s5.unauthorized,
-      invisible: s5.invisible,
-      stale: s5.stale,
-    },
+    5: siblingGapRow(),
     6: {
       ok: false,
       timerManagerInvoked: false,
       cadence: 'tick-batched',
-      eventCount,
+      eventCount: 0,
     },
-    7: {
-      ok: s7.ok === true && windowBefore > 0,
-      historyCountMax: Number(s7.historyCountMax ?? 0),
-      restoredWindow: Number(s7.restoredWindow ?? 0),
-      windowBeforeSnapshot: windowBefore,
-      snapshotSource: 'runtime-capture',
-    },
+    7: siblingGapRow({ historyCountMax: 0, restoredWindow: 0, snapshotSource: 'suite-double' }),
     8: {
       ok: s8ok,
-      entityA: s8suite.entityA ?? liveReconnect?.loginName,
-      rebound: liveReconnect?.rebound === true || s8suite.ok === true,
+      entityA,
+      rebound: liveReconnect?.rebound === true,
     },
-    9: {
-      ok: s9.ok === true,
-      tombstoned: s9.tombstoned === true || s9.ok === true,
-      staleARejected: s9.staleARejected,
-      entityA: s9.entityA,
-    },
-    10: { ok: s10.ok === true, isoTotal: s10.isoTotal },
-    11: {
-      ok: Array.isArray(s11.eventOrder) && s11.eventOrder.length === 101
-        && Array.isArray(s11.appliedTicks) && s11.appliedTicks.every((t) => Number(t) === 1),
-      eventOrder: s11.eventOrder,
-      appliedTicks: s11.appliedTicks,
-      totalEntities: liveAdmits.live,
-    },
+    9: siblingGapRow(),
+    10: siblingGapRow(),
+    11: siblingGapRow({ totalEntities: liveAdmits.live }),
   }
   return {
     ok: false,
@@ -490,14 +475,8 @@ function mergeRoundEvidence({
         loadAck: account?.load?.accepted === true,
         wrongPasswordCode: account?.wrongPassword?.code,
       },
-      queries: {
-        unauthorized: s5.unauthorized,
-        invisible: s5.invisible,
-        stale: s5.stale,
-      },
-      chat: { eventCount },
-      reconnect: { rebound: s8ok, entityA: s8suite.entityA ?? liveReconnect?.loginName },
-      expiry: { tombstoned: s9.tombstoned === true || s9.ok === true },
+      handshake: { completed: sessionIds.length, sessionIds },
+      reconnect: { rebound: s8ok, entityA },
     },
     scenarios,
   }
@@ -577,18 +556,22 @@ async function runOneRound({
     const browser = await loginBrowser({ accountPort, tracePath })
     const clients = []
     for (const b of botLogins) {
-      if (!b.accepted || !b.admissionCredential) continue
+      if (!b.accepted || !b.admissionCredential || !b.accountId) continue
       clients.push({
         tokenBytes: credentialTokenBytes(b.admissionCredential),
         entityType: 'bot',
         loginName: b.loginName,
+        accountId: b.accountId,
+        sessionId: b.accountId,
       })
     }
-    if (browser.accepted && browser.admissionCredential) {
+    if (browser.accepted && browser.admissionCredential && browser.accountId) {
       clients.push({
         tokenBytes: credentialTokenBytes(browser.admissionCredential),
         entityType: 'player',
         loginName: browser.loginName,
+        accountId: browser.accountId,
+        sessionId: browser.accountId,
       })
     }
     const admits = await admitLiveConnections({
@@ -603,6 +586,7 @@ async function runOneRound({
 
     let liveReconnect = { rebound: false }
     if (sockets.length >= 100) {
+      const bot100 = admits.admits.find((a) => a.loginName === 'Bot100' && isBindingAdmit(a))
       await closeQuietly(sockets[99])
       liveReconnect = await reconnectNamedBot({
         accountPort,
@@ -610,6 +594,7 @@ async function runOneRound({
         loginName: 'Bot100',
         listenUri: ready.listenUri,
         tracePath,
+        sessionId: bot100?.sessionId,
       })
       if (liveReconnect.socket) sockets[99] = liveReconnect.socket
     }
