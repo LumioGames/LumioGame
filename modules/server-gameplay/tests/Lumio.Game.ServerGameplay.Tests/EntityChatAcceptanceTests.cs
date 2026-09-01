@@ -181,7 +181,7 @@ public sealed class EntityChatAcceptanceTests
         var host = NewHost();
         AdmitFullRoom(host);
 
-        ChatOperationResult admitted = host.AdmitChatInput("c-bot01", "gg from bot");
+        ChatOperationResult admitted = host.AdmitChatInput("c-bot01", ChatCmd("gg from bot"));
         Assert.Equal(ChatOperationKind.Admitted, admitted.Kind);
         Assert.Empty(host.ClientChatWindow("c-browser"));
 
@@ -198,7 +198,7 @@ public sealed class EntityChatAcceptanceTests
         Assert.Equal(emitted.MessageId, otherBot.MessageId);
         Assert.Equal(emitted.RoomSequence, otherBot.RoomSequence);
 
-        ChatOperationResult browserChat = host.AdmitChatInput("c-browser", "hello from browser");
+        ChatOperationResult browserChat = host.AdmitChatInput("c-browser", ChatCmd("hello from browser"));
         Assert.Equal(ChatOperationKind.Admitted, browserChat.Kind);
         RoomTickResult tick2 = host.RunTick(MainRoom);
         Assert.Equal(2, host.ClientChatWindow("c-bot01").Count);
@@ -211,7 +211,7 @@ public sealed class EntityChatAcceptanceTests
     {
         var host = NewHost();
         AdmitFullRoom(host);
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", "keep-me").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", ChatCmd("keep-me")).Kind);
         RoomTickResult tick = host.RunTick(MainRoom);
         Assert.Equal("keep-me", Assert.Single(host.ClientChatWindow("c-browser")).Text);
 
@@ -236,15 +236,15 @@ public sealed class EntityChatAcceptanceTests
     {
         var host = NewHost();
         AdmitFullRoom(host);
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", "before-disconnect").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", ChatCmd("before-disconnect")).Kind);
         host.RunTick(MainRoom);
         Assert.Single(host.ClientChatWindow("c-bot01"));
         ulong entityA = host.MustSelf("c-bot01").NetEntityId;
 
         Assert.True(host.Disconnect("c-bot01"));
-        ChatOperationResult rejected = host.AdmitChatInput("c-bot01", "while-down");
+        ChatOperationResult rejected = host.AdmitChatInput("c-bot01", ChatCmd("while-down"));
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-browser", "room-continues").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-browser", ChatCmd("room-continues")).Kind);
         RoomTickResult continued = host.RunTick(MainRoom);
         Assert.Equal("room-continues", Assert.Single(continued.Events).Text);
         Assert.Equal(101, host.Census(MainRoom).Total);
@@ -300,9 +300,9 @@ public sealed class EntityChatAcceptanceTests
         Assert.Equal(2, host.Census(IsoRoom).Total);
         Assert.Equal(101, host.Census(MainRoom).Total);
 
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", "main-only").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-bot01", ChatCmd("main-only")).Kind);
         host.RunTick(MainRoom);
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("iso-a", "iso-only").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("iso-a", ChatCmd("iso-only")).Kind);
         host.RunTick(IsoRoom);
 
         Assert.Equal("main-only", Assert.Single(host.ClientChatWindow("c-browser")).Text);
@@ -349,10 +349,10 @@ public sealed class EntityChatAcceptanceTests
         foreach (string name in BotLaunchNames.All)
         {
             string connection = "c-" + name.ToLowerInvariant();
-            Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput(connection, "hello-" + name).Kind);
+            Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput(connection, ChatCmd("hello-" + name)).Kind);
         }
 
-        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-browser", "hello-browser").Kind);
+        Assert.Equal(ChatOperationKind.Admitted, host.AdmitChatInput("c-browser", ChatCmd("hello-browser")).Kind);
         RoomTickResult tick = host.RunTick(MainRoom);
         IReadOnlyList<ChatMessageEvent> window = host.ClientChatWindow("c-browser");
         RoomCensus census = host.Census(MainRoom);
@@ -364,6 +364,8 @@ public sealed class EntityChatAcceptanceTests
             window.Select(e => e.AppliedTick).ToArray(),
             tick.AppliedTick);
     }
+
+    private static InputCommandEnvelope ChatCmd(string text) => InputCommandEnvelope.FromChatText(text);
 
     private static GameRoomHost NewHost() => new(TimeSpan.FromMinutes(5), new ManualMonotonicClock());
 

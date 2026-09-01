@@ -234,12 +234,15 @@ public static class EntityChatSuite
                 ["stale"] = stale.Outcome.ToString(),
             };
 
+            InputCommandEnvelope? firstEnvelope = null;
             foreach (string connection in connections.Keys)
             {
-                host.AdmitChatInput(connection, "hello-" + connections[connection]);
+                InputCommandEnvelope command = ChatCmd("hello-" + connections[connection]);
+                firstEnvelope ??= command;
+                host.AdmitChatInput(connection, command);
             }
 
-            host.AdmitChatInput("c-browser", "hello-browser");
+            host.AdmitChatInput("c-browser", ChatCmd("hello-browser"));
             RoomTickResult tick = host.RunTick(MainRoom);
             IReadOnlyList<ChatMessageEvent> window = host.ClientChatWindow("c-browser");
             bool chatOk = window.Count == 101 && tick.AppliedTick == 1UL;
@@ -252,11 +255,18 @@ public static class EntityChatSuite
                 appliedTicks.Add(ev.AppliedTick);
             }
 
+            CommandBlock firstBlock = firstEnvelope is not null && firstEnvelope.Commands.Count > 0
+                ? firstEnvelope.Commands[0]
+                : default;
             scenarios["6"] = new Dictionary<string, object?>
             {
                 ["ok"] = chatOk,
                 ["eventCount"] = window.Count,
                 ["appliedTick"] = tick.AppliedTick,
+                ["messageType"] = firstEnvelope?.MessageType,
+                ["mappingId"] = firstBlock.MappingId,
+                ["payload"] = firstBlock.Payload,
+                ["payloadSha256"] = firstBlock.PayloadSha256,
             };
 
             ChatPersistSnapshot snapshot = host.CapturePersistSnapshot(MainRoom);
@@ -274,8 +284,8 @@ public static class EntityChatSuite
 
             ulong entityA = host.MustSelf("c-bot100").NetEntityId;
             host.Disconnect("c-bot100");
-            ChatOperationResult rejected = host.AdmitChatInput("c-bot100", "while-down");
-            host.AdmitChatInput("c-browser", "room-continues");
+            ChatOperationResult rejected = host.AdmitChatInput("c-bot100", ChatCmd("while-down"));
+            host.AdmitChatInput("c-browser", ChatCmd("room-continues"));
             host.RunTick(MainRoom);
             AccountLoginResult reLogin = await AccountLoginClient.LoginOrRegisterAsync(
                 account.Uri, "Bot100", AccountPortPin.TestPassword, botClaim, cancellationToken).ConfigureAwait(false);
@@ -343,7 +353,7 @@ public static class EntityChatSuite
             {
                 host.Admit(IsoRoom, "iso-a", new VerifiedAdmission(isoAp.AccountId, isoAp.LoginName, isoAp.BotToolContext));
                 host.Admit(IsoRoom, "iso-b", new VerifiedAdmission(isoBp.AccountId, isoBp.LoginName, isoBp.BotToolContext));
-                host.AdmitChatInput("iso-a", "iso-only");
+                host.AdmitChatInput("iso-a", ChatCmd("iso-only"));
                 host.RunTick(IsoRoom);
                 AttributeQueryResult cross = host.QueryAttribute(new AttributeQueryRequest(
                     AttributeQueryScope.ServerAuthoritative, IsoRoom, browserBinding.NetEntityId, "EntityIdentity.entityType"));
@@ -448,6 +458,8 @@ public static class EntityChatSuite
 
         return null;
     }
+
+    private static InputCommandEnvelope ChatCmd(string text) => InputCommandEnvelope.FromChatText(text);
 
     private static int MaxHistory(ChatPersistEntity[] entities)
     {
