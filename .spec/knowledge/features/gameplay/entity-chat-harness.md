@@ -17,7 +17,7 @@ metadata:
 
 ## 设计
 
-- **Gameplay 宿主**：`GameRoomHost` 只接受 C-3 已验证准入载荷，从不收用户名/口令。
+- **Gameplay 宿主**：`GameRoomHost` 只接受 C-3 已验证准入载荷，从不收用户名/口令。Chat 上行必须是冻结 `InputCommand`（`mappingId=chat.input` + LumioBinV1 `payload` + `payloadSha256`）；宿主解码后再交给 text-only `ChatInput`。
 - **Bot 启动器**：`Lumio.Game.EntityChat.Suite` 持有 Bot 工具私钥，向 Account Server 提交 `123456` 测试口令与工具凭证。
 - **证据**：每轮 `evidence.json` 含 11 个场景、census、eventOrder、appliedTick；`integration/entity-chat/launcher.mjs` 跑两轮并对比。
 - **BLOCKED**：Account Server 进程起不来时写 blocked 日志，不伪造 101 实体。

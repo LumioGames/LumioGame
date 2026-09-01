@@ -214,15 +214,23 @@ public sealed class GameRoomHost : IDisposable
         }
     }
 
-    /// <summary>Queues text-only ChatInput from the bound connection for the next tick.</summary>
-    public ChatOperationResult AdmitChatInput(string connectionId, string text)
+    /// <summary>
+    /// Decodes a frozen InputCommand (chat.input) envelope, then queues ChatInput for the next tick.
+    /// Hash mismatch is rejected before any room/chat state is read.
+    /// </summary>
+    public ChatOperationResult AdmitChatInput(string connectionId, InputCommandEnvelope envelope)
     {
         if (!IsOwnerThread())
         {
-            return OnOwner(() => AdmitChatInput(connectionId, text));
+            return OnOwner(() => AdmitChatInput(connectionId, envelope));
         }
 
-        if (string.IsNullOrEmpty(connectionId) || text is null)
+        if (!InputCommandEnvelope.TryDecodeChatText(envelope, out string text, out string envelopeError))
+        {
+            return ChatOperationResult.Rejected(envelopeError);
+        }
+
+        if (string.IsNullOrEmpty(connectionId))
         {
             return ChatOperationResult.Rejected("invalid_request");
         }

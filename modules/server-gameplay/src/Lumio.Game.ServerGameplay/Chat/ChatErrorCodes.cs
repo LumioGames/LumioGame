@@ -20,4 +20,19 @@ public static class ChatErrorCodes
 
     /// <summary>The room world has already fail-stopped.</summary>
     public const string WorldFaulted = "world_faulted";
+
+    /// <summary>InputCommand messageType or command-array shape is illegal.</summary>
+    public const string BadEnvelope = "bad_envelope";
+
+    /// <summary>CommandBlock.mappingId is unregistered or not kind=command.</summary>
+    public const string UnknownCommandType = "unknown_command_type";
+
+    /// <summary>payloadSha256 does not match the decoded payload bytes.</summary>
+    public const string BadPayloadHash = "bad_payload_hash";
+
+    /// <summary>payload is not valid LumioBinV1 for the mapping fieldOrder.</summary>
+    public const string UndecodablePayload = "undecodable_payload";
+
+    /// <summary>CommandBlock mappingId array is not strictly ascending unique.</summary>
+    public const string BlockOrderViolation = "block_order_violation";
 }

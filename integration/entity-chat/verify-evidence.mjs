@@ -146,6 +146,20 @@ export function verifyRun(evidence, auditText = '') {
     }
   }
 
+  const s6 = scenario(evidence, 6)
+  if (s6.messageType !== 'InputCommand') {
+    failures.push({ check: 's6:messageType', message: `scenario 6 messageType=${s6.messageType}, expected InputCommand` })
+  }
+  if (s6.mappingId !== 'chat.input') {
+    failures.push({ check: 's6:mappingId', message: `scenario 6 mappingId=${s6.mappingId}, expected chat.input` })
+  }
+  if (!/^[0-9a-f]{64}$/.test(String(s6.payloadSha256 ?? ''))) {
+    failures.push({ check: 's6:payloadSha256', message: 'scenario 6 payloadSha256 must be lowercase sha256 hex' })
+  }
+  if (!/^[0-9a-f]+$/.test(String(s6.payload ?? '')) || String(s6.payload ?? '').length < 8) {
+    failures.push({ check: 's6:payload', message: 'scenario 6 payload must be lowercase LumioBinV1 hex' })
+  }
+
   const s7 = scenario(evidence, 7)
   if (Number(s7.historyCountMax ?? 0) !== 0) {
     failures.push({ check: 's7:history', message: `snapshot historyCount=${s7.historyCountMax}` })
@@ -280,6 +294,13 @@ function goodEvidence() {
   for (let i = 1; i <= 11; i++) scenarios[String(i)] = { ok: true }
   scenarios['1'] = { ok: true, wrongPasswordCode: 'wrong_password' }
   scenarios['5'] = { ok: true, unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' }
+  scenarios['6'] = {
+    ok: true,
+    messageType: 'InputCommand',
+    mappingId: 'chat.input',
+    payload: '020000006767',
+    payloadSha256: '5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab',
+  }
   scenarios['7'] = { ok: true, historyCountMax: 0, restoredWindow: 0 }
   scenarios['8'] = { ok: true }
   scenarios['9'] = { ok: true, tombstoned: true, staleARejected: true, entityA: '99' }
@@ -344,6 +365,15 @@ test('好包:101 计数来自 host audit 去重而非常数', () => {
   assert.equal(report.census.botCount, 100)
   assert.equal(report.census.playerCount, 1)
   assert.equal(report.census.total, 101)
+})
+
+test('好包缺 InputCommand envelope 字段必须 FAIL', () => {
+  const ev = goodEvidence()
+  delete ev.scenarios['6'].mappingId
+  delete ev.scenarios['6'].payloadSha256
+  const report = verifyRun(ev, goodAudit())
+  assert.equal(report.ok, false)
+  assert.ok(report.failures.some((f) => String(f.check).startsWith('s6')))
 })
 
 test('假 census 常数(无 per-entity 事件)必须 FAIL', () => {
