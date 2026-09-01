@@ -432,7 +432,7 @@ public static class EntityChatSuite
         }
     }
 
-    /// <summary>Locates a built lumio-account-server.dll on sibling origin/main checkouts.</summary>
+    /// <summary>Locates origin/main sibling lumio-account-server.dll only (no worktree fallback).</summary>
     public static string? DiscoverAccountServerDll()
     {
         string? env = Environment.GetEnvironmentVariable("LUMIO_ACCOUNT_SERVER_DLL");
@@ -441,12 +441,16 @@ public static class EntityChatSuite
             return env;
         }
 
+        string? root = DiscoverRepoRoot();
+        if (string.IsNullOrEmpty(root))
+        {
+            return null;
+        }
+
         string[] candidates =
         {
-            @"C:\Work\LumioGames\wt-server\r-00344\account-server\src\Lumio.Server.Account.App\bin\Debug\net10.0\lumio-account-server.dll",
-            @"C:\Work\LumioGames\wt-server\r-00350-review\account-server\src\Lumio.Server.Account.App\bin\Debug\net10.0\lumio-account-server.dll",
-            @"C:\Work\LumioGames\wt-server\r-00350\account-server\src\Lumio.Server.Account.App\bin\Debug\net10.0\lumio-account-server.dll",
-            @"C:\Work\LumioGames\LumioServer\account-server\src\Lumio.Server.Account.App\bin\Debug\net10.0\lumio-account-server.dll",
+            Path.GetFullPath(Path.Combine(root, "..", "..", "LumioServer", "account-server", "src", "Lumio.Server.Account.App", "bin", "Release", "net10.0", "lumio-account-server.dll")),
+            Path.GetFullPath(Path.Combine(root, "..", "..", "LumioServer", "account-server", "src", "Lumio.Server.Account.App", "bin", "Debug", "net10.0", "lumio-account-server.dll")),
         };
         foreach (string candidate in candidates)
         {
@@ -460,6 +464,22 @@ public static class EntityChatSuite
     }
 
     private static InputCommandEnvelope ChatCmd(string text) => InputCommandEnvelope.FromChatText(text);
+
+    private static string? DiscoverRepoRoot()
+    {
+        string? dir = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(dir))
+        {
+            if (File.Exists(Path.Combine(dir, "global.json")) && Directory.Exists(Path.Combine(dir, ".spec")))
+            {
+                return dir;
+            }
+
+            dir = Path.GetDirectoryName(dir);
+        }
+
+        return null;
+    }
 
     private static int MaxHistory(ChatPersistEntity[] entities)
     {

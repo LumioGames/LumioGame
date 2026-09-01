@@ -1,6 +1,6 @@
 ---
 name: entity-chat-harness
-description: 101-entity C# MVP acceptance harness——查 Bot01–Bot100 启动、Account Server 登录与两轮对比
+description: 101-entity C# MVP acceptance harness——查 mvp-host 101 活连接、BLOCKED 证据与 Bot 启动
 metadata:
   type: doc
   status: 已交付
@@ -17,15 +17,19 @@ metadata:
 
 ## 设计
 
-- **Gameplay 宿主**：`GameRoomHost` 只接受 C-3 已验证准入载荷，从不收用户名/口令。Chat 上行必须是冻结 `InputCommand`（`mappingId=chat.input` + LumioBinV1 `payload` + `payloadSha256`）；宿主解码后再交给 text-only `ChatInput`。
-- **Bot 启动器**：`Lumio.Game.EntityChat.Suite` 持有 Bot 工具私钥，向 Account Server 提交 `123456` 测试口令与工具凭证。
-- **证据**：每轮 `evidence.json` 含 11 个场景、census、eventOrder、appliedTick；`integration/entity-chat/launcher.mjs` 跑两轮并对比。
-- **BLOCKED**：Account Server 进程起不来时写 blocked 日志，不伪造 101 实体。
+- **Gameplay 宿主**：sibling `lumio-mvp-host`（LumioServer origin/main）。`GameRoomHost` 只作单元测试 double，不是 SUCCESS 路径。单元 double 只接受 C-3 已验证准入载荷，从不收用户名/口令；其 Chat 上行必须是冻结 `InputCommand`（`mappingId=chat.input` + LumioBinV1 `payload` + `payloadSha256`），解码后再交给 text-only `ChatInput`。
+- **Bot 启动器**：`Lumio.Game.EntityChat.Suite` 可对 Account Server 发 `123456` 测试口令与工具凭证；启动器主路径先对 mvp-host 做 101 路活升级。
+- **证据**：census 必须来自 mvp-host 进程 audit；Browser 必须有 Playwright 实跑；无历史快照必须有可含历史的材料。
+- **BLOCKED**：容量 503 / Admission 未入 FullGraph / origin/main dll 缺失时写 `blocked.json`（`FullGraphComposition.cs` MaxConnections/MaxSessions + 实测错误），退出码 1，不回退 r-00344，不伪造 SUCCESS。
+- **census**：必须来自 Handshake/Admit 绑定（host-audit 非空 `sessionId` / admit·bind effect，或 admit-trace binding ids）。HTTP 101 的 launcher 循环下标 `"1"`..`"101"` 不是 NetEntityId。不得要求发明 `entity_admitted`，也不得接受无列表的 `{total:101}`。
+- **S8 reconnect**：重连重绑 Entity A 当且仅当两侧都有宿主 `NetEntityId`（`nent_*` / `nent-*`）且相等。`sessionId` 相等不是 rebind；Account-Server login `accountId` 单独也不是（那是 S9 Entity B）。不得把 `sessionId` 写成 `netEntityId`，也不得把 login `accountId` 塞进 host binding。FullSnapshot / 17-key audit / test-control 若不投影 `ConnectionBinding.NetEntityId`，S8 必须 `ok: false` + `blockedReason`（诚实缺口，不得伪成功）。Handshake 缺 session / SessionMismatch 时重试一次。
+- **ChatComponent / C-2 缺口**：Attribute Query、Chat persist、expiry、isolation、event-order 在 mvp-host `ReferenceWorldSimulation` 上不可执行时，S5/S7/S9/S10/S11 必须 `ok: false` + `blockedReason`（与 S6 Timer 相同诚实口径）；不得把 `GameRoomHost` 自评分写成 SUCCESS。
 
 ## 待解决
 
-- 运行中 `lumio-mvp-host` 仍未把 Admission 登记接到 `HostComposition`；本切片用 Game 仓 C# MVP Room 宿主承接联调。
-- 真实 Chromium 聊天窗是证据回放面；权威实体与事件来自 Suite + Account Server。
+- FullGraph `MaxConnections = 128` / `MaxSessions = 128` 可承载 101 路活连接（Server origin/main / `LUMIO_SERVER_ROOT`）。
+- Client Timer Manager 未接到本启动器时，chat 只能记 tick-batched，不得把 cadence 标 ok。
+- Playwright Chromium 缺失时 Browser 场景必须失败，不得注入事件后标 ok。
 
 ## 相关
 

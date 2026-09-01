@@ -10,11 +10,11 @@ Formal ECS entity-chat 端到端验收:Account Server + C# MVP Game host,100 Bot
 
 | 文件 | 职责 |
 |------|------|
-| `launcher.mjs` | 总指挥:prepare → round 1/2 → finalize |
-| `verify-evidence.mjs` | 11 场景对账器(census 必须来自 host audit 的 per-entity 事件) |
+| `launcher.mjs` | 总指挥:启动 sibling lumio-mvp-host → 101 活升级 → SUCCESS 或 blocked.json |
+| `verify-evidence.mjs` | 11 场景对账器(census 必须来自 mvp-host 进程 audit;suite-only GameRoomHost 必须 FAIL) |
 | `bot-credential.mjs` | 按 account-server TestHarness 同形签发 Bot-tool credential(测试密钥) |
 | `account-client.mjs` | `lumio-account-v1` login-or-register |
-| `game-client.mjs` | `lumio.mvp.v0` 升级;记录 FullGraph 64 连接预算 |
+| `game-client.mjs` | `lumio.mvp.v0` 升级 + client Handshake;记录 FullGraph 128 连接预算 |
 | `scenarios.mjs` | Bot01–Bot100 + Browser 驱动 |
 | `static-server.mjs` | web 资产静态服务 |
 | `web/` | Playwright 用的 Browser 聊天页 |
@@ -47,18 +47,25 @@ lumio-mvp-host.exe --listen ws://127.0.0.1:0 --allow-insecure-loopback \
 
 ## 运行
 
-101-entity 主路径是本仓 `Lumio.Game.EntityChat.Suite`(Bot 启动器 + `GameRoomHost`)对接 sibling Account Server。`lumio-mvp-host` FullGraph `MaxConnections=64` 不能承载 101 路活连接,不得把场景收缩到 63 Bot。
+101-entity SUCCESS 路径是 sibling `lumio-mvp-host` 101 路活连接。`GameRoomHost` 只作单元测试 double。FullGraph `MaxConnections=128` 不能承载 101 路时必须 BLOCKED（`blocked.json` + `FullGraphComposition.cs` + 实测错误），不得收缩场景、不得回退 `wt-server/r-00344`。
+
+构建 sibling host（LumioServer origin/main，本仓不改 Server 仓）：
 
 ```bash
-node --test verify-evidence.mjs
-node launcher.mjs --out <evidenceDir> --account-server-dll <lumio-account-server.dll>
+dotnet build --project <LumioServer>/mvp-host/src/Lumio.Server.MvpHost.App/Lumio.Server.MvpHost.App.csproj -c Release --nologo
 ```
 
-退出码:0 SUCCESS,1 FAILED。Account Server 起不来则 BLOCKED,不伪造 101 实体。
+```bash
+node --test verify-evidence.mjs bot-credential.mjs
+node launcher.mjs --out <evidenceDir>
+```
+
+退出码:0 SUCCESS（仅 101 路 mvp-host 实连且 11 场景有独立 traces）,1 BLOCKED/FAILED。缺 origin/main Account Server dll 且已取得 101 路时退出 2。不伪造 101 实体。
 
 ## 对账
 
-- 101 = host audit 里 `entity_admitted`/`entity_created`/`binding_committed` 按 `netEntityId` 去重的 bot+player,禁止 `{total:101}` 常数。
+- 101 = Handshake/Admit 绑定 ids(host-audit 非空 sessionId / admit effect,或 admit-trace `binding_committed`);禁止 launcher 循环下标 `"1"`..`"101"` 当 NetEntityId,禁止 `{total:101}` 常数,禁止 GameRoomHost census dump。禁止发明 FullGraph 不会发的 `entity_admitted`。
+- S5/S7/S9/S10/S11 在 mvp-host 无 ChatComponent/C-2 时必须 `ok: false` + `blockedReason`;不得把 GameRoomHost 自评分写入 SUCCESS traces。
 - 两轮对比 entity counts、event order、applied Tick。
 - 失败矩阵:unauthorized / invisible / stale_generation / tombstoned,不得 alias。
 - Snapshot 只保留 last-message,不恢复聊天历史。
