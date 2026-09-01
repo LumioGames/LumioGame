@@ -27,7 +27,7 @@ metadata:
 ## 待解决
 
 - 接入 GameRuntime `EcsWorld` / Ingress 13 相（本切片用 Room 内权威宿主，不阻塞平行开发）。
-- 复制映射实现与 Room 广播归 R-00351；联调归 R-00354。
+- 101-entity 联调由 `GameRoomHost` + `Lumio.Game.EntityChat.Suite` 承接，见 [`entity-chat-harness.md`](./entity-chat-harness.md)。
 
 ## 相关
 

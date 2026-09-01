@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumio Entity-Chat · Browser</title>
+  <style>
+    body { font-family: sans-serif; margin: 1.5rem; }
+    #chat { min-height: 12rem; border: 1px solid #ccc; padding: 0.5rem 1.5rem; }
+    #status { color: #333; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Room Chat</h1>
+    <p id="status">waiting</p>
+    <ol id="chat"></ol>
+  </main>
+  <script type="module">
+    import { appendAcceptedEvent, applyFullSnapshot, createChatWindow, formatLine } from "./chat-window.js";
+
+    const params = new URLSearchParams(location.search);
+    const accountWs = params.get("account");
+    const loginName = params.get("login") || "Browser01";
+    const windowState = createChatWindow();
+    const list = document.getElementById("chat");
+    const statusEl = document.getElementById("status");
+
+    function render() {
+      list.replaceChildren();
+      for (const line of windowState.lines) {
+        const item = document.createElement("li");
+        item.textContent = formatLine(line);
+        list.append(item);
+      }
+    }
+
+    const result = {
+      status: "pending",
+      role: "browser",
+      loginName,
+      account: null,
+      received: [],
+      errors: [],
+    };
+
+    window.__lumioChat = {
+      window: windowState,
+      appendAcceptedEvent: (event) => {
+        const accepted = appendAcceptedEvent(windowState, event);
+        if (accepted) result.received.push(event);
+        render();
+        return accepted;
+      },
+      applyFullSnapshot: () => {
+        applyFullSnapshot(windowState);
+        result.received = [];
+        render();
+      },
+    };
+
+    function finish(status, extra) {
+      Object.assign(result, extra || {});
+      result.status = status;
+      window.__lumioResult = result;
+      statusEl.textContent = status;
+    }
+
+    async function loginAccount(password) {
+      if (!accountWs) {
+        finish("ok", { account: { skipped: true, reason: "no account url" } });
+        return;
+      }
+      const ws = new WebSocket(accountWs, ["lumio-account-v1"]);
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("account login timeout")), 15000);
+        ws.addEventListener("error", () => {
+          clearTimeout(timer);
+          reject(new Error("account websocket error"));
+        });
+        ws.addEventListener("open", () => {
+          ws.send(JSON.stringify({ messageType: "LoginOrRegister", loginName, password }));
+        });
+        ws.addEventListener("message", (ev) => {
+          clearTimeout(timer);
+          let parsed;
+          try { parsed = JSON.parse(String(ev.data)); } catch (err) {
+            reject(err);
+            return;
+          }
+          try { ws.close(); } catch { /* ignore */ }
+          const safe = { ...parsed };
+          delete safe.password;
+          delete safe.admissionCredential;
+          delete safe.botToolCredential;
+          if (parsed.accepted === true) {
+            finish("ok", { account: { accepted: true, accountId: parsed.accountId, accountNewlyCreated: parsed.accountNewlyCreated } });
+          } else {
+            finish("error", { account: { accepted: false, code: parsed.code }, errors: [parsed.code || "login_failed"] });
+          }
+          resolve();
+        });
+      });
+    }
+
+    window.__lumioStartLogin = (password) => loginAccount(password).catch((err) => {
+      result.errors.push(String(err.message || err));
+      finish("error");
+    });
+    window.__lumioResult = result;
+    statusEl.textContent = "ready";
+  </script>
+</body>
+</html>

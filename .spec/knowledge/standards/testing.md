@@ -46,6 +46,15 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。xUnit v3 要求 apphost；user-local SDK（无 HKLM `InstallLocation`）下 `dotnet test --project` 可能以退出码 5 跑 0 个测试。此时把 `DOTNET_ROOT` 设为 `dotnet.exe` 所在目录，或对已构建 dll 使用 `dotnet exec`。不得把「运行了零个测试」当成通过。
 
+101-entity 端到端（显式触发，不进默认收口）：
+
+```text
+node --test integration/entity-chat/verify-evidence.mjs
+node integration/entity-chat/launcher.mjs --out <evidenceDir>
+```
+
+两轮对比实体数 / event order / applied Tick。Account Server 起不来必须记 BLOCKED，不得伪造 101 实体。
+
 公共契约变更必须在架构源 `LumioGameEngineArchitecture` 通过其契约闸门（见 `AGENTS.md`「收口门槛」）；本仓只消费冻结 JSON，不另写协议。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
 
 ## 本仓 Headless / 契约测试面

@@ -1,0 +1,13 @@
+{
+  "name": "lumio-entity-chat-integration",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test verify-evidence.mjs",
+    "verify": "node --test verify-evidence.mjs"
+  }
+}

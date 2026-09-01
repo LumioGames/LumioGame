@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GameProductionProject>true</GameProductionProject>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <AssemblyName>Lumio.Game.EntityChat.Protocol</AssemblyName>
+    <RootNamespace>Lumio.Game.EntityChat.Protocol</RootNamespace>
+    <NoWarn>$(NoWarn);CA1510</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" />
+  </ItemGroup>
+</Project>
