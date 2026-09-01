@@ -36,4 +36,5 @@
 | [0006](0006-bomber-hat-scoring-rolling-room.md) | 炸弹人核心循环改为帽子计分乱斗,会话模型改为滚动房间 | 生效 |
 | [0007](0007-art-style-reset-three-way-pitch.md) | 美术风格框架推翻归零,进入三方向比稿 | 生效 |
 | [0008](0008-worldview-animal-plush-party.md) | 世界观定调「动物玩偶派对」 | 生效 |
-| [0009](0009-entity-chat-csharp-mvp-host.md) | 101-entity 联调用 Game 仓 C# MVP Room 宿主 | 生效 |
+| [0009](0009-entity-chat-csharp-mvp-host.md) | 101-entity 联调用 Game 仓 C# MVP Room 宿主 | 被 0010 取代 |
+| [0010](0010-entity-chat-requires-mvp-host.md) | 101-entity SUCCESS 必须由 sibling lumio-mvp-host 实连 | 生效 |

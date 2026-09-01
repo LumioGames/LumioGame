@@ -80,8 +80,8 @@ export async function admitLiveConnections({ listenUri, tokenBytes, desired, tra
     try {
       const conn = await connectMvpHost(listenUri, tokenBytes)
       sockets.push(conn.ws)
-      admits.push({ index: i, ok: true, protocol: conn.protocol })
-      appendTrace(tracePath, { kind: 'connection_upgrade', index: i, ok: true })
+      admits.push({ index: i, ok: true, protocol: conn.protocol, status: conn.status ?? 101, process: 'lumio-mvp-host' })
+      appendTrace(tracePath, { kind: 'connection_upgrade', process: 'lumio-mvp-host', index: i, ok: true, status: conn.status ?? 101 })
     } catch (err) {
       const rec = {
         index: i,
@@ -89,6 +89,7 @@ export async function admitLiveConnections({ listenUri, tokenBytes, desired, tra
         status: err.status ?? null,
         capacity: err.capacity === true,
         message: String(err.message ?? err).split('\n')[0],
+        process: 'lumio-mvp-host',
       }
       admits.push(rec)
       appendTrace(tracePath, { kind: 'connection_upgrade', ...rec })

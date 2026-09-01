@@ -58,15 +58,56 @@ function entityTypeOf(ev) {
 }
 
 function isAdmitKind(kind) {
-  return kind === 'entity_admitted' || kind === 'entity_created' || kind === 'binding_committed'
+  return kind === 'entity_admitted' || kind === 'entity_created' || kind === 'binding_committed' || kind === 'connection_upgrade'
 }
 
-/** Distinct netEntityId census. A lone {total:101} is ignored. */
+function isMvpHostTagged(ev) {
+  return ev?.process === 'lumio-mvp-host' || ev?.host === 'lumio-mvp-host' || ev?.source === 'lumio-mvp-host'
+}
+
+function isMvpHostProcessLine(ev) {
+  if (!isObject(ev)) return false
+  const seqOk = Number.isInteger(ev.seq)
+  const kind = eventKind(ev)
+  return seqOk && (kind === 'audit' || kind === 'ack' || kind === 'state') && (isMvpHostTagged(ev) || kind === 'audit')
+}
+
+/** Host-audit must come from a live lumio-mvp-host process, not a GameRoomHost census dump. */
+export function hasMvpHostProcessAudit(evidence, auditText = '') {
+  const proc = evidence?.hostProcess
+  const named = proc?.process === 'lumio-mvp-host' && Number.isInteger(Number(proc.pid)) && Number(proc.pid) > 0
+  if (!named) return false
+  return parseNdjson(auditText).some(({ ev }) => isMvpHostProcessLine(ev) && (isMvpHostTagged(ev) || named))
+}
+
+function hasIndependentTraces(evidence) {
+  const t = evidence?.traces
+  if (!isObject(t)) return false
+  const accountOk = t.account?.wrongPasswordCode === 'wrong_password' || t.account?.createAck === true
+  const queries = JSON.stringify(t.queries ?? {}).toLowerCase()
+  const queryOk = ['unauthorized', 'invisible', 'stale'].every((k) => queries.includes(k))
+  const chatOk = Number(t.chat?.eventCount ?? (Array.isArray(t.chat?.events) ? t.chat.events.length : 0) ?? 0) > 0
+  const reconnectOk = t.reconnect?.rebound === true || t.reconnect?.entityA != null
+  const expiryOk = t.expiry?.tombstoned === true
+  return accountOk && queryOk && chatOk && reconnectOk && expiryOk
+}
+
+export function playwrightRan(evidence) {
+  const pw = evidence?.playwright ?? scenario(evidence, 3)?.playwright
+  if (!isObject(pw) || pw.ran !== true) return false
+  const browser = String(pw.browser ?? '')
+  if (!/chromium|firefox|webkit/i.test(browser)) return false
+  return pw.receivedFromNetwork === true && pw.injected !== true
+}
+
+/** Distinct netEntityId census from mvp-host process audit. A lone {total:101} is ignored. */
 export function censusFromHostAudit(auditText) {
   const byId = new Map()
   for (const { ev } of parseNdjson(auditText)) {
     if (!isAdmitKind(eventKind(ev))) continue
-    const id = ev.netEntityId
+    if (!isMvpHostTagged(ev)) continue
+    if (ev.ok === false) continue
+    const id = ev.netEntityId ?? ev.connectionId ?? ev.index
     const type = entityTypeOf(ev)
     if (id == null || type == null) continue
     byId.set(String(id), type)
@@ -81,26 +122,10 @@ export function censusFromHostAudit(auditText) {
 }
 
 export function censusFromEvidence(evidence, auditText = '') {
-  const fromAudit = censusFromHostAudit(auditText)
-  if (fromAudit.total > 0) return fromAudit
-  const c = evidence?.census ?? {}
-  const ids = Array.isArray(c.netEntityIds) ? c.netEntityIds.map(String) : []
-  const types = Array.isArray(c.entityTypes) ? c.entityTypes : []
-  if (ids.length === 0) {
+  if (!hasMvpHostProcessAudit(evidence, auditText)) {
     return { botCount: 0, playerCount: 0, total: 0, netEntityIds: [] }
   }
-  const byId = new Map()
-  ids.forEach((id, i) => {
-    const t = entityTypeOf({ entityType: types[i] }) ?? 'bot'
-    byId.set(id, t)
-  })
-  let botCount = 0
-  let playerCount = 0
-  for (const t of byId.values()) {
-    if (t === 'bot') botCount++
-    else if (t === 'player') playerCount++
-  }
-  return { botCount, playerCount, total: byId.size, netEntityIds: [...byId.keys()] }
+  return censusFromHostAudit(auditText)
 }
 
 function scenario(evidence, n) {
@@ -114,6 +139,12 @@ export function verifyRun(evidence, auditText = '') {
   }
   if (evidence.blocked) {
     failures.push({ check: 'blocked', message: String(evidence.blocked) })
+  }
+  if (!hasMvpHostProcessAudit(evidence, auditText)) {
+    failures.push({ check: 'host:mvp', message: 'suite-only host is not C# MVP host' })
+  }
+  if (!hasIndependentTraces(evidence)) {
+    failures.push({ check: 'host:audit', message: 'mvp-host process audit/traces required; scenarios[n].ok is not evidence' })
   }
   const census = censusFromEvidence(evidence, auditText)
   if (census.botCount !== 100) {
@@ -138,6 +169,11 @@ export function verifyRun(evidence, auditText = '') {
     failures.push({ check: 's1:wrong-password', message: `wrong password code=${s1.wrongPasswordCode}` })
   }
 
+  const s3 = scenario(evidence, 3)
+  if (s3.ok === true && !playwrightRan(evidence)) {
+    failures.push({ check: 's3:playwright', message: 'Browser display requires Playwright Chromium run (received events, not injected)' })
+  }
+
   const s5 = scenario(evidence, 5)
   const s5text = JSON.stringify(s5).toLowerCase()
   for (const needed of ['unauthorized', 'invisible', 'stale']) {
@@ -147,20 +183,29 @@ export function verifyRun(evidence, auditText = '') {
   }
 
   const s6 = scenario(evidence, 6)
-  if (s6.messageType !== 'InputCommand') {
-    failures.push({ check: 's6:messageType', message: `scenario 6 messageType=${s6.messageType}, expected InputCommand` })
+  if (s6.ok === true && s6.timerManagerInvoked !== true) {
+    failures.push({ check: 's6:timer', message: 'Client Timer Manager not invoked; chat is tick-batched; Timer is a known gap' })
   }
-  if (s6.mappingId !== 'chat.input') {
-    failures.push({ check: 's6:mappingId', message: `scenario 6 mappingId=${s6.mappingId}, expected chat.input` })
-  }
-  if (!/^[0-9a-f]{64}$/.test(String(s6.payloadSha256 ?? ''))) {
-    failures.push({ check: 's6:payloadSha256', message: 'scenario 6 payloadSha256 must be lowercase sha256 hex' })
-  }
-  if (!/^[0-9a-f]+$/.test(String(s6.payload ?? '')) || String(s6.payload ?? '').length < 8) {
-    failures.push({ check: 's6:payload', message: 'scenario 6 payload must be lowercase LumioBinV1 hex' })
+  if (s6.ok === true) {
+    if (s6.messageType !== 'InputCommand') {
+      failures.push({ check: 's6:messageType', message: `scenario 6 messageType=${s6.messageType}, expected InputCommand` })
+    }
+    if (s6.mappingId !== 'chat.input') {
+      failures.push({ check: 's6:mappingId', message: `scenario 6 mappingId=${s6.mappingId}, expected chat.input` })
+    }
+    if (!/^[0-9a-f]{64}$/.test(String(s6.payloadSha256 ?? ''))) {
+      failures.push({ check: 's6:payloadSha256', message: 'scenario 6 payloadSha256 must be lowercase sha256 hex' })
+    }
+    if (!/^[0-9a-f]+$/.test(String(s6.payload ?? '')) || String(s6.payload ?? '').length < 8) {
+      failures.push({ check: 's6:payload', message: 'scenario 6 payload must be lowercase LumioBinV1 hex' })
+    }
   }
 
   const s7 = scenario(evidence, 7)
+  const windowBefore = Number(s7.windowBeforeSnapshot ?? s7.chatEventsBeforeSnapshot ?? 0)
+  if (s7.ok === true && windowBefore <= 0) {
+    failures.push({ check: 's7:snapshot-material', message: 'snapshot must exercise material that could have contained history (HistoryCount default 0 is not a test)' })
+  }
   if (Number(s7.historyCountMax ?? 0) !== 0) {
     failures.push({ check: 's7:history', message: `snapshot historyCount=${s7.historyCountMax}` })
   }
@@ -283,7 +328,7 @@ function emptyEvidence() {
   return {}
 }
 
-function goodEvidence() {
+function suiteOnlyEvidence() {
   const netEntityIds = Array.from({ length: 100 }, (_, i) => String(i + 1))
   netEntityIds.push('101')
   const entityTypes = Array.from({ length: 100 }, () => 'bot')
@@ -313,12 +358,57 @@ function goodEvidence() {
   }
 }
 
-function goodAudit() {
+function suiteOnlyAudit() {
   const lines = []
   for (let i = 1; i <= 100; i++) {
     lines.push(JSON.stringify({ kind: 'entity_admitted', roomId: MAIN_ROOM, netEntityId: String(i), entityType: 'bot' }))
   }
   lines.push(JSON.stringify({ kind: 'entity_admitted', roomId: MAIN_ROOM, netEntityId: '101', entityType: 'player' }))
+  return lines.join('\n') + '\n'
+}
+
+function goodEvidence() {
+  const base = suiteOnlyEvidence()
+  base.hostProcess = {
+    process: 'lumio-mvp-host',
+    pid: 4242,
+    listenUri: 'ws://127.0.0.1:19000',
+    command: ['dotnet', 'exec', 'lumio-mvp-host.dll', '--listen', 'ws://127.0.0.1:0'],
+  }
+  base.playwright = { ran: true, browser: 'chromium', receivedFromNetwork: true, injected: false, eventCount: 101 }
+  base.traces = {
+    account: { createAck: true, loadAck: true, wrongPasswordCode: 'wrong_password' },
+    queries: { unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' },
+    chat: { eventCount: 101 },
+    reconnect: { rebound: true, entityA: '100' },
+    expiry: { tombstoned: true, entityB: '102' },
+  }
+  base.scenarios['3'] = { ok: true, playwrightRan: true }
+  base.scenarios['6'] = { ok: true, timerManagerInvoked: true, cadence: 'client-timer-manager' }
+  base.scenarios['7'] = { ok: true, historyCountMax: 0, restoredWindow: 0, windowBeforeSnapshot: 101, snapshotSource: 'runtime-capture' }
+  return base
+}
+
+function goodAudit() {
+  const lines = [
+    JSON.stringify({ seq: 0, kind: 'audit', process: 'lumio-mvp-host', eventId: 'host.start', category: 'host', severity: 'info' }),
+  ]
+  for (let i = 1; i <= 100; i++) {
+    lines.push(JSON.stringify({
+      kind: 'entity_admitted',
+      process: 'lumio-mvp-host',
+      roomId: MAIN_ROOM,
+      netEntityId: String(i),
+      entityType: 'bot',
+    }))
+  }
+  lines.push(JSON.stringify({
+    kind: 'entity_admitted',
+    process: 'lumio-mvp-host',
+    roomId: MAIN_ROOM,
+    netEntityId: '101',
+    entityType: 'player',
+  }))
   return lines.join('\n') + '\n'
 }
 
@@ -357,6 +447,48 @@ test('空证据包:snapshot-无历史必须 FAIL', () => {
 test('verifyEvidenceDir:缺失目录必须 FAIL', () => {
   const report = verifyEvidenceDir(join('integration', 'entity-chat', 'evidence', 'missing-pack'))
   assert.equal(report.ok, false)
+})
+
+test('suite-only host is not C# MVP host: GameRoomHost/fabricated entity_admitted without mvp-host process audit must FAIL', () => {
+  const report = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.equal(report.ok, false, 'GameRoomHost-only pack must not be SUCCESS')
+  assert.ok(
+    report.failures.some((f) => /suite-only host is not C# MVP host/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-1: scenarios[n].ok 不能单独构成证据,缺 mvp-host process audit 必须 FAIL', () => {
+  const report = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.equal(report.ok, false)
+  assert.ok(
+    report.failures.some((f) => f.check === 'host:mvp' || f.check === 'host:audit' || /mvp-host/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-2: 未跑 Playwright 不得把 Browser 场景标 ok', () => {
+  const report = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's3:playwright' || /Playwright/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-3: HistoryCount 默认 0 不是无历史测试,缺可含历史的 snapshot 必须 FAIL', () => {
+  const report = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's7:snapshot-material' || /could have contained history/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('P1-5: 未调用 Client Timer Manager 不得把 cadence 场景标 ok', () => {
+  const report = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's6:timer' || /Timer Manager/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
 })
 
 test('好包:101 计数来自 host audit 去重而非常数', () => {
