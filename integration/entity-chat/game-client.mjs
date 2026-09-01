@@ -1,9 +1,7 @@
 /**
  * C# MVP host websocket client (subprotocol lumio.mvp.v0 + exact-byte token + base64url nonce).
- * FullGraphComposition MaxConnections/MaxSessions are 64; the 65th upgrade is expected
- * to fail with HTTP 503 (WebSocketByteCarrier.TryReserveConnection).
- *
- * Handshake uses HTTP Upgrade so the 503 status is the measured error, not a
+ * FullGraphComposition MaxConnections/MaxSessions are 128 (101-entity slice).
+ * Handshake uses HTTP Upgrade so a capacity 503 is the measured error, not a
  * WebSocket error string that may omit the code.
  */
 import { randomBytes } from 'node:crypto'
@@ -11,11 +9,11 @@ import http from 'node:http'
 import { base64UrlEncode } from './bot-credential.mjs'
 
 export const MVP_SUBPROTOCOL = 'lumio.mvp.v0'
-export const FULLGRAPH_MAX_CONNECTIONS = 64
-export const FULLGRAPH_MAX_SESSIONS = 64
+export const FULLGRAPH_MAX_CONNECTIONS = 128
+export const FULLGRAPH_MAX_SESSIONS = 128
 export const FULLGRAPH_LIMIT_FILE = 'LumioServer/mvp-host/src/Lumio.Server.MvpHost.App/FullGraphComposition.cs'
-export const FULLGRAPH_LIMIT_LINE = 30
-export const FULLGRAPH_SESSIONS_LINE = 31
+export const FULLGRAPH_LIMIT_LINE = 34
+export const FULLGRAPH_SESSIONS_LINE = 35
 
 function handshakeErrorInfo(err) {
   const message = String(err?.message ?? err ?? '')

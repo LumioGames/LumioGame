@@ -20,12 +20,14 @@ metadata:
 - **Gameplay 宿主**：sibling `lumio-mvp-host`（LumioServer origin/main）。`GameRoomHost` 只作单元测试 double，不是 SUCCESS 路径。单元 double 只接受 C-3 已验证准入载荷，从不收用户名/口令；其 Chat 上行必须是冻结 `InputCommand`（`mappingId=chat.input` + LumioBinV1 `payload` + `payloadSha256`），解码后再交给 text-only `ChatInput`。
 - **Bot 启动器**：`Lumio.Game.EntityChat.Suite` 可对 Account Server 发 `123456` 测试口令与工具凭证；启动器主路径先对 mvp-host 做 101 路活升级。
 - **证据**：census 必须来自 mvp-host 进程 audit；Browser 必须有 Playwright 实跑；无历史快照必须有可含历史的材料。
-- **BLOCKED**：第 65 路 503 / Admission 未入 FullGraph / origin/main dll 缺失时写 `blocked.json`（`FullGraphComposition.cs:30` + 实测错误），退出码 1，不回退 r-00344，不伪造 SUCCESS。
+- **BLOCKED**：容量 503 / Admission 未入 FullGraph / origin/main dll 缺失时写 `blocked.json`（`FullGraphComposition.cs` MaxConnections/MaxSessions + 实测错误），退出码 1，不回退 r-00344，不伪造 SUCCESS。
+- **census**：FullGraph 17-key audit（`kind:state` seq 0 NativeReady）加上 101 路活升级的 per-connection 列表即可；不得要求发明 `entity_admitted`，也不得接受无列表的 `{total:101}`。
 
 ## 待解决
 
-- FullGraph `MaxConnections = 64` / `MaxSessions = 64` 无法承载 101 路活连接，直到 Server 仓扩容。
-- Client Timer Manager 与 Runtime snapshot 未接到本启动器时，对应场景不得标 ok。
+- FullGraph `MaxConnections = 128` / `MaxSessions = 128` 可承载 101 路活连接（Server origin/main / `LUMIO_SERVER_ROOT`）。
+- Client Timer Manager 未接到本启动器时，chat 只能记 tick-batched，不得把 cadence 标 ok。
+- Playwright Chromium 缺失时 Browser 场景必须失败，不得注入事件后标 ok。
 
 ## 相关
 

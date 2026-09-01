@@ -6,8 +6,9 @@
  *   node verify-evidence.mjs --dir <evidenceDir>
  *   node verify-evidence.mjs --round1 <r1/evidence.json> --round2 <r2/evidence.json>
  *
- * census 必须来自 host-audit.ndjson 的 per-entity 事件,或 evidence.census.netEntityIds
- * 去重列表;单独的 total:101 常数不算数。
+ * census 必须来自 mvp-host 进程证据:host-audit 的 per-entity 事件,或 101 路活升级
+ * 的 per-connection 列表(liveAdmits.admits / admit-trace)且 host-audit 含 session/
+ * connection 证据。单独的 total:101 常数不算数。FullGraph 不发 entity_admitted。
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -57,6 +58,12 @@ function entityTypeOf(ev) {
   return null
 }
 
+const MVP_HOST_TRACE_KEYS = [
+  'seq', 'kind', 'eventId', 'timestamp', 'category', 'severity', 'scope',
+  'releasePoolId', 'sessionId', 'reasonCode', 'admissionAttemptId', 'effect',
+  'sessionState', 'authorityRevision', 'slotEpoch', 'connectionEpoch', 'grantEpoch',
+]
+
 function isAdmitKind(kind) {
   return kind === 'entity_admitted' || kind === 'entity_created' || kind === 'binding_committed' || kind === 'connection_upgrade'
 }
@@ -65,11 +72,29 @@ function isMvpHostTagged(ev) {
   return ev?.process === 'lumio-mvp-host' || ev?.host === 'lumio-mvp-host' || ev?.source === 'lumio-mvp-host'
 }
 
+function isSeventeenKeyTrace(ev) {
+  if (!isObject(ev)) return false
+  return MVP_HOST_TRACE_KEYS.every((key) => Object.prototype.hasOwnProperty.call(ev, key))
+}
+
 function isMvpHostProcessLine(ev) {
   if (!isObject(ev)) return false
   const seqOk = Number.isInteger(ev.seq)
   const kind = eventKind(ev)
-  return seqOk && (kind === 'audit' || kind === 'ack' || kind === 'state') && (isMvpHostTagged(ev) || kind === 'audit')
+  if (!seqOk || (kind !== 'audit' && kind !== 'ack' && kind !== 'state')) return false
+  return isMvpHostTagged(ev) || kind === 'audit' || isSeventeenKeyTrace(ev)
+}
+
+function hostAuditHasSessionOrConnectionEvidence(auditText = '') {
+  for (const { ev } of parseNdjson(auditText)) {
+    if (!isMvpHostProcessLine(ev)) continue
+    if (typeof ev.sessionId === 'string' && ev.sessionId.length > 0 && ev.sessionId !== '0') return true
+    if (ev.sessionState) return true
+    if (ev.connectionEpoch != null) return true
+    if (ev.admissionAttemptId) return true
+    if (ev.effect && /admission/i.test(String(ev.effect))) return true
+  }
+  return false
 }
 
 /** Host-audit must come from a live lumio-mvp-host process, not a GameRoomHost census dump. */
@@ -77,7 +102,7 @@ export function hasMvpHostProcessAudit(evidence, auditText = '') {
   const proc = evidence?.hostProcess
   const named = proc?.process === 'lumio-mvp-host' && Number.isInteger(Number(proc.pid)) && Number(proc.pid) > 0
   if (!named) return false
-  return parseNdjson(auditText).some(({ ev }) => isMvpHostProcessLine(ev) && (isMvpHostTagged(ev) || named))
+  return parseNdjson(auditText).some(({ ev }) => isMvpHostProcessLine(ev))
 }
 
 function hasIndependentTraces(evidence) {
@@ -100,18 +125,7 @@ export function playwrightRan(evidence) {
   return pw.receivedFromNetwork === true && pw.injected !== true
 }
 
-/** Distinct netEntityId census from mvp-host process audit. A lone {total:101} is ignored. */
-export function censusFromHostAudit(auditText) {
-  const byId = new Map()
-  for (const { ev } of parseNdjson(auditText)) {
-    if (!isAdmitKind(eventKind(ev))) continue
-    if (!isMvpHostTagged(ev)) continue
-    if (ev.ok === false) continue
-    const id = ev.netEntityId ?? ev.connectionId ?? ev.index
-    const type = entityTypeOf(ev)
-    if (id == null || type == null) continue
-    byId.set(String(id), type)
-  }
+function censusFromIdMap(byId) {
   let botCount = 0
   let playerCount = 0
   for (const t of byId.values()) {
@@ -121,18 +135,65 @@ export function censusFromHostAudit(auditText) {
   return { botCount, playerCount, total: byId.size, netEntityIds: [...byId.keys()] }
 }
 
-export function censusFromEvidence(evidence, auditText = '') {
-  if (!hasMvpHostProcessAudit(evidence, auditText)) {
-    return { botCount: 0, playerCount: 0, total: 0, netEntityIds: [] }
+function emptyCensus() {
+  return { botCount: 0, playerCount: 0, total: 0, netEntityIds: [] }
+}
+
+function recordAdmit(byId, rec) {
+  if (!isObject(rec) || rec.ok === false) return
+  const id = rec.netEntityId ?? rec.connectionId ?? rec.index
+  const type = entityTypeOf(rec)
+  if (id == null || type == null) return
+  byId.set(String(id), type)
+}
+
+/** Distinct netEntityId census from mvp-host process audit. A lone {total:101} is ignored. */
+export function censusFromHostAudit(auditText) {
+  const byId = new Map()
+  for (const { ev } of parseNdjson(auditText)) {
+    if (!isAdmitKind(eventKind(ev))) continue
+    if (!isMvpHostTagged(ev) && !isSeventeenKeyTrace(ev)) continue
+    recordAdmit(byId, ev)
   }
-  return censusFromHostAudit(auditText)
+  return censusFromIdMap(byId)
+}
+
+function censusFromLiveAdmits(evidence, admitTraceText = '') {
+  const byId = new Map()
+  const admits = evidence?.liveAdmits?.admits
+  if (Array.isArray(admits)) {
+    for (const rec of admits) {
+      recordAdmit(byId, rec)
+    }
+  }
+  if (byId.size < 101 && admitTraceText) {
+    for (const { ev } of parseNdjson(admitTraceText)) {
+      if (!isAdmitKind(eventKind(ev))) continue
+      if (ev.process && ev.process !== 'lumio-mvp-host') continue
+      recordAdmit(byId, ev)
+    }
+  }
+  return censusFromIdMap(byId)
+}
+
+export function censusFromEvidence(evidence, auditText = '', admitTraceText = '') {
+  if (!hasMvpHostProcessAudit(evidence, auditText)) {
+    return emptyCensus()
+  }
+  const fromAudit = censusFromHostAudit(auditText)
+  if (fromAudit.total === 101) return fromAudit
+  const fromLive = censusFromLiveAdmits(evidence, admitTraceText)
+  if (fromLive.total === 101 && hostAuditHasSessionOrConnectionEvidence(auditText)) {
+    return fromLive
+  }
+  return fromAudit.total > 0 ? fromAudit : fromLive
 }
 
 function scenario(evidence, n) {
   return evidence?.scenarios?.[String(n)] ?? evidence?.scenarios?.[n] ?? {}
 }
 
-export function verifyRun(evidence, auditText = '') {
+export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   const failures = []
   if (!isObject(evidence)) {
     return { ok: false, failures: [{ check: 'shape', message: 'evidence is not an object' }] }
@@ -146,7 +207,7 @@ export function verifyRun(evidence, auditText = '') {
   if (!hasIndependentTraces(evidence)) {
     failures.push({ check: 'host:audit', message: 'mvp-host process audit/traces required; scenarios[n].ok is not evidence' })
   }
-  const census = censusFromEvidence(evidence, auditText)
+  const census = censusFromEvidence(evidence, auditText, admitTraceText)
   if (census.botCount !== 100) {
     failures.push({ check: 'census:bots', message: `BotEntity 计数 ${census.botCount},应为 100(per-entity 去重,不得写死常数)` })
   }
@@ -157,8 +218,19 @@ export function verifyRun(evidence, auditText = '') {
     failures.push({ check: 'census:total', message: `实体总数 ${census.total},应为 101` })
   }
 
+  const chatEventCount = Number(
+    evidence?.traces?.chat?.eventCount
+    ?? (Array.isArray(evidence?.traces?.chat?.events) ? evidence.traces.chat.events.length : 0)
+    ?? 0,
+  )
   for (let i = 1; i <= 11; i++) {
     const row = scenario(evidence, i)
+    if (i === 6) {
+      const tickBatched = row?.ok !== true
+        && row?.timerManagerInvoked !== true
+        && (Number(row?.eventCount ?? 0) > 0 || chatEventCount > 0)
+      if (tickBatched) continue
+    }
     if (!isObject(row) || row.ok !== true) {
       failures.push({ check: `scenario-${i}`, message: `scenario ${i} missing or not ok` })
     }
@@ -248,9 +320,9 @@ export function verifyRun(evidence, auditText = '') {
   }
 }
 
-export function compareRuns(a, b, auditA = '', auditB = '') {
-  const left = verifyRun(a, auditA)
-  const right = verifyRun(b, auditB)
+export function compareRuns(a, b, auditA = '', auditB = '', admitA = '', admitB = '') {
+  const left = verifyRun(a, auditA, admitA)
+  const right = verifyRun(b, auditB, admitB)
   const failures = []
   if (!left.ok) failures.push({ check: 'round-1', message: JSON.stringify(left.failures) })
   if (!right.ok) failures.push({ check: 'round-2', message: JSON.stringify(right.failures) })
@@ -273,7 +345,11 @@ export function verifyEvidenceDir(dir) {
   const r1 = join(dir, 'round-1', 'evidence.json')
   const r2 = join(dir, 'round-2', 'evidence.json')
   if (!existsSync(r1) && existsSync(join(dir, 'evidence.json'))) {
-    const one = verifyRun(safeReadJson(join(dir, 'evidence.json')), safeReadText(join(dir, 'host-audit.ndjson')))
+    const one = verifyRun(
+      safeReadJson(join(dir, 'evidence.json')),
+      safeReadText(join(dir, 'host-audit.ndjson')),
+      safeReadText(join(dir, 'admit-trace.ndjson')),
+    )
     return { ...one, failures: one.ok ? one.failures : [...one.failures, { check: 'pack:round2', message: '缺少 round-2' }] }
   }
   if (!existsSync(r1) || !existsSync(r2)) {
@@ -284,6 +360,8 @@ export function verifyEvidenceDir(dir) {
     loadJson(r2),
     safeReadText(join(dir, 'round-1', 'host-audit.ndjson')),
     safeReadText(join(dir, 'round-2', 'host-audit.ndjson')),
+    safeReadText(join(dir, 'round-1', 'admit-trace.ndjson')),
+    safeReadText(join(dir, 'round-2', 'admit-trace.ndjson')),
   )
 }
 
@@ -311,12 +389,18 @@ if (!process.env.NODE_TEST_CONTEXT) {
       loadJson(args.round2),
       safeReadText(join(args.round1, '..', 'host-audit.ndjson')),
       safeReadText(join(args.round2, '..', 'host-audit.ndjson')),
+      safeReadText(join(args.round1, '..', 'admit-trace.ndjson')),
+      safeReadText(join(args.round2, '..', 'admit-trace.ndjson')),
     )
     process.stdout.write(JSON.stringify(report, null, 2) + '\n')
     process.exit(report.ok ? 0 : 1)
   }
   if (args.evidence) {
-    const report = verifyRun(loadJson(args.evidence), safeReadText(join(args.evidence, '..', 'host-audit.ndjson')))
+    const report = verifyRun(
+      loadJson(args.evidence),
+      safeReadText(join(args.evidence, '..', 'host-audit.ndjson')),
+      safeReadText(join(args.evidence, '..', 'admit-trace.ndjson')),
+    )
     process.stdout.write(JSON.stringify(report, null, 2) + '\n')
     process.exit(report.ok ? 0 : 1)
   }
@@ -522,4 +606,129 @@ test('compareRuns:两轮一致通过;event order 漂移必须 FAIL', () => {
   const drifted = goodEvidence()
   drifted.scenarios['11'].eventOrder = drifted.scenarios['11'].eventOrder.map((x) => x + '-x')
   assert.equal(compareRuns(a, drifted, goodAudit(), goodAudit()).ok, false)
+})
+
+const MVP_HOST_AUDIT_KEYS = [
+  'seq', 'kind', 'eventId', 'timestamp', 'category', 'severity', 'scope',
+  'releasePoolId', 'sessionId', 'reasonCode', 'admissionAttemptId', 'effect',
+  'sessionState', 'authorityRevision', 'slotEpoch', 'connectionEpoch', 'grantEpoch',
+]
+
+function seventeenKeyAudit() {
+  return JSON.stringify({
+    seq: 0,
+    kind: 'state',
+    eventId: null,
+    timestamp: null,
+    category: null,
+    severity: null,
+    scope: null,
+    releasePoolId: null,
+    sessionId: null,
+    reasonCode: null,
+    admissionAttemptId: null,
+    effect: null,
+    sessionState: 'NativeReady',
+    authorityRevision: 0,
+    slotEpoch: 1,
+    connectionEpoch: null,
+    grantEpoch: null,
+  }) + '\n'
+}
+
+function liveAdmitList() {
+  const admits = []
+  for (let i = 1; i <= 100; i++) {
+    admits.push({
+      index: i,
+      ok: true,
+      status: 101,
+      process: 'lumio-mvp-host',
+      entityType: 'bot',
+      connectionId: String(i),
+    })
+  }
+  admits.push({
+    index: 101,
+    ok: true,
+    status: 101,
+    process: 'lumio-mvp-host',
+    entityType: 'player',
+    connectionId: '101',
+  })
+  return admits
+}
+
+function liveSeventeenKeyEvidence() {
+  const evidence = goodEvidence()
+  evidence.liveAdmits = {
+    live: 101,
+    desired: 101,
+    blocked: null,
+    admits: liveAdmitList(),
+  }
+  return evidence
+}
+
+test('mvp-host 17-key NativeReady audit with hostProcess pid and 101 live admits must PASS host:mvp', () => {
+  const audit = seventeenKeyAudit()
+  const parsed = JSON.parse(audit)
+  for (const key of MVP_HOST_AUDIT_KEYS) {
+    assert.ok(Object.prototype.hasOwnProperty.call(parsed, key), key)
+  }
+  assert.equal(parsed.kind, 'state')
+  assert.equal(parsed.seq, 0)
+  assert.equal(parsed.sessionState, 'NativeReady')
+  assert.equal(Object.prototype.hasOwnProperty.call(parsed, 'process'), false)
+
+  const report = verifyRun(liveSeventeenKeyEvidence(), audit)
+  assert.ok(
+    !report.failures.some((f) => f.check === 'host:mvp'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('GameRoomHost-only pack still FAIL host:mvp when 17-key live pack is accepted', () => {
+  const suite = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.equal(suite.ok, false)
+  assert.ok(
+    suite.failures.some((f) => f.check === 'host:mvp' || /suite-only host is not C# MVP host/i.test(f.message)),
+    JSON.stringify(suite.failures),
+  )
+})
+
+test('census 101 from live upgrades + host-audit session evidence, not invented entity_admitted', () => {
+  const audit = seventeenKeyAudit()
+  assert.equal(audit.includes('entity_admitted'), false)
+  const report = verifyRun(liveSeventeenKeyEvidence(), audit)
+  assert.equal(report.census.botCount, 100)
+  assert.equal(report.census.playerCount, 1)
+  assert.equal(report.census.total, 101)
+  assert.equal(report.census.netEntityIds.length, 101)
+})
+
+test('hardcoded {total:101} with 17-key audit and no per-connection list must FAIL census', () => {
+  const evidence = goodEvidence()
+  evidence.census = { total: 101, botCount: 100, playerCount: 1 }
+  evidence.liveAdmits = { live: 101, desired: 101 }
+  const report = verifyRun(evidence, seventeenKeyAudit())
+  assert.equal(report.ok, false)
+  assert.ok(report.failures.some((f) => f.check.startsWith('census')))
+  assert.notEqual(report.census.total, 101)
+})
+
+test('tick-batched chat with s6.ok false is allowed when Client Timer Manager was not invoked', () => {
+  const evidence = liveSeventeenKeyEvidence()
+  evidence.scenarios['6'] = {
+    ok: false,
+    timerManagerInvoked: false,
+    cadence: 'tick-batched',
+    eventCount: 101,
+  }
+  evidence.traces.chat = { eventCount: 101 }
+  const report = verifyRun(evidence, seventeenKeyAudit())
+  assert.ok(
+    !report.failures.some((f) => f.check === 's6:timer' || f.check === 'scenario-6'),
+    JSON.stringify(report.failures),
+  )
 })

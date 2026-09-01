@@ -14,7 +14,7 @@ Formal ECS entity-chat 端到端验收:Account Server + C# MVP Game host,100 Bot
 | `verify-evidence.mjs` | 11 场景对账器(census 必须来自 mvp-host 进程 audit;suite-only GameRoomHost 必须 FAIL) |
 | `bot-credential.mjs` | 按 account-server TestHarness 同形签发 Bot-tool credential(测试密钥) |
 | `account-client.mjs` | `lumio-account-v1` login-or-register |
-| `game-client.mjs` | `lumio.mvp.v0` 升级;记录 FullGraph 64 连接预算 |
+| `game-client.mjs` | `lumio.mvp.v0` 升级;记录 FullGraph 128 连接预算 |
 | `scenarios.mjs` | Bot01–Bot100 + Browser 驱动 |
 | `static-server.mjs` | web 资产静态服务 |
 | `web/` | Playwright 用的 Browser 聊天页 |
@@ -47,7 +47,7 @@ lumio-mvp-host.exe --listen ws://127.0.0.1:0 --allow-insecure-loopback \
 
 ## 运行
 
-101-entity SUCCESS 路径是 sibling `lumio-mvp-host` 101 路活连接。`GameRoomHost` 只作单元测试 double。FullGraph `MaxConnections=64` 不能承载 101 路时必须 BLOCKED（`blocked.json` + `FullGraphComposition.cs:30` + 实测错误），不得收缩场景、不得回退 `wt-server/r-00344`。
+101-entity SUCCESS 路径是 sibling `lumio-mvp-host` 101 路活连接。`GameRoomHost` 只作单元测试 double。FullGraph `MaxConnections=128` 不能承载 101 路时必须 BLOCKED（`blocked.json` + `FullGraphComposition.cs` + 实测错误），不得收缩场景、不得回退 `wt-server/r-00344`。
 
 构建 sibling host（LumioServer origin/main，本仓不改 Server 仓）：
 
@@ -64,7 +64,7 @@ node launcher.mjs --out <evidenceDir>
 
 ## 对账
 
-- 101 = mvp-host 进程 audit 里带 `process: lumio-mvp-host` 的 per-entity 事件去重;禁止 `{total:101}` 常数,禁止 GameRoomHost census dump。
+- 101 = mvp-host 17-key audit 的 session/connection 证据 + 101 路活升级 per-connection 列表(或带 `process: lumio-mvp-host` 的 per-entity 事件去重);禁止 `{total:101}` 常数,禁止 GameRoomHost census dump。禁止发明 FullGraph 不会发的 `entity_admitted`。
 - 两轮对比 entity counts、event order、applied Tick。
 - 失败矩阵:unauthorized / invisible / stale_generation / tombstoned,不得 alias。
 - Snapshot 只保留 last-message,不恢复聊天历史。
