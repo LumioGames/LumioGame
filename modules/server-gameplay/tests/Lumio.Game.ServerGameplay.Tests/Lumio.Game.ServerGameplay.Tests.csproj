@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-    <NoWarn>$(NoWarn);CA1861;CA1859;xUnit2013</NoWarn>
+    <NoWarn>$(NoWarn);CA1861;CA1859;CA1707;xUnit2013;xUnit2029</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj" />

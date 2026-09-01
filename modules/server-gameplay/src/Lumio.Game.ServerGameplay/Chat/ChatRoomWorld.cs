@@ -16,6 +16,7 @@ public sealed class ChatRoomWorld
     private readonly HashSet<ulong> _retired = new();
     private readonly HashSet<ulong> _committedSendersThisTick = new();
     private readonly Queue<PendingInput> _ingress = new();
+    private readonly Dictionary<ulong, int> _ingressPerSender = new();
     private ulong _nextMessageId = 1;
 
     /// <summary>Binds the creating thread as the Simulation Owner Thread.</summary>
@@ -91,6 +92,54 @@ public sealed class ChatRoomWorld
         }
     }
 
+    /// <summary>Copies persist-only last-message fields. Does not include chat history.</summary>
+    public ChatPersistEntityState[] CapturePersistState()
+    {
+        lock (_gate)
+        {
+            var states = new ChatPersistEntityState[_components.Count];
+            int i = 0;
+            foreach (KeyValuePair<ulong, MutableComponent> pair in _components)
+            {
+                states[i++] = new ChatPersistEntityState(
+                    pair.Key,
+                    pair.Value.LastMessageText,
+                    pair.Value.LastMessageTick);
+            }
+
+            return states;
+        }
+    }
+
+    /// <summary>
+    /// Restores persist-only last-message fields onto a live entity without emitting chat events.
+    /// </summary>
+    public bool TryRestoreLastMessage(ulong netEntityId, string text, ulong lastMessageTick)
+    {
+        if (text is null)
+        {
+            throw new ArgumentNullException(nameof(text));
+        }
+
+        lock (_gate)
+        {
+            if (!IsOwnerThread())
+            {
+                IsFaulted = true;
+                return false;
+            }
+
+            if (IsFaulted || !_components.TryGetValue(netEntityId, out MutableComponent? slot))
+            {
+                return false;
+            }
+
+            slot.LastMessageText = text;
+            slot.LastMessageTick = lastMessageTick;
+            return true;
+        }
+    }
+
     /// <summary>
     /// Captures a ChatInput for the next fixed tick. Safe from a network thread: it queues only and never writes component state.
     /// </summary>
@@ -113,12 +162,14 @@ public sealed class ChatRoomWorld
                 return ChatOperationResult.Rejected(ChatErrorCodes.ChatTextTooLong);
             }
 
-            if (_ingress.Count >= ChatMapping.IngressQueueCapacity)
+            _ingressPerSender.TryGetValue(senderNetEntityId, out int queued);
+            if (queued >= ChatMapping.IngressQueueCapacity)
             {
                 return ChatOperationResult.Rejected(ChatErrorCodes.QueueFull);
             }
 
             _ingress.Enqueue(new PendingInput(senderNetEntityId, input.Text));
+            _ingressPerSender[senderNetEntityId] = queued + 1;
             return ChatOperationResult.Admitted();
         }
     }
@@ -175,6 +226,15 @@ public sealed class ChatRoomWorld
             for (int i = 0; i < pending; i++)
             {
                 PendingInput input = _ingress.Dequeue();
+                if (_ingressPerSender.TryGetValue(input.SenderNetEntityId, out int queued) && queued > 1)
+                {
+                    _ingressPerSender[input.SenderNetEntityId] = queued - 1;
+                }
+                else
+                {
+                    _ingressPerSender.Remove(input.SenderNetEntityId);
+                }
+
                 results[i] = ApplySetMessage(input.SenderNetEntityId, input.Text, CurrentTick, events);
                 if (IsFaulted)
                 {

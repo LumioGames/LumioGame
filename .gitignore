@@ -7,3 +7,4 @@ node_modules/
 bin/
 obj/
 TestResults/
+integration/entity-chat/evidence/
