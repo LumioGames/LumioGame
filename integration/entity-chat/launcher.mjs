@@ -12,7 +12,6 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmS
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { connectRoomWire, runPlaywrightBrowser } from './scenarios.mjs'
-import { extractChatEventsFromFrame } from './web/chat-window.js'
 import { compareRuns, oracleSha256, TEST_PASSWORD, verifyEvidenceDir, verifyRun } from './verify-evidence.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
@@ -215,31 +214,10 @@ function startStaticServer({ root, readyFile, logPath }) {
   return { proc, ready }
 }
 
-function extractEventsFromRustEvidence(evidence) {
-  const frames = []
-  if (Array.isArray(evidence?.browserWindow)) frames.push(...evidence.browserWindow)
-  if (Array.isArray(evidence?.scenarios?.[11]?.eventOrder)) {
-    for (const row of evidence.scenarios[11].eventOrder) {
-      if (typeof row === 'string' && row.trim().startsWith('{')) frames.push(row)
-    }
-  }
-  const events = []
-  for (const frame of frames) {
-    events.push(...extractChatEventsFromFrame(frame))
-  }
-  return events
-}
-
 function mergeObserved(evidence, observation, pid) {
   const windowLines = observation.windowLines ?? []
-  const rustEvents = extractEventsFromRustEvidence(evidence)
-  const receivedEvents = (observation.receivedEvents?.length >= 101)
-    ? observation.receivedEvents
-    : (rustEvents.length >= 101 ? rustEvents : (observation.receivedEvents ?? rustEvents))
+  const receivedEvents = Array.isArray(observation.receivedEvents) ? observation.receivedEvents : []
   evidence.oracleSha256 = oracleSha256()
-  if (evidence.hostProcess?.process === 'lumio-mvp-host') {
-    evidence.hostProcess.process = 'lumio-entity-chat-replay'
-  }
   evidence.playwright = {
     ...(evidence.playwright ?? {}),
     ...(observation.playwright ?? {}),
@@ -265,14 +243,14 @@ function mergeObserved(evidence, observation, pid) {
     processB: persist.processB ?? null,
     snapshotSha256: persist.snapshotSha256 ?? observation.snapshotSha256 ?? null,
   }
-  if (observation.connectionSuperseded === true) {
-    evidence.traces.reconnect = {
-      ...(evidence.traces.reconnect ?? {}),
-      connectionSupersededReceived: true,
-    }
-    if (evidence.scenarios?.[8]) {
-      evidence.scenarios[8].connectionSupersededReceived = true
-    }
+  const supersededOnOld = observation.oldConnectionSuperseded === true
+  evidence.traces.reconnect = {
+    ...(evidence.traces.reconnect ?? {}),
+    connectionSupersededReceived: supersededOnOld,
+    oldConnectionId: observation.oldConnectionId ?? 'c-bot100',
+  }
+  if (evidence.scenarios?.[8]) {
+    evidence.scenarios[8].connectionSupersededReceived = supersededOnOld
   }
   if (receivedEvents.length === 101 && evidence.scenarios?.[11]) {
     evidence.scenarios[11].eventOrder = receivedEvents.map((ev) => `${ev.senderNetEntityId}:${ev.text}:${ev.roomSequence}`)
@@ -297,6 +275,8 @@ async function observeRound({ pid, roundDir, abort }) {
     windowLines: [],
     playwright: { ran: false, injected: false, receivedFromNetwork: false, receivedChatEvent: false },
     connectionSuperseded: false,
+    oldConnectionSuperseded: false,
+    oldConnectionId: 'c-bot100',
     windowBeforeSnapshot: null,
     restoredWindow: null,
     snapshotSha256: null,
@@ -304,6 +284,7 @@ async function observeRound({ pid, roundDir, abort }) {
   }
   let staticProc = null
   let observer = null
+  let oldBot100 = null
   try {
     const room = await waitForRoom(pid, 'c-bot01', ROOM_WAIT_MS, abort)
     if (!room) {
@@ -311,6 +292,7 @@ async function observeRound({ pid, roundDir, abort }) {
       return observation
     }
     observer = room.client
+    oldBot100 = await connectRoomWire(room.listenUri, 'c-bot100', { timeoutMs: 3000 }).catch(() => null)
     const staticReadyFile = join(roundDir, '..', `.observe-${pid}`, 'static-ready.json')
     staticProc = startStaticServer({
       root: join(SCRIPT_DIR, 'web'),
@@ -328,7 +310,8 @@ async function observeRound({ pid, roundDir, abort }) {
       waitMs: ROOM_WAIT_MS,
     })
     observation.windowLines = observation.playwright.windowLines ?? []
-    observation.connectionSuperseded = observation.playwright.connectionSuperseded === true || observer?.superseded === true
+    observation.oldConnectionSuperseded = oldBot100?.superseded === true
+    observation.connectionSuperseded = observation.oldConnectionSuperseded
     const nodeEvents = observer?.chatEvents ?? []
     const pageEvents = observation.windowLines
     observation.receivedEvents = pageEvents.length >= nodeEvents.length ? pageEvents : nodeEvents
@@ -337,6 +320,7 @@ async function observeRound({ pid, roundDir, abort }) {
     observation.error = String(err && err.message ? err.message : err).split('\n')[0]
   } finally {
     try { observer?.close() } catch { /* ignore */ }
+    try { oldBot100?.close() } catch { /* ignore */ }
     if (staticProc?.proc?.pid) killTree(staticProc.proc.pid)
   }
   return observation
