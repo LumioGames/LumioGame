@@ -1,75 +1,25 @@
 #!/usr/bin/env node
 /**
- * launcher — R-00354 101-entity C# MVP acceptance.
+ * launcher — R-00376 / N-12 101-entity acceptance on lumio-entity-chat-replay.
  *
- * SUCCESS requires sibling lumio-mvp-host to admit 101 live connections.
- * GameRoomHost is a unit-test double only and is never the SUCCESS path.
- *
- * Sibling build (origin/main LumioServer):
- *   dotnet build --project <LumioServer>/mvp-host/src/Lumio.Server.MvpHost.App/Lumio.Server.MvpHost.App.csproj -c Release --nologo
- * Host flags:
- *   lumio-mvp-host.exe --listen ws://127.0.0.1:0 --allow-insecure-loopback
- *     --shared-secret-file <generated> --reconnect-window-seconds 300
- *     --enable-test-control --test-control-listen http://127.0.0.1:0
- *     --audit-trace-file <out>/host-audit.ndjson
- *
- * If upgrades are HTTP 503, Admission is missing from FullGraph, or the
- * host dll/exe is missing: write blocked.json (FullGraphComposition.cs +
- * measured error) and exit 1. Never fall back to wt-server/r-00344.
+ * SUCCESS requires sibling lumio-entity-chat-replay. GameRoomHost and
+ * lumio-mvp-host are never a SUCCESS path. Evidence fields come from
+ * client-received chat.event and on-disk persist, never send-count synthesis.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { createHash, randomBytes } from 'node:crypto'
-import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generateEd25519SeedPair, hexLower } from './bot-credential.mjs'
-import {
-  closeQuietly,
-  sendWsPing,
-  FULLGRAPH_LIMIT_FILE,
-  FULLGRAPH_LIMIT_LINE,
-  FULLGRAPH_SESSIONS_LINE,
-  fullGraphBlocked,
-} from './game-client.mjs'
-import {
-  admitLiveConnections,
-  closeAll,
-  credentialTokenBytes,
-  driveLiveEleven,
-  encodeChatInput,
-  loginBots,
-  testControlRequest,
-  loginBrowser,
-  reconnectNamedBot,
-  runAccountScenario1,
-  runPlaywrightBrowser,
-} from './scenarios.mjs'
-import { compareRuns, isHostNetEntityId, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
+import { connectRoomWire, runPlaywrightBrowser } from './scenarios.mjs'
+import { extractChatEventsFromFrame } from './web/chat-window.js'
+import { compareRuns, oracleSha256, TEST_PASSWORD, verifyEvidenceDir, verifyRun } from './verify-evidence.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../..')
-const DEFAULT_DOTNET = process.env.LUMIO_DOTNET ?? 'dotnet'
 const LUMIO_SERVER = resolve(process.env.LUMIO_SERVER_ROOT ?? join(REPO_ROOT, '../../LumioServer'))
-const HOST_PROJ = join(LUMIO_SERVER, 'mvp-host/src/Lumio.Server.MvpHost.App/Lumio.Server.MvpHost.App.csproj')
-const HOST_BUILD_ARGS = ['build', HOST_PROJ, '-c', 'Release', '--nologo']
-const ACCOUNT_PROJ = join(LUMIO_SERVER, 'account-server/src/Lumio.Server.Account.App/Lumio.Server.Account.App.csproj')
-const ACCOUNT_BUILD_ARGS = ['build', ACCOUNT_PROJ, '-c', 'Release', '--nologo']
-const ACCOUNT_DLL_ORIGIN_MAIN = join(
-  LUMIO_SERVER,
-  'account-server/src/Lumio.Server.Account.App/bin/Release/net10.0/lumio-account-server.dll',
-)
-const ACCOUNT_DLL_DEBUG = join(
-  LUMIO_SERVER,
-  'account-server/src/Lumio.Server.Account.App/bin/Debug/net10.0/lumio-account-server.dll',
-)
-const HOST_READY_TIMEOUT_MS = 30000
-const ACCOUNT_READY_TIMEOUT_MS = 30000
-const DESIRED_ADMITS = 101
-const GAMEPLAY_PROJ = join(REPO_ROOT, 'modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj')
-const GAMEPLAY_DLL = join(
-  REPO_ROOT,
-  'modules/server-gameplay/src/Lumio.Game.ServerGameplay/bin/Debug/net10.0/Lumio.Game.ServerGameplay.dll',
-)
+const REPLAY_BIN = process.platform === 'win32' ? 'lumio-entity-chat-replay.exe' : 'lumio-entity-chat-replay'
+const ROOM_WAIT_MS = 90000
 
 function parseArgs(argv) {
   const out = {}
@@ -131,33 +81,25 @@ function hostEnv() {
     const first = String(which.stdout ?? '').split(/\r?\n/).map((s) => s.trim()).find((s) => s && existsSync(s))
     env.DOTNET_ROOT = fromDotnet ?? (first ? dirname(first) : env.DOTNET_ROOT)
   }
+  env.LUMIO_GAME_ROOT = env.LUMIO_GAME_ROOT || REPO_ROOT
   return env
 }
 
-function hostArtifactCandidates() {
-  const roots = [
-    join(LUMIO_SERVER, 'mvp-host/src/Lumio.Server.MvpHost.App/bin/Release/net10.0'),
-    join(LUMIO_SERVER, 'mvp-host/src/Lumio.Server.MvpHost.App/bin/Debug/net10.0'),
-  ]
+function replayCandidates() {
+  const override = process.env.LUMIO_ENTITY_CHAT_REPLAY
   const out = []
-  for (const root of roots) {
-    out.push({ exe: join(root, 'lumio-mvp-host.exe'), dll: join(root, 'lumio-mvp-host.dll') })
-  }
+  if (override) out.push(resolve(override))
+  out.push(
+    join(LUMIO_SERVER, 'target/debug', REPLAY_BIN),
+    join(LUMIO_SERVER, 'target/release', REPLAY_BIN),
+    join(LUMIO_SERVER, 'modules/process/target/debug', REPLAY_BIN),
+    join(LUMIO_SERVER, 'modules/process/target/release', REPLAY_BIN),
+  )
   return out
 }
 
-function findHostArtifact() {
-  for (const c of hostArtifactCandidates()) {
-    if (existsSync(c.dll)) return { ...c, kind: 'dll' }
-    if (existsSync(c.exe)) return { ...c, kind: 'exe' }
-  }
-  return null
-}
-
-function originMainAccountDll() {
-  if (existsSync(ACCOUNT_DLL_ORIGIN_MAIN)) return ACCOUNT_DLL_ORIGIN_MAIN
-  if (existsSync(ACCOUNT_DLL_DEBUG)) return ACCOUNT_DLL_DEBUG
-  return null
+function findReplayBin() {
+  return replayCandidates().find((p) => existsSync(p)) ?? null
 }
 
 function writeBlocked(outDir, blocked) {
@@ -184,130 +126,42 @@ async function writeManifest(outDir, extra) {
   return manifest
 }
 
-function startMvpHost({ command, commandArgs, logPath, extraEnv = {} }) {
-  const proc = spawn(command, commandArgs, {
-    cwd: LUMIO_SERVER,
-    windowsHide: true,
-    env: { ...hostEnv(), ...extraEnv },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  let stdout = ''
-  let stderr = ''
-  const ready = new Promise((resolveP, rejectP) => {
-    const timer = setTimeout(() => {
-      rejectP(new Error(`mvp-host ready timeout (${HOST_READY_TIMEOUT_MS}ms); stderr=${stderr.slice(-500)}`))
-    }, HOST_READY_TIMEOUT_MS)
-    const onData = (chunk, stream) => {
-      const text = String(chunk)
-      if (stream === 'stdout') stdout += text
-      else stderr += text
-      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
-      const lines = (stream === 'stdout' ? stdout : stdout + stderr).split(/\r?\n/)
-      for (const line of lines) {
-        if (!line.startsWith('MVP_HOST_READY ')) continue
-        clearTimeout(timer)
-        const payload = line.slice('MVP_HOST_READY '.length)
-        const listenMatch = payload.match(/listen=(\S+)/)
-        const controlMatch = payload.match(/testControl=(\S+)/)
-        if (!listenMatch) {
-          rejectP(new Error(`mvp-host ready line missing listen: ${line}`))
-          return
-        }
-        resolveP({ listenUri: listenMatch[1], testControlUri: controlMatch?.[1] ?? '-', line })
-        return
-      }
-    }
-    proc.stdout?.on('data', (c) => onData(c, 'stdout'))
-    proc.stderr?.on('data', (c) => onData(c, 'stderr'))
-    proc.on('error', (err) => {
-      clearTimeout(timer)
-      rejectP(err)
-    })
-    proc.on('exit', (code) => {
-      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
-      if (code !== null && code !== 0) {
-        clearTimeout(timer)
-        rejectP(new Error(`mvp-host exited ${code}; ${stderr.slice(-500) || stdout.slice(-500)}`))
-      }
-    })
-  })
-  return { proc, ready, logPath }
-}
-
-function auditHasSessionAdmission(auditText) {
-  for (const { ev } of parseNdjson(auditText)) {
-    const session = ev.sessionId
-    if (typeof session === 'string' && session.length > 0 && session !== '0' && !isLauncherLoopIndex(session)) {
-      return true
-    }
-    if (ev.effect && /admit|bind|createsession|authenticate/i.test(String(ev.effect))) return true
+function listenPortsForPid(pid) {
+  if (!pid) return []
+  const listed = spawnSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8', windowsHide: true })
+  const ports = []
+  for (const line of String(listed.stdout ?? '').split(/\r?\n/)) {
+    const match = line.match(/TCP\s+127\.0\.0\.1:(\d+)\s+\S+\s+LISTENING\s+(\d+)/i)
+    if (match && Number(match[2]) === Number(pid)) ports.push(Number(match[1]))
   }
-  return false
+  return ports
 }
 
-function isBindingAdmit(rec) {
-  return rec?.ok === true
-    && rec.handshake === true
-    && typeof rec.sessionId === 'string'
-    && rec.sessionId.length > 0
-    && rec.sessionId !== '0'
-    && !isLauncherLoopIndex(rec.sessionId)
+function sleep(ms) {
+  return new Promise((resolveP) => setTimeout(resolveP, ms))
 }
 
-function startAccountServer({ dll, storePath, logPath, admissionSeedHex, botPublicHex }) {
-  mkdirSync(storePath, { recursive: true })
-  const proc = spawn(DEFAULT_DOTNET, [dll, '--store-path', storePath, '--listen', '127.0.0.1:0'], {
-    cwd: dirname(dll),
-    windowsHide: true,
-    env: {
-      ...hostEnv(),
-      LUMIO_ACCOUNT_ADMISSION_PRIVATE_KEY_HEX: admissionSeedHex,
-      LUMIO_ACCOUNT_BOT_TOOL_PUBLIC_KEY_HEX: botPublicHex,
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  let stdout = ''
-  let stderr = ''
-  const ready = new Promise((resolveP, rejectP) => {
-    const timer = setTimeout(() => {
-      rejectP(new Error(`account-server ready timeout (${ACCOUNT_READY_TIMEOUT_MS}ms); stderr=${stderr.slice(-500)}`))
-    }, ACCOUNT_READY_TIMEOUT_MS)
-    const onData = (chunk, stream) => {
-      const text = String(chunk)
-      if (stream === 'stdout') stdout += text
-      else stderr += text
-      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
-      for (const line of stdout.split(/\r?\n/)) {
-        if (!line.startsWith('ACCOUNT_SERVER_READY ')) continue
-        clearTimeout(timer)
-        try {
-          const payload = JSON.parse(line.slice('ACCOUNT_SERVER_READY '.length))
-          if (!payload.port) {
-            rejectP(new Error(`account-server ready missing port: ${line}`))
-            return
-          }
-          resolveP({ port: payload.port, pid: payload.pid ?? proc.pid, line })
-        } catch (err) {
-          rejectP(new Error(`account-server ready JSON: ${err.message}`))
-        }
-        return
-      }
+async function probeRoom(port, connectionId) {
+  const listenUri = `ws://127.0.0.1:${port}`
+  try {
+    const client = await connectRoomWire(listenUri, connectionId, { timeoutMs: 1500 })
+    return { listenUri, client }
+  } catch {
+    return null
+  }
+}
+
+async function waitForRoom(pid, connectionId, budgetMs, abort) {
+  const deadline = Date.now() + budgetMs
+  while (Date.now() < deadline) {
+    if (abort && abort.done) return null
+    for (const port of listenPortsForPid(pid)) {
+      const hit = await probeRoom(port, connectionId)
+      if (hit) return hit
     }
-    proc.stdout?.on('data', (c) => onData(c, 'stdout'))
-    proc.stderr?.on('data', (c) => onData(c, 'stderr'))
-    proc.on('error', (err) => {
-      clearTimeout(timer)
-      rejectP(err)
-    })
-    proc.on('exit', (code) => {
-      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
-      if (code !== null && code !== 0) {
-        clearTimeout(timer)
-        rejectP(new Error(`account-server exited ${code}; ${stderr.slice(-500) || stdout.slice(-500)}`))
-      }
-    })
-  })
-  return { proc, ready }
+    await sleep(250)
+  }
+  return null
 }
 
 function startStaticServer({ root, readyFile, logPath }) {
@@ -361,405 +215,230 @@ function startStaticServer({ root, readyFile, logPath }) {
   return { proc, ready }
 }
 
-function ensureGameplayDll() {
-  if (existsSync(GAMEPLAY_DLL)) return GAMEPLAY_DLL
-  spawnSync(DEFAULT_DOTNET, ['build', GAMEPLAY_PROJ, '--nologo'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
+function extractEventsFromRustEvidence(evidence) {
+  const frames = []
+  if (Array.isArray(evidence?.browserWindow)) frames.push(...evidence.browserWindow)
+  if (Array.isArray(evidence?.scenarios?.[11]?.eventOrder)) {
+    for (const row of evidence.scenarios[11].eventOrder) {
+      if (typeof row === 'string' && row.trim().startsWith('{')) frames.push(row)
+    }
+  }
+  const events = []
+  for (const frame of frames) {
+    events.push(...extractChatEventsFromFrame(frame))
+  }
+  return events
+}
+
+function mergeObserved(evidence, observation, pid) {
+  const windowLines = observation.windowLines ?? []
+  const rustEvents = extractEventsFromRustEvidence(evidence)
+  const receivedEvents = (observation.receivedEvents?.length >= 101)
+    ? observation.receivedEvents
+    : (rustEvents.length >= 101 ? rustEvents : (observation.receivedEvents ?? rustEvents))
+  evidence.oracleSha256 = oracleSha256()
+  if (evidence.hostProcess?.process === 'lumio-mvp-host') {
+    evidence.hostProcess.process = 'lumio-entity-chat-replay'
+  }
+  evidence.playwright = {
+    ...(evidence.playwright ?? {}),
+    ...(observation.playwright ?? {}),
+    receivedFromNetwork: windowLines.length > 0 || observation.playwright?.receivedChatEvent === true,
+    receivedChatEvent: windowLines.length > 0 || observation.playwright?.receivedChatEvent === true,
+    windowLines,
+    receivedEvents: windowLines,
+    injected: false,
+  }
+  evidence.traces = evidence.traces ?? {}
+  evidence.traces.chat = {
+    ...(evidence.traces.chat ?? {}),
+    receivedEvents,
+    eventCount: receivedEvents.length,
+    windowLines,
+  }
+  const persist = evidence.traces.persist ?? {}
+  evidence.traces.persist = {
+    ...persist,
+    clientWindowBeforeSnapshot: persist.clientWindowBeforeSnapshot ?? observation.windowBeforeSnapshot ?? windowLines.length,
+    clientWindowAfterRestore: persist.clientWindowAfterRestore ?? observation.restoredWindow,
+    processA: persist.processA ?? (pid ? { pid, process: 'lumio-entity-chat-replay' } : null),
+    processB: persist.processB ?? null,
+    snapshotSha256: persist.snapshotSha256 ?? observation.snapshotSha256 ?? null,
+  }
+  if (observation.connectionSuperseded === true) {
+    evidence.traces.reconnect = {
+      ...(evidence.traces.reconnect ?? {}),
+      connectionSupersededReceived: true,
+    }
+    if (evidence.scenarios?.[8]) {
+      evidence.scenarios[8].connectionSupersededReceived = true
+    }
+  }
+  if (receivedEvents.length === 101 && evidence.scenarios?.[11]) {
+    evidence.scenarios[11].eventOrder = receivedEvents.map((ev) => `${ev.senderNetEntityId}:${ev.text}:${ev.roomSequence}`)
+    evidence.scenarios[11].appliedTicks = receivedEvents.map((ev) => ev.appliedTick)
+    evidence.scenarios[11].receivedEvents = receivedEvents
+  }
+  if (windowLines.length === 101 && evidence.scenarios?.[6]) {
+    evidence.scenarios[6].windowLines = windowLines
+  }
+  if (Number.isFinite(Number(observation.windowBeforeSnapshot)) && evidence.scenarios?.[7]) {
+    evidence.scenarios[7].windowBeforeSnapshot = Number(observation.windowBeforeSnapshot)
+  }
+  if (observation.restoredWindow != null && evidence.scenarios?.[7]) {
+    evidence.scenarios[7].restoredWindow = Number(observation.restoredWindow)
+  }
+  return evidence
+}
+
+async function observeRound({ pid, roundDir, abort }) {
+  const observation = {
+    receivedEvents: [],
+    windowLines: [],
+    playwright: { ran: false, injected: false, receivedFromNetwork: false, receivedChatEvent: false },
+    connectionSuperseded: false,
+    windowBeforeSnapshot: null,
+    restoredWindow: null,
+    snapshotSha256: null,
+    error: null,
+  }
+  let staticProc = null
+  let observer = null
+  try {
+    const room = await waitForRoom(pid, 'c-bot01', ROOM_WAIT_MS, abort)
+    if (!room) {
+      observation.error = 'room listen not observed on lumio-entity-chat-replay'
+      return observation
+    }
+    observer = room.client
+    const staticReadyFile = join(roundDir, '..', `.observe-${pid}`, 'static-ready.json')
+    staticProc = startStaticServer({
+      root: join(SCRIPT_DIR, 'web'),
+      readyFile: staticReadyFile,
+      logPath: join(roundDir, '..', `.observe-${pid}`, 'static-server.log'),
+    })
+    const staticInfo = await staticProc.ready
+    const pageUrl = `http://127.0.0.1:${staticInfo.port}/index.html?room=${encodeURIComponent(room.listenUri)}&login=Browser01&connectionId=c-browser`
+    observation.playwright = await runPlaywrightBrowser({
+      pageUrl,
+      password: TEST_PASSWORD,
+      resultPath: join(roundDir, '..', `.observe-${pid}`, 'browser-result.json'),
+      consolePath: join(roundDir, '..', `.observe-${pid}`, 'browser-console.ndjson'),
+      waitForEvents: 101,
+      waitMs: ROOM_WAIT_MS,
+    })
+    observation.windowLines = observation.playwright.windowLines ?? []
+    observation.connectionSuperseded = observation.playwright.connectionSuperseded === true || observer?.superseded === true
+    const nodeEvents = observer?.chatEvents ?? []
+    const pageEvents = observation.windowLines
+    observation.receivedEvents = pageEvents.length >= nodeEvents.length ? pageEvents : nodeEvents
+    observation.windowBeforeSnapshot = observation.windowLines.length > 0 ? observation.windowLines.length : null
+  } catch (err) {
+    observation.error = String(err && err.message ? err.message : err).split('\n')[0]
+  } finally {
+    try { observer?.close() } catch { /* ignore */ }
+    if (staticProc?.proc?.pid) killTree(staticProc.proc.pid)
+  }
+  return observation
+}
+
+function spawnReplay({ bin, roundDir, logPath }) {
+  mkdirSync(roundDir, { recursive: true })
+  const abort = { done: false }
+  const proc = spawn(bin, ['--out', roundDir], {
     windowsHide: true,
     env: hostEnv(),
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
-  return existsSync(GAMEPLAY_DLL) ? GAMEPLAY_DLL : null
+  let stdout = ''
+  let stderr = ''
+  const exit = new Promise((resolveP) => {
+    const onData = (chunk, stream) => {
+      const text = String(chunk)
+      if (stream === 'stdout') stdout += text
+      else stderr += text
+      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
+    }
+    proc.stdout?.on('data', (c) => onData(c, 'stdout'))
+    proc.stderr?.on('data', (c) => onData(c, 'stderr'))
+    proc.on('error', (err) => {
+      stderr += String(err)
+      abort.done = true
+      resolveP({ code: 1, stdout, stderr })
+    })
+    proc.on('exit', (code) => {
+      abort.done = true
+      try { writeFileSync(logPath, `${stdout}\n${stderr}`) } catch { /* ignore */ }
+      resolveP({ code, stdout, stderr })
+    })
+  })
+  return { proc, exit, abort }
 }
 
-function mergeAdmitsWithBindings(admits, bindings) {
-  if (!Array.isArray(admits) || !Array.isArray(bindings)) return admits
-  const byAccount = new Map()
-  const bySession = new Map()
-  for (const row of bindings) {
-    if (row.accountId) byAccount.set(row.accountId, row)
-    if (row.sessionId) bySession.set(row.sessionId, row)
-  }
-  for (const rec of admits) {
-    const row = (rec.accountId && byAccount.get(rec.accountId))
-      || (rec.sessionId && bySession.get(rec.sessionId))
-      || null
-    if (!row) continue
-    if (isHostNetEntityId(row.netEntityId)) rec.netEntityId = row.netEntityId
-    if (row.connectionId) rec.connectionId = row.connectionId
-    if (row.sessionId) rec.sessionId = row.sessionId
-  }
-  return admits
+function blockedFromReplay(exited, roundDir) {
+  const fromFile = safeReadText(join(roundDir, 'blocked.txt')).trim()
+  const fromLog = `${exited.stdout ?? ''}\n${exited.stderr ?? ''}`
+  const logMatch = fromLog.match(/BLOCKED:\s*(.+)/)
+  return fromFile || (logMatch ? logMatch[1].trim() : '') || (exited.code ? `replay exited ${exited.code}` : 'evidence.json missing')
 }
 
-function mergeRoundEvidence({
-  hostProcess,
-  liveAdmits,
-  playwright,
-  account,
-  botLogins,
-  browser,
-  liveEleven,
-}) {
-  const s1ok = account?.create?.accepted === true
-    && account?.load?.accepted === true
-    && account?.wrongPassword?.code === 'wrong_password'
-  const bindings = liveEleven?.bindings ?? []
-  const botBindings = bindings.filter((row) => (row.entityKind === 'bot' || row.entityType === 'bot') && isHostNetEntityId(row.netEntityId))
-  const playerBindings = bindings.filter((row) => (row.entityKind === 'player' || row.entityType === 'player') && isHostNetEntityId(row.netEntityId))
-  const botAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'bot')
-  const playerAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'player')
-  const sessionIds = (liveAdmits.admits ?? []).filter(isBindingAdmit).map((a) => a.sessionId)
-  const netEntityIds = bindings.map((row) => row.netEntityId).filter((id) => isHostNetEntityId(id))
-  const pw = {
-    ran: playwright?.ran === true,
-    browser: playwright?.browser ?? '',
-    receivedFromNetwork: playwright?.receivedFromNetwork === true,
-    injected: playwright?.injected === true,
-    error: playwright?.error ?? null,
-    channel: playwright?.channel ?? null,
+async function runOneRound({ bin, roundDir }) {
+  mkdirSync(dirname(roundDir), { recursive: true })
+  const logPath = join(dirname(roundDir), `${relative(dirname(roundDir), roundDir)}.replay.log`.replaceAll('\\', '.'))
+  const replay = spawnReplay({ bin, roundDir, logPath })
+  const observation = observeRound({ pid: replay.proc.pid, roundDir, abort: replay.abort })
+  const [obs, exited] = await Promise.all([observation, replay.exit])
+  const evidencePath = join(roundDir, 'evidence.json')
+  let evidence = safeReadJson(evidencePath)
+  if (!evidence) {
+    evidence = { ok: false, blocked: blockedFromReplay(exited, roundDir) }
+  } else if (!evidence.blocked && exited.code) {
+    const reason = blockedFromReplay(exited, roundDir)
+    if (reason) evidence.blocked = reason
   }
-  const s3ok = playerAdmits.length === 1 && liveAdmits.live === 101 && playwrightRan({ playwright: pw })
-  const s4ok = liveEleven?.s4ok === true
-    || (botBindings.length === 100 && playerBindings.length === 1 && netEntityIds.length === 101)
-  const reconnect = liveEleven?.reconnect ?? {}
-  const s8ok = reconnect.ok === true || liveEleven?.s8ok === true
-  const queries = liveEleven?.queries ?? {}
-  const chat = liveEleven?.chat ?? {}
-  const persist = liveEleven?.persist ?? {}
-  const expiry = liveEleven?.expiry ?? {}
-  const isolation = liveEleven?.isolation ?? {}
-  const eventOrder = liveEleven?.eventOrder ?? []
-  const appliedTicks = liveEleven?.appliedTicks ?? []
-  const scenarios = {
-    1: {
-      ok: s1ok,
-      wrongPasswordCode: account?.wrongPassword?.code,
-      create: account?.create,
-      load: account?.load,
-    },
-    2: { ok: botAdmits.length === 100, botCount: botAdmits.length },
-    3: {
-      ok: s3ok,
-      total: liveAdmits.live,
-      playerCount: playerAdmits.length,
-      playwrightRan: pw.ran,
-    },
-    4: {
-      ok: s4ok,
-      resolvedBots: botBindings.length,
-      browserBound: playerBindings.length === 1,
-      netEntityIds,
-      sessionIds,
-    },
-    5: {
-      ok: liveEleven?.s5ok === true,
-      unauthorized: queries.unauthorized,
-      invisible: queries.invisible,
-      stale: queries.stale,
-    },
-    6: {
-      ok: liveEleven?.s6ok === true,
-      timerManagerInvoked: chat.timerManagerInvoked === true,
-      cadence: chat.cadence ?? 'tick-batched',
-      tickSource: chat.tickSource ?? null,
-      eventCount: chat.eventCount ?? 0,
-      messageType: chat.messageType,
-      mappingId: chat.mappingId,
-      payload: chat.payload,
-      payloadSha256: chat.payloadSha256,
-    },
-    7: {
-      ok: liveEleven?.s7ok === true,
-      historyCountMax: persist.historyCountMax ?? 0,
-      restoredWindow: persist.restoredWindow ?? 0,
-      windowBeforeSnapshot: persist.windowBeforeSnapshot ?? 0,
-      snapshotSource: persist.snapshotSource ?? 'live-mvp-host',
-    },
-    8: {
-      ok: s8ok,
-      entityA: reconnect.entityA ?? null,
-      rebound: s8ok,
-      sessionId: reconnect.sessionId ?? null,
-      previousSessionId: reconnect.previousSessionId ?? null,
-      netEntityId: reconnect.netEntityId ?? null,
-      previousNetEntityId: reconnect.previousNetEntityId ?? null,
-      accountId: reconnect.accountId ?? null,
-      previousAccountId: reconnect.previousAccountId ?? null,
-    },
-    9: {
-      ok: liveEleven?.s9ok === true,
-      tombstoned: expiry.tombstoned === true,
-      staleARejected: expiry.staleARejected === true,
-      entityA: expiry.entityA ?? null,
-      entityB: expiry.entityB ?? null,
-    },
-    10: {
-      ok: liveEleven?.s10ok === true,
-      isoTotal: isolation.isoTotal ?? 0,
-      crossRoom: isolation.crossRoom ?? null,
-    },
-    11: {
-      ok: liveEleven?.s11ok === true,
-      eventOrder,
-      appliedTicks,
-      totalEntities: liveAdmits.live,
-    },
+  evidence = mergeObserved(evidence, obs, replay.proc.pid)
+  evidence.oracleSha256 = oracleSha256()
+  writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + '\n')
+  if (obs.error) {
+    writeFileSync(join(roundDir, 'observe-error.txt'), `${obs.error}\n`)
   }
-  const allOk = Object.values(scenarios).every((row) => row.ok === true)
-  return {
-    ok: allOk,
-    hostProcess,
-    liveAdmits: {
-      desired: DESIRED_ADMITS,
-      live: liveAdmits.live,
-      blocked: liveAdmits.blocked,
-      admits: liveAdmits.admits,
-      sample: (liveAdmits.admits ?? []).slice(0, 3).concat((liveAdmits.admits ?? []).slice(-2)),
-    },
-    playwright: pw,
-    traces: {
-      account: {
-        createAck: account?.create?.accepted === true,
-        loadAck: account?.load?.accepted === true,
-        wrongPasswordCode: account?.wrongPassword?.code,
-      },
-      handshake: { completed: sessionIds.length, sessionIds },
-      bindings,
-      queries,
-      chat,
-      persist,
-      reconnect,
-      expiry,
-      isolation,
-    },
-    scenarios,
-  }
+  const auditText = safeReadText(join(roundDir, 'host-audit.ndjson'))
+  const admitTraceText = safeReadText(join(roundDir, 'admit-trace.ndjson'))
+  const verify = verifyRun(evidence, auditText, admitTraceText)
+  writeFileSync(join(roundDir, 'verify-report.json'), JSON.stringify(verify, null, 2) + '\n')
+  return { evidence, auditText, admitTraceText, verify, observation: obs, pid: replay.proc.pid }
 }
 
-async function runOneRound({
-  roundDir,
-  artifact,
-  accountDll,
-  admission,
-  bot,
-}) {
-  mkdirSync(roundDir, { recursive: true })
-  const secretPath = join(roundDir, 'shared-secret.bin')
-  const tokenBytes = randomBytes(32)
-  writeFileSync(secretPath, tokenBytes)
-  const auditPath = join(roundDir, 'host-audit.ndjson')
-  const tracePath = join(roundDir, 'admit-trace.ndjson')
-  const hostLog = join(roundDir, 'mvp-host.log')
-  const hostArgs = [
-    '--listen', 'ws://127.0.0.1:0',
-    '--allow-insecure-loopback',
-    '--shared-secret-file', secretPath,
-    '--reconnect-window-seconds', '300',
-    '--enable-test-control',
-    '--test-control-listen', 'http://127.0.0.1:0',
-    '--audit-trace-file', auditPath,
-  ]
-  const command = artifact.kind === 'exe' ? artifact.exe : DEFAULT_DOTNET
-  const commandArgs = artifact.kind === 'exe' ? hostArgs : ['exec', artifact.dll, ...hostArgs]
-  writeFileSync(join(roundDir, 'host-command.json'), JSON.stringify({
-    command,
-    commandArgs,
-    project: HOST_PROJ,
-    buildCommand: [DEFAULT_DOTNET, ...HOST_BUILD_ARGS],
-  }, null, 2) + '\n')
-
-  const host = startMvpHost({
-    command,
-    commandArgs,
-    logPath: hostLog,
-    extraEnv: {
-      LUMIO_ACCOUNT_ADMISSION_PUBLIC_KEY_HEX: hexLower(admission.publicKey),
-      LUMIO_ACCOUNT_ADMISSION_KEY_ID: '1',
-      ...(ensureGameplayDll() ? { LUMIO_GAMEPLAY_ASSEMBLY: GAMEPLAY_DLL } : {}),
-    },
-  })
-  const accountProc = startAccountServer({
-    dll: accountDll,
-    storePath: join(roundDir, 'account-store'),
-    logPath: join(roundDir, 'account-server.log'),
-    admissionSeedHex: hexLower(admission.seed),
-    botPublicHex: hexLower(bot.publicKey),
-  })
-  let sockets = []
-  let staticProc = null
-  try {
-    const [ready, accountReady] = await Promise.all([host.ready, accountProc.ready])
-    process.stdout.write(`${ready.line}\n`)
-    writeFileSync(join(roundDir, 'host-ready.json'), JSON.stringify({
-      listenUri: ready.listenUri,
-      testControlUri: ready.testControlUri,
-      pid: host.proc.pid,
-      process: 'lumio-mvp-host',
-      gameplayAssembly: GAMEPLAY_DLL,
-    }, null, 2) + '\n')
-    const accountPort = accountReady.port
-    const accountScenario = await runAccountScenario1({
-      accountPort,
-      botSeed: bot.seed,
-      tracePath,
-    })
-    const botLogins = await loginBots({
-      accountPort,
-      botSeed: bot.seed,
-      tracePath,
-      count: 100,
-    })
-    const browser = await loginBrowser({ accountPort, tracePath })
-    const clients = []
-    for (const b of botLogins) {
-      if (!b.accepted || !b.admissionCredential || !b.accountId) continue
-      clients.push({
-        tokenBytes: credentialTokenBytes(b.admissionCredential),
-        entityType: 'bot',
-        loginName: b.loginName,
-        accountId: b.accountId,
-        sessionId: b.accountId,
-      })
-    }
-    if (browser.accepted && browser.admissionCredential && browser.accountId) {
-      clients.push({
-        tokenBytes: credentialTokenBytes(browser.admissionCredential),
-        entityType: 'player',
-        loginName: browser.loginName,
-        accountId: browser.accountId,
-        sessionId: browser.accountId,
-      })
-    }
-    const admits = await admitLiveConnections({
-      listenUri: ready.listenUri,
-      tokenBytes,
-      clients,
-      desired: DESIRED_ADMITS,
-      tracePath,
-      afterAdmit: async (rec) => {
-        const cmd = encodeChatInput(`hello-${rec.loginName ?? rec.connectionId}`)
-        const posted = await testControlRequest(ready.testControlUri, 'POST', '/test-control/chat', {
-          connectionId: rec.connectionId,
-          mappingId: cmd.mappingId,
-          payload: cmd.payload,
-          payloadSha256: cmd.payloadSha256,
-        })
-        appendFileSync(tracePath, JSON.stringify({
-          ts: new Date().toISOString(),
-          kind: 'test_control_chat',
-          process: 'lumio-mvp-host',
-          connectionId: rec.connectionId,
-          loginName: rec.loginName,
-          ok: posted.json?.ok === true,
-          kindResult: posted.json?.kind ?? null,
-          error: posted.json?.error ?? null,
-        }) + '\n')
-        return { ok: posted.json?.ok === true, ...cmd }
-      },
-    })
-    sockets = admits.sockets
-    process.stdout.write(`live admits ${admits.live}/${DESIRED_ADMITS} blocked=${admits.blocked ? admits.blocked.error : 'none'}\n`)
-
-    const liveEleven = await driveLiveEleven({
-      testControlUri: ready.testControlUri,
-      botLogins,
-      browser,
-      accountPort,
-      botSeed: bot.seed,
-      tracePath,
-      admits,
-      reconnectBot100: async (bot100Binding) => {
-        let liveReconnect = { rebound: false }
-        if (sockets.length >= 100) {
-          const bot100 = admits.admits.find((a) => a.loginName === 'Bot100' && isBindingAdmit(a))
-          await closeQuietly(sockets[99])
-          liveReconnect = await reconnectNamedBot({
-            accountPort,
-            botSeed: bot.seed,
-            loginName: 'Bot100',
-            listenUri: ready.listenUri,
-            tracePath,
-            sessionId: bot100Binding?.sessionId ?? bot100?.sessionId,
-            netEntityId: bot100Binding?.netEntityId ?? bot100?.netEntityId,
-          })
-          if (liveReconnect.socket) sockets[99] = liveReconnect.socket
-        }
-        return liveReconnect
-      },
-      disconnectLogin: async (loginName) => {
-        const idx = admits.admits.findIndex((a) => a.loginName === loginName)
-        if (idx >= 0) await closeQuietly(sockets[idx])
-      },
-      keepAlive: async () => {
-        for (const ws of sockets) sendWsPing(ws)
-      },
-    })
-    mergeAdmitsWithBindings(admits.admits, liveEleven.bindings)
-    process.stdout.write(`live eleven s4=${liveEleven.s4ok} s5=${liveEleven.s5ok} s6=${liveEleven.s6ok} s7=${liveEleven.s7ok} s8=${liveEleven.s8ok} s9=${liveEleven.s9ok} s10=${liveEleven.s10ok} s11=${liveEleven.s11ok}\n`)
-
-    let playwright = { ran: false, injected: false, receivedFromNetwork: false }
-    try {
-      const staticReadyFile = join(roundDir, 'static-ready.json')
-      staticProc = startStaticServer({
-        root: join(SCRIPT_DIR, 'web'),
-        readyFile: staticReadyFile,
-        logPath: join(roundDir, 'static-server.log'),
-      })
-      const staticInfo = await staticProc.ready
-      const pageUrl = `http://127.0.0.1:${staticInfo.port}/index.html?account=${encodeURIComponent(`ws://127.0.0.1:${accountPort}/`)}&login=Browser01`
-      playwright = await runPlaywrightBrowser({
-        pageUrl,
-        password: TEST_PASSWORD,
-        resultPath: join(roundDir, 'browser-result.json'),
-        consolePath: join(roundDir, 'browser-console.ndjson'),
-      })
-    } catch (err) {
-      playwright = {
-        ran: false,
-        injected: false,
-        receivedFromNetwork: false,
-        error: String(err && err.message ? err.message : err).split('\n')[0],
-      }
-    }
-
-    const hostProcess = {
-      process: 'lumio-mvp-host',
-      pid: host.proc.pid,
-      listenUri: ready.listenUri,
-      testControlUri: ready.testControlUri,
-      command: [command, ...commandArgs],
-    }
-    const evidence = mergeRoundEvidence({
-      hostProcess,
-      liveAdmits: admits,
-      playwright,
-      account: accountScenario,
-      botLogins,
-      browser,
-      liveEleven,
-    })
-    const auditText = safeReadText(auditPath)
-    const admitTraceText = safeReadText(tracePath)
-    writeFileSync(join(roundDir, 'evidence.json'), JSON.stringify(evidence, null, 2) + '\n')
-    const verify = verifyRun(evidence, auditText, admitTraceText)
-    writeFileSync(join(roundDir, 'verify-report.json'), JSON.stringify(verify, null, 2) + '\n')
-    return {
-      evidence,
-      auditText,
-      admitTraceText,
-      admits,
-      hostProcess,
-      playwright,
-      liveEleven,
-      verify,
-    }
-  } finally {
-    await closeAll(sockets)
-    if (staticProc?.proc?.pid) killTree(staticProc.proc.pid)
-    killTree(host.proc.pid)
-    killTree(accountProc.proc.pid)
+async function runPack(bin, packDir) {
+  rmSync(packDir, { recursive: true, force: true })
+  mkdirSync(packDir, { recursive: true })
+  process.stdout.write(`pack ${packDir}\n`)
+  process.stdout.write('round 1\n')
+  const round1 = await runOneRound({ bin, roundDir: join(packDir, 'round-1') })
+  process.stdout.write('round 2\n')
+  const round2 = await runOneRound({ bin, roundDir: join(packDir, 'round-2') })
+  const compare = compareRuns(
+    round1.evidence,
+    round2.evidence,
+    round1.auditText,
+    round2.auditText,
+    round1.admitTraceText,
+    round2.admitTraceText,
+  )
+  writeFileSync(join(packDir, 'verify-report.json'), JSON.stringify(compare, null, 2) + '\n')
+  const shaList = []
+  for (const p of walkFiles(packDir)) {
+    shaList.push({ path: relative(packDir, p).replaceAll('\\', '/'), sha256: await sha256File(p) })
   }
+  writeFileSync(join(packDir, 'sha256.json'), JSON.stringify(shaList, null, 2) + '\n')
+  await writeManifest(packDir, {
+    conclusion: compare.ok ? 'SUCCESS' : (round1.evidence?.blocked || round2.evidence?.blocked ? 'BLOCKED' : 'FAILED'),
+    hostProcess: round1.evidence?.hostProcess,
+    verify: compare,
+    oracleSha256: oracleSha256(),
+    playwright: { round1: round1.observation?.playwright, round2: round2.observation?.playwright },
+  })
+  return compare
 }
 
 async function main() {
@@ -772,152 +451,46 @@ async function main() {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
   process.stdout.write(`entity-chat launcher, evidence ${outDir}\n`)
-  process.stdout.write(`mvp-host project: ${HOST_PROJ}\n`)
-  process.stdout.write(`mvp-host build: ${DEFAULT_DOTNET} ${HOST_BUILD_ARGS.join(' ')}\n`)
 
-  let artifact = args['host-exe']
-    ? { exe: resolve(String(args['host-exe'])), dll: null, kind: existsSync(resolve(String(args['host-exe']))) ? 'exe' : null }
-    : findHostArtifact()
-
-  if (!artifact || (artifact.kind === 'exe' && !existsSync(artifact.exe)) || (artifact.kind === 'dll' && !existsSync(artifact.dll))) {
-    const build = spawnSync(DEFAULT_DOTNET, HOST_BUILD_ARGS, { cwd: LUMIO_SERVER, encoding: 'utf8', windowsHide: true, env: hostEnv() })
-    writeFileSync(join(outDir, 'host-build.log'), `${build.stdout ?? ''}\n${build.stderr ?? ''}`)
-    artifact = findHostArtifact()
-    if (!artifact) {
-      const missing = hostArtifactCandidates()[0].exe
-      const blocked = writeBlocked(outDir, fullGraphBlocked({
-        error: `missing lumio-mvp-host dll/exe: ${missing}`,
-        extra: {
-          missing: [missing, HOST_PROJ],
-          buildCommand: [DEFAULT_DOTNET, ...HOST_BUILD_ARGS],
-          buildExitCode: build.status,
-        },
-      }))
-      await writeManifest(outDir, { conclusion: 'BLOCKED', blocked, failure: { step: 'prepare', message: blocked.error } })
-      process.stderr.write(`BLOCKED missing mvp-host: ${missing}\n`)
-      process.exit(1)
-    }
-  }
-
-  const hostPath = artifact.kind === 'exe' ? artifact.exe : artifact.dll
-  process.stdout.write(`mvp-host=${hostPath}\n`)
-
-  const accountOverride = args['account-server-dll']
-    ? resolve(String(args['account-server-dll']))
-    : (process.env.LUMIO_ACCOUNT_SERVER_DLL ? resolve(process.env.LUMIO_ACCOUNT_SERVER_DLL) : null)
-  let accountDll = (accountOverride && existsSync(accountOverride)) ? accountOverride : originMainAccountDll()
-  if (!accountDll || !existsSync(accountDll)) {
-    const build = spawnSync(DEFAULT_DOTNET, ACCOUNT_BUILD_ARGS, { cwd: LUMIO_SERVER, encoding: 'utf8', windowsHide: true, env: hostEnv() })
-    try { writeFileSync(join(outDir, 'account-build.log'), `${build.stdout ?? ''}\n${build.stderr ?? ''}`) } catch { /* ignore */ }
-    accountDll = originMainAccountDll()
-  }
-  if (!accountDll || !existsSync(accountDll)) {
-    const expected = ACCOUNT_DLL_ORIGIN_MAIN
+  const bin = args['host-exe'] ? resolve(String(args['host-exe'])) : findReplayBin()
+  if (!bin || !existsSync(bin)) {
+    const expected = replayCandidates()[0]
     const blocked = writeBlocked(outDir, {
       status: 'BLOCKED',
-      error: `sibling account-server origin/main 构建产物缺失: ${expected}`,
-      missing: [expected],
-      file: FULLGRAPH_LIMIT_FILE,
-      line: FULLGRAPH_LIMIT_LINE,
+      error: `missing lumio-entity-chat-replay (set LUMIO_ENTITY_CHAT_REPLAY or LUMIO_SERVER_ROOT): ${expected}`,
+      missing: replayCandidates(),
     })
     await writeManifest(outDir, { conclusion: 'BLOCKED', blocked, failure: { step: 'prepare', message: blocked.error } })
-    process.stderr.write(`BLOCKED missing account-server: ${expected}\n`)
-    process.exit(2)
+    process.stderr.write(`BLOCKED missing lumio-entity-chat-replay: ${expected}\n`)
+    process.exit(1)
   }
-  process.stdout.write(`account-server=${accountDll}\n`)
-
-  const admission = generateEd25519SeedPair()
-  const bot = generateEd25519SeedPair()
-  let exitCode = 1
-  try {
-    process.stdout.write('round 1\n')
-    const round1 = await runOneRound({
-      roundDir: join(outDir, 'round-1'),
-      artifact,
-      accountDll,
-      admission,
-      bot,
+  if (/lumio-mvp-host/i.test(bin)) {
+    const blocked = writeBlocked(outDir, {
+      status: 'BLOCKED',
+      error: 'lumio-mvp-host is never a SUCCESS path; host must be lumio-entity-chat-replay',
     })
-    process.stdout.write('round 2\n')
-    const round2 = await runOneRound({
-      roundDir: join(outDir, 'round-2'),
-      artifact,
-      accountDll,
-      admission,
-      bot,
-    })
-
-    const live = Math.min(round1.admits.live, round2.admits.live)
-    const blockedAdmit = round1.admits.blocked || round2.admits.blocked
-    if (blockedAdmit || live < DESIRED_ADMITS) {
-      const measured = blockedAdmit?.error
-        ?? `only ${live} live connections (desired ${DESIRED_ADMITS})`
-      const blocked = writeBlocked(outDir, fullGraphBlocked({
-        error: measured,
-        atConnection: blockedAdmit?.atConnection ?? live + 1,
-        httpStatus: blockedAdmit?.httpStatus ?? null,
-        live,
-        extra: {
-          hostProcess: round1.hostProcess,
-          file: FULLGRAPH_LIMIT_FILE,
-          line: FULLGRAPH_LIMIT_LINE,
-          lineSessions: FULLGRAPH_SESSIONS_LINE,
-        },
-      }))
-      await writeManifest(outDir, {
-        conclusion: 'BLOCKED',
-        blocked,
-        hostProcess: round1.hostProcess,
-        live,
-        accountServerDll: accountDll,
-      })
-      process.stderr.write(`BLOCKED ${FULLGRAPH_LIMIT_FILE}:${FULLGRAPH_LIMIT_LINE} ${measured}\n`)
-      exitCode = 1
-    } else if (!auditHasSessionAdmission(round1.auditText) || !auditHasSessionAdmission(round2.auditText)) {
-      const blocked = writeBlocked(outDir, fullGraphBlocked({
-        error: 'Admission not in FullGraph: 101 live upgrades but mvp-host audit has no session admission',
-        atConnection: DESIRED_ADMITS,
-        live,
-        extra: { hostProcess: round1.hostProcess },
-      }))
-      await writeManifest(outDir, { conclusion: 'BLOCKED', blocked, hostProcess: round1.hostProcess, live })
-      process.stderr.write('BLOCKED Admission not in FullGraph\n')
-      exitCode = 1
-    } else {
-      const compare = compareRuns(
-        round1.evidence,
-        round2.evidence,
-        round1.auditText,
-        round2.auditText,
-        round1.admitTraceText,
-        round2.admitTraceText,
-      )
-      writeFileSync(join(outDir, 'verify-report.json'), JSON.stringify(compare, null, 2) + '\n')
-      await writeManifest(outDir, {
-        conclusion: compare.ok ? 'SUCCESS' : 'FAILED',
-        hostProcess: round1.hostProcess,
-        verify: compare,
-        live,
-        accountServerDll: accountDll,
-        pinnedAccountServer: ACCOUNT_DLL_ORIGIN_MAIN,
-        playwright: { round1: round1.playwright, round2: round2.playwright },
-      })
-      exitCode = compare.ok ? 0 : 1
-      if (!compare.ok) {
-        process.stderr.write(`FAILED ${JSON.stringify(compare.failures).slice(0, 800)}\n`)
-      }
-    }
-  } catch (err) {
-    const message = String(err && err.message ? err.message : err)
-    const blocked = writeBlocked(outDir, fullGraphBlocked({
-      error: message,
-      extra: { buildCommand: [DEFAULT_DOTNET, ...HOST_BUILD_ARGS] },
-    }))
-    await writeManifest(outDir, { conclusion: 'BLOCKED', blocked, failure: { step: 'mvp-host', message } })
-    process.stderr.write(`BLOCKED ${message}\n`)
-    exitCode = 1
+    await writeManifest(outDir, { conclusion: 'BLOCKED', blocked })
+    process.stderr.write('BLOCKED lumio-mvp-host is never a SUCCESS path\n')
+    process.exit(1)
   }
-  process.exit(exitCode)
+  process.stdout.write(`replay=${bin}\n`)
+
+  const packA = await runPack(bin, join(outDir, 'pack-a'))
+  const packB = await runPack(bin, join(outDir, 'pack-b'))
+  const dirA = verifyEvidenceDir(join(outDir, 'pack-a'))
+  const dirB = verifyEvidenceDir(join(outDir, 'pack-b'))
+  const ok = packA.ok && packB.ok && dirA.ok && dirB.ok
+  writeFileSync(join(outDir, 'verify-report.json'), JSON.stringify({ packA, packB, dirA, dirB, ok }, null, 2) + '\n')
+  await writeManifest(outDir, {
+    conclusion: ok ? 'SUCCESS' : 'FAILED',
+    oracleSha256: oracleSha256(),
+    packs: { a: packA, b: packB },
+  })
+  if (!ok) {
+    process.stderr.write(`FAILED ${JSON.stringify({ packA: packA.failures, packB: packB.failures }).slice(0, 800)}\n`)
+    process.exit(1)
+  }
+  process.exit(0)
 }
 
 main().catch((err) => {

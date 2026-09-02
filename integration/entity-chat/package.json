@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test verify-evidence.mjs",
-    "verify": "node --test verify-evidence.mjs"
+    "test": "node --test verify-evidence.mjs scenarios.mjs web/chat-window.test.mjs",
+    "verify": "node --test verify-evidence.mjs scenarios.mjs web/chat-window.test.mjs"
   }
 }
