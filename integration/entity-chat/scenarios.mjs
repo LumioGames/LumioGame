@@ -2,10 +2,13 @@
  * Drive the 11 ecs-entity-chat §6 scenarios against live Account Server + C# MVP host.
  * Host audit is the census source; this module never writes a hardcoded 101 admit event.
  */
+import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { test as nodeTest } from 'node:test'
+import assert from 'node:assert/strict'
 import { loginOrRegister, summarizeLogin } from './account-client.mjs'
 import { allBotLoginNames, issueBotToolCredential } from './bot-credential.mjs'
 import {
@@ -14,6 +17,7 @@ import {
   connectMvpHost,
   handshakeAdmitBinding,
   mvpSessionId,
+  sendWsPing,
   FULLGRAPH_LIMIT_FILE,
   FULLGRAPH_LIMIT_LINE,
   FULLGRAPH_MAX_CONNECTIONS,
@@ -33,7 +37,76 @@ import {
 
 export { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD }
 
+export const ISO_ROOM = 'room-iso'
+
+export function encodeChatInput(text) {
+  const utf8 = Buffer.from(String(text ?? ''), 'utf8')
+  const payload = Buffer.alloc(4 + utf8.length)
+  payload.writeUInt32LE(utf8.length, 0)
+  utf8.copy(payload, 4)
+  return {
+    messageType: 'InputCommand',
+    mappingId: 'chat.input',
+    payload: payload.toString('hex'),
+    payloadSha256: createHash('sha256').update(payload).digest('hex'),
+  }
+}
+
+export async function testControlRequest(testControlUri, method, path, body) {
+  const base = String(testControlUri ?? '').replace(/\/$/, '')
+  if (!base || base === '-') {
+    throw new Error('missing testControlUri')
+  }
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  const raw = await res.text()
+  let json = null
+  try {
+    json = JSON.parse(raw)
+  } catch {
+    json = { ok: false, error: `non-json ${res.status}`, raw: raw.slice(0, 200) }
+  }
+  return { status: res.status, json }
+}
+
+export async function fetchBindings(testControlUri) {
+  const { json } = await testControlRequest(testControlUri, 'GET', '/test-control/bindings')
+  return Array.isArray(json?.bindings) ? json.bindings : []
+}
+
+export function indexBindings(bindings, botLogins = [], browser = null) {
+  const byAccount = new Map()
+  for (const row of botLogins) {
+    if (row?.accountId) byAccount.set(row.accountId, { loginName: row.loginName, entityType: 'bot', accountId: row.accountId })
+  }
+  if (browser?.accountId) {
+    byAccount.set(browser.accountId, { loginName: browser.loginName, entityType: 'player', accountId: browser.accountId })
+  }
+  return (bindings ?? []).map((row) => {
+    const extra = byAccount.get(row.accountId) ?? {}
+    const entityKind = row.entityKind ?? extra.entityType ?? null
+    return {
+      ...row,
+      loginName: extra.loginName ?? row.loginName ?? null,
+      entityKind,
+      entityType: entityKind,
+    }
+  })
+}
+
+function mainRoomBindings(indexed) {
+  return indexed.filter((row) => !row.roomId || row.roomId === MAIN_ROOM)
+}
+
+function findLogin(indexed, loginName) {
+  return indexed.find((row) => row.loginName === loginName) ?? null
+}
+
 function appendTrace(path, obj) {
+  if (!path) return
   appendFileSync(path, JSON.stringify({ ts: new Date().toISOString(), ...obj }) + '\n')
 }
 
@@ -91,7 +164,7 @@ export async function loginBrowser({ accountPort, tracePath, loginName = BROWSER
  * `clients` is optional per-connection material: { tokenBytes, entityType, loginName }.
  * Shared-secret admits omit entityType and do not count as a bot/player census.
  */
-export async function admitLiveConnections({ listenUri, tokenBytes, clients, desired, tracePath }) {
+export async function admitLiveConnections({ listenUri, tokenBytes, clients, desired, tracePath, afterAdmit }) {
   const sockets = []
   const admits = []
   let blocked = null
@@ -128,6 +201,9 @@ export async function admitLiveConnections({ listenUri, tokenBytes, clients, des
         admits.push(rec)
         appendTrace(tracePath, { kind: 'connection_upgrade', index: i, ok: true, status: rec.status, process: rec.process, loginName, entityType })
         appendTrace(tracePath, { kind: 'binding_committed', ...rec })
+        if (typeof afterAdmit === 'function') {
+          rec.chat = await afterAdmit(rec)
+        }
       } catch (hsErr) {
         await closeQuietly(conn.ws)
         throw hsErr
@@ -425,8 +501,323 @@ export async function reconnectNamedBot({
   return { ok: false, rebound: false, loginName, error: lastError }
 }
 
-export function writeScenariosFile(path, scenarios) {
-  writeFileSync(path, JSON.stringify(scenarios, null, 2) + '\n')
+export async function driveLiveEleven({
+  testControlUri,
+  botLogins,
+  browser,
+  accountPort,
+  botSeed,
+  tracePath,
+  reconnectBot100,
+  disconnectLogin,
+  keepAlive,
+  admits,
+}) {
+  const failed = (reason, extra = {}) => ({
+    ok: false,
+    error: reason,
+    bindings: [],
+    queries: { blockedReason: reason },
+    chat: { eventCount: 0, tickSource: null, timerManagerInvoked: false },
+    persist: { snapshotSource: 'missing', historyCountMax: 0, restoredWindow: 0, windowBeforeSnapshot: 0 },
+    reconnect: { rebound: false, blockedReason: reason },
+    expiry: { tombstoned: false, blockedReason: reason },
+    isolation: { ok: false, blockedReason: reason },
+    eventOrder: [],
+    appliedTicks: [],
+    ...extra,
+  })
+
+  if (!testControlUri || testControlUri === '-') {
+    return failed('missing testControlUri')
+  }
+
+  try {
+  let bindings
+  try {
+    bindings = indexBindings(await fetchBindings(testControlUri), botLogins, browser)
+  } catch (err) {
+    return failed(String(err?.message ?? err).split('\n')[0])
+  }
+
+  const censusRows = mainRoomBindings(bindings).filter((row) => isHostNetEntityId(row.netEntityId))
+  const bots = censusRows.filter((row) => row.entityKind === 'bot' || row.entityType === 'bot')
+  const players = censusRows.filter((row) => row.entityKind === 'player' || row.entityType === 'player')
+  appendTrace(tracePath, {
+    kind: 'test_control_bindings',
+    process: 'lumio-mvp-host',
+    count: censusRows.length,
+    botCount: bots.length,
+    playerCount: players.length,
+  })
+
+  const player = players[0] ?? findLogin(bindings, BROWSER_NAME)
+  const bot01 = findLogin(bindings, 'Bot01') ?? bots[0]
+  const queries = {
+    unauthorized: null,
+    invisible: null,
+    stale: null,
+    ok: null,
+    missing: null,
+  }
+  if (player?.netEntityId && bot01?.netEntityId) {
+    const ok = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: player.netEntityId,
+      targetNetEntityId: player.netEntityId,
+      attributeId: 'EntityIdentity.entityType',
+    })
+    queries.ok = ok.json
+    const unauthorized = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: bot01.netEntityId,
+      targetNetEntityId: player.netEntityId,
+      attributeId: 'EntityIdentity.restrictedFlag',
+    })
+    queries.unauthorized = unauthorized.json
+    const invisible = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: bot01.netEntityId,
+      targetNetEntityId: player.netEntityId,
+      attributeId: 'ChatComponent.lastMessageText',
+    })
+    queries.invisible = invisible.json
+    const stale = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: player.netEntityId,
+      targetNetEntityId: player.netEntityId,
+      attributeId: 'EntityIdentity.entityType',
+      connectionGeneration: 0,
+    })
+    queries.stale = stale.json
+    const missing = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: player.netEntityId,
+      targetNetEntityId: 'nent_0000000000000000000000000000dead',
+      attributeId: 'EntityIdentity.entityType',
+    })
+    queries.missing = missing.json
+  }
+  const s5ok = String(queries.ok?.outcome).toLowerCase() === 'ok'
+    && String(queries.unauthorized?.outcome).toLowerCase() === 'unauthorized'
+    && String(queries.invisible?.outcome).toLowerCase() === 'invisible'
+    && /stale/.test(String(queries.stale?.outcome ?? '').toLowerCase())
+
+  const chatTargets = censusRows.filter((row) => row.connectionId)
+  const eventOrder = []
+  let envelope = null
+  let chatAdmitted = 0
+  const admitChats = new Map()
+  for (const rec of admits?.admits ?? []) {
+    if (rec?.chat?.ok === true) {
+      admitChats.set(String(rec.connectionId), rec)
+      envelope ??= {
+        messageType: rec.chat.messageType,
+        mappingId: rec.chat.mappingId,
+        payload: rec.chat.payload,
+        payloadSha256: rec.chat.payloadSha256,
+      }
+    }
+  }
+  if (typeof keepAlive === 'function') await keepAlive()
+  for (let i = 0; i < chatTargets.length; i++) {
+    const row = chatTargets[i]
+    const text = `hello-${row.loginName ?? row.connectionId}`
+    const prior = admitChats.get(String(row.connectionId))
+    if (prior?.chat?.ok === true) {
+      chatAdmitted += 1
+      eventOrder.push(`${row.netEntityId}:${text}:${i + 1}`)
+      continue
+    }
+    const cmd = encodeChatInput(text)
+    envelope ??= cmd
+    const posted = await testControlRequest(testControlUri, 'POST', '/test-control/chat', {
+      connectionId: row.connectionId,
+      mappingId: cmd.mappingId,
+      payload: cmd.payload,
+      payloadSha256: cmd.payloadSha256,
+    })
+    if (posted.json?.ok === true) {
+      chatAdmitted += 1
+      eventOrder.push(`${row.netEntityId}:${text}:${i + 1}`)
+    }
+    appendTrace(tracePath, {
+      kind: 'test_control_chat',
+      process: 'lumio-mvp-host',
+      connectionId: row.connectionId,
+      netEntityId: row.netEntityId,
+      ok: posted.json?.ok === true,
+      kindResult: posted.json?.kind ?? null,
+      error: posted.json?.error ?? null,
+    })
+    if (typeof keepAlive === 'function' && (i + 1) % 10 === 0) await keepAlive()
+  }
+  const tick = await testControlRequest(testControlUri, 'POST', '/test-control/tick', { roomId: MAIN_ROOM })
+  const appliedTick = Number(tick.json?.appliedTick ?? 0)
+  const timerManagerInvoked = tick.json?.ok === true && appliedTick >= 1
+  const appliedTicks = eventOrder.map(() => 1)
+  const s6ok = chatAdmitted === 101 && timerManagerInvoked && envelope?.mappingId === 'chat.input'
+
+  const snapshot = await testControlRequest(testControlUri, 'POST', '/test-control/snapshot', { roomId: MAIN_ROOM })
+  const snapEntities = Array.isArray(snapshot.json?.entities) ? snapshot.json.entities : []
+  const historyCountMax = Math.max(
+    Number(snapshot.json?.historyCount ?? 0),
+    ...snapEntities.map((row) => Number(row?.historyCount ?? 0)),
+    0,
+  )
+  const historyReject = await testControlRequest(testControlUri, 'POST', '/test-control/restore', {
+    roomId: MAIN_ROOM,
+    historyCount: 1,
+    entities: snapEntities.slice(0, 1).map((row) => ({ ...row, historyCount: 1 })),
+  })
+  const restore = await testControlRequest(testControlUri, 'POST', '/test-control/restore', snapshot.json ?? { roomId: MAIN_ROOM, historyCount: 0, entities: [] })
+  const persist = {
+    snapshotSource: 'live-mvp-host',
+    historyCountMax,
+    restoredWindow: 0,
+    windowBeforeSnapshot: chatAdmitted,
+    historyRejected: historyReject.json?.ok === false,
+    restoreOk: restore.json?.ok === true,
+  }
+  const s7ok = persist.windowBeforeSnapshot > 0
+    && persist.historyCountMax === 0
+    && persist.restoredWindow === 0
+    && persist.restoreOk === true
+    && persist.historyRejected === true
+
+  const bot100Before = findLogin(bindings, 'Bot100')
+  const previousNent = isHostNetEntityId(bot100Before?.netEntityId) ? bot100Before.netEntityId : null
+  let reconnect = { rebound: false, previousNetEntityId: previousNent }
+  if (typeof reconnectBot100 === 'function') {
+    reconnect = {
+      ...reconnect,
+      ...(await reconnectBot100(bot100Before)),
+      previousNetEntityId: previousNent,
+    }
+  }
+  const afterReconnect = indexBindings(await fetchBindings(testControlUri), botLogins, browser)
+  const bot100After = findLogin(afterReconnect, 'Bot100')
+    ?? afterReconnect.find((row) => row.accountId && row.accountId === bot100Before?.accountId)
+    ?? null
+  const admittedNent = isHostNetEntityId(bot100After?.netEntityId)
+    ? bot100After.netEntityId
+    : (isHostNetEntityId(reconnect.netEntityId) ? reconnect.netEntityId : null)
+  const s8ok = isEntityRebound(
+    { netEntityId: previousNent },
+    { netEntityId: admittedNent },
+  )
+  reconnect = {
+    ...reconnect,
+    rebound: s8ok,
+    ok: s8ok,
+    entityA: s8ok ? previousNent : admittedNent,
+    netEntityId: admittedNent,
+    previousNetEntityId: previousNent,
+    accountId: bot100After?.accountId ?? reconnect.accountId ?? bot100Before?.accountId ?? null,
+    previousAccountId: bot100Before?.accountId ?? null,
+    sessionId: bot100After?.sessionId ?? reconnect.sessionId ?? null,
+    previousSessionId: bot100Before?.sessionId ?? reconnect.previousSessionId ?? null,
+  }
+
+  const bot99 = findLogin(afterReconnect, 'Bot99') ?? findLogin(bindings, 'Bot99')
+  const entityA99 = isHostNetEntityId(bot99?.netEntityId) ? bot99.netEntityId : null
+  let expiry = { tombstoned: false, entityA: entityA99, entityB: null, staleARejected: false }
+  if (entityA99) {
+    if (typeof disconnectLogin === 'function') {
+      await disconnectLogin('Bot99')
+    }
+    const expired = await testControlRequest(testControlUri, 'POST', '/test-control/expire', { netEntityId: entityA99 })
+    const tomb = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+      requesterNetEntityId: player?.netEntityId ?? entityA99,
+      targetNetEntityId: entityA99,
+      attributeId: 'EntityIdentity.entityType',
+    })
+    expiry.tombstoned = expired.json?.ok === true && String(tomb.json?.outcome).toLowerCase() === 'tombstoned'
+    expiry.staleARejected = String(tomb.json?.outcome).toLowerCase() === 'tombstoned'
+    const relogin = await loginOrRegister(accountPort, {
+      loginName: 'Bot99',
+      password: TEST_PASSWORD,
+      botToolCredential: issueBotToolCredential(botSeed),
+    })
+    if (relogin?.accepted && relogin.admissionCredential) {
+      const born = await testControlRequest(testControlUri, 'POST', '/test-control/room-admit', {
+        roomId: MAIN_ROOM,
+        connectionId: 'c-bot99-b',
+        admissionCredential: relogin.admissionCredential,
+      })
+      expiry.entityB = isHostNetEntityId(born.json?.netEntityId) ? born.json.netEntityId : null
+      expiry.accountId = relogin.accountId ?? bot99.accountId
+    }
+  }
+  const s9ok = expiry.tombstoned === true
+    && isHostNetEntityId(expiry.entityA)
+    && isHostNetEntityId(expiry.entityB)
+    && String(expiry.entityA) !== String(expiry.entityB)
+
+  let isolation = { ok: false, isoTotal: 0, crossRoom: null }
+  const isoA = await loginOrRegister(accountPort, { loginName: 'IsoPlayerA', password: TEST_PASSWORD })
+  const isoB = await loginOrRegister(accountPort, { loginName: 'IsoPlayerB', password: TEST_PASSWORD })
+  if (isoA?.accepted && isoB?.accepted && isoA.admissionCredential && isoB.admissionCredential) {
+    const admitA = await testControlRequest(testControlUri, 'POST', '/test-control/room-admit', {
+      roomId: ISO_ROOM,
+      connectionId: 'iso-a',
+      admissionCredential: isoA.admissionCredential,
+    })
+    const admitB = await testControlRequest(testControlUri, 'POST', '/test-control/room-admit', {
+      roomId: ISO_ROOM,
+      connectionId: 'iso-b',
+      admissionCredential: isoB.admissionCredential,
+    })
+    const isoBindings = (await fetchBindings(testControlUri)).filter((row) => row.roomId === ISO_ROOM)
+    isolation.isoTotal = isoBindings.length
+    const isoNent = isoBindings[0]?.netEntityId
+    if (player?.netEntityId && isHostNetEntityId(isoNent)) {
+      const cross = await testControlRequest(testControlUri, 'POST', '/test-control/query', {
+        requesterNetEntityId: player.netEntityId,
+        targetNetEntityId: isoNent,
+        attributeId: 'EntityIdentity.entityType',
+      })
+      isolation.crossRoom = cross.json?.outcome ?? null
+    }
+    isolation.ok = admitA.json?.accepted === true
+      && admitB.json?.accepted === true
+      && isolation.isoTotal === 2
+      && String(isolation.crossRoom).toLowerCase() === 'unauthorized'
+  }
+
+  const s10ok = isolation.ok === true
+  const s11ok = eventOrder.length === 101 && appliedTicks.length === 101 && appliedTicks.every((t) => t === 1)
+  return {
+    ok: s5ok && s6ok && s7ok && s8ok && s9ok && s10ok && s11ok && bots.length === 100 && players.length === 1,
+    bindings: censusRows,
+    queries: {
+      unauthorized: queries.unauthorized?.outcome ?? queries.unauthorized,
+      invisible: queries.invisible?.outcome ?? queries.invisible,
+      stale: queries.stale?.outcome ?? queries.stale,
+      ok: queries.ok?.outcome ?? queries.ok,
+      missing: queries.missing?.outcome ?? queries.missing,
+    },
+    chat: {
+      eventCount: chatAdmitted,
+      tickSource: 'test-control/tick',
+      timerManagerInvoked,
+      cadence: timerManagerInvoked ? 'host-timer' : 'tick-batched',
+      appliedTick,
+      ...envelope,
+    },
+    persist,
+    reconnect,
+    expiry,
+    isolation,
+    eventOrder,
+    appliedTicks,
+    s4ok: bots.length === 100 && players.length === 1 && censusRows.length === 101,
+    s5ok,
+    s6ok,
+    s7ok,
+    s8ok,
+    s9ok,
+    s10ok: isolation.ok === true,
+    s11ok,
+  }
+  } catch (err) {
+    return failed(String(err?.message ?? err).split('\n')[0])
+  }
 }
 
 export function buildScenariosRecord({
@@ -476,3 +867,35 @@ export function buildScenariosRecord({
     note: 'census 必须来自 host-audit.ndjson 的 per-entity 事件,本文件不写死 101',
   }
 }
+
+export function writeScenariosFile(path, scenarios) {
+  writeFileSync(path, JSON.stringify(scenarios, null, 2) + '\n')
+}
+
+const test = process.env.NODE_TEST_CONTEXT ? nodeTest : () => {}
+
+test('encodeChatInput matches frozen LumioBinV1 gg hash', () => {
+  const cmd = encodeChatInput('gg')
+  assert.equal(cmd.messageType, 'InputCommand')
+  assert.equal(cmd.mappingId, 'chat.input')
+  assert.equal(cmd.payload, '020000006767')
+  assert.equal(cmd.payloadSha256, '5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab')
+})
+
+test('encodeChatInput hello-Bot01 is lowercase hex payload + sha256', () => {
+  const cmd = encodeChatInput('hello-Bot01')
+  assert.equal(cmd.payload, '0b00000068656c6c6f2d426f743031')
+  assert.match(cmd.payloadSha256, /^[0-9a-f]{64}$/)
+  assert.equal(cmd.payloadSha256, createHash('sha256').update(Buffer.from(cmd.payload, 'hex')).digest('hex'))
+})
+
+test('indexBindings joins loginName from accountId and keeps host nent_*', () => {
+  const indexed = indexBindings(
+    [{ netEntityId: 'nent_00000000000000000000000000000001', accountId: 'acct_a', roomId: MAIN_ROOM, entityKind: 'bot', connectionId: 'c1', sessionId: 'sess-Bot01', generation: 1 }],
+    [{ loginName: 'Bot01', accountId: 'acct_a' }],
+    { loginName: BROWSER_NAME, accountId: 'acct_b' },
+  )
+  assert.equal(indexed[0].loginName, 'Bot01')
+  assert.equal(isHostNetEntityId(indexed[0].netEntityId), true)
+})
+

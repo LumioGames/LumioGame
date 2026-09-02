@@ -11,7 +11,8 @@
  * 不是 NetEntityId。单独的 total:101 常数不算数。FullGraph 不发 entity_admitted。
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { test as nodeTest } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -79,13 +80,7 @@ function isAdmitEffect(effect) {
 
 function bindingIdOf(rec) {
   if (!isObject(rec) || rec.ok === false) return null
-  for (const key of ['netEntityId', 'sessionId', 'bindingId']) {
-    const id = rec[key]
-    if (id == null) continue
-    const s = String(id)
-    if (s.length > 0 && s !== '0' && !isLauncherLoopIndex(s)) return s
-  }
-  return null
+  return isHostNetEntityId(rec.netEntityId) ? String(rec.netEntityId) : null
 }
 
 function hostBindingValue(rec, key) {
@@ -194,10 +189,17 @@ function isHonestSiblingGap(row) {
     && row.blockedReason.length > 0
 }
 
-const SIBLING_GAP_SCENARIOS = new Set([5, 7, 9, 10, 11])
+export function isAcceptedHostProcess(name) {
+  return name === 'lumio-mvp-host' || name === 'lumio-entity-chat-replay'
+}
 
 function isMvpHostTagged(ev) {
   return ev?.process === 'lumio-mvp-host' || ev?.host === 'lumio-mvp-host' || ev?.source === 'lumio-mvp-host'
+}
+
+function isReplayHostTagged(ev) {
+  const name = ev?.process ?? ev?.host ?? ev?.source
+  return name === 'lumio-entity-chat-replay'
 }
 
 function isSeventeenKeyTrace(ev) {
@@ -209,8 +211,9 @@ function isMvpHostProcessLine(ev) {
   if (!isObject(ev)) return false
   const seqOk = Number.isInteger(ev.seq)
   const kind = eventKind(ev)
+  if (isReplayHostTagged(ev) && isHostNetEntityId(ev.netEntityId)) return true
   if (!seqOk || (kind !== 'audit' && kind !== 'ack' && kind !== 'state')) return false
-  return isMvpHostTagged(ev) || kind === 'audit' || isSeventeenKeyTrace(ev)
+  return isMvpHostTagged(ev) || isReplayHostTagged(ev) || kind === 'audit' || isSeventeenKeyTrace(ev)
 }
 
 function hostAuditHasSessionOrConnectionEvidence(auditText = '') {
@@ -242,12 +245,14 @@ export function hostAuditHasBindingEvidence(auditText = '', admitTraceText = '')
   return scan(auditText, true) || scan(admitTraceText, false)
 }
 
-/** Host-audit must come from a live lumio-mvp-host process, not a GameRoomHost census dump. */
+/** Host-audit must come from live lumio-mvp-host or lumio-entity-chat-replay, not a GameRoomHost dump. */
 export function hasMvpHostProcessAudit(evidence, auditText = '') {
   const proc = evidence?.hostProcess
-  const named = proc?.process === 'lumio-mvp-host' && Number.isInteger(Number(proc.pid)) && Number(proc.pid) > 0
+  const named = isAcceptedHostProcess(proc?.process)
+    && Number.isInteger(Number(proc.pid))
+    && Number(proc.pid) > 0
   if (!named) return false
-  return parseNdjson(auditText).some(({ ev }) => isMvpHostProcessLine(ev))
+  return parseNdjson(auditText).some(({ ev }) => isMvpHostProcessLine(ev) || isHostNetEntityId(ev.netEntityId))
 }
 
 function hasIndependentTraces(evidence) {
@@ -255,16 +260,41 @@ function hasIndependentTraces(evidence) {
   if (!isObject(t)) return false
   const accountOk = t.account?.wrongPasswordCode === 'wrong_password' || t.account?.createAck === true
   if (!accountOk) return false
-  const queries = t.queries
-  if (isObject(queries) && !queries.blockedReason) {
-    const blob = JSON.stringify(queries).toLowerCase()
-    if (['unauthorized', 'invisible', 'stale'].every((k) => blob.includes(k))) return false
-  }
-  if (t.expiry?.tombstoned === true && !t.expiry?.blockedReason) return false
-  const reconnectOk = t.reconnect?.rebound === true || t.reconnect?.entityA != null
+  const bindings = Array.isArray(t.bindings)
+    ? t.bindings.filter((row) => isHostNetEntityId(row?.netEntityId))
+    : []
   const handshakeOk = Number(t.handshake?.completed ?? 0) === 101
     || (Array.isArray(t.handshake?.sessionIds) && t.handshake.sessionIds.length === 101)
-  return reconnectOk || handshakeOk
+    || bindings.length === 101
+  const reconnectOk = isReconnectEntityRebound(evidence)
+    || t.reconnect?.rebound === true
+    || isHostNetEntityId(t.reconnect?.entityA)
+  return handshakeOk || reconnectOk
+}
+
+function hasRealQueryTraces(evidence) {
+  const traces = evidence?.traces?.queries
+  const s5 = scenario(evidence, 5)
+  const blob = `${JSON.stringify(traces ?? {})}\n${JSON.stringify(s5)}`.toLowerCase()
+  return ['unauthorized', 'invisible', 'stale'].every((k) => blob.includes(k))
+}
+
+function liveSnapshotSource(source) {
+  return source === 'live-mvp-host'
+    || source === 'lumio-entity-chat-replay'
+    || source === 'live-replay'
+}
+
+function hostTimerTickSource(source) {
+  const s = String(source ?? '')
+  if (/for-loop|forloop/i.test(s)) return false
+  return /test-control\/tick|host-timer|itimer/i.test(s)
+}
+
+function eventOrderKey(entry) {
+  const parts = String(entry).split(':')
+  if (parts.length >= 3) return parts.slice(1).join(':')
+  return String(entry)
 }
 
 export function playwrightRan(evidence) {
@@ -297,14 +327,31 @@ function recordAdmit(byId, rec) {
   byId.set(id, type)
 }
 
-/** Distinct Handshake/Admit binding census from mvp-host process audit. Session ids are not NetEntityId. A lone {total:101} is ignored. */
+function recordHostNent(byId, rec) {
+  if (!isObject(rec) || rec.ok === false) return
+  if (rec.roomId && rec.roomId !== MAIN_ROOM) return
+  const id = rec.netEntityId
+  const type = entityTypeOf(rec)
+  if (!isHostNetEntityId(id) || type == null) return
+  byId.set(String(id), type)
+}
+
+/** Distinct nent_* census from 17-key host-audit / bindings. Session ids are not NetEntityId. */
 export function censusFromHostAudit(auditText) {
   const byId = new Map()
   for (const { ev } of parseNdjson(auditText)) {
-    if (!isAdmitKind(eventKind(ev))) continue
-    if (!isMvpHostTagged(ev) && !isSeventeenKeyTrace(ev)) continue
-    recordAdmit(byId, ev)
+    if (!isHostNetEntityId(ev.netEntityId)) continue
+    if (!isAdmitKind(eventKind(ev)) && !isSeventeenKeyTrace(ev) && !isMvpHostTagged(ev) && !isReplayHostTagged(ev)) continue
+    recordHostNent(byId, ev)
   }
+  return censusFromIdMap(byId)
+}
+
+function censusFromBindings(evidence) {
+  const rows = evidence?.traces?.bindings ?? evidence?.bindings
+  const byId = new Map()
+  if (!Array.isArray(rows)) return censusFromIdMap(byId)
+  for (const rec of rows) recordHostNent(byId, rec)
   return censusFromIdMap(byId)
 }
 
@@ -312,15 +359,12 @@ function censusFromLiveAdmits(evidence, admitTraceText = '') {
   const byId = new Map()
   const admits = evidence?.liveAdmits?.admits
   if (Array.isArray(admits)) {
-    for (const rec of admits) {
-      recordAdmit(byId, rec)
-    }
+    for (const rec of admits) recordHostNent(byId, rec)
   }
   if (byId.size < 101 && admitTraceText) {
     for (const { ev } of parseNdjson(admitTraceText)) {
-      if (!isAdmitKind(eventKind(ev))) continue
-      if (ev.process && ev.process !== 'lumio-mvp-host') continue
-      recordAdmit(byId, ev)
+      if (ev.process && !isAcceptedHostProcess(ev.process)) continue
+      recordHostNent(byId, ev)
     }
   }
   return censusFromIdMap(byId)
@@ -330,13 +374,17 @@ export function censusFromEvidence(evidence, auditText = '', admitTraceText = ''
   if (!hasMvpHostProcessAudit(evidence, auditText)) {
     return emptyCensus()
   }
+  const fromBindings = censusFromBindings(evidence)
+  if (fromBindings.total === 101) return fromBindings
   const fromAudit = censusFromHostAudit(auditText)
   if (fromAudit.total === 101) return fromAudit
   const fromLive = censusFromLiveAdmits(evidence, admitTraceText)
   if (fromLive.total === 101 && hostAuditHasBindingEvidence(auditText, admitTraceText)) {
     return fromLive
   }
-  return fromAudit.total > 0 ? fromAudit : fromLive
+  return fromBindings.total > 0
+    ? fromBindings
+    : (fromAudit.total > 0 ? fromAudit : fromLive)
 }
 
 function scenario(evidence, n) {
@@ -370,38 +418,6 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
 
   for (let i = 1; i <= 11; i++) {
     const row = scenario(evidence, i)
-    if (i === 6) {
-      const tickBatched = row?.ok !== true && row?.timerManagerInvoked !== true
-      if (tickBatched) continue
-    }
-    if (i === 8) {
-      if (isHonestS8Gap(row)) continue
-      if (isReconnectEntityRebound(evidence) && !s8PaintedWithoutHostNent(evidence)) continue
-      if (row?.ok === true) {
-        failures.push({ check: 'scenario-8', message: 'scenario 8 ok:true without host NetEntityId (nent_*)' })
-        continue
-      }
-      if (!isObject(row) || row.ok !== true) {
-        failures.push({ check: 'scenario-8', message: 'scenario 8 missing or not ok' })
-      }
-      continue
-    }
-    if (SIBLING_GAP_SCENARIOS.has(i)) {
-      if (row?.ok === true) {
-        failures.push({
-          check: `scenario-${i}:suite-double`,
-          message: `scenario ${i} ok:true from GameRoomHost is not live mvp-host`,
-        })
-        continue
-      }
-      if (!isHonestSiblingGap(row)) {
-        failures.push({
-          check: `scenario-${i}`,
-          message: `scenario ${i} requires ok:false + blockedReason (sibling gap)`,
-        })
-      }
-      continue
-    }
     if (!isObject(row) || row.ok !== true) {
       failures.push({ check: `scenario-${i}`, message: `scenario ${i} missing or not ok` })
     }
@@ -409,12 +425,13 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
 
   const bindingOk = hostAuditHasBindingEvidence(auditText, admitTraceText)
     && census.total === 101
-    && census.netEntityIds.every((id) => !isLauncherLoopIndex(id))
+    && census.netEntityIds.length === 101
+    && census.netEntityIds.every((id) => isHostNetEntityId(id))
   const s4 = scenario(evidence, 4)
   if (s4.ok === true && !bindingOk) {
     failures.push({
       check: 's4:binding',
-      message: 'S4 requires host Handshake/Admit binding ids (non-empty sessionId or admit effect); HTTP 101 loop index is not NetEntityId',
+      message: 'S4 requires bindings + 17-key audit netEntityId (nent_*), not sessionId or login accountId',
     })
   }
 
@@ -427,10 +444,21 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   if (s3.ok === true && !playwrightRan(evidence)) {
     failures.push({ check: 's3:playwright', message: 'Browser display requires Playwright Chromium run (received events, not injected)' })
   }
+  const pw = evidence?.playwright ?? s3?.playwright
+  if (pw?.injected === true) {
+    failures.push({ check: 's3:injected', message: 'must not inject DOM events and mark Browser ok' })
+  }
 
   const s5 = scenario(evidence, 5)
-  if (!isHonestSiblingGap(s5)) {
-    const s5text = JSON.stringify(s5).toLowerCase()
+  if (s5.ok === true && !hasRealQueryTraces(evidence)) {
+    failures.push({
+      check: 'scenario-5:suite-double',
+      message: 'scenario 5 ok:true from GameRoomHost is not live mvp-host',
+    })
+    failures.push({ check: 's5:traces', message: 'scenario 5 requires real query traces (unauthorized/invisible/stale)' })
+  }
+  if (s5.ok === true) {
+    const s5text = `${JSON.stringify(evidence?.traces?.queries ?? {})}\n${JSON.stringify(s5)}`.toLowerCase()
     for (const needed of ['unauthorized', 'invisible', 'stale']) {
       if (!s5text.includes(needed)) {
         failures.push({ check: 's5:missing', message: `scenario 5 缺少 ${needed}` })
@@ -439,6 +467,13 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   }
 
   const s6 = scenario(evidence, 6)
+  const tickSource = s6.tickSource ?? s6.tickPath ?? evidence?.traces?.chat?.tickSource ?? ''
+  if (s6.timerManagerInvoked === true && !hostTimerTickSource(tickSource)) {
+    failures.push({
+      check: 's6:timer-source',
+      message: 'timerManagerInvoked requires host timer / test-control/tick, not a for-loop',
+    })
+  }
   if (s6.ok === true && s6.timerManagerInvoked !== true) {
     failures.push({ check: 's6:timer', message: 'Client Timer Manager not invoked; chat is tick-batched; Timer is a known gap' })
   }
@@ -459,7 +494,7 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
 
   const s7 = scenario(evidence, 7)
   const windowBefore = Number(s7.windowBeforeSnapshot ?? s7.chatEventsBeforeSnapshot ?? 0)
-  if (s7.ok === true && s7.snapshotSource && s7.snapshotSource !== 'live-mvp-host') {
+  if (s7.ok === true && s7.snapshotSource && !liveSnapshotSource(s7.snapshotSource)) {
     failures.push({
       check: 's7:suite-double',
       message: 'GameRoomHost persist snapshotSource is not live mvp-host',
@@ -468,31 +503,30 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   if (s7.ok === true && windowBefore <= 0) {
     failures.push({ check: 's7:snapshot-material', message: 'snapshot must exercise material that could have contained history (HistoryCount default 0 is not a test)' })
   }
-  if (!isHonestSiblingGap(s7) && Number(s7.historyCountMax ?? 0) !== 0) {
+  if (s7.ok === true && Number(s7.historyCountMax ?? 0) !== 0) {
     failures.push({ check: 's7:history', message: `snapshot historyCount=${s7.historyCountMax}` })
   }
-  if (!isHonestSiblingGap(s7) && Number(s7.restoredWindow ?? 0) !== 0) {
+  if (s7.ok === true && Number(s7.restoredWindow ?? 0) !== 0) {
     failures.push({ check: 's7:window-restore', message: 'Restore 后聊天窗必须为空' })
   }
 
-  if (!isHonestS8Gap(scenario(evidence, 8))) {
-    if (s8PaintedWithoutHostNent(evidence) || s8NetEntityIdAliasedToSession(evidence) || !isReconnectEntityRebound(evidence)) {
-      failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A (host NetEntityId, not sessionId or login AccountId)' })
-    }
+  if (s8PaintedWithoutHostNent(evidence) || s8NetEntityIdAliasedToSession(evidence) || !isReconnectEntityRebound(evidence)) {
+    failures.push({ check: 's8:rebind', message: 'scenario 8 五分钟内重连必须重绑实体 A (host NetEntityId, not sessionId or login AccountId)' })
   }
 
   const s9 = scenario(evidence, 9)
-  if (!isHonestSiblingGap(s9) && s9.ok !== true && s9.tombstoned !== true) {
+  const expiry = evidence?.traces?.expiry ?? {}
+  const entityA = expiry.entityA ?? s9.entityA
+  const entityB = expiry.entityB ?? s9.entityB ?? s9.netEntityIdB
+  if (s9.ok === true && s9.tombstoned !== true && expiry.tombstoned !== true) {
     failures.push({ check: 's9:tombstone', message: 'scenario 9 过期后 A 必须 tombstone,B 用新 NetEntityId' })
   }
-
-  const s10 = scenario(evidence, 10)
-  if (!isHonestSiblingGap(s10) && s10.ok !== true) {
-    failures.push({ check: 's10:isolation', message: 'scenario 10 隔离必须成立' })
+  if (s9.ok === true && isHostNetEntityId(entityA) && isHostNetEntityId(entityB) && String(entityA) === String(entityB)) {
+    failures.push({ check: 's9:new-id', message: 'scenario 9 entity B must use a different host NetEntityId' })
   }
 
   const s11 = scenario(evidence, 11)
-  if (!isHonestSiblingGap(s11)) {
+  if (s11.ok === true) {
     if (!Array.isArray(s11.eventOrder) || s11.eventOrder.length !== 101) {
       failures.push({ check: 'event-order', message: `eventOrder length ${s11.eventOrder?.length}` })
     }
@@ -510,7 +544,7 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
     ok: failures.length === 0,
     failures,
     census,
-    eventOrder: s11.eventOrder ?? [],
+    eventOrder: (s11.eventOrder ?? []).map(eventOrderKey),
     appliedTicks: s11.appliedTicks ?? [],
   }
 }
@@ -521,7 +555,9 @@ export function compareRuns(a, b, auditA = '', auditB = '', admitA = '', admitB 
   const failures = []
   if (!left.ok) failures.push({ check: 'round-1', message: JSON.stringify(left.failures) })
   if (!right.ok) failures.push({ check: 'round-2', message: JSON.stringify(right.failures) })
-  if (JSON.stringify(left.census) !== JSON.stringify(right.census)) {
+  if (left.census.botCount !== right.census.botCount
+    || left.census.playerCount !== right.census.playerCount
+    || left.census.total !== right.census.total) {
     failures.push({ check: 'census-compare', message: 'entity counts differ across runs' })
   }
   if (JSON.stringify(left.eventOrder) !== JSON.stringify(right.eventOrder)) {
@@ -682,13 +718,25 @@ function goodEvidence() {
   }
   base.scenarios['3'] = { ok: true, playwrightRan: true }
   base.scenarios['4'] = { ok: true, resolvedBots: 100, browserBound: true }
-  base.scenarios['5'] = siblingGapFixture({ unauthorized: null, invisible: null, stale: null })
-  base.scenarios['6'] = { ok: false, timerManagerInvoked: false, cadence: 'tick-batched', eventCount: 0 }
-  base.scenarios['7'] = siblingGapFixture({
+  base.scenarios['5'] = { ok: true, unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' }
+  base.scenarios['6'] = {
+    ok: true,
+    timerManagerInvoked: true,
+    cadence: 'host-timer',
+    tickSource: 'test-control/tick',
+    eventCount: 101,
+    messageType: 'InputCommand',
+    mappingId: 'chat.input',
+    payload: '020000006767',
+    payloadSha256: '5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab',
+  }
+  base.scenarios['7'] = {
+    ok: true,
     historyCountMax: 0,
     restoredWindow: 0,
-    snapshotSource: 'suite-double',
-  })
+    windowBeforeSnapshot: 101,
+    snapshotSource: 'live-mvp-host',
+  }
   base.scenarios['8'] = {
     ok: true,
     entityA: 'nent-bot-100',
@@ -700,9 +748,18 @@ function goodEvidence() {
     accountId: 'acct_bot100',
     previousAccountId: 'acct_bot100',
   }
-  base.scenarios['9'] = siblingGapFixture()
-  base.scenarios['10'] = siblingGapFixture()
-  base.scenarios['11'] = siblingGapFixture({ eventOrder, appliedTicks, totalEntities: 101 })
+  base.scenarios['9'] = {
+    ok: true,
+    tombstoned: true,
+    staleARejected: true,
+    entityA: 'nent-bot-099',
+    entityB: 'nent-bot-102',
+  }
+  base.scenarios['10'] = { ok: true, isoTotal: 2 }
+  base.scenarios['11'] = { ok: true, eventOrder, appliedTicks, totalEntities: 101 }
+  base.traces.queries = { unauthorized: 'Unauthorized', invisible: 'Invisible', stale: 'StaleGeneration' }
+  base.traces.chat = { eventCount: 101, tickSource: 'test-control/tick', timerManagerInvoked: true }
+  base.traces.expiry = { tombstoned: true, entityA: 'nent-bot-099', entityB: 'nent-bot-102' }
   return base
 }
 
@@ -966,14 +1023,14 @@ test('GameRoomHost-only pack still FAIL host:mvp when 17-key live pack is accept
 })
 
 test('census 101 from Handshake binding ids + host-audit session evidence, not invented entity_admitted', () => {
-  const audit = handshakeBindingAudit()
+  const audit = liveElevenAudit()
   assert.equal(audit.includes('entity_admitted'), false)
-  const report = verifyRun(handshakeEvidence(), audit)
+  const report = verifyRun(liveElevenGoodEvidence(), audit)
   assert.equal(report.census.botCount, 100)
   assert.equal(report.census.playerCount, 1)
   assert.equal(report.census.total, 101)
   assert.equal(report.census.netEntityIds.length, 101)
-  assert.ok(report.census.netEntityIds.every((id) => !isLauncherLoopIndex(id)))
+  assert.ok(report.census.netEntityIds.every((id) => isHostNetEntityId(id)))
 })
 
 test('hardcoded {total:101} with 17-key audit and no per-connection list must FAIL census', () => {
@@ -986,8 +1043,8 @@ test('hardcoded {total:101} with 17-key audit and no per-connection list must FA
   assert.notEqual(report.census.total, 101)
 })
 
-test('tick-batched chat with s6.ok false is allowed when Client Timer Manager was not invoked', () => {
-  const evidence = liveSeventeenKeyEvidence()
+test('tick-batched chat with s6.ok false is pack FAIL; SUCCESS requires host timer / test-control/tick', () => {
+  const evidence = liveElevenGoodEvidence()
   evidence.scenarios['6'] = {
     ok: false,
     timerManagerInvoked: false,
@@ -995,9 +1052,10 @@ test('tick-batched chat with s6.ok false is allowed when Client Timer Manager wa
     eventCount: 101,
   }
   evidence.traces.chat = { eventCount: 101 }
-  const report = verifyRun(evidence, seventeenKeyAudit())
+  const report = verifyRun(evidence, liveElevenAudit())
+  assert.equal(report.ok, false)
   assert.ok(
-    !report.failures.some((f) => f.check === 's6:timer' || f.check === 'scenario-6'),
+    report.failures.some((f) => f.check === 's6:timer' || f.check === 'scenario-6'),
     JSON.stringify(report.failures),
   )
 })
@@ -1162,27 +1220,29 @@ test('P1-A: launcher loop index 1..101 is not host NetEntityId', () => {
   )
 })
 
-test('P1-A: Handshake host-audit sessionId/admit effect may PASS S4 with non-loop binding ids', () => {
+test('P1-A: Handshake host-audit sessionId/admit effect is not S4 without host NetEntityId', () => {
   const report = verifyRun(handshakeEvidence(), handshakeBindingAudit())
   assert.ok(
-    !report.failures.some((f) => f.check === 's4:binding' || f.check === 'scenario-4'),
+    report.failures.some((f) => f.check === 's4:binding' || f.check.startsWith('census') || f.check === 'scenario-4'),
     JSON.stringify(report.failures),
   )
-  assert.equal(report.census.botCount, 100)
-  assert.equal(report.census.playerCount, 1)
-  assert.equal(report.census.total, 101)
-  assert.ok(report.census.netEntityIds.every((id) => !isLauncherLoopIndex(id)))
+  assert.ok(
+    report.census.netEntityIds.every((id) => isHostNetEntityId(id)),
+    `sessionId census leaked: ${report.census.netEntityIds.slice(0, 3)}`,
+  )
 })
 
 test('P1-B: GameRoomHost-green S5/S7/S9/S10/S11 must FAIL when snapshotSource is not live mvp-host', () => {
   const evidence = liveSeventeenKeyEvidence()
+  evidence.traces.queries = {}
+  evidence.scenarios['5'] = { ok: true }
   assert.equal(evidence.scenarios['5'].ok, true)
   assert.equal(evidence.scenarios['7'].snapshotSource, 'runtime-capture')
   const report = verifyRun(evidence, seventeenKeyAudit())
   assert.equal(report.ok, false)
   const checks = report.failures.map((f) => f.check)
   assert.ok(
-    checks.some((c) => c === 'scenario-5' || c === 'scenario-5:suite-double' || c === 's5:suite-double'),
+    checks.some((c) => c === 'scenario-5' || c === 'scenario-5:suite-double' || c === 's5:suite-double' || c === 's5:traces'),
     JSON.stringify(report.failures),
   )
   assert.ok(
@@ -1191,15 +1251,15 @@ test('P1-B: GameRoomHost-green S5/S7/S9/S10/S11 must FAIL when snapshotSource is
   )
 })
 
-test('P1-B: sibling-gap S5/S7/S9/S10/S11 ok:false + blockedReason is allowed', () => {
+test('P1-B: sibling-gap S5/S7/S9/S10/S11 ok:false + blockedReason is pack FAIL', () => {
   const evidence = handshakeEvidence()
   const report = verifyRun(evidence, handshakeBindingAudit())
   const blocked = new Set(['scenario-5', 'scenario-7', 'scenario-9', 'scenario-10', 'scenario-11'])
+  assert.equal(report.ok, false)
   assert.ok(
-    !report.failures.some((f) => blocked.has(f.check)),
+    report.failures.some((f) => blocked.has(f.check)),
     JSON.stringify(report.failures),
   )
-  assert.equal(report.ok, true, JSON.stringify(report.failures))
 })
 
 test('P1-B: missing ok:false blockedReason on S5/S7/S9/S10/S11 must FAIL', () => {
@@ -1227,8 +1287,8 @@ test('S8: new sessionId with same host NetEntityId/AccountId is reconnect ok', (
     entityA: 'nent-bot-100',
   }
   evidence.scenarios['8'] = {
-    ok: false,
-    rebound: false,
+    ok: true,
+    rebound: true,
     entityA: 'nent-bot-100',
     sessionId: 'sess-bot-100-re',
     previousSessionId: 'sess-bot-100',
@@ -1336,7 +1396,7 @@ test('S8: live-run-s8 shape (sess entityA, null nent, login accountId) must FAIL
     JSON.stringify(report.failures),
   )
   assert.ok(
-    !report.failures.some((f) => f.check === 'host:mvp' || f.check.startsWith('census')),
+    !report.failures.some((f) => f.check === 'host:mvp'),
     JSON.stringify(report.failures),
   )
 })
@@ -1363,7 +1423,7 @@ test('S8: netEntityId aliased to sessionId must FAIL rebind', () => {
   )
 })
 
-test('S8: honest ok:false + blockedReason for missing nent projection is allowed', () => {
+test('S8: honest ok:false + blockedReason for missing nent projection is pack FAIL', () => {
   const evidence = handshakeEvidence()
   evidence.scenarios['8'] = {
     ok: false,
@@ -1385,10 +1445,10 @@ test('S8: honest ok:false + blockedReason for missing nent projection is allowed
   }
   const report = verifyRun(evidence, handshakeBindingAudit())
   assert.ok(
-    !report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
+    report.failures.some((f) => f.check === 's8:rebind' || f.check === 'scenario-8'),
     JSON.stringify(report.failures),
   )
-  assert.equal(report.ok, true, JSON.stringify(report.failures))
+  assert.equal(report.ok, false)
 })
 
 test('isEntityRebound: sessionId-only match is not rebind', () => {
@@ -1418,4 +1478,344 @@ test('shouldRetryReconnectHandshake: SessionMismatch and missing session retry o
   assert.equal(shouldRetryReconnectHandshake({ reasonCode: 'SessionMismatch', message: 'mvp-host handshake rejected: SessionMismatch' }), true)
   assert.equal(shouldRetryReconnectHandshake(new Error('reconnect missing host sessionId')), true)
   assert.equal(shouldRetryReconnectHandshake(new Error('mvp-host handshake rejected: ReleaseMismatch')), false)
+})
+
+const LIVE_RUN_S8GAP_DIRS = [
+  join('C:', 'Work', 'LumioGames', 'wt-game', 'r-00354', 'integration', 'entity-chat', 'evidence', 'live-run-s8gap'),
+  join(dirname(fileURLToPath(import.meta.url)), 'evidence', 'live-run-s8gap'),
+]
+
+function s8gapPackDir() {
+  return LIVE_RUN_S8GAP_DIRS.find((dir) => existsSync(join(dir, 'manifest.json')) && existsSync(join(dir, 'round-1', 'evidence.json')))
+    ?? null
+}
+
+function nentLive(n) {
+  return `nent_${String(n).padStart(32, '0')}`
+}
+
+function liveElevenChatEnvelope() {
+  return {
+    messageType: 'InputCommand',
+    mappingId: 'chat.input',
+    payload: '0b00000068656c6c6f2d426f743031',
+    payloadSha256: '13b37ea0310268b2648b6ce23d0558a193952155edaac3d362f9793ad0063d9a',
+  }
+}
+
+function liveElevenBindings() {
+  const bindings = []
+  for (let i = 1; i <= 100; i++) {
+    bindings.push({
+      netEntityId: nentLive(i),
+      accountId: `acct_bot_${String(i).padStart(3, '0')}`,
+      roomId: MAIN_ROOM,
+      entityKind: 'bot',
+      connectionId: `conn-Bot${String(i).padStart(2, '0')}`,
+      sessionId: `sess-Bot${String(i).padStart(2, '0')}`,
+      generation: 1,
+      loginName: `Bot${String(i).padStart(2, '0')}`,
+    })
+  }
+  bindings.push({
+    netEntityId: nentLive(101),
+    accountId: 'acct_browser',
+    roomId: MAIN_ROOM,
+    entityKind: 'player',
+    connectionId: 'conn-Browser01',
+    sessionId: 'sess-Browser01',
+    generation: 1,
+    loginName: BROWSER_NAME,
+  })
+  return bindings
+}
+
+function liveElevenAdmitsFromBindings(bindings, processName = 'lumio-mvp-host') {
+  return bindings.map((row, i) => ({
+    index: i + 1,
+    ok: true,
+    status: 101,
+    process: processName,
+    entityType: row.entityKind,
+    loginName: row.loginName,
+    connectionId: row.connectionId,
+    sessionId: row.sessionId,
+    netEntityId: row.netEntityId,
+    accountId: row.accountId,
+    handshake: true,
+  }))
+}
+
+function liveElevenEventOrder(bindings) {
+  return bindings.map((row, i) => `${row.netEntityId}:hello-${row.loginName}:${i + 1}`)
+}
+
+function liveElevenGoodEvidence(processName = 'lumio-mvp-host') {
+  const bindings = liveElevenBindings()
+  const eventOrder = liveElevenEventOrder(bindings)
+  const appliedTicks = Array.from({ length: 101 }, () => 1)
+  const envelope = liveElevenChatEnvelope()
+  const evidence = goodEvidence()
+  evidence.hostProcess = {
+    process: processName,
+    pid: 4242,
+    listenUri: 'ws://127.0.0.1:19000',
+    testControlUri: 'http://127.0.0.1:19001',
+    command: [processName, '--listen', 'ws://127.0.0.1:0'],
+  }
+  evidence.liveAdmits = { live: 101, desired: 101, blocked: null, admits: liveElevenAdmitsFromBindings(bindings, processName) }
+  evidence.traces = {
+    account: { createAck: true, loadAck: true, wrongPasswordCode: 'wrong_password' },
+    handshake: { completed: 101, sessionIds: bindings.map((b) => b.sessionId) },
+    bindings,
+    queries: {
+      unauthorized: 'unauthorized',
+      invisible: 'invisible',
+      stale: 'stale_generation',
+      ok: 'ok',
+    },
+    chat: {
+      eventCount: 101,
+      tickSource: 'test-control/tick',
+      timerManagerInvoked: true,
+      ...envelope,
+    },
+    persist: { snapshotSource: processName === 'lumio-mvp-host' ? 'live-mvp-host' : 'lumio-entity-chat-replay', historyCount: 0 },
+    reconnect: {
+      rebound: true,
+      entityA: nentLive(100),
+      sessionId: 'sess-Bot100-re',
+      previousSessionId: 'sess-Bot100',
+      netEntityId: nentLive(100),
+      previousNetEntityId: nentLive(100),
+      accountId: 'acct_bot_100',
+      previousAccountId: 'acct_bot_100',
+    },
+    expiry: { tombstoned: true, entityA: nentLive(99), entityB: nentLive(102), staleARejected: true },
+  }
+  evidence.scenarios['4'] = {
+    ok: true,
+    resolvedBots: 100,
+    browserBound: true,
+    netEntityIds: bindings.map((b) => b.netEntityId),
+  }
+  evidence.scenarios['5'] = {
+    ok: true,
+    unauthorized: 'unauthorized',
+    invisible: 'invisible',
+    stale: 'stale_generation',
+  }
+  evidence.scenarios['6'] = {
+    ok: true,
+    timerManagerInvoked: true,
+    cadence: 'host-timer',
+    tickSource: 'test-control/tick',
+    eventCount: 101,
+    ...envelope,
+  }
+  evidence.scenarios['7'] = {
+    ok: true,
+    historyCountMax: 0,
+    restoredWindow: 0,
+    windowBeforeSnapshot: 101,
+    snapshotSource: processName === 'lumio-mvp-host' ? 'live-mvp-host' : 'lumio-entity-chat-replay',
+  }
+  evidence.scenarios['8'] = { ...evidence.traces.reconnect, ok: true }
+  evidence.scenarios['9'] = {
+    ok: true,
+    tombstoned: true,
+    staleARejected: true,
+    entityA: nentLive(99),
+    entityB: nentLive(102),
+  }
+  evidence.scenarios['10'] = { ok: true, isoTotal: 2, crossRoom: 'unauthorized' }
+  evidence.scenarios['11'] = { ok: true, eventOrder, appliedTicks, totalEntities: 101 }
+  return evidence
+}
+
+function liveElevenAudit(processName = 'lumio-mvp-host') {
+  const lines = [
+    JSON.stringify({
+      seq: 0,
+      kind: 'audit',
+      process: processName,
+      eventId: 'host.start',
+      timestamp: null,
+      category: 'host',
+      severity: 'info',
+      scope: null,
+      releasePoolId: null,
+      sessionId: null,
+      reasonCode: null,
+      admissionAttemptId: null,
+      effect: null,
+      sessionState: null,
+      authorityRevision: null,
+      slotEpoch: null,
+      connectionEpoch: null,
+      grantEpoch: null,
+    }),
+  ]
+  let seq = 1
+  for (const row of liveElevenBindings()) {
+    const base = {
+      seq: seq++,
+      kind: 'state',
+      eventId: null,
+      timestamp: null,
+      category: null,
+      severity: null,
+      scope: null,
+      releasePoolId: null,
+      sessionId: row.sessionId,
+      reasonCode: null,
+      admissionAttemptId: null,
+      effect: 'BindConnection',
+      sessionState: 'Active',
+      authorityRevision: 1,
+      slotEpoch: 1,
+      connectionEpoch: 1,
+      grantEpoch: 1,
+      process: processName,
+      netEntityId: row.netEntityId,
+      accountId: row.accountId,
+      entityKind: row.entityKind,
+      entityType: row.entityKind,
+      roomId: row.roomId,
+    }
+    lines.push(JSON.stringify(base))
+  }
+  return lines.join('\n') + '\n'
+}
+
+function siblingGapSuccessShape() {
+  const evidence = handshakeEvidence()
+  evidence.scenarios['5'] = siblingGapRow()
+  evidence.scenarios['6'] = { ok: false, timerManagerInvoked: false, cadence: 'tick-batched', eventCount: 0 }
+  evidence.scenarios['7'] = siblingGapRow({ historyCountMax: 0, restoredWindow: 0, snapshotSource: 'suite-double' })
+  evidence.scenarios['8'] = {
+    ok: false,
+    rebound: false,
+    entityA: null,
+    netEntityId: null,
+    previousNetEntityId: null,
+    blockedReason: S8_NENT_GAP_REASON,
+  }
+  evidence.scenarios['9'] = siblingGapRow()
+  evidence.scenarios['10'] = siblingGapRow()
+  evidence.scenarios['11'] = siblingGapRow({ totalEntities: 101 })
+  evidence.traces.reconnect = { rebound: false, entityA: null, netEntityId: null, previousNetEntityId: null }
+  return evidence
+}
+
+test('live-run-s8gap SUCCESS pack must FAIL because S5-S11/S8 are not-ok', () => {
+  const dir = s8gapPackDir()
+  const report = dir
+    ? verifyEvidenceDir(dir)
+    : compareRuns(siblingGapSuccessShape(), siblingGapSuccessShape(), handshakeBindingAudit(), handshakeBindingAudit())
+  assert.equal(report.ok, false, 'honest not-ok sibling-gap pack must not conclude SUCCESS')
+  const blob = JSON.stringify(report.failures)
+  for (const n of [5, 6, 7, 8, 9, 10, 11]) {
+    assert.ok(
+      new RegExp(`scenario-${n}|s${n}:`).test(blob),
+      `expected scenario ${n} failure, got ${blob.slice(0, 1200)}`,
+    )
+  }
+})
+
+test('sibling-gap S5/S7/S9/S10/S11 ok:false is pack FAIL, not SUCCESS skip', () => {
+  const report = verifyRun(siblingGapSuccessShape(), handshakeBindingAudit())
+  assert.equal(report.ok, false)
+  const checks = report.failures.map((f) => f.check)
+  assert.ok(checks.includes('scenario-5'), JSON.stringify(report.failures))
+  assert.ok(checks.includes('scenario-7') || checks.includes('s7:snapshot-material'), JSON.stringify(report.failures))
+  assert.ok(checks.includes('scenario-9') || checks.includes('s9:tombstone'), JSON.stringify(report.failures))
+  assert.ok(checks.includes('scenario-10') || checks.includes('s10:isolation'), JSON.stringify(report.failures))
+  assert.ok(checks.includes('scenario-11') || checks.includes('event-order'), JSON.stringify(report.failures))
+})
+
+test('S8 honest nent-gap ok:false is pack FAIL, not SUCCESS skip', () => {
+  const evidence = liveElevenGoodEvidence()
+  evidence.scenarios['8'] = {
+    ok: false,
+    rebound: false,
+    entityA: null,
+    netEntityId: null,
+    previousNetEntityId: null,
+    blockedReason: S8_NENT_GAP_REASON,
+  }
+  evidence.traces.reconnect = { rebound: false, entityA: null, netEntityId: null, previousNetEntityId: null }
+  const report = verifyRun(evidence, liveElevenAudit())
+  assert.equal(report.ok, false)
+  assert.ok(
+    report.failures.some((f) => f.check === 'scenario-8' || f.check === 's8:rebind'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('S6 timerManagerInvoked true without test-control/tick or host timer must FAIL', () => {
+  const evidence = liveElevenGoodEvidence()
+  evidence.scenarios['6'] = {
+    ...evidence.scenarios['6'],
+    timerManagerInvoked: true,
+    tickSource: 'for-loop',
+    cadence: 'for-loop',
+  }
+  evidence.traces.chat = { ...evidence.traces.chat, tickSource: 'for-loop', timerManagerInvoked: true }
+  const report = verifyRun(evidence, liveElevenAudit())
+  assert.equal(report.ok, false)
+  assert.ok(
+    report.failures.some((f) => f.check === 's6:timer-source' || f.check === 's6:timer' || /for-loop|test-control\/tick/i.test(f.message)),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('census/S4 require bindings + 17-key audit netEntityId, not sessionId', () => {
+  const evidence = handshakeEvidence()
+  const report = verifyRun(evidence, handshakeBindingAudit())
+  assert.ok(
+    report.failures.some((f) => f.check === 's4:binding' || f.check.startsWith('census') || f.check === 'scenario-4'),
+    JSON.stringify(report.failures),
+  )
+  assert.ok(
+    report.census.netEntityIds.length === 0
+      || report.census.netEntityIds.every((id) => isHostNetEntityId(id)),
+    `sessionId census leaked: ${report.census.netEntityIds.slice(0, 3)}`,
+  )
+})
+
+test('GameRoomHost-only pack still FAIL host:mvp when live 11-scenario rust traces are accepted', () => {
+  const suite = verifyRun(suiteOnlyEvidence(), suiteOnlyAudit())
+  assert.equal(suite.ok, false)
+  assert.ok(
+    suite.failures.some((f) => f.check === 'host:mvp' || /suite-only host is not C# MVP host/i.test(f.message)),
+    JSON.stringify(suite.failures),
+  )
+})
+
+test('lumio-entity-chat-replay hostProcess is accepted for the identical 11-scenario suite', () => {
+  const evidence = liveElevenGoodEvidence('lumio-entity-chat-replay')
+  const report = verifyRun(evidence, liveElevenAudit('lumio-entity-chat-replay'))
+  assert.ok(
+    !report.failures.some((f) => f.check === 'host:mvp'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('rust S5 ok:true with real query traces is not GameRoomHost suite-double', () => {
+  const evidence = liveElevenGoodEvidence('lumio-entity-chat-replay')
+  assert.equal(evidence.scenarios['5'].ok, true)
+  const report = verifyRun(evidence, liveElevenAudit('lumio-entity-chat-replay'))
+  assert.ok(
+    !report.failures.some((f) => f.check === 'scenario-5:suite-double' || f.check === 's5:suite-double'),
+    JSON.stringify(report.failures),
+  )
+})
+
+test('live 11-scenario traces on mvp-host must PASS when all 11 are ok', () => {
+  const evidence = liveElevenGoodEvidence('lumio-mvp-host')
+  const report = verifyRun(evidence, liveElevenAudit('lumio-mvp-host'))
+  assert.equal(report.ok, true, JSON.stringify(report.failures))
+  assert.equal(report.census.total, 101)
+  assert.ok(report.census.netEntityIds.every((id) => isHostNetEntityId(id)))
 })

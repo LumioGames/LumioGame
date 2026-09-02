@@ -64,8 +64,10 @@ node launcher.mjs --out <evidenceDir>
 
 ## 对账
 
-- 101 = Handshake/Admit 绑定 ids(host-audit 非空 sessionId / admit effect,或 admit-trace `binding_committed`);禁止 launcher 循环下标 `"1"`..`"101"` 当 NetEntityId,禁止 `{total:101}` 常数,禁止 GameRoomHost census dump。禁止发明 FullGraph 不会发的 `entity_admitted`。
-- S5/S7/S9/S10/S11 在 mvp-host 无 ChatComponent/C-2 时必须 `ok: false` + `blockedReason`;不得把 GameRoomHost 自评分写入 SUCCESS traces。
+- 101 = bindings + 17-key audit 的 `nent_*`;禁止 sessionId / login accountId / launcher 循环下标 `"1"`..`"101"` 当 NetEntityId,禁止 `{total:101}` 常数,禁止 GameRoomHost census dump。禁止发明 FullGraph 不会发的 `entity_admitted`。
+- SUCCESS 要求场景 1–11 `ok: true` 且有独立 traces（mvp-host test-control 或 rust replay）。sibling-gap / S8 nent-gap 的诚实 `ok: false` 使证据包 FAIL。
+- census / S4 / S8 用 bindings + 17-key audit 的 `nent_*`，不是 `hs.sessionId` 或 login `accountId`。
+- S6 `timerManagerInvoked` 仅当 tick 走 `POST /test-control/tick` / 宿主 timer。S3 Playwright 必跑且 `injected:false`。
 - 两轮对比 entity counts、event order、applied Tick。
 - 失败矩阵:unauthorized / invisible / stale_generation / tombstoned,不得 alias。
 - Snapshot 只保留 last-message,不恢复聊天历史。
