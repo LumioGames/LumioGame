@@ -27,7 +27,7 @@ metadata:
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
 | [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 字段声明与 SetMessage——查 persist-only last-message、下一 Tick 提交与有界输入 reject |
-| [`features/gameplay/entity-chat-harness.md`](features/gameplay/entity-chat-harness.md) | 101-entity C# MVP acceptance harness——查 mvp-host 101 活连接、BLOCKED 证据与 Bot 启动 |
+| [`features/gameplay/entity-chat-harness.md`](features/gameplay/entity-chat-harness.md) | 101-entity C# MVP acceptance harness——查 mvp-host/rust 11 场景活 traces、nent census 与 Bot 启动 |
 
 ## lessons(经验教训 · 复发问题暂存区)
 

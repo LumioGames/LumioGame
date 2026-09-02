@@ -19,12 +19,13 @@
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { generateEd25519SeedPair, hexLower } from './bot-credential.mjs'
 import {
   closeQuietly,
+  sendWsPing,
   FULLGRAPH_LIMIT_FILE,
   FULLGRAPH_LIMIT_LINE,
   FULLGRAPH_SESSIONS_LINE,
@@ -34,33 +35,40 @@ import {
   admitLiveConnections,
   closeAll,
   credentialTokenBytes,
+  driveLiveEleven,
+  encodeChatInput,
   loginBots,
+  testControlRequest,
   loginBrowser,
   reconnectNamedBot,
   runAccountScenario1,
   runPlaywrightBrowser,
 } from './scenarios.mjs'
-import { compareRuns, isEntityRebound, isHostNetEntityId, isLauncherLoopIndex, parseNdjson, playwrightRan, S8_NENT_GAP_REASON, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
-
-const SIBLING_GAP_REASON = 'sibling-gap: mvp-host ReferenceWorldSimulation cannot Attribute Query / Chat persist / expiry / isolation / event-order'
+import { compareRuns, isHostNetEntityId, isLauncherLoopIndex, parseNdjson, playwrightRan, TEST_PASSWORD, verifyRun } from './verify-evidence.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../..')
 const DEFAULT_DOTNET = process.env.LUMIO_DOTNET ?? 'dotnet'
 const LUMIO_SERVER = resolve(process.env.LUMIO_SERVER_ROOT ?? join(REPO_ROOT, '../../LumioServer'))
 const HOST_PROJ = join(LUMIO_SERVER, 'mvp-host/src/Lumio.Server.MvpHost.App/Lumio.Server.MvpHost.App.csproj')
-const HOST_BUILD_ARGS = ['build', '--project', HOST_PROJ, '-c', 'Release', '--nologo']
+const HOST_BUILD_ARGS = ['build', HOST_PROJ, '-c', 'Release', '--nologo']
+const ACCOUNT_PROJ = join(LUMIO_SERVER, 'account-server/src/Lumio.Server.Account.App/Lumio.Server.Account.App.csproj')
+const ACCOUNT_BUILD_ARGS = ['build', ACCOUNT_PROJ, '-c', 'Release', '--nologo']
 const ACCOUNT_DLL_ORIGIN_MAIN = join(
   LUMIO_SERVER,
   'account-server/src/Lumio.Server.Account.App/bin/Release/net10.0/lumio-account-server.dll',
 )
+const ACCOUNT_DLL_DEBUG = join(
+  LUMIO_SERVER,
+  'account-server/src/Lumio.Server.Account.App/bin/Debug/net10.0/lumio-account-server.dll',
+)
 const HOST_READY_TIMEOUT_MS = 30000
 const ACCOUNT_READY_TIMEOUT_MS = 30000
 const DESIRED_ADMITS = 101
-const SUITE_PROJ = join(REPO_ROOT, 'modules/server-gameplay/src/Lumio.Game.EntityChat.Suite/Lumio.Game.EntityChat.Suite.csproj')
-const SUITE_DLL = join(
+const GAMEPLAY_PROJ = join(REPO_ROOT, 'modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj')
+const GAMEPLAY_DLL = join(
   REPO_ROOT,
-  'modules/server-gameplay/src/Lumio.Game.EntityChat.Suite/bin/Debug/net10.0/Lumio.Game.EntityChat.Suite.dll',
+  'modules/server-gameplay/src/Lumio.Game.ServerGameplay/bin/Debug/net10.0/Lumio.Game.ServerGameplay.dll',
 )
 
 function parseArgs(argv) {
@@ -147,7 +155,9 @@ function findHostArtifact() {
 }
 
 function originMainAccountDll() {
-  return existsSync(ACCOUNT_DLL_ORIGIN_MAIN) ? ACCOUNT_DLL_ORIGIN_MAIN : null
+  if (existsSync(ACCOUNT_DLL_ORIGIN_MAIN)) return ACCOUNT_DLL_ORIGIN_MAIN
+  if (existsSync(ACCOUNT_DLL_DEBUG)) return ACCOUNT_DLL_DEBUG
+  return null
 }
 
 function writeBlocked(outDir, blocked) {
@@ -233,15 +243,6 @@ function auditHasSessionAdmission(auditText) {
     if (ev.effect && /admit|bind|createsession|authenticate/i.test(String(ev.effect))) return true
   }
   return false
-}
-
-function siblingGapRow(extra = {}) {
-  return {
-    ok: false,
-    source: 'suite-double',
-    blockedReason: SIBLING_GAP_REASON,
-    ...extra,
-  }
 }
 
 function isBindingAdmit(rec) {
@@ -360,34 +361,35 @@ function startStaticServer({ root, readyFile, logPath }) {
   return { proc, ready }
 }
 
-function ensureSuiteDll() {
-  if (existsSync(SUITE_DLL)) return SUITE_DLL
-  spawnSync(DEFAULT_DOTNET, ['build', '--project', SUITE_PROJ, '--nologo'], {
+function ensureGameplayDll() {
+  if (existsSync(GAMEPLAY_DLL)) return GAMEPLAY_DLL
+  spawnSync(DEFAULT_DOTNET, ['build', GAMEPLAY_PROJ, '--nologo'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     windowsHide: true,
     env: hostEnv(),
   })
-  return existsSync(SUITE_DLL) ? SUITE_DLL : null
+  return existsSync(GAMEPLAY_DLL) ? GAMEPLAY_DLL : null
 }
 
-function runGameplaySuite({ outDir, accountDll }) {
-  const dll = ensureSuiteDll()
-  if (!dll) return { ok: false, error: `missing ${SUITE_DLL}`, evidence: null }
-  mkdirSync(outDir, { recursive: true })
-  const result = spawnSync(
-    DEFAULT_DOTNET,
-    ['exec', dll, '--out', outDir, '--account-server-dll', accountDll],
-    { cwd: REPO_ROOT, encoding: 'utf8', windowsHide: true, env: hostEnv(), timeout: 180000 },
-  )
-  try {
-    writeFileSync(join(outDir, 'suite.log'), `${result.stdout ?? ''}\n${result.stderr ?? ''}`)
-  } catch { /* ignore */ }
-  return {
-    exitCode: result.status,
-    evidence: safeReadJson(join(outDir, 'evidence.json')),
-    error: result.status === 0 ? null : String(result.stderr || result.stdout || `exit ${result.status}`).slice(-400),
+function mergeAdmitsWithBindings(admits, bindings) {
+  if (!Array.isArray(admits) || !Array.isArray(bindings)) return admits
+  const byAccount = new Map()
+  const bySession = new Map()
+  for (const row of bindings) {
+    if (row.accountId) byAccount.set(row.accountId, row)
+    if (row.sessionId) bySession.set(row.sessionId, row)
   }
+  for (const rec of admits) {
+    const row = (rec.accountId && byAccount.get(rec.accountId))
+      || (rec.sessionId && bySession.get(rec.sessionId))
+      || null
+    if (!row) continue
+    if (isHostNetEntityId(row.netEntityId)) rec.netEntityId = row.netEntityId
+    if (row.connectionId) rec.connectionId = row.connectionId
+    if (row.sessionId) rec.sessionId = row.sessionId
+  }
+  return admits
 }
 
 function mergeRoundEvidence({
@@ -397,15 +399,18 @@ function mergeRoundEvidence({
   account,
   botLogins,
   browser,
-  suiteEvidence,
-  liveReconnect,
+  liveEleven,
 }) {
   const s1ok = account?.create?.accepted === true
     && account?.load?.accepted === true
     && account?.wrongPassword?.code === 'wrong_password'
+  const bindings = liveEleven?.bindings ?? []
+  const botBindings = bindings.filter((row) => (row.entityKind === 'bot' || row.entityType === 'bot') && isHostNetEntityId(row.netEntityId))
+  const playerBindings = bindings.filter((row) => (row.entityKind === 'player' || row.entityType === 'player') && isHostNetEntityId(row.netEntityId))
   const botAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'bot')
   const playerAdmits = (liveAdmits.admits ?? []).filter((a) => isBindingAdmit(a) && a.entityType === 'player')
   const sessionIds = (liveAdmits.admits ?? []).filter(isBindingAdmit).map((a) => a.sessionId)
+  const netEntityIds = bindings.map((row) => row.netEntityId).filter((id) => isHostNetEntityId(id))
   const pw = {
     ran: playwright?.ran === true,
     browser: playwright?.browser ?? '',
@@ -415,17 +420,17 @@ function mergeRoundEvidence({
     channel: playwright?.channel ?? null,
   }
   const s3ok = playerAdmits.length === 1 && liveAdmits.live === 101 && playwrightRan({ playwright: pw })
-  const bot100 = botAdmits.find((a) => a.loginName === 'Bot100')
-  const previousNent = isHostNetEntityId(liveReconnect?.previousNetEntityId)
-    ? liveReconnect.previousNetEntityId
-    : (isHostNetEntityId(bot100?.netEntityId) ? bot100.netEntityId : null)
-  const admittedNent = isHostNetEntityId(liveReconnect?.netEntityId) ? liveReconnect.netEntityId : null
-  const s8ok = isEntityRebound(
-    { netEntityId: previousNent },
-    { netEntityId: admittedNent },
-  )
-  const entityA = s8ok ? previousNent : (isHostNetEntityId(admittedNent) ? admittedNent : null)
-  const s8blocked = s8ok ? null : (liveReconnect?.blockedReason ?? S8_NENT_GAP_REASON)
+  const s4ok = liveEleven?.s4ok === true
+    || (botBindings.length === 100 && playerBindings.length === 1 && netEntityIds.length === 101)
+  const reconnect = liveEleven?.reconnect ?? {}
+  const s8ok = reconnect.ok === true || liveEleven?.s8ok === true
+  const queries = liveEleven?.queries ?? {}
+  const chat = liveEleven?.chat ?? {}
+  const persist = liveEleven?.persist ?? {}
+  const expiry = liveEleven?.expiry ?? {}
+  const isolation = liveEleven?.isolation ?? {}
+  const eventOrder = liveEleven?.eventOrder ?? []
+  const appliedTicks = liveEleven?.appliedTicks ?? []
   const scenarios = {
     1: {
       ok: s1ok,
@@ -441,41 +446,69 @@ function mergeRoundEvidence({
       playwrightRan: pw.ran,
     },
     4: {
-      ok: botAdmits.length === 100 && playerAdmits.length === 1
-        && sessionIds.length === 101
-        && sessionIds.every((id) => !isLauncherLoopIndex(id))
-        && (botLogins ?? []).every((b) => b.accepted && b.accountId)
-        && browser?.accepted === true,
-      resolvedBots: botAdmits.length,
-      browserBound: playerAdmits.length === 1,
+      ok: s4ok,
+      resolvedBots: botBindings.length,
+      browserBound: playerBindings.length === 1,
+      netEntityIds,
       sessionIds,
     },
-    5: siblingGapRow(),
-    6: {
-      ok: false,
-      timerManagerInvoked: false,
-      cadence: 'tick-batched',
-      eventCount: 0,
+    5: {
+      ok: liveEleven?.s5ok === true,
+      unauthorized: queries.unauthorized,
+      invisible: queries.invisible,
+      stale: queries.stale,
     },
-    7: siblingGapRow({ historyCountMax: 0, restoredWindow: 0, snapshotSource: 'suite-double' }),
+    6: {
+      ok: liveEleven?.s6ok === true,
+      timerManagerInvoked: chat.timerManagerInvoked === true,
+      cadence: chat.cadence ?? 'tick-batched',
+      tickSource: chat.tickSource ?? null,
+      eventCount: chat.eventCount ?? 0,
+      messageType: chat.messageType,
+      mappingId: chat.mappingId,
+      payload: chat.payload,
+      payloadSha256: chat.payloadSha256,
+    },
+    7: {
+      ok: liveEleven?.s7ok === true,
+      historyCountMax: persist.historyCountMax ?? 0,
+      restoredWindow: persist.restoredWindow ?? 0,
+      windowBeforeSnapshot: persist.windowBeforeSnapshot ?? 0,
+      snapshotSource: persist.snapshotSource ?? 'live-mvp-host',
+    },
     8: {
       ok: s8ok,
-      entityA,
+      entityA: reconnect.entityA ?? null,
       rebound: s8ok,
-      ...(s8blocked ? { blockedReason: s8blocked } : {}),
-      sessionId: liveReconnect?.sessionId ?? null,
-      previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
-      netEntityId: admittedNent,
-      previousNetEntityId: previousNent,
-      accountId: liveReconnect?.accountId ?? null,
-      previousAccountId: liveReconnect?.previousAccountId ?? null,
+      sessionId: reconnect.sessionId ?? null,
+      previousSessionId: reconnect.previousSessionId ?? null,
+      netEntityId: reconnect.netEntityId ?? null,
+      previousNetEntityId: reconnect.previousNetEntityId ?? null,
+      accountId: reconnect.accountId ?? null,
+      previousAccountId: reconnect.previousAccountId ?? null,
     },
-    9: siblingGapRow(),
-    10: siblingGapRow(),
-    11: siblingGapRow({ totalEntities: liveAdmits.live }),
+    9: {
+      ok: liveEleven?.s9ok === true,
+      tombstoned: expiry.tombstoned === true,
+      staleARejected: expiry.staleARejected === true,
+      entityA: expiry.entityA ?? null,
+      entityB: expiry.entityB ?? null,
+    },
+    10: {
+      ok: liveEleven?.s10ok === true,
+      isoTotal: isolation.isoTotal ?? 0,
+      crossRoom: isolation.crossRoom ?? null,
+    },
+    11: {
+      ok: liveEleven?.s11ok === true,
+      eventOrder,
+      appliedTicks,
+      totalEntities: liveAdmits.live,
+    },
   }
+  const allOk = Object.values(scenarios).every((row) => row.ok === true)
   return {
-    ok: false,
+    ok: allOk,
     hostProcess,
     liveAdmits: {
       desired: DESIRED_ADMITS,
@@ -492,16 +525,13 @@ function mergeRoundEvidence({
         wrongPasswordCode: account?.wrongPassword?.code,
       },
       handshake: { completed: sessionIds.length, sessionIds },
-      reconnect: {
-        rebound: s8ok,
-        entityA,
-        sessionId: liveReconnect?.sessionId ?? null,
-        previousSessionId: liveReconnect?.previousSessionId ?? bot100?.sessionId ?? null,
-        netEntityId: admittedNent,
-        previousNetEntityId: previousNent,
-        accountId: liveReconnect?.accountId ?? null,
-        previousAccountId: liveReconnect?.previousAccountId ?? null,
-      },
+      bindings,
+      queries,
+      chat,
+      persist,
+      reconnect,
+      expiry,
+      isolation,
     },
     scenarios,
   }
@@ -546,6 +576,7 @@ async function runOneRound({
     extraEnv: {
       LUMIO_ACCOUNT_ADMISSION_PUBLIC_KEY_HEX: hexLower(admission.publicKey),
       LUMIO_ACCOUNT_ADMISSION_KEY_ID: '1',
+      ...(ensureGameplayDll() ? { LUMIO_GAMEPLAY_ASSEMBLY: GAMEPLAY_DLL } : {}),
     },
   })
   const accountProc = startAccountServer({
@@ -565,6 +596,7 @@ async function runOneRound({
       testControlUri: ready.testControlUri,
       pid: host.proc.pid,
       process: 'lumio-mvp-host',
+      gameplayAssembly: GAMEPLAY_DLL,
     }, null, 2) + '\n')
     const accountPort = accountReady.port
     const accountScenario = await runAccountScenario1({
@@ -605,25 +637,66 @@ async function runOneRound({
       clients,
       desired: DESIRED_ADMITS,
       tracePath,
+      afterAdmit: async (rec) => {
+        const cmd = encodeChatInput(`hello-${rec.loginName ?? rec.connectionId}`)
+        const posted = await testControlRequest(ready.testControlUri, 'POST', '/test-control/chat', {
+          connectionId: rec.connectionId,
+          mappingId: cmd.mappingId,
+          payload: cmd.payload,
+          payloadSha256: cmd.payloadSha256,
+        })
+        appendFileSync(tracePath, JSON.stringify({
+          ts: new Date().toISOString(),
+          kind: 'test_control_chat',
+          process: 'lumio-mvp-host',
+          connectionId: rec.connectionId,
+          loginName: rec.loginName,
+          ok: posted.json?.ok === true,
+          kindResult: posted.json?.kind ?? null,
+          error: posted.json?.error ?? null,
+        }) + '\n')
+        return { ok: posted.json?.ok === true, ...cmd }
+      },
     })
     sockets = admits.sockets
     process.stdout.write(`live admits ${admits.live}/${DESIRED_ADMITS} blocked=${admits.blocked ? admits.blocked.error : 'none'}\n`)
 
-    let liveReconnect = { rebound: false }
-    if (sockets.length >= 100) {
-      const bot100 = admits.admits.find((a) => a.loginName === 'Bot100' && isBindingAdmit(a))
-      await closeQuietly(sockets[99])
-      liveReconnect = await reconnectNamedBot({
-        accountPort,
-        botSeed: bot.seed,
-        loginName: 'Bot100',
-        listenUri: ready.listenUri,
-        tracePath,
-        sessionId: bot100?.sessionId,
-        netEntityId: bot100?.netEntityId,
-      })
-      if (liveReconnect.socket) sockets[99] = liveReconnect.socket
-    }
+    const liveEleven = await driveLiveEleven({
+      testControlUri: ready.testControlUri,
+      botLogins,
+      browser,
+      accountPort,
+      botSeed: bot.seed,
+      tracePath,
+      admits,
+      reconnectBot100: async (bot100Binding) => {
+        let liveReconnect = { rebound: false }
+        if (sockets.length >= 100) {
+          const bot100 = admits.admits.find((a) => a.loginName === 'Bot100' && isBindingAdmit(a))
+          await closeQuietly(sockets[99])
+          liveReconnect = await reconnectNamedBot({
+            accountPort,
+            botSeed: bot.seed,
+            loginName: 'Bot100',
+            listenUri: ready.listenUri,
+            tracePath,
+            sessionId: bot100Binding?.sessionId ?? bot100?.sessionId,
+            netEntityId: bot100Binding?.netEntityId ?? bot100?.netEntityId,
+          })
+          if (liveReconnect.socket) sockets[99] = liveReconnect.socket
+        }
+        return liveReconnect
+      },
+      disconnectLogin: async (loginName) => {
+        const idx = admits.admits.findIndex((a) => a.loginName === loginName)
+        if (idx >= 0) await closeQuietly(sockets[idx])
+      },
+      keepAlive: async () => {
+        for (const ws of sockets) sendWsPing(ws)
+      },
+    })
+    mergeAdmitsWithBindings(admits.admits, liveEleven.bindings)
+    process.stdout.write(`live eleven s4=${liveEleven.s4ok} s5=${liveEleven.s5ok} s6=${liveEleven.s6ok} s7=${liveEleven.s7ok} s8=${liveEleven.s8ok} s9=${liveEleven.s9ok} s10=${liveEleven.s10ok} s11=${liveEleven.s11ok}\n`)
 
     let playwright = { ran: false, injected: false, receivedFromNetwork: false }
     try {
@@ -650,11 +723,11 @@ async function runOneRound({
       }
     }
 
-    const suite = runGameplaySuite({ outDir: join(roundDir, 'suite'), accountDll })
     const hostProcess = {
       process: 'lumio-mvp-host',
       pid: host.proc.pid,
       listenUri: ready.listenUri,
+      testControlUri: ready.testControlUri,
       command: [command, ...commandArgs],
     }
     const evidence = mergeRoundEvidence({
@@ -664,8 +737,7 @@ async function runOneRound({
       account: accountScenario,
       botLogins,
       browser,
-      suiteEvidence: suite.evidence,
-      liveReconnect,
+      liveEleven,
     })
     const auditText = safeReadText(auditPath)
     const admitTraceText = safeReadText(tracePath)
@@ -679,7 +751,7 @@ async function runOneRound({
       admits,
       hostProcess,
       playwright,
-      suite,
+      liveEleven,
       verify,
     }
   } finally {
@@ -733,7 +805,12 @@ async function main() {
   const accountOverride = args['account-server-dll']
     ? resolve(String(args['account-server-dll']))
     : (process.env.LUMIO_ACCOUNT_SERVER_DLL ? resolve(process.env.LUMIO_ACCOUNT_SERVER_DLL) : null)
-  const accountDll = (accountOverride && existsSync(accountOverride)) ? accountOverride : originMainAccountDll()
+  let accountDll = (accountOverride && existsSync(accountOverride)) ? accountOverride : originMainAccountDll()
+  if (!accountDll || !existsSync(accountDll)) {
+    const build = spawnSync(DEFAULT_DOTNET, ACCOUNT_BUILD_ARGS, { cwd: LUMIO_SERVER, encoding: 'utf8', windowsHide: true, env: hostEnv() })
+    try { writeFileSync(join(outDir, 'account-build.log'), `${build.stdout ?? ''}\n${build.stderr ?? ''}`) } catch { /* ignore */ }
+    accountDll = originMainAccountDll()
+  }
   if (!accountDll || !existsSync(accountDll)) {
     const expected = ACCOUNT_DLL_ORIGIN_MAIN
     const blocked = writeBlocked(outDir, {

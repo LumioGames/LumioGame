@@ -284,6 +284,13 @@ export async function recvWsJson(socket, timeoutMs = 10000) {
   }
 }
 
+export function sendWsPing(socket) {
+  if (!socket) return
+  try {
+    socket.write(encodeWsControlFrame(0x9))
+  } catch { /* ignore */ }
+}
+
 export async function sendWsJson(socket, payload) {
   const bytes = Buffer.isBuffer(payload) ? payload : Buffer.from(JSON.stringify(payload), 'utf8')
   await new Promise((resolve, reject) => {
