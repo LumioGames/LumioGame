@@ -18,7 +18,7 @@ public static class ChatErrorCodes
     /// <summary>SetMessage targeted a destroyed or never-created entity.</summary>
     public const string EntityDestroyed = "entity_destroyed";
 
-    /// <summary>The room world has already fail-stopped.</summary>
+    /// <summary>The Runtime chat world has already fail-stopped.</summary>
     public const string WorldFaulted = "world_faulted";
 
     /// <summary>InputCommand messageType or command-array shape is illegal.</summary>

@@ -8,8 +8,8 @@
 
 ## 负责什么
 
-- 声明 `ChatComponent` 字段（`lastMessageText` / `lastMessageTick`）及其 persist-only、不上客户端属性同步流的维度。
-- 在 Simulation Owner Thread 上经命令/提交路径执行 `SetMessage`：同一权威 Tick 更新发送者组件并产生一条 `ChatMessageEvent`。
+- 声明 `ChatComponent` 字段（`lastMessageText` / `lastMessageTick`）及其 N-04 三维标注（persistent / not-replicated / server-only）。
+- `SetMessage` 作为 Runtime 命令提交相（`EcsCommandBufferCommit`）内的系统执行；Game 不拥有世界或私有队列。
 - 执行 C-1 冻结的有界输入策略（UTF-8 512 字节上限、每发送者每 Tick 至多 1 条，单一行为 reject）。
 
 ## 明确不负责什么
@@ -20,11 +20,12 @@
 
 ## 状态所有权
 
-- 权威 last-message 字段只存在于本模块的发送者 `ChatComponent`。
+- 权威 last-message 字段存在于 Runtime `EcsWorld` 上的发送者 `ChatComponent`。
 - `ChatMessageEvent` 是提交后的即时通知，不在本模块保留历史列表。
 
 ## 依赖方向
 
 - 消费架构源冻结映射，不反向修改公共契约。
+- 引用 `Lumio.GameRuntime.Ecs` 与 `Lumio.GameRuntime.Replication`（路径经 `LUMIO_RUNTIME_ROOT` 或仓根相对 sibling 发现）。
 - 不引用 `Lumio.Gen.*`（generated 适配点尚未落地；本切片手写类型面对齐 JSON）。
 - 不引用 `LumioServer` / `LumioClient` 实现，不引用 NativeCore / VoxelEngine 源码。
