@@ -1,6 +1,8 @@
 using System;
 using System.Reflection;
 using Lumio.Game.ServerGameplay;
+using Lumio.GameRuntime.Replication.Binding;
+using RuntimeChat = Lumio.GameRuntime.Replication.Chat;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -21,68 +23,67 @@ public sealed class InputCommandEnvelopeTests
     [Fact]
     public void HostAdmitRequiresInputCommandEnvelopeNotRawText()
     {
-        MethodInfo? raw = typeof(GameRoomHost).GetMethod(
+        MethodInfo? raw = typeof(ChatSetMessageSystem).GetMethod(
             "AdmitChatInput",
-            BindingFlags.Instance | BindingFlags.Public,
+            BindingFlags.Static | BindingFlags.Public,
             binder: null,
-            types: new[] { typeof(string), typeof(string) },
+            types: new[] { typeof(RuntimeChat.ChatCommandRuntime), typeof(string), typeof(string) },
             modifiers: null);
         Assert.Null(raw);
 
-        MethodInfo? envelope = typeof(GameRoomHost).GetMethod(
-            "AdmitChatInput",
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: new[] { typeof(string), typeof(InputCommandEnvelope) },
-            modifiers: null);
+        MethodInfo? envelope = typeof(ChatSetMessageSystem).GetMethod(
+            nameof(ChatSetMessageSystem.AdmitEnvelope),
+            BindingFlags.Static | BindingFlags.Public);
         Assert.NotNull(envelope);
     }
 
     [Fact]
     public void ValidChatInputEnvelopeIsAdmittedAndDecodedTextReachesTick()
     {
-        var host = new GameRoomHost(TimeSpan.FromMinutes(5), new ManualClock());
-        Assert.True(host.Admit("room-main", "c-bot01", Bot("Bot01")).Accepted);
-
-        ChatOperationResult admitted = host.AdmitChatInput("c-bot01", InputCommandEnvelope.FromChatText("hello-Bot01"));
+        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
+        ChatOperationResult admitted = ChatSetMessageSystem.AdmitEnvelope(
+            runtime,
+            "room-01",
+            "C1",
+            1UL,
+            InputCommandEnvelope.FromChatText("hello-Bot01"));
         Assert.Equal(ChatOperationKind.Admitted, admitted.Kind);
 
-        RoomTickResult tick = host.RunTick("room-main");
-        ChatMessageEvent ev = Assert.Single(tick.Events);
+        RuntimeChat.ChatTickResult tick = runtime.RunTick(1);
+        RuntimeChat.ChatMessageEvent ev = Assert.Single(tick.Events);
         Assert.Equal("hello-Bot01", ev.Text);
     }
 
     [Fact]
     public void BadPayloadHashIsRejectedBeforeAnyChatStateChange()
     {
-        var host = new GameRoomHost(TimeSpan.FromMinutes(5), new ManualClock());
-        Assert.True(host.Admit("room-main", "c-bot01", Bot("Bot01")).Accepted);
-
+        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
+        string sender = runtime.LiveNetEntityIds[0];
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("hello-Bot01");
         CommandBlock block = Assert.Single(valid.Commands);
         var tampered = new InputCommandEnvelope(
             valid.MessageType,
             new[] { new CommandBlock(block.MappingId, block.Payload, string.Concat("ab", block.PayloadSha256.AsSpan(2))) });
 
-        ChatOperationResult rejected = host.AdmitChatInput("c-bot01", tampered);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, tampered);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.BadPayloadHash, rejected.ErrorCode);
-        Assert.Empty(host.RunTick("room-main").Events);
+        Assert.Empty(runtime.RunTick(1).Events);
+        Assert.True(ChatSetMessageSystem.TryGetComponent(runtime, sender, out ChatComponent component));
+        Assert.Equal(string.Empty, component.LastMessageText);
     }
 
     [Fact]
     public void UnknownMappingIdIsRejectedAsUnknownCommandType()
     {
-        var host = new GameRoomHost(TimeSpan.FromMinutes(5), new ManualClock());
-        Assert.True(host.Admit("room-main", "c-bot01", Bot("Bot01")).Accepted);
-
+        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("gg");
         CommandBlock block = Assert.Single(valid.Commands);
         var unknown = new InputCommandEnvelope(
             valid.MessageType,
             new[] { new CommandBlock("chat.not-a-command", block.Payload, block.PayloadSha256) });
 
-        ChatOperationResult rejected = host.AdmitChatInput("c-bot01", unknown);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, unknown);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.UnknownCommandType, rejected.ErrorCode);
     }
@@ -90,32 +91,23 @@ public sealed class InputCommandEnvelopeTests
     [Fact]
     public void WrongMessageTypeIsRejectedAsBadEnvelope()
     {
-        var host = new GameRoomHost(TimeSpan.FromMinutes(5), new ManualClock());
-        Assert.True(host.Admit("room-main", "c-bot01", Bot("Bot01")).Accepted);
-
+        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("gg");
         var wrong = new InputCommandEnvelope("Delta", valid.Commands);
 
-        ChatOperationResult rejected = host.AdmitChatInput("c-bot01", wrong);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, wrong);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.BadEnvelope, rejected.ErrorCode);
     }
 
-    private static VerifiedAdmission Bot(string loginName)
+    private static RuntimeChat.ChatCommandRuntime RoomWith()
     {
-        string hex = Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(loginName.PadRight(16, 'x'))).ToLowerInvariant();
-        if (hex.Length < 32)
-        {
-            hex = hex.PadRight(32, '0');
-        }
-
-        return new VerifiedAdmission("acct_" + hex[..32], loginName, BotToolContext: true);
-    }
-
-    private sealed class ManualClock : IHostMonotonicClock
-    {
-        public long Milliseconds { get; private set; }
-
-        public void Advance(TimeSpan delta) => Milliseconds += (long)delta.TotalMilliseconds;
+        EntityBindingQuery bindings = EntityBindingQuery.Create();
+        BindingQueryResult admitted = bindings.Admit("C1", "acct-07", "room-01", "player");
+        Assert.Equal("ok", admitted.Outcome);
+        RuntimeChat.ChatCommandRuntime runtime = RuntimeChat.ChatCommandRuntime.Create(bindings, ownsBindings: true);
+        RuntimeChat.ChatMappingResult attached = runtime.AttachMember("room-01", "C1");
+        Assert.True(attached.Succeeded, attached.Code + " " + attached.Detail);
+        return runtime;
     }
 }

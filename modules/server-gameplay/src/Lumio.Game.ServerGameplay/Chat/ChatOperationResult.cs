@@ -3,7 +3,7 @@ namespace Lumio.Game.ServerGameplay;
 /// <summary>Outcome of admitting or applying a chat command.</summary>
 public enum ChatOperationKind
 {
-    /// <summary>Input accepted into the next-tick commit queue; no component write yet.</summary>
+    /// <summary>Input accepted into Runtime Ingress; no component write yet.</summary>
     Admitted = 0,
 
     /// <summary>SetMessage committed component state and produced an event.</summary>
@@ -39,12 +39,3 @@ public readonly record struct ChatOperationResult(ChatOperationKind Kind, string
     /// <summary>Fatal owner-thread violation.</summary>
     public static ChatOperationResult Fatal(string errorCode) => new(ChatOperationKind.Fatal, errorCode);
 }
-
-/// <summary>Authoritative tick apply output. Events cover only this tick; the world does not retain chat history.</summary>
-/// <param name="AppliedTick">Tick that just committed.</param>
-/// <param name="Results">Per-command outcomes in admit order.</param>
-/// <param name="Events">Live events emitted after committed component updates.</param>
-public readonly record struct ChatTickResult(
-    ulong AppliedTick,
-    ChatOperationResult[] Results,
-    ChatMessageEvent[] Events);
