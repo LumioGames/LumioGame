@@ -26,8 +26,8 @@ metadata:
 | 文档 | 一句话 |
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
-| [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 字段声明与 SetMessage——查 persist-only last-message、下一 Tick 提交与有界输入 reject |
-| [`features/gameplay/entity-chat-harness.md`](features/gameplay/entity-chat-harness.md) | 101-entity rust-host acceptance harness——查 lumio-entity-chat-replay 11 场景、客户端 chat.event 与落盘 |
+| [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 唯一真源在 Runtime Username.Server——查 Game 无第二份类、SendMessage 与 persist last-message |
+| [`features/gameplay/entity-chat-harness.md`](features/gameplay/entity-chat-harness.md) | 101-entity 验收 oracle——查日志目录、compareRuns 逐位比较与 --dir 行尾归一化 |
 
 ## lessons(经验教训 · 复发问题暂存区)
 

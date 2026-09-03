@@ -48,17 +48,29 @@ function readU64LE(view, offset) {
   return lo + hi * 0x100000000
 }
 
-/** Decode C-1 chat.event LumioBinV1 payload (fieldOrder messageId, roomSequence, senderNetEntityId, text, appliedTick). */
+function u64ToHex16(value) {
+  const n = typeof value === 'bigint' ? value : BigInt(value)
+  return n.toString(16).padStart(16, '0')
+}
+
+/** Canonical 32-hex sender = instanceId u64 || counter u64 (C-1′ / C-2). Not a u128 primitive. */
+export function encodeSenderHex(instanceId, counter) {
+  return (u64ToHex16(instanceId) + u64ToHex16(counter)).toLowerCase()
+}
+
+/** Decode C-1′ chat.event LumioBinV1 payload (two u64 sender halves). */
 export function decodeChatEventPayload(hex) {
   const bytes = hexToBytes(hex)
-  if (!bytes || bytes.length < 8 * 4 + 4) return null
+  if (!bytes || bytes.length < 8 * 5 + 4) return null
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   let offset = 0
   const messageId = readU64LE(view, offset)
   offset += 8
   const roomSequence = readU64LE(view, offset)
   offset += 8
-  const sender = readU64LE(view, offset)
+  const instanceId = readU64LE(view, offset)
+  offset += 8
+  const counter = readU64LE(view, offset)
   offset += 8
   if (offset + 4 > bytes.length) return null
   const textLen = view.getUint32(offset, true)
@@ -70,7 +82,9 @@ export function decodeChatEventPayload(hex) {
   return {
     messageId,
     roomSequence,
-    senderNetEntityId: String(sender),
+    senderNetEntityId: encodeSenderHex(instanceId, counter),
+    senderNetEntityIdInstanceId: instanceId,
+    senderNetEntityIdCounter: counter,
     text,
     appliedTick,
   }
@@ -95,15 +109,29 @@ export function extractChatEventsFromFrame(frame) {
     if (event) events.push(event)
   }
   if (parsed.messageType === 'chat.event' || (parsed.roomSequence != null && parsed.appliedTick != null && parsed.text != null && parsed.mappingId == null && parsed.messageType == null)) {
-    if (isEvent(parsed)) events.push({
-      messageId: parsed.messageId,
-      roomSequence: parsed.roomSequence,
-      senderNetEntityId: String(parsed.senderNetEntityId),
-      text: parsed.text,
-      appliedTick: parsed.appliedTick,
-    })
+    const sender = decodeSenderRecord(parsed)
+    if (isEvent({ ...parsed, senderNetEntityId: sender ?? parsed.senderNetEntityId })) {
+      events.push({
+        messageId: parsed.messageId,
+        roomSequence: parsed.roomSequence,
+        senderNetEntityId: sender ?? String(parsed.senderNetEntityId),
+        text: parsed.text,
+        appliedTick: parsed.appliedTick,
+      })
+    }
   }
   return events
+}
+
+function decodeSenderRecord(rec) {
+  if (rec == null || typeof rec !== 'object') return null
+  if (typeof rec.senderNetEntityId === 'string' && /^[0-9a-f]{32}$/i.test(rec.senderNetEntityId)) {
+    return rec.senderNetEntityId.toLowerCase()
+  }
+  if (rec.senderNetEntityIdInstanceId != null && rec.senderNetEntityIdCounter != null) {
+    return encodeSenderHex(rec.senderNetEntityIdInstanceId, rec.senderNetEntityIdCounter)
+  }
+  return null
 }
 
 function isEvent(event) {

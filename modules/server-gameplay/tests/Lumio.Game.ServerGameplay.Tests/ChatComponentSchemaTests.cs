@@ -6,43 +6,31 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Lumio.Game.ServerGameplay;
-using Lumio.GameRuntime.Ecs.Annotations;
+using Lumio.GameRuntime.Ecs;
+using Lumio.GameRuntime.Samples.Username;
 using Xunit;
+using RuntimeChatComponent = Lumio.GameRuntime.Samples.Username.Components.Chat.ChatComponent;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
 public sealed class ChatComponentSchemaTests
 {
     [Fact]
-    public void ChatComponentUsesN04AnnotationsAndMatchesGeneratedCatalog()
+    public void GameAssemblyHasNoEcsChatComponentAndRuntimeTableHasLastMessageText()
     {
-        Assert.NotNull(typeof(ChatComponent).GetCustomAttribute<EcsComponentAttribute>());
-        AssertPersistOnly(typeof(ChatComponent).GetProperty(nameof(ChatComponent.LastMessageText)));
-        AssertPersistOnly(typeof(ChatComponent).GetProperty(nameof(ChatComponent.LastMessageTick)));
+        Assembly game = typeof(ChatSetMessageSystem).Assembly;
+        Assert.DoesNotContain(game.GetTypes(), static type => string.Equals(type.Name, "ChatComponent", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            game.GetTypes(),
+            static type => type.GetCustomAttribute<EcsComponentAttribute>() is not null
+                && string.Equals(type.Name, "ChatComponent", StringComparison.Ordinal));
 
-        IReadOnlyList<FieldAttributeDeclaration> scanned = AttributeDeclarationScanner.Scan(typeof(ChatComponent).Assembly);
-        IReadOnlyList<FieldAttributeDeclaration> n04 = AttributeDeclarationCatalog.LoadEmbedded();
-        FieldAttributeDeclaration[] gameChat = scanned
-            .Where(static row => row.AttributeId.StartsWith("ChatComponent.", StringComparison.Ordinal))
-            .ToArray();
-        FieldAttributeDeclaration[] catalogChat = n04
-            .Where(static row => row.AttributeId.StartsWith("ChatComponent.", StringComparison.Ordinal))
-            .ToArray();
+        Assert.NotNull(typeof(RuntimeChatComponent).GetCustomAttribute<EcsComponentAttribute>());
+        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(RuntimeChatComponent).Assembly.GetName().Name);
 
-        Assert.Equal(AttributeDeclarationJson.Format(catalogChat), AttributeDeclarationJson.Format(gameChat));
-        Assert.Contains(gameChat, static row => row.AttributeId == "ChatComponent.lastMessageText");
-        Assert.Contains(gameChat, static row => row.AttributeId == "ChatComponent.lastMessageTick");
-        foreach (FieldAttributeDeclaration row in gameChat)
-        {
-            Assert.Equal("persistent", row.Persistence);
-            Assert.Equal("not-replicated", row.Replication);
-            Assert.Equal("server-only", row.Visibility);
-        }
-
-        string n04Json = AttributeDeclarationJson.Format(n04);
-        Assert.Equal(
-            "a47e92d663ba8f9726cf8defdacf2f56ebbaf1b93a8be9b7435430fad48bddc0",
-            Sha256Hex(Encoding.UTF8.GetBytes(n04Json)));
+        Assert.Contains(
+            GeneratedRegistry.Instance.AttributeDeclarations,
+            static row => row.AttributeId == "ChatComponent.lastMessageText");
     }
 
     [Fact]
@@ -54,7 +42,15 @@ public sealed class ChatComponentSchemaTests
         Assert.Equal("chat.component", ChatMapping.ComponentMappingId);
         Assert.Equal(new[] { "text" }, ChatMapping.InputFieldOrder);
         Assert.Equal(
-            new[] { "messageId", "roomSequence", "senderNetEntityId", "text", "appliedTick" },
+            new[]
+            {
+                "messageId",
+                "roomSequence",
+                "senderNetEntityIdInstanceId",
+                "senderNetEntityIdCounter",
+                "text",
+                "appliedTick"
+            },
             ChatMapping.EventFieldOrder);
         Assert.Equal(512, ChatMapping.MaxTextUtf8Bytes);
         Assert.Equal(1, ChatMapping.MaxChatInputPerSenderPerTick);
@@ -78,7 +74,7 @@ public sealed class ChatComponentSchemaTests
     }
 
     [Fact]
-    public void EventFieldOrderMatchesFrozenLumioBinV1HashExample()
+    public void EventFieldOrderMatchesC1TwoU64SenderHashExample()
     {
         byte[] payload = EncodeByFieldOrder(
             ChatMapping.EventFieldOrder,
@@ -86,15 +82,16 @@ public sealed class ChatComponentSchemaTests
             {
                 ["messageId"] = 1UL,
                 ["roomSequence"] = 1UL,
-                ["senderNetEntityId"] = 101UL,
+                ["senderNetEntityIdInstanceId"] = 0UL,
+                ["senderNetEntityIdCounter"] = 101UL,
                 ["text"] = "gg",
                 ["appliedTick"] = 7UL
             });
 
         Assert.Equal(
-            "0100000000000000010000000000000065000000000000000200000067670700000000000000",
+            "01000000000000000100000000000000000000000000000065000000000000000200000067670700000000000000",
             ToHex(payload));
-        Assert.Equal("9fafc556e56dc024a90caf7c102dfccfed4189c708e0a51b0139aab28277670c", Sha256Hex(payload));
+        Assert.Equal("019c19137fdcc3eadf322f67067c254ef33fc2f81a7123bc89253d9a41d0d179", Sha256Hex(payload));
     }
 
     [Fact]
@@ -109,15 +106,6 @@ public sealed class ChatComponentSchemaTests
 
         Assert.Equal("020000006767", ToHex(payload));
         Assert.Equal("5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab", Sha256Hex(payload));
-    }
-
-    private static void AssertPersistOnly(PropertyInfo? property)
-    {
-        Assert.NotNull(property);
-        PersistAttribute persist = Assert.IsType<PersistAttribute>(property.GetCustomAttribute<PersistAttribute>());
-        Assert.Equal(PersistenceKind.Persistent, persist.Kind);
-        Assert.Null(property.GetCustomAttribute<ReplicateAttribute>());
-        Assert.Null(property.GetCustomAttribute<VisibilityAttribute>());
     }
 
     private static byte[] EncodeByFieldOrder(IReadOnlyList<string> fieldOrder, Dictionary<string, object> body)

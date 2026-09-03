@@ -7,16 +7,16 @@
     <NoWarn>$(NoWarn);CA1510</NoWarn>
     <_GameRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../'))</_GameRepoRoot>
     <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and '$(LUMIO_RUNTIME_ROOT)' != ''">$(LUMIO_RUNTIME_ROOT)</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/replication/src/Lumio.GameRuntime.Replication/Chat/ChatCommandRuntime.cs')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/modules/replication/src/Lumio.GameRuntime.Replication/Chat/ChatCommandRuntime.cs')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../../LumioGameRuntime'))</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../../LumioGameRuntime'))</LumioRuntimeRoot>
   </PropertyGroup>
   <Target Name="RequireLumioRuntimeRoot" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
     <Error
-      Condition="'$(LumioRuntimeRoot)' == '' or !Exists('$(LumioRuntimeRoot)/modules/ecs/src/Lumio.GameRuntime.Ecs/Lumio.GameRuntime.Ecs.csproj')"
-      Text="BLOCKED: LumioGameRuntime origin/main f28709ee92f80dcb0106a5ebb6993116e1230365 was not found. Set LUMIO_RUNTIME_ROOT to that checkout; a sibling LumioGameRuntime that contains ChatCommandRuntime.cs is also searched. Do not hardcode machine-absolute paths." />
+      Condition="'$(LumioRuntimeRoot)' == '' or !Exists('$(LumioRuntimeRoot)/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')"
+      Text="BLOCKED: LumioGameRuntime Samples.Username.Server was not found. Set LumioRuntimeRoot or LUMIO_RUNTIME_ROOT to a checkout that contains modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj; a sibling LumioGameRuntime is also searched. Do not hardcode machine-absolute paths." />
   </Target>
   <ItemGroup>
     <ProjectReference Include="$(LumioRuntimeRoot)/modules/ecs/src/Lumio.GameRuntime.Ecs/Lumio.GameRuntime.Ecs.csproj" />
-    <ProjectReference Include="$(LumioRuntimeRoot)/modules/replication/src/Lumio.GameRuntime.Replication/Lumio.GameRuntime.Replication.csproj" />
+    <ProjectReference Include="$(LumioRuntimeRoot)/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj" />
   </ItemGroup>
 </Project>
