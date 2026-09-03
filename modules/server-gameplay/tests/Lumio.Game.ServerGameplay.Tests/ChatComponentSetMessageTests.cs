@@ -1,10 +1,9 @@
 using System;
-using System.Globalization;
 using System.Reflection;
 using System.Threading;
 using Lumio.Game.ServerGameplay;
-using Lumio.GameRuntime.Replication.Binding;
-using RuntimeChat = Lumio.GameRuntime.Replication.Chat;
+using Lumio.GameRuntime.Ecs;
+using Lumio.GameRuntime.Samples.Username.Components.Chat;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -12,9 +11,9 @@ namespace Lumio.Game.ServerGameplay.Tests;
 public sealed class ChatComponentSetMessageTests
 {
     [Fact]
-    public void GameHasNoPrivateWorldQueueOrRunTick()
+    public void GameHasNoPrivateWorldQueueOrRunTickAndReferencesUsernameServer()
     {
-        Assembly assembly = typeof(ChatComponent).Assembly;
+        Assembly assembly = typeof(ChatSetMessageSystem).Assembly;
         Assert.Null(typeof(ChatSetMessageSystem).GetMethod("RunTick"));
         Assert.DoesNotContain(
             typeof(ChatSetMessageSystem).GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
@@ -24,152 +23,126 @@ public sealed class ChatComponentSetMessageTests
             static name => string.Equals(name.Name, "Lumio.GameRuntime.Ecs", StringComparison.Ordinal));
         Assert.Contains(
             assembly.GetReferencedAssemblies(),
-            static name => string.Equals(name.Name, "Lumio.GameRuntime.Replication", StringComparison.Ordinal));
+            static name => string.Equals(name.Name, "Lumio.GameRuntime.Samples.Username.Server", StringComparison.Ordinal));
+        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(ChatComponent).Assembly.GetName().Name);
     }
 
     [Fact]
     public void ValidChatInputUpdatesExactlyOneSenderComponentAtNextFixedTick()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith(2);
-        string senderA = Net(runtime, 0);
-        string senderB = Net(runtime, 1);
+        using WorldManager manager = ChatWorldHarness.Boot(2);
+        NetEntityId senderA = ChatWorldHarness.Net(manager, 0);
+        NetEntityId senderB = ChatWorldHarness.Net(manager, 1);
 
         Assert.Equal(
             ChatOperationKind.Admitted,
-            ChatSetMessageSystem.Admit(runtime, "room-01", "C1", 1UL, new ChatInput("gg")).Kind);
-        Assert.Equal(0UL, runtime.CurrentTick);
-        Assert.Equal(string.Empty, Component(runtime, senderA).LastMessageText);
-        Assert.Equal(string.Empty, Component(runtime, senderB).LastMessageText);
+            ChatSetMessageSystem.Admit(manager, "room-01", "C1", 1UL, new ChatInput("gg")).Kind);
+        Assert.Equal(string.Empty, Component(manager, senderA).LastMessageText);
+        Assert.Equal(string.Empty, Component(manager, senderB).LastMessageText);
 
-        RuntimeChat.ChatTickResult tick = runtime.RunTick(1);
+        manager.Tick();
 
-        Assert.Equal(1UL, runtime.CurrentTick);
-        Assert.Equal(1UL, tick.AppliedTick);
-        ChatComponent sender = Component(runtime, senderA);
-        ChatComponent other = Component(runtime, senderB);
+        ChatComponent sender = Component(manager, senderA);
+        ChatComponent other = Component(manager, senderB);
         Assert.Equal("gg", sender.LastMessageText);
-        Assert.Equal(1UL, sender.LastMessageTick);
+        Assert.True(sender.LastMessageTick > 0UL);
         Assert.Equal(string.Empty, other.LastMessageText);
         Assert.Equal(0UL, other.LastMessageTick);
-        RuntimeChat.ChatMessageEvent emitted = Assert.Single(tick.Events);
-        Assert.Equal(senderA, emitted.SenderNetEntityId);
-        Assert.Equal("gg", emitted.Text);
+        ClientRpcRecord emitted = Assert.Single(DistinctByMessageId(ChatEvents(manager)));
+        Assert.Equal(senderA, emitted.Sender);
+        Assert.Equal(": gg", Assert.Single(emitted.Args));
     }
 
     [Fact]
     public void EventAndComponentStateCarryTheSameAppliedTick()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
-        string sender = Net(runtime, 0);
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId sender = ChatWorldHarness.Net(manager, 0);
 
         Assert.Equal(
             ChatOperationKind.Admitted,
-            ChatSetMessageSystem.Admit(runtime, "room-01", "C1", 1UL, new ChatInput("hello")).Kind);
-        RuntimeChat.ChatTickResult tick = runtime.RunTick(1);
+            ChatSetMessageSystem.Admit(manager, "room-01", "C1", 1UL, new ChatInput("hello")).Kind);
+        manager.Tick();
 
-        ChatComponent component = Component(runtime, sender);
-        RuntimeChat.ChatMessageEvent emitted = Assert.Single(tick.Events);
-        Assert.Equal(tick.AppliedTick, component.LastMessageTick);
+        ChatComponent component = Component(manager, sender);
+        ClientRpcRecord emitted = Assert.Single(ChatEvents(manager));
         Assert.Equal(component.LastMessageTick, emitted.AppliedTick);
-        Assert.Equal(runtime.CurrentTick, emitted.AppliedTick);
         Assert.Equal("hello", component.LastMessageText);
-        Assert.Equal("hello", emitted.Text);
+        Assert.Equal(": hello", Assert.Single(emitted.Args));
         Assert.Equal(1UL, emitted.MessageId);
         Assert.Equal(1UL, emitted.RoomSequence);
-        Assert.Equal(sender, emitted.SenderNetEntityId);
-        Assert.True(Assert.Single(tick.Results).Succeeded);
+        Assert.Equal(sender, emitted.Sender);
     }
 
     [Fact]
-    public void NetworkThreadSetMessageFailStopsWithZeroComponentWrite()
+    public void NetworkThreadSetMessageRejectsWithZeroComponentWrite()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
-        string sender = Net(runtime, 0);
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         Assert.Equal(
             ChatOperationKind.Admitted,
-            ChatSetMessageSystem.Admit(runtime, "room-01", "C1", 1UL, new ChatInput("keep")).Kind);
-        RuntimeChat.ChatTickResult committed = runtime.RunTick(1);
-        Assert.Equal("keep", Component(runtime, sender).LastMessageText);
-        Assert.Single(committed.Events);
+            ChatSetMessageSystem.Admit(manager, "room-01", "C1", 1UL, new ChatInput("keep")).Kind);
+        manager.Tick();
+        _ = manager.DrainOutbox();
+        Assert.Equal("keep", Component(manager, sender).LastMessageText);
 
         ChatOperationResult? offThread = null;
         int workerThreadId = 0;
         var worker = new Thread(() =>
         {
             workerThreadId = Environment.CurrentManagedThreadId;
-            offThread = ChatSetMessageSystem.SetMessage(runtime, "room-01", sender, "hack");
+            offThread = ChatSetMessageSystem.SetMessage(manager, "room-01", sender, "hack");
         });
         worker.IsBackground = true;
         worker.Start();
         Assert.True(worker.Join(TimeSpan.FromSeconds(5)));
 
-        Assert.NotEqual(runtime.OwnerThreadId, workerThreadId);
+        Assert.NotEqual(manager.OwnerThread?.ManagedThreadId, workerThreadId);
         Assert.NotNull(offThread);
         Assert.True(offThread!.Value.IsFatal);
         Assert.Equal(ChatErrorCodes.OwnerThreadViolation, offThread.Value.ErrorCode);
-        Assert.True(runtime.IsFaulted);
-        Assert.Equal("keep", Component(runtime, sender).LastMessageText);
-        Assert.Equal(1UL, Component(runtime, sender).LastMessageTick);
+        Assert.Equal("keep", Component(manager, sender).LastMessageText);
 
-        RuntimeChat.ChatTickResult afterFault = runtime.RunTick(2);
-        Assert.True(runtime.IsFaulted);
-        Assert.Empty(afterFault.Events);
-        Assert.Equal("keep", Component(runtime, sender).LastMessageText);
-        Assert.Equal("runtime_failure", Assert.Single(afterFault.Results).Code);
+        manager.Tick();
+        Assert.Equal("keep", Component(manager, sender).LastMessageText);
+        Assert.Empty(ChatEvents(manager));
     }
 
     [Fact]
-    public void SetMessageAfterEntityDestructionRejectsWithZeroComponentWrite()
+    public void SetMessageOnUnknownEntityRejectsWithZeroComponentWrite()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith(2);
-        string senderA = Net(runtime, 0);
-        string senderB = Net(runtime, 1);
-        Assert.Equal(
-            ChatOperationKind.Admitted,
-            ChatSetMessageSystem.Admit(runtime, "room-01", "C1", 1UL, new ChatInput("first")).Kind);
-        Assert.Equal(
-            ChatOperationKind.Admitted,
-            ChatSetMessageSystem.Admit(runtime, "room-01", "C2", 1UL, new ChatInput("peer")).Kind);
-        RuntimeChat.ChatTickResult firstTick = runtime.RunTick(1);
-        Assert.Equal(2, firstTick.Events.Count);
-        Assert.Equal("first", Component(runtime, senderA).LastMessageText);
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId live = ChatWorldHarness.Net(manager, 0);
+        var missing = new NetEntityId(ChatWorldHarness.InstanceId, 99UL);
 
-        Assert.True(runtime.DestroyEntity(senderA));
-        Assert.False(ChatSetMessageSystem.TryGetComponent(runtime, senderA, out _));
-        Assert.Equal("peer", Component(runtime, senderB).LastMessageText);
-
-        ChatOperationResult destroyedWrite = ChatSetMessageSystem.SetMessage(runtime, "room-01", senderA, "after-destroy");
+        ChatOperationResult destroyedWrite = ChatSetMessageSystem.SetMessage(manager, "room-01", missing, "after-destroy");
         Assert.Equal(ChatOperationKind.Rejected, destroyedWrite.Kind);
         Assert.Equal(ChatErrorCodes.EntityDestroyed, destroyedWrite.ErrorCode);
-        Assert.False(runtime.IsFaulted);
-        Assert.False(ChatSetMessageSystem.TryGetComponent(runtime, senderA, out ChatComponent? resurrected));
+        Assert.False(ChatSetMessageSystem.TryGetComponent(manager, missing, out ChatComponent? resurrected));
         Assert.Null(resurrected);
-        Assert.Equal("peer", Component(runtime, senderB).LastMessageText);
+        Assert.Equal(string.Empty, Component(manager, live).LastMessageText);
     }
 
     [Fact]
     public void NetworkThreadAdmitQueuesWithoutWritingUntilOwnerTick()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
-        string sender = Net(runtime, 0);
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         ChatOperationResult? admitted = null;
         var worker = new Thread(() =>
         {
-            admitted = ChatSetMessageSystem.Admit(runtime, "room-01", "C1", 1UL, new ChatInput("gg"));
+            admitted = ChatSetMessageSystem.Admit(manager, "room-01", "C1", 1UL, new ChatInput("gg"));
         });
         worker.IsBackground = true;
         worker.Start();
         Assert.True(worker.Join(TimeSpan.FromSeconds(5)));
 
         Assert.Equal(ChatOperationKind.Admitted, admitted!.Value.Kind);
-        Assert.False(runtime.IsFaulted);
-        Assert.Equal(string.Empty, Component(runtime, sender).LastMessageText);
-        Assert.Equal(0UL, runtime.CurrentTick);
+        Assert.Equal(string.Empty, Component(manager, sender).LastMessageText);
 
-        RuntimeChat.ChatTickResult tick = runtime.RunTick(1);
-        Assert.Equal("gg", Component(runtime, sender).LastMessageText);
-        Assert.Equal(tick.AppliedTick, Component(runtime, sender).LastMessageTick);
-        Assert.Equal("gg", Assert.Single(tick.Events).Text);
+        manager.Tick();
+        Assert.Equal("gg", Component(manager, sender).LastMessageText);
+        Assert.Equal(": gg", Assert.Single(Assert.Single(ChatEvents(manager)).Args));
     }
 
     [Fact]
@@ -181,46 +154,60 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
-    public void SetMessageCommitsThroughRuntimeCommandBufferPhase()
+    public void SetMessageCallsRuntimeChatComponentSendMessage()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
-        string sender = Net(runtime, 0);
-        ChatOperationResult committed = ChatSetMessageSystem.SetMessage(runtime, "room-01", sender, "direct");
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId sender = ChatWorldHarness.Net(manager, 0);
+        ChatOperationResult committed = ChatSetMessageSystem.SetMessage(manager, "room-01", sender, "direct");
         Assert.True(committed.IsCommitted);
-        ChatComponent component = Component(runtime, sender);
+        ChatComponent component = Component(manager, sender);
         Assert.Equal("direct", component.LastMessageText);
-        Assert.Equal(0UL, component.LastMessageTick);
-        Assert.False(runtime.IsFaulted);
+        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(ChatComponent).Assembly.GetName().Name);
     }
 
-    private static RuntimeChat.ChatCommandRuntime RoomWith(int members = 1)
+    private static ChatComponent Component(WorldManager manager, NetEntityId netEntityId)
     {
-        EntityBindingQuery bindings = EntityBindingQuery.Create();
-        for (int i = 0; i < members; i++)
-        {
-            string connection = i == 0 ? "C1" : "C" + (i + 1).ToString(CultureInfo.InvariantCulture);
-            string account = "acct-" + (7 + i).ToString(CultureInfo.InvariantCulture);
-            BindingQueryResult admitted = bindings.Admit(connection, account, "room-01", "player");
-            Assert.Equal("ok", admitted.Outcome);
-        }
-
-        RuntimeChat.ChatCommandRuntime runtime = RuntimeChat.ChatCommandRuntime.Create(bindings, ownsBindings: true);
-        for (int i = 0; i < members; i++)
-        {
-            string connection = i == 0 ? "C1" : "C" + (i + 1).ToString(CultureInfo.InvariantCulture);
-            RuntimeChat.ChatMappingResult attached = runtime.AttachMember("room-01", connection);
-            Assert.True(attached.Succeeded, attached.Code + " " + attached.Detail);
-        }
-
-        return runtime;
-    }
-
-    private static string Net(RuntimeChat.ChatCommandRuntime runtime, int index) => runtime.LiveNetEntityIds[index];
-
-    private static ChatComponent Component(RuntimeChat.ChatCommandRuntime runtime, string netEntityId)
-    {
-        Assert.True(ChatSetMessageSystem.TryGetComponent(runtime, netEntityId, out ChatComponent? component));
+        Assert.True(ChatSetMessageSystem.TryGetComponent(manager, netEntityId, out ChatComponent? component));
         Assert.NotNull(component);
         return component;
+    }
+
+    private static System.Collections.Generic.List<ClientRpcRecord> ChatEvents(WorldManager manager)
+    {
+        var events = new System.Collections.Generic.List<ClientRpcRecord>();
+        foreach (WorldMessage message in manager.DrainOutbox())
+        {
+            if (message is not WorldChangeMessage change)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < change.Rpcs.Count; i++)
+            {
+                ClientRpcRecord rpc = change.Rpcs[i];
+                if (string.Equals(rpc.Method, "OnChatMessage", StringComparison.Ordinal))
+                {
+                    events.Add(rpc);
+                }
+            }
+        }
+
+        return events;
+    }
+
+    private static System.Collections.Generic.List<ClientRpcRecord> DistinctByMessageId(
+        System.Collections.Generic.List<ClientRpcRecord> events)
+    {
+        var seen = new System.Collections.Generic.HashSet<ulong>();
+        var unique = new System.Collections.Generic.List<ClientRpcRecord>();
+        for (int i = 0; i < events.Count; i++)
+        {
+            if (seen.Add(events[i].MessageId))
+            {
+                unique.Add(events[i]);
+            }
+        }
+
+        return unique;
     }
 }

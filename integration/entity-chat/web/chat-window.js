@@ -43,22 +43,51 @@ export function hexToBytes(hex) {
 }
 
 function readU64LE(view, offset) {
-  const lo = view.getUint32(offset, true)
-  const hi = view.getUint32(offset + 4, true)
-  return lo + hi * 0x100000000
+  return view.getBigUint64(offset, true)
 }
 
-/** Decode C-1 chat.event LumioBinV1 payload (fieldOrder messageId, roomSequence, senderNetEntityId, text, appliedTick). */
+function u64ToHex16(value) {
+  if (typeof value === 'bigint') {
+    if (value < 0n || value > 0xffffffffffffffffn) {
+      throw new RangeError('u64 out of range')
+    }
+    return value.toString(16).padStart(16, '0')
+  }
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return BigInt(value).toString(16).padStart(16, '0')
+  }
+  if (typeof value === 'string' && /^(0x)?[0-9a-f]+$/i.test(value)) {
+    const n = BigInt(value)
+    if (n < 0n || n > 0xffffffffffffffffn) {
+      throw new RangeError('u64 out of range')
+    }
+    return n.toString(16).padStart(16, '0')
+  }
+  throw new TypeError('u64 requires BigInt, safe integer, or hex string')
+}
+
+function u64ToJsonNumber(value) {
+  return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value
+}
+
+/** Canonical 32-hex sender = instanceId u64 || counter u64 (C-1′ / C-2). Not a u128 primitive. */
+export function encodeSenderHex(instanceId, counter) {
+  return (u64ToHex16(instanceId) + u64ToHex16(counter)).toLowerCase()
+}
+
+/** Decode C-1′ chat.event LumioBinV1 payload (two u64 sender halves). */
 export function decodeChatEventPayload(hex) {
   const bytes = hexToBytes(hex)
-  if (!bytes || bytes.length < 8 * 4 + 4) return null
+  if (!bytes || bytes.length < 8 * 5 + 4) return null
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   let offset = 0
   const messageId = readU64LE(view, offset)
   offset += 8
   const roomSequence = readU64LE(view, offset)
   offset += 8
-  const sender = readU64LE(view, offset)
+  const instanceId = readU64LE(view, offset)
+  offset += 8
+  const counter = readU64LE(view, offset)
   offset += 8
   if (offset + 4 > bytes.length) return null
   const textLen = view.getUint32(offset, true)
@@ -68,11 +97,13 @@ export function decodeChatEventPayload(hex) {
   offset += textLen
   const appliedTick = readU64LE(view, offset)
   return {
-    messageId,
-    roomSequence,
-    senderNetEntityId: String(sender),
+    messageId: u64ToJsonNumber(messageId),
+    roomSequence: u64ToJsonNumber(roomSequence),
+    senderNetEntityId: encodeSenderHex(instanceId, counter),
+    senderNetEntityIdInstanceId: instanceId,
+    senderNetEntityIdCounter: counter,
     text,
-    appliedTick,
+    appliedTick: u64ToJsonNumber(appliedTick),
   }
 }
 
@@ -95,15 +126,29 @@ export function extractChatEventsFromFrame(frame) {
     if (event) events.push(event)
   }
   if (parsed.messageType === 'chat.event' || (parsed.roomSequence != null && parsed.appliedTick != null && parsed.text != null && parsed.mappingId == null && parsed.messageType == null)) {
-    if (isEvent(parsed)) events.push({
-      messageId: parsed.messageId,
-      roomSequence: parsed.roomSequence,
-      senderNetEntityId: String(parsed.senderNetEntityId),
-      text: parsed.text,
-      appliedTick: parsed.appliedTick,
-    })
+    const sender = decodeSenderRecord(parsed)
+    if (isEvent({ ...parsed, senderNetEntityId: sender ?? parsed.senderNetEntityId })) {
+      events.push({
+        messageId: parsed.messageId,
+        roomSequence: parsed.roomSequence,
+        senderNetEntityId: sender ?? String(parsed.senderNetEntityId),
+        text: parsed.text,
+        appliedTick: parsed.appliedTick,
+      })
+    }
   }
   return events
+}
+
+function decodeSenderRecord(rec) {
+  if (rec == null || typeof rec !== 'object') return null
+  if (typeof rec.senderNetEntityId === 'string' && /^[0-9a-f]{32}$/i.test(rec.senderNetEntityId)) {
+    return rec.senderNetEntityId.toLowerCase()
+  }
+  if (rec.senderNetEntityIdInstanceId != null && rec.senderNetEntityIdCounter != null) {
+    return encodeSenderHex(rec.senderNetEntityIdInstanceId, rec.senderNetEntityIdCounter)
+  }
+  return null
 }
 
 function isEvent(event) {

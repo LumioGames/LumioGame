@@ -33,10 +33,15 @@ public static class ChatMapping
     /// <summary>chat.input field order.</summary>
     public static readonly string[] InputFieldOrder = { "text" };
 
-    /// <summary>chat.event field order.</summary>
+    /// <summary>chat.event field order (C-1′: sender is two u64 LE, not a u128 primitive).</summary>
     public static readonly string[] EventFieldOrder =
     {
-        "messageId", "roomSequence", "senderNetEntityId", "text", "appliedTick"
+        "messageId",
+        "roomSequence",
+        "senderNetEntityIdInstanceId",
+        "senderNetEntityIdCounter",
+        "text",
+        "appliedTick"
     };
 
     /// <summary>chat.component field order.</summary>

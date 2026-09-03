@@ -1,8 +1,8 @@
 using System;
 using System.Reflection;
 using Lumio.Game.ServerGameplay;
-using Lumio.GameRuntime.Replication.Binding;
-using RuntimeChat = Lumio.GameRuntime.Replication.Chat;
+using Lumio.GameRuntime.Ecs;
+using Lumio.GameRuntime.Samples.Username.Components.Chat;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -25,10 +25,7 @@ public sealed class InputCommandEnvelopeTests
     {
         MethodInfo? raw = typeof(ChatSetMessageSystem).GetMethod(
             "AdmitChatInput",
-            BindingFlags.Static | BindingFlags.Public,
-            binder: null,
-            types: new[] { typeof(RuntimeChat.ChatCommandRuntime), typeof(string), typeof(string) },
-            modifiers: null);
+            BindingFlags.Static | BindingFlags.Public);
         Assert.Null(raw);
 
         MethodInfo? envelope = typeof(ChatSetMessageSystem).GetMethod(
@@ -40,50 +37,51 @@ public sealed class InputCommandEnvelopeTests
     [Fact]
     public void ValidChatInputEnvelopeIsAdmittedAndDecodedTextReachesTick()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
+        using WorldManager manager = ChatWorldHarness.Boot();
         ChatOperationResult admitted = ChatSetMessageSystem.AdmitEnvelope(
-            runtime,
+            manager,
             "room-01",
             "C1",
             1UL,
             InputCommandEnvelope.FromChatText("hello-Bot01"));
         Assert.Equal(ChatOperationKind.Admitted, admitted.Kind);
 
-        RuntimeChat.ChatTickResult tick = runtime.RunTick(1);
-        RuntimeChat.ChatMessageEvent ev = Assert.Single(tick.Events);
-        Assert.Equal("hello-Bot01", ev.Text);
+        manager.Tick();
+        ClientRpcRecord ev = Assert.Single(DrainChat(manager));
+        Assert.Equal(": hello-Bot01", Assert.Single(ev.Args));
     }
 
     [Fact]
     public void BadPayloadHashIsRejectedBeforeAnyChatStateChange()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
-        string sender = runtime.LiveNetEntityIds[0];
+        using WorldManager manager = ChatWorldHarness.Boot();
+        NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("hello-Bot01");
         CommandBlock block = Assert.Single(valid.Commands);
         var tampered = new InputCommandEnvelope(
             valid.MessageType,
             new[] { new CommandBlock(block.MappingId, block.Payload, string.Concat("ab", block.PayloadSha256.AsSpan(2))) });
 
-        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, tampered);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(manager, "room-01", "C1", 1UL, tampered);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.BadPayloadHash, rejected.ErrorCode);
-        Assert.Empty(runtime.RunTick(1).Events);
-        Assert.True(ChatSetMessageSystem.TryGetComponent(runtime, sender, out ChatComponent component));
+        manager.Tick();
+        Assert.Empty(DrainChat(manager));
+        Assert.True(ChatSetMessageSystem.TryGetComponent(manager, sender, out ChatComponent component));
         Assert.Equal(string.Empty, component.LastMessageText);
     }
 
     [Fact]
     public void UnknownMappingIdIsRejectedAsUnknownCommandType()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
+        using WorldManager manager = ChatWorldHarness.Boot();
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("gg");
         CommandBlock block = Assert.Single(valid.Commands);
         var unknown = new InputCommandEnvelope(
             valid.MessageType,
             new[] { new CommandBlock("chat.not-a-command", block.Payload, block.PayloadSha256) });
 
-        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, unknown);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(manager, "room-01", "C1", 1UL, unknown);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.UnknownCommandType, rejected.ErrorCode);
     }
@@ -91,23 +89,34 @@ public sealed class InputCommandEnvelopeTests
     [Fact]
     public void WrongMessageTypeIsRejectedAsBadEnvelope()
     {
-        using RuntimeChat.ChatCommandRuntime runtime = RoomWith();
+        using WorldManager manager = ChatWorldHarness.Boot();
         InputCommandEnvelope valid = InputCommandEnvelope.FromChatText("gg");
         var wrong = new InputCommandEnvelope("Delta", valid.Commands);
 
-        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(runtime, "room-01", "C1", 1UL, wrong);
+        ChatOperationResult rejected = ChatSetMessageSystem.AdmitEnvelope(manager, "room-01", "C1", 1UL, wrong);
         Assert.Equal(ChatOperationKind.Rejected, rejected.Kind);
         Assert.Equal(ChatErrorCodes.BadEnvelope, rejected.ErrorCode);
     }
 
-    private static RuntimeChat.ChatCommandRuntime RoomWith()
+    private static System.Collections.Generic.List<ClientRpcRecord> DrainChat(WorldManager manager)
     {
-        EntityBindingQuery bindings = EntityBindingQuery.Create();
-        BindingQueryResult admitted = bindings.Admit("C1", "acct-07", "room-01", "player");
-        Assert.Equal("ok", admitted.Outcome);
-        RuntimeChat.ChatCommandRuntime runtime = RuntimeChat.ChatCommandRuntime.Create(bindings, ownsBindings: true);
-        RuntimeChat.ChatMappingResult attached = runtime.AttachMember("room-01", "C1");
-        Assert.True(attached.Succeeded, attached.Code + " " + attached.Detail);
-        return runtime;
+        var events = new System.Collections.Generic.List<ClientRpcRecord>();
+        foreach (WorldMessage message in manager.DrainOutbox())
+        {
+            if (message is not WorldChangeMessage change)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < change.Rpcs.Count; i++)
+            {
+                if (string.Equals(change.Rpcs[i].Method, "OnChatMessage", StringComparison.Ordinal))
+                {
+                    events.Add(change.Rpcs[i]);
+                }
+            }
+        }
+
+        return events;
     }
 }
