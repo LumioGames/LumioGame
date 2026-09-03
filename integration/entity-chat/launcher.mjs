@@ -228,29 +228,29 @@ function mergeObserved(evidence, observation, pid) {
     injected: false,
   }
   evidence.traces = evidence.traces ?? {}
-  evidence.traces.chat = {
-    ...(evidence.traces.chat ?? {}),
-    receivedEvents,
-    eventCount: receivedEvents.length,
-    windowLines,
-  }
+  const priorChat = evidence.traces.chat ?? {}
+  evidence.traces.chat = receivedEvents.length > 0
+    ? { ...priorChat, receivedEvents, eventCount: receivedEvents.length, windowLines }
+    : priorChat
   const persist = evidence.traces.persist ?? {}
   evidence.traces.persist = {
     ...persist,
-    clientWindowBeforeSnapshot: persist.clientWindowBeforeSnapshot ?? observation.windowBeforeSnapshot ?? windowLines.length,
+    clientWindowBeforeSnapshot: persist.clientWindowBeforeSnapshot ?? observation.windowBeforeSnapshot ?? (windowLines.length > 0 ? windowLines.length : persist.clientWindowBeforeSnapshot),
     clientWindowAfterRestore: persist.clientWindowAfterRestore ?? observation.restoredWindow,
     processA: persist.processA ?? (pid ? { pid, process: 'lumio-entity-chat-replay' } : null),
     processB: persist.processB ?? null,
     snapshotSha256: persist.snapshotSha256 ?? observation.snapshotSha256 ?? null,
   }
   const supersededOnOld = observation.oldConnectionSuperseded === true
+  const priorReconnect = evidence.traces.reconnect ?? {}
   evidence.traces.reconnect = {
-    ...(evidence.traces.reconnect ?? {}),
-    connectionSupersededReceived: supersededOnOld,
-    oldConnectionId: observation.oldConnectionId ?? 'c-bot100',
+    ...priorReconnect,
+    connectionSupersededReceived: supersededOnOld || priorReconnect.connectionSupersededReceived === true,
+    oldConnectionId: observation.oldConnectionId ?? priorReconnect.oldConnectionId ?? 'c-bot100',
   }
   if (evidence.scenarios?.[8]) {
-    evidence.scenarios[8].connectionSupersededReceived = supersededOnOld
+    evidence.scenarios[8].connectionSupersededReceived =
+      supersededOnOld || evidence.scenarios[8].connectionSupersededReceived === true
   }
   if (receivedEvents.length === 101 && evidence.scenarios?.[11]) {
     evidence.scenarios[11].eventOrder = receivedEvents.map((ev) => `${ev.senderNetEntityId}:${ev.text}:${ev.roomSequence}`)
@@ -260,7 +260,7 @@ function mergeObserved(evidence, observation, pid) {
   if (windowLines.length === 101 && evidence.scenarios?.[6]) {
     evidence.scenarios[6].windowLines = windowLines
   }
-  if (Number.isFinite(Number(observation.windowBeforeSnapshot)) && evidence.scenarios?.[7]) {
+  if (observation.windowBeforeSnapshot != null && Number.isFinite(Number(observation.windowBeforeSnapshot)) && evidence.scenarios?.[7]) {
     evidence.scenarios[7].windowBeforeSnapshot = Number(observation.windowBeforeSnapshot)
   }
   if (observation.restoredWindow != null && evidence.scenarios?.[7]) {

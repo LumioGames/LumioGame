@@ -40,7 +40,7 @@ node launcher.mjs --out <evidenceDir>
 
 ## 对账
 
-- 101 = rust host-audit 的 `nent_*`。
+- 101 = rust host-audit 的 C-1 NetEntityId（Runtime 发号 u64 / 32-hex；不得把 leftover `nent_*` 当真值）。
 - SUCCESS 要求场景 1–11 `ok: true`，Playwright 收到 `chat.event`，S6 `tickSource=native-kernel/tickFrame`，S7 跨进程落盘，S8 旧连接收到 `ConnectionSuperseded`。
 - `verify-evidence.mjs` 自身 sha256 必须写入 `evidence.oracleSha256`。
 - Snapshot 只保留 last-message，不恢复聊天历史。

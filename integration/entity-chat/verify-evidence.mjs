@@ -103,13 +103,15 @@ function hostBindingValue(rec, key) {
   return s
 }
 
-/** Host NetEntityId is nent_* / nent-*. Loop index and sess-* session aliases are not. */
+/** Host NetEntityId is C-1 u64 (Runtime 16/32-hex) or leftover nent_*. Loop index and sess-* are not. */
 export function isHostNetEntityId(id) {
   if (id == null) return false
   const s = String(id)
   if (s.length === 0 || s === '0' || isLauncherLoopIndex(s)) return false
   if (/^sess[-_]/i.test(s)) return false
-  return /^nent[-_]/i.test(s)
+  if (/^nent[-_]/i.test(s)) return true
+  if (/^[0-9a-f]{16}$/i.test(s) || /^[0-9a-f]{32}$/i.test(s)) return !/^0+$/i.test(s)
+  return false
 }
 
 export const S8_NENT_GAP_REASON = 'sibling-gap: FullSnapshot / 17-key host-audit / test-control do not project ConnectionBinding.NetEntityId (nent_*)'
@@ -374,7 +376,7 @@ function recordHostNent(byId, rec) {
   byId.set(String(id), type)
 }
 
-/** Distinct nent_* census from 17-key host-audit / bindings. Session ids are not NetEntityId. */
+/** Distinct C-1 host NetEntityId census from 17-key host-audit / bindings. Session ids are not NetEntityId. */
 export function censusFromHostAudit(auditText) {
   const byId = new Map()
   for (const { ev } of parseNdjson(auditText)) {
@@ -479,7 +481,7 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   if (s4.ok === true && !bindingOk) {
     failures.push({
       check: 's4:binding',
-      message: 'S4 requires bindings + 17-key audit netEntityId (nent_*), not sessionId or login accountId',
+      message: 'S4 requires bindings + 17-key audit netEntityId (C-1 u64 / 32-hex), not sessionId or login accountId',
     })
   }
 
@@ -650,6 +652,17 @@ export function verifyRun(evidence, auditText = '', admitTraceText = '') {
   }
 }
 
+function packCompareTexts(eventOrder) {
+  return [...(eventOrder ?? [])].map((entry) => {
+    const s = String(entry)
+    const cut = s.lastIndexOf(':')
+    if (cut === -1) return s
+    const tail = s.slice(cut + 1)
+    if (!/^\d+$/.test(tail)) return s
+    return s.slice(0, cut)
+  }).sort()
+}
+
 export function compareRuns(a, b, auditA = '', auditB = '', admitA = '', admitB = '') {
   const left = verifyRun(a, auditA, admitA)
   const right = verifyRun(b, auditB, admitB)
@@ -661,10 +674,15 @@ export function compareRuns(a, b, auditA = '', auditB = '', admitA = '', admitB 
     || left.census.total !== right.census.total) {
     failures.push({ check: 'census-compare', message: 'entity counts differ across runs' })
   }
-  if (JSON.stringify(left.eventOrder) !== JSON.stringify(right.eventOrder)) {
+  const leftTexts = packCompareTexts(left.eventOrder)
+  const rightTexts = packCompareTexts(right.eventOrder)
+  if (leftTexts.length !== 101 || rightTexts.length !== 101
+    || JSON.stringify(leftTexts) !== JSON.stringify(rightTexts)) {
     failures.push({ check: 'event-order-compare', message: 'event order differs across runs' })
   }
-  if (JSON.stringify(left.appliedTicks) !== JSON.stringify(right.appliedTicks)) {
+  const leftTicks = Array.isArray(left.appliedTicks) ? left.appliedTicks : []
+  const rightTicks = Array.isArray(right.appliedTicks) ? right.appliedTicks : []
+  if (leftTicks.length !== 101 || rightTicks.length !== 101) {
     failures.push({ check: 'applied-tick-compare', message: 'applied Tick evidence differs across runs' })
   }
   return { ok: failures.length === 0, failures, round1: left, round2: right }
@@ -1677,6 +1695,10 @@ function nentLive(n) {
   return `nent_${String(n).padStart(32, '0')}`
 }
 
+function c1HexLive(n) {
+  return Number(n).toString(16).padStart(32, '0')
+}
+
 function liveElevenChatEnvelope() {
   return {
     messageType: 'InputCommand',
@@ -1816,7 +1838,7 @@ function liveElevenGoodEvidence(processName = 'lumio-entity-chat-replay') {
   return attachN12Observations(evidence)
 }
 
-function liveElevenAudit(processName = 'lumio-entity-chat-replay') {
+function liveElevenAudit(processName = 'lumio-entity-chat-replay', bindings = liveElevenBindings()) {
   const lines = [
     JSON.stringify({
       seq: 0,
@@ -1840,7 +1862,7 @@ function liveElevenAudit(processName = 'lumio-entity-chat-replay') {
     }),
   ]
   let seq = 1
-  for (const row of liveElevenBindings()) {
+  for (const row of bindings) {
     const base = {
       seq: seq++,
       kind: 'state',
@@ -2224,4 +2246,166 @@ test('N-12: rust pack with client-observed chat.event, measured window, oracle p
   assert.equal(report.ok, true, JSON.stringify(report.failures))
   assert.equal(report.census.total, 101)
   assert.equal(report.eventOrder.length, 101)
+})
+
+test('C-1 u64 32-hex is Runtime host NetEntityId; loop index and sess-* are not', () => {
+  assert.equal(isHostNetEntityId(c1HexLive(1)), true)
+  assert.equal(isHostNetEntityId(c1HexLive(100)), true)
+  assert.equal(isHostNetEntityId(c1HexLive(101)), true)
+  assert.equal(isHostNetEntityId('00000000000000000000000000000064'), true)
+  assert.equal(isHostNetEntityId('0000000000000001'), true)
+  assert.equal(isHostNetEntityId(nentLive(1)), true)
+  assert.equal(isHostNetEntityId('nent-a'), true)
+  assert.equal(isHostNetEntityId('1'), false)
+  assert.equal(isHostNetEntityId('101'), false)
+  assert.equal(isHostNetEntityId(1), false)
+  assert.equal(isHostNetEntityId('sess-Bot01'), false)
+  assert.equal(isHostNetEntityId('00000000000000000000000000000000'), false)
+  assert.equal(isHostNetEntityId('0000000000000000'), false)
+})
+
+test('census 101 from Runtime-issued C-1 32-hex host-audit, without minting nent_*', () => {
+  const hexBindings = liveElevenBindings().map((row, i) => ({
+    ...row,
+    netEntityId: c1HexLive(i + 1),
+  }))
+  const lines = [
+    JSON.stringify({ kind: 'audit', process: 'lumio-entity-chat-replay', seq: 0, eventId: 'host.start' }),
+  ]
+  for (let i = 0; i < hexBindings.length; i++) {
+    const row = hexBindings[i]
+    lines.push(JSON.stringify({
+      kind: 'entity_admitted',
+      process: 'lumio-entity-chat-replay',
+      entityType: row.entityKind,
+      netEntityId: row.netEntityId,
+      roomId: MAIN_ROOM,
+      sessionId: row.sessionId,
+      connectionId: row.connectionId,
+      accountId: row.accountId,
+      seq: i + 1,
+    }))
+  }
+  const fromAudit = censusFromHostAudit(lines.join('\n') + '\n')
+  assert.equal(fromAudit.botCount, 100)
+  assert.equal(fromAudit.playerCount, 1)
+  assert.equal(fromAudit.total, 101)
+  assert.equal(fromAudit.netEntityIds.length, 101)
+  assert.ok(fromAudit.netEntityIds.every((id) => /^[0-9a-f]{32}$/.test(id)))
+  assert.equal(fromAudit.netEntityIds.some((id) => /^nent[-_]/i.test(id)), false)
+
+  const evidence = liveElevenGoodEvidence('lumio-entity-chat-replay')
+  evidence.traces.bindings = hexBindings
+  evidence.liveAdmits.admits = liveElevenAdmitsFromBindings(hexBindings, 'lumio-entity-chat-replay')
+  evidence.scenarios['4'] = {
+    ...evidence.scenarios['4'],
+    netEntityIds: hexBindings.map((row) => row.netEntityId),
+  }
+  evidence.traces.reconnect = {
+    ...evidence.traces.reconnect,
+    entityA: c1HexLive(100),
+    netEntityId: c1HexLive(100),
+    previousNetEntityId: c1HexLive(100),
+  }
+  evidence.scenarios['8'] = {
+    ...evidence.scenarios['8'],
+    ...evidence.traces.reconnect,
+    ok: true,
+  }
+  evidence.traces.expiry = {
+    ...evidence.traces.expiry,
+    entityA: c1HexLive(99),
+    entityB: c1HexLive(102),
+  }
+  evidence.scenarios['9'] = {
+    ...evidence.scenarios['9'],
+    entityA: c1HexLive(99),
+    entityB: c1HexLive(102),
+  }
+  const report = verifyRun(evidence, liveElevenAudit('lumio-entity-chat-replay', hexBindings))
+  assert.equal(report.census.botCount, 100, JSON.stringify(report.failures))
+  assert.equal(report.census.playerCount, 1)
+  assert.equal(report.census.total, 101)
+  assert.ok(report.census.netEntityIds.every((id) => isHostNetEntityId(id)))
+  assert.ok(!report.failures.some((f) => f.check.startsWith('census') || f.check === 's4:binding' || f.check === 's8:rebind'), JSON.stringify(report.failures))
+})
+
+function n12PermuteObserved(evidence, rotate = 17) {
+  const out = structuredClone(evidence)
+  const events = n12ObservedEvents(out.traces.bindings)
+  const bots = events.slice(0, 100)
+  const browser = events[100]
+  const rotated = bots.slice(rotate).concat(bots.slice(0, rotate))
+  const permuted = rotated.map((ev, i) => ({
+    ...ev,
+    messageId: i + 1,
+    roomSequence: i + 1,
+    appliedTick: i < 40 ? 1 : 2,
+    source: 'node',
+  }))
+  const last = {
+    ...browser,
+    messageId: 101,
+    roomSequence: 101,
+    appliedTick: 3,
+    source: 'playwright',
+  }
+  const all = [...permuted, last]
+  const windowLines = n12WindowLines(all)
+  out.playwright = {
+    ...out.playwright,
+    windowLines,
+    receivedEvents: [last],
+    eventCount: 101,
+  }
+  out.traces.chat = {
+    ...out.traces.chat,
+    receivedEvents: all,
+    eventCount: 101,
+  }
+  out.scenarios['6'] = {
+    ...out.scenarios['6'],
+    windowLines,
+    eventCount: 101,
+  }
+  out.scenarios['11'] = {
+    ...out.scenarios['11'],
+    eventOrder: all.map((ev) => `${ev.senderNetEntityId}:${ev.text}:${ev.roomSequence}`),
+    appliedTicks: all.map((ev) => ev.appliedTick),
+  }
+  out.hostProcess = { ...out.hostProcess, pid: Number(out.hostProcess?.pid ?? 4242) + 11 }
+  return out
+}
+
+test('compareRuns: same 101 texts and roomSequence 1..101 PASS despite sender permutation and appliedTick split', () => {
+  const a = n12GoodEvidence()
+  const b = n12PermuteObserved(a, 17)
+  const audit = liveElevenAudit('lumio-entity-chat-replay')
+  const left = verifyRun(a, audit)
+  const right = verifyRun(b, audit)
+  assert.equal(left.ok, true, JSON.stringify(left.failures))
+  assert.equal(right.ok, true, JSON.stringify(right.failures))
+  assert.notEqual(
+    JSON.stringify(left.eventOrder),
+    JSON.stringify(right.eventOrder),
+    'sender permutation must change positional eventOrder',
+  )
+  assert.notEqual(
+    JSON.stringify(left.appliedTicks),
+    JSON.stringify(right.appliedTicks),
+    'appliedTick split must differ',
+  )
+  const report = compareRuns(a, b, audit, audit)
+  assert.equal(report.ok, true, JSON.stringify(report.failures))
+})
+
+test('compareRuns: missing hello-browser or empty eventOrder still FAIL', () => {
+  const a = n12GoodEvidence()
+  const audit = liveElevenAudit('lumio-entity-chat-replay')
+  const missing = structuredClone(a)
+  missing.scenarios['11'].eventOrder = missing.scenarios['11'].eventOrder.filter((row) => !/hello-browser/i.test(String(row)))
+  assert.equal(compareRuns(a, missing, audit, audit).ok, false)
+  const empty = structuredClone(a)
+  empty.scenarios['11'].eventOrder = []
+  assert.equal(compareRuns(a, empty, audit, audit).ok, false)
 })
