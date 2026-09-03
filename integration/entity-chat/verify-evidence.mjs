@@ -563,6 +563,19 @@ test('parseSenderNetEntityId: 32-hex equals two u64 halves', () => {
   assert.equal(isHostNetEntityId(hex), true)
 })
 
+test('parseSenderNetEntityId: Runtime instanceId 0x1000000000000001 keeps low bit', () => {
+  const hex = senderHex(0x1000000000000001n, 0x10n)
+  assert.equal(hex, '10000000000000010000000000000010')
+  assert.notEqual(hex, '10000000000000000000000000000010')
+  assert.equal(
+    parseSenderNetEntityId({
+      senderNetEntityIdInstanceId: 0x1000000000000001n,
+      senderNetEntityIdCounter: 0x10n,
+    }),
+    hex,
+  )
+})
+
 test('空日志目录必须 FAIL', () => {
   const report = verifyEvidenceDir(join(dirname(oracleFilePath()), 'logs', 'missing-pack'))
   assert.equal(report.ok, false)

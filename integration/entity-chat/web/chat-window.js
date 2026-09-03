@@ -43,14 +43,31 @@ export function hexToBytes(hex) {
 }
 
 function readU64LE(view, offset) {
-  const lo = view.getUint32(offset, true)
-  const hi = view.getUint32(offset + 4, true)
-  return lo + hi * 0x100000000
+  return view.getBigUint64(offset, true)
 }
 
 function u64ToHex16(value) {
-  const n = typeof value === 'bigint' ? value : BigInt(value)
-  return n.toString(16).padStart(16, '0')
+  if (typeof value === 'bigint') {
+    if (value < 0n || value > 0xffffffffffffffffn) {
+      throw new RangeError('u64 out of range')
+    }
+    return value.toString(16).padStart(16, '0')
+  }
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return BigInt(value).toString(16).padStart(16, '0')
+  }
+  if (typeof value === 'string' && /^(0x)?[0-9a-f]+$/i.test(value)) {
+    const n = BigInt(value)
+    if (n < 0n || n > 0xffffffffffffffffn) {
+      throw new RangeError('u64 out of range')
+    }
+    return n.toString(16).padStart(16, '0')
+  }
+  throw new TypeError('u64 requires BigInt, safe integer, or hex string')
+}
+
+function u64ToJsonNumber(value) {
+  return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value
 }
 
 /** Canonical 32-hex sender = instanceId u64 || counter u64 (C-1′ / C-2). Not a u128 primitive. */
@@ -80,13 +97,13 @@ export function decodeChatEventPayload(hex) {
   offset += textLen
   const appliedTick = readU64LE(view, offset)
   return {
-    messageId,
-    roomSequence,
+    messageId: u64ToJsonNumber(messageId),
+    roomSequence: u64ToJsonNumber(roomSequence),
     senderNetEntityId: encodeSenderHex(instanceId, counter),
     senderNetEntityIdInstanceId: instanceId,
     senderNetEntityIdCounter: counter,
     text,
-    appliedTick,
+    appliedTick: u64ToJsonNumber(appliedTick),
   }
 }
 
