@@ -32,6 +32,80 @@ export function formatLine(event) {
   return `${event.senderNetEntityId}: ${event.text}`
 }
 
+export function hexToBytes(hex) {
+  const raw = String(hex ?? '')
+  if (raw.length === 0 || raw.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(raw)) return null
+  const bytes = new Uint8Array(raw.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(raw.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
+}
+
+function readU64LE(view, offset) {
+  const lo = view.getUint32(offset, true)
+  const hi = view.getUint32(offset + 4, true)
+  return lo + hi * 0x100000000
+}
+
+/** Decode C-1 chat.event LumioBinV1 payload (fieldOrder messageId, roomSequence, senderNetEntityId, text, appliedTick). */
+export function decodeChatEventPayload(hex) {
+  const bytes = hexToBytes(hex)
+  if (!bytes || bytes.length < 8 * 4 + 4) return null
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let offset = 0
+  const messageId = readU64LE(view, offset)
+  offset += 8
+  const roomSequence = readU64LE(view, offset)
+  offset += 8
+  const sender = readU64LE(view, offset)
+  offset += 8
+  if (offset + 4 > bytes.length) return null
+  const textLen = view.getUint32(offset, true)
+  offset += 4
+  if (offset + textLen + 8 > bytes.length) return null
+  const text = new TextDecoder().decode(bytes.subarray(offset, offset + textLen))
+  offset += textLen
+  const appliedTick = readU64LE(view, offset)
+  return {
+    messageId,
+    roomSequence,
+    senderNetEntityId: String(sender),
+    text,
+    appliedTick,
+  }
+}
+
+export function extractChatEventsFromFrame(frame) {
+  if (frame == null) return []
+  let parsed = frame
+  if (typeof frame === 'string') {
+    try { parsed = JSON.parse(frame) } catch { return [] }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return []
+  if (parsed.messageType === 'FullSnapshot') return []
+  if (parsed.messageType === 'ConnectionSuperseded') return []
+  const blocks = parsed.messageType === 'Delta'
+    ? (Array.isArray(parsed.changedBlocks) ? parsed.changedBlocks : [])
+    : (parsed.mappingId === 'chat.event' ? [parsed] : [])
+  const events = []
+  for (const block of blocks) {
+    if (!block || block.mappingId !== 'chat.event') continue
+    const event = decodeChatEventPayload(block.payload)
+    if (event) events.push(event)
+  }
+  if (parsed.messageType === 'chat.event' || (parsed.roomSequence != null && parsed.appliedTick != null && parsed.text != null && parsed.mappingId == null && parsed.messageType == null)) {
+    if (isEvent(parsed)) events.push({
+      messageId: parsed.messageId,
+      roomSequence: parsed.roomSequence,
+      senderNetEntityId: String(parsed.senderNetEntityId),
+      text: parsed.text,
+      appliedTick: parsed.appliedTick,
+    })
+  }
+  return events
+}
+
 function isEvent(event) {
   return event !== null
     && typeof event === 'object'

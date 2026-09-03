@@ -17,11 +17,19 @@
     <ol id="chat"></ol>
   </main>
   <script type="module">
-    import { appendAcceptedEvent, applyFullSnapshot, createChatWindow, formatLine } from "./chat-window.js";
+    import {
+      appendAcceptedEvent,
+      applyFullSnapshot,
+      createChatWindow,
+      extractChatEventsFromFrame,
+      formatLine,
+    } from "./chat-window.js";
 
     const params = new URLSearchParams(location.search);
     const accountWs = params.get("account");
+    const roomWs = params.get("room");
     const loginName = params.get("login") || "Browser01";
+    const connectionId = params.get("connectionId") || "c-browser";
     const windowState = createChatWindow();
     const list = document.getElementById("chat");
     const statusEl = document.getElementById("status");
@@ -39,35 +47,103 @@
       status: "pending",
       role: "browser",
       loginName,
+      connectionId,
       account: null,
+      room: null,
       received: [],
+      receivedChatEvent: false,
+      connectionSuperseded: false,
       errors: [],
     };
+
+    function recordFrame(parsed, raw) {
+      if (parsed && parsed.messageType === "FullSnapshot") {
+        applyFullSnapshot(windowState);
+        result.received = [];
+        result.receivedChatEvent = false;
+        render();
+        return;
+      }
+      if (parsed && parsed.messageType === "ConnectionSuperseded") {
+        result.connectionSuperseded = true;
+        return;
+      }
+      const events = extractChatEventsFromFrame(parsed ?? raw);
+      for (const event of events) {
+        const accepted = appendAcceptedEvent(windowState, event);
+        if (accepted) {
+          result.received.push(event);
+          result.receivedChatEvent = true;
+        }
+      }
+      render();
+    }
 
     window.__lumioChat = {
       window: windowState,
       appendAcceptedEvent: (event) => {
         const accepted = appendAcceptedEvent(windowState, event);
-        if (accepted) result.received.push(event);
+        if (accepted) {
+          result.received.push(event);
+          result.receivedChatEvent = true;
+        }
         render();
         return accepted;
       },
       applyFullSnapshot: () => {
         applyFullSnapshot(windowState);
         result.received = [];
+        result.receivedChatEvent = false;
         render();
       },
+      recordFrame,
     };
 
     function finish(status, extra) {
       Object.assign(result, extra || {});
       result.status = status;
+      result.windowLines = windowState.lines;
+      result.receivedChatEvent = windowState.lines.length > 0 || result.receivedChatEvent === true;
       window.__lumioResult = result;
       statusEl.textContent = status;
     }
 
+    function joinRoom(uri, id) {
+      return new Promise((resolve, reject) => {
+        const ws = new WebSocket(uri);
+        const timer = setTimeout(() => reject(new Error("room websocket timeout")), 20000);
+        ws.addEventListener("error", () => {
+          clearTimeout(timer);
+          reject(new Error("room websocket error"));
+        });
+        ws.addEventListener("open", () => {
+          ws.send(JSON.stringify({ connectionId: id || connectionId }));
+          result.room = { connected: true, uri, connectionId: id || connectionId };
+          statusEl.textContent = "room";
+        });
+        ws.addEventListener("message", (ev) => {
+          clearTimeout(timer);
+          const raw = String(ev.data);
+          let parsed = null;
+          try { parsed = JSON.parse(raw); } catch { parsed = null; }
+          recordFrame(parsed, raw);
+          if (result.status === "pending" && result.account && result.room) {
+            finish("ok", { account: result.account, room: result.room });
+          }
+          resolve(ws);
+        });
+      });
+    }
+
     async function loginAccount(password) {
       if (!accountWs) {
+        if (roomWs) {
+          await joinRoom(roomWs, connectionId);
+          if (result.status === "pending") {
+            finish("ok", { account: { skipped: true, reason: "no account url" }, room: result.room });
+          }
+          return;
+        }
         finish("ok", { account: { skipped: true, reason: "no account url" } });
         return;
       }
@@ -94,15 +170,29 @@
           delete safe.admissionCredential;
           delete safe.botToolCredential;
           if (parsed.accepted === true) {
-            finish("ok", { account: { accepted: true, accountId: parsed.accountId, accountNewlyCreated: parsed.accountNewlyCreated } });
+            result.account = { accepted: true, accountId: parsed.accountId, accountNewlyCreated: parsed.accountNewlyCreated };
+            resolve();
           } else {
             finish("error", { account: { accepted: false, code: parsed.code }, errors: [parsed.code || "login_failed"] });
+            resolve();
           }
-          resolve();
         });
       });
+      if (result.status === "error") return;
+      if (roomWs) {
+        await joinRoom(roomWs, connectionId);
+        if (result.status === "pending") {
+          finish("ok", { account: result.account, room: result.room });
+        }
+        return;
+      }
+      finish("ok", { account: result.account });
     }
 
+    window.__lumioJoinRoom = (uri, id) => joinRoom(uri, id).catch((err) => {
+      result.errors.push(String(err.message || err));
+      if (result.status === "pending") finish("error");
+    });
     window.__lumioStartLogin = (password) => loginAccount(password).catch((err) => {
       result.errors.push(String(err.message || err));
       finish("error");

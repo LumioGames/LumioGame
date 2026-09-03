@@ -34,6 +34,7 @@ import {
   reconnectSessionCandidates,
   shouldRetryReconnectHandshake,
 } from './verify-evidence.mjs'
+import { extractChatEventsFromFrame } from './web/chat-window.js'
 
 export { BROWSER_NAME, MAIN_ROOM, TEST_PASSWORD }
 
@@ -49,6 +50,53 @@ export function encodeChatInput(text) {
     mappingId: 'chat.input',
     payload: payload.toString('hex'),
     payloadSha256: createHash('sha256').update(payload).digest('hex'),
+  }
+}
+
+export function observedEventKey(event) {
+  return `${event.senderNetEntityId}:${event.text}:${event.roomSequence}`
+}
+
+/** Loopback Room wire client (C-1 JSON, first frame `{connectionId}`). */
+export async function connectRoomWire(listenUri, connectionId, { timeoutMs = 10000 } = {}) {
+  const url = String(listenUri ?? '')
+  if (!url) throw new Error('missing room listenUri')
+  const ws = new WebSocket(url)
+  const received = []
+  const chatEvents = []
+  const state = { superseded: false, snapshot: false, closed: false }
+  const opened = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`room connect timeout (${timeoutMs}ms)`)), timeoutMs)
+    ws.addEventListener('error', () => {
+      clearTimeout(timer)
+      reject(new Error('room websocket error'))
+    })
+    ws.addEventListener('open', () => {
+      clearTimeout(timer)
+      ws.send(JSON.stringify({ connectionId }))
+      resolve()
+    })
+  })
+  ws.addEventListener('message', (ev) => {
+    const raw = typeof ev.data === 'string' ? ev.data : String(ev.data)
+    received.push(raw)
+    let parsed = null
+    try { parsed = JSON.parse(raw) } catch { parsed = null }
+    if (parsed?.messageType === 'ConnectionSuperseded') state.superseded = true
+    if (parsed?.messageType === 'FullSnapshot') state.snapshot = true
+    chatEvents.push(...extractChatEventsFromFrame(parsed ?? raw))
+  })
+  ws.addEventListener('close', () => { state.closed = true })
+  await opened
+  return {
+    ws,
+    connectionId,
+    received,
+    chatEvents,
+    get superseded() { return state.superseded },
+    get snapshot() { return state.snapshot },
+    get closed() { return state.closed },
+    close: () => { try { ws.close() } catch { /* ignore */ } },
   }
 }
 
@@ -249,7 +297,14 @@ function firstLine(err) {
 }
 
 /** Playwright Chromium against the harness page. Does not inject chat events. */
-export async function runPlaywrightBrowser({ pageUrl, password, resultPath, consolePath }) {
+export async function runPlaywrightBrowser({
+  pageUrl,
+  password,
+  resultPath,
+  consolePath,
+  waitForEvents = 0,
+  waitMs = 30000,
+} = {}) {
   const importErrors = []
   let chromium = null
   const here = dirname(fileURLToPath(import.meta.url))
@@ -286,6 +341,8 @@ export async function runPlaywrightBrowser({ pageUrl, password, resultPath, cons
       ran: false,
       injected: false,
       receivedFromNetwork: false,
+      receivedChatEvent: false,
+      windowLines: [],
       error: `playwright unavailable: ${importErrors.join(' | ') || 'module not found'}`,
     }
   }
@@ -312,6 +369,8 @@ export async function runPlaywrightBrowser({ pageUrl, password, resultPath, cons
         ran: false,
         injected: false,
         receivedFromNetwork: false,
+        receivedChatEvent: false,
+        windowLines: [],
         error: `Chromium missing: ${launchErrors.join(' | ')}`,
       }
     }
@@ -324,7 +383,6 @@ export async function runPlaywrightBrowser({ pageUrl, password, resultPath, cons
     } catch { /* ignore */ }
   }
 
-  let receivedFromNetwork = false
   let result = null
   const context = await browser.newContext()
   const page = await context.newPage()
@@ -341,15 +399,35 @@ export async function runPlaywrightBrowser({ pageUrl, password, resultPath, cons
       null,
       { timeout: 20000 },
     )
-    result = await page.evaluate(() => window.__lumioResult)
-    receivedFromNetwork = result?.account?.accepted === true
+    if (Number(waitForEvents) > 0) {
+      await page.waitForFunction(
+        (n) => (window.__lumioChat?.window?.lines?.length ?? 0) >= n,
+        Number(waitForEvents),
+        { timeout: waitMs },
+      )
+    }
+    result = await page.evaluate(() => ({
+      ...(window.__lumioResult ?? {}),
+      windowLines: window.__lumioChat?.window?.lines ?? [],
+      receivedChatEvent: (window.__lumioChat?.window?.lines?.length ?? 0) > 0
+        || window.__lumioResult?.receivedChatEvent === true,
+      connectionSuperseded: window.__lumioResult?.connectionSuperseded === true,
+    }))
   } catch (err) {
     appendEv({ kind: 'harness-error', text: firstLine(err) })
-    result = await page.evaluate(() => window.__lumioResult ?? null).catch(() => null)
+    result = await page.evaluate(() => ({
+      ...(window.__lumioResult ?? {}),
+      windowLines: window.__lumioChat?.window?.lines ?? [],
+      receivedChatEvent: (window.__lumioChat?.window?.lines?.length ?? 0) > 0,
+    })).catch(() => null)
+    const windowLines = Array.isArray(result?.windowLines) ? result.windowLines : []
     return {
       ran: true,
       injected: false,
-      receivedFromNetwork: false,
+      receivedFromNetwork: windowLines.length > 0 || result?.receivedChatEvent === true,
+      receivedChatEvent: windowLines.length > 0 || result?.receivedChatEvent === true,
+      windowLines,
+      receivedEvents: windowLines,
       browser: 'chromium',
       channel,
       error: firstLine(err),
@@ -362,10 +440,16 @@ export async function runPlaywrightBrowser({ pageUrl, password, resultPath, cons
   if (resultPath) {
     writeFileSync(resultPath, JSON.stringify(result, null, 2) + '\n')
   }
+  const windowLines = Array.isArray(result?.windowLines) ? result.windowLines : []
+  const receivedChatEvent = windowLines.length > 0 || result?.receivedChatEvent === true
   return {
     ran: true,
     injected: false,
-    receivedFromNetwork,
+    receivedFromNetwork: receivedChatEvent,
+    receivedChatEvent,
+    windowLines,
+    receivedEvents: windowLines,
+    connectionSuperseded: result?.connectionSuperseded === true,
     browser: 'chromium',
     channel,
     result,
@@ -512,6 +596,7 @@ export async function driveLiveEleven({
   disconnectLogin,
   keepAlive,
   admits,
+  observed,
 }) {
   const failed = (reason, extra = {}) => ({
     ok: false,
@@ -519,7 +604,7 @@ export async function driveLiveEleven({
     bindings: [],
     queries: { blockedReason: reason },
     chat: { eventCount: 0, tickSource: null, timerManagerInvoked: false },
-    persist: { snapshotSource: 'missing', historyCountMax: 0, restoredWindow: 0, windowBeforeSnapshot: 0 },
+    persist: { snapshotSource: 'missing', historyCountMax: 0, restoredWindow: null, windowBeforeSnapshot: null },
     reconnect: { rebound: false, blockedReason: reason },
     expiry: { tombstoned: false, blockedReason: reason },
     isolation: { ok: false, blockedReason: reason },
@@ -599,7 +684,6 @@ export async function driveLiveEleven({
     && /stale/.test(String(queries.stale?.outcome ?? '').toLowerCase())
 
   const chatTargets = censusRows.filter((row) => row.connectionId)
-  const eventOrder = []
   let envelope = null
   let chatAdmitted = 0
   const admitChats = new Map()
@@ -621,7 +705,6 @@ export async function driveLiveEleven({
     const prior = admitChats.get(String(row.connectionId))
     if (prior?.chat?.ok === true) {
       chatAdmitted += 1
-      eventOrder.push(`${row.netEntityId}:${text}:${i + 1}`)
       continue
     }
     const cmd = encodeChatInput(text)
@@ -634,7 +717,6 @@ export async function driveLiveEleven({
     })
     if (posted.json?.ok === true) {
       chatAdmitted += 1
-      eventOrder.push(`${row.netEntityId}:${text}:${i + 1}`)
     }
     appendTrace(tracePath, {
       kind: 'test_control_chat',
@@ -649,9 +731,20 @@ export async function driveLiveEleven({
   }
   const tick = await testControlRequest(testControlUri, 'POST', '/test-control/tick', { roomId: MAIN_ROOM })
   const appliedTick = Number(tick.json?.appliedTick ?? 0)
-  const timerManagerInvoked = tick.json?.ok === true && appliedTick >= 1
-  const appliedTicks = eventOrder.map(() => 1)
-  const s6ok = chatAdmitted === 101 && timerManagerInvoked && envelope?.mappingId === 'chat.input'
+  const receivedEvents = Array.isArray(observed?.receivedEvents) ? observed.receivedEvents : []
+  const eventOrder = receivedEvents.map((ev) => observedEventKey(ev))
+  const appliedTicks = receivedEvents.map((ev) => ev.appliedTick)
+  const utteranceTicks = Array.isArray(observed?.utteranceTicks) ? observed.utteranceTicks : []
+  const timerManagerInvoked = observed?.timerManagerInvoked === true
+    && observed?.tickSource === 'native-kernel/tickFrame'
+  const windowLines = Array.isArray(observed?.windowLines) ? observed.windowLines : []
+  const s6ok = receivedEvents.length === 101
+    && windowLines.length === 101
+    && timerManagerInvoked
+    && utteranceTicks.includes(5)
+    && utteranceTicks.includes(10)
+    && utteranceTicks.includes(15)
+    && envelope?.mappingId === 'chat.input'
 
   const snapshot = await testControlRequest(testControlUri, 'POST', '/test-control/snapshot', { roomId: MAIN_ROOM })
   const snapEntities = Array.isArray(snapshot.json?.entities) ? snapshot.json.entities : []
@@ -666,19 +759,34 @@ export async function driveLiveEleven({
     entities: snapEntities.slice(0, 1).map((row) => ({ ...row, historyCount: 1 })),
   })
   const restore = await testControlRequest(testControlUri, 'POST', '/test-control/restore', snapshot.json ?? { roomId: MAIN_ROOM, historyCount: 0, entities: [] })
+  const windowBeforeSnapshot = Number.isFinite(Number(observed?.windowBeforeSnapshot))
+    ? Number(observed.windowBeforeSnapshot)
+    : (Array.isArray(observed?.windowLinesBefore) ? observed.windowLinesBefore.length : null)
+  const restoredWindow = Number.isFinite(Number(observed?.restoredWindow))
+    ? Number(observed.restoredWindow)
+    : (Array.isArray(observed?.windowLinesAfter) ? observed.windowLinesAfter.length : null)
   const persist = {
-    snapshotSource: 'live-mvp-host',
+    snapshotSource: observed?.snapshotSource ?? 'missing',
     historyCountMax,
-    restoredWindow: 0,
-    windowBeforeSnapshot: chatAdmitted,
+    restoredWindow,
+    windowBeforeSnapshot,
+    clientWindowBeforeSnapshot: windowBeforeSnapshot,
+    clientWindowAfterRestore: restoredWindow,
+    snapshotSha256: observed?.snapshotSha256 ?? null,
+    processA: observed?.processA ?? null,
+    processB: observed?.processB ?? null,
     historyRejected: historyReject.json?.ok === false,
     restoreOk: restore.json?.ok === true,
   }
-  const s7ok = persist.windowBeforeSnapshot > 0
+  const s7ok = Number(persist.windowBeforeSnapshot) > 0
     && persist.historyCountMax === 0
     && persist.restoredWindow === 0
     && persist.restoreOk === true
     && persist.historyRejected === true
+    && persist.processA?.pid
+    && persist.processB?.pid
+    && Number(persist.processA.pid) !== Number(persist.processB.pid)
+    && typeof persist.snapshotSha256 === 'string'
 
   const bot100Before = findLogin(bindings, 'Bot100')
   const previousNent = isHostNetEntityId(bot100Before?.netEntityId) ? bot100Before.netEntityId : null
@@ -704,7 +812,7 @@ export async function driveLiveEleven({
   reconnect = {
     ...reconnect,
     rebound: s8ok,
-    ok: s8ok,
+    ok: s8ok && observed?.connectionSupersededReceived === true,
     entityA: s8ok ? previousNent : admittedNent,
     netEntityId: admittedNent,
     previousNetEntityId: previousNent,
@@ -712,7 +820,9 @@ export async function driveLiveEleven({
     previousAccountId: bot100Before?.accountId ?? null,
     sessionId: bot100After?.sessionId ?? reconnect.sessionId ?? null,
     previousSessionId: bot100Before?.sessionId ?? reconnect.previousSessionId ?? null,
+    connectionSupersededReceived: observed?.connectionSupersededReceived === true,
   }
+  const s8ObservedOk = s8ok && reconnect.connectionSupersededReceived === true
 
   const bot99 = findLogin(afterReconnect, 'Bot99') ?? findLogin(bindings, 'Bot99')
   const entityA99 = isHostNetEntityId(bot99?.netEntityId) ? bot99.netEntityId : null
@@ -781,9 +891,9 @@ export async function driveLiveEleven({
   }
 
   const s10ok = isolation.ok === true
-  const s11ok = eventOrder.length === 101 && appliedTicks.length === 101 && appliedTicks.every((t) => t === 1)
+  const s11ok = eventOrder.length === 101 && appliedTicks.length === 101 && receivedEvents.length === 101
   return {
-    ok: s5ok && s6ok && s7ok && s8ok && s9ok && s10ok && s11ok && bots.length === 100 && players.length === 1,
+    ok: s5ok && s6ok && s7ok && s8ObservedOk && s9ok && s10ok && s11ok && bots.length === 100 && players.length === 1,
     bindings: censusRows,
     queries: {
       unauthorized: queries.unauthorized?.outcome ?? queries.unauthorized,
@@ -793,10 +903,12 @@ export async function driveLiveEleven({
       missing: queries.missing?.outcome ?? queries.missing,
     },
     chat: {
-      eventCount: chatAdmitted,
-      tickSource: 'test-control/tick',
+      eventCount: receivedEvents.length,
+      tickSource: observed?.tickSource ?? null,
       timerManagerInvoked,
-      cadence: timerManagerInvoked ? 'host-timer' : 'tick-batched',
+      cadence: observed?.tickSource ?? null,
+      utteranceTicks,
+      receivedEvents,
       appliedTick,
       ...envelope,
     },
@@ -810,7 +922,7 @@ export async function driveLiveEleven({
     s5ok,
     s6ok,
     s7ok,
-    s8ok,
+    s8ok: s8ObservedOk,
     s9ok,
     s10ok: isolation.ok === true,
     s11ok,
@@ -887,6 +999,13 @@ test('encodeChatInput hello-Bot01 is lowercase hex payload + sha256', () => {
   assert.equal(cmd.payload, '0b00000068656c6c6f2d426f743031')
   assert.match(cmd.payloadSha256, /^[0-9a-f]{64}$/)
   assert.equal(cmd.payloadSha256, createHash('sha256').update(Buffer.from(cmd.payload, 'hex')).digest('hex'))
+})
+
+test('observedEventKey is sender:text:roomSequence from a received chat.event', () => {
+  assert.equal(
+    observedEventKey({ senderNetEntityId: '101', text: 'hello-Bot01', roomSequence: 1, appliedTick: 7 }),
+    '101:hello-Bot01:1',
+  )
 })
 
 test('indexBindings joins loginName from accountId and keeps host nent_*', () => {

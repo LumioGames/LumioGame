@@ -27,7 +27,7 @@ metadata:
 ## 待解决
 
 - 接入 GameRuntime `EcsWorld` / Ingress 13 相（本切片用 Room 内权威宿主，不阻塞平行开发）。
-- 101-entity SUCCESS 路径是 sibling `lumio-mvp-host`（或 rust `lumio-entity-chat-replay`）上 11 场景全部 `ok: true`；`GameRoomHost` 只作单元 double。见 [`entity-chat-harness.md`](./entity-chat-harness.md)。
+- 101-entity SUCCESS 路径是 sibling `lumio-entity-chat-replay` 上 11 场景全部 `ok: true`；`GameRoomHost` 与 `lumio-mvp-host` 不是 SUCCESS 路径。见 [`entity-chat-harness.md`](./entity-chat-harness.md)。
 
 ## 相关
 
