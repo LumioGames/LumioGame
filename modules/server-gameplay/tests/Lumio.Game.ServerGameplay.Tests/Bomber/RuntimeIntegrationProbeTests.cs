@@ -31,14 +31,14 @@ public sealed class RuntimeIntegrationProbeTests
 
         var order = manager.World.Commands.Create<BomberPlayerEntity>();
         BomberPlayerState player = order.Get<BomberPlayerState>();
-        player.Hearts.SetSilent(3);
+        player.HealthPoints.SetSilent(6);
         player.HatCount.SetSilent(0);
 
         manager.Tick();
 
         BomberPlayerState[] players = manager.World.Each<BomberPlayerState>().ToArray();
         Assert.Single(players);
-        Assert.Equal(3, players[0].Hearts.Value);
+        Assert.Equal(6, players[0].HealthPoints.Value);
 
         byte[] snapshot = manager.CaptureSnapshot();
         Assert.True(snapshot.Length > 0, "快照必须包含数据，不能是空字节");
@@ -54,7 +54,7 @@ public sealed class RuntimeIntegrationProbeTests
     }
 
     [Fact]
-    public void AllSixEntityTypesRegisterCreateAndParticipateInSnapshot()
+    public void AllFiveEntityTypesRegisterCreateAndParticipateInSnapshot()
     {
         using WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
         manager.Start(Thread.CurrentThread);
@@ -62,16 +62,21 @@ public sealed class RuntimeIntegrationProbeTests
         manager.World.Single<BomberMatchState>().MatchTick.SetSilent(0);
 
         BomberPlayerState player = manager.World.Commands.Create<BomberPlayerEntity>().Get<BomberPlayerState>();
-        player.Hearts.SetSilent(3);
+        player.HealthPoints.SetSilent(6);
 
         BomberBombState bomb = manager.World.Commands.Create<BomberBombEntity>().Get<BomberBombState>();
         bomb.CellX.SetSilent(5);
         bomb.CellY.SetSilent(5);
+        bomb.CellZ.SetSilent(0);
         bomb.FuseEndTick.SetSilent(42);
-
-        BomberExplosionCell cell = manager.World.Commands.Create<BomberExplosionCellEntity>().Get<BomberExplosionCell>();
-        cell.CellX.SetSilent(5);
-        cell.CellY.SetSilent(6);
+        bomb.BombKind.SetSilent(0);
+        bomb.ExplodedAtTick.SetSilent(42);
+        bomb.DangerUntilTick.SetSilent(49);
+        bomb.BurnUntilTick.SetSilent(49);
+        bomb.ReachUp.SetSilent(2);
+        bomb.ReachDown.SetSilent(1);
+        bomb.ReachLeft.SetSilent(2);
+        bomb.ReachRight.SetSilent(0);
 
         BomberHatPile pile = manager.World.Commands.Create<BomberHatPileEntity>().Get<BomberHatPile>();
         pile.Count.SetSilent(7);
@@ -83,7 +88,6 @@ public sealed class RuntimeIntegrationProbeTests
 
         Assert.Single(manager.World.Each<BomberPlayerState>());
         Assert.Single(manager.World.Each<BomberBombState>());
-        Assert.Single(manager.World.Each<BomberExplosionCell>());
         Assert.Single(manager.World.Each<BomberHatPile>());
         Assert.Single(manager.World.Each<BomberPickupItem>());
 
@@ -100,14 +104,14 @@ public sealed class RuntimeIntegrationProbeTests
         {
             var order = manager.World.Commands.Create<BomberPlayerEntity>();
             BomberPlayerState player = order.Get<BomberPlayerState>();
-            player.Hearts.SetSilent(3);
+            player.HealthPoints.SetSilent(6);
             player.HatCount.SetSilent(i);
             manager.Tick();
         }
 
         foreach (BomberPlayerState player in manager.World.Each<BomberPlayerState>())
         {
-            player.Hearts.SetSilent(player.Hearts.Value - 1);
+            player.HealthPoints.SetSilent(player.HealthPoints.Value - 2);
         }
 
         manager.Tick();

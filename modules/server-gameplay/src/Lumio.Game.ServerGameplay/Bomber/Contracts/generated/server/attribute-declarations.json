@@ -1,5 +1,19 @@
 [
   {
+    "attributeId": "BomberBombState.bombKind",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.burnUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberBombState.cellX",
     "persistence": "persistent",
     "replication": "replicated",
@@ -14,7 +28,28 @@
     "visibility": "room-public"
   },
   {
+    "attributeId": "BomberBombState.cellZ",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberBombState.chainId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.dangerUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.explodedAtTick",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "u64",
@@ -35,6 +70,13 @@
     "visibility": "room-public"
   },
   {
+    "attributeId": "BomberBombState.pierceLayers",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberBombState.power",
     "persistence": "persistent",
     "replication": "replicated",
@@ -42,38 +84,31 @@
     "visibility": "room-public"
   },
   {
-    "attributeId": "BomberExplosionCell.cellX",
+    "attributeId": "BomberBombState.reachDown",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "i32",
     "visibility": "room-public"
   },
   {
-    "attributeId": "BomberExplosionCell.cellY",
+    "attributeId": "BomberBombState.reachLeft",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "i32",
     "visibility": "room-public"
   },
   {
-    "attributeId": "BomberExplosionCell.chainId",
+    "attributeId": "BomberBombState.reachRight",
     "persistence": "persistent",
     "replication": "replicated",
-    "valueType": "u64",
+    "valueType": "i32",
     "visibility": "room-public"
   },
   {
-    "attributeId": "BomberExplosionCell.dangerUntilTick",
+    "attributeId": "BomberBombState.reachUp",
     "persistence": "persistent",
     "replication": "replicated",
-    "valueType": "u64",
-    "visibility": "room-public"
-  },
-  {
-    "attributeId": "BomberExplosionCell.sourceBombOwnerNetEntityIdRaw",
-    "persistence": "persistent",
-    "replication": "replicated",
-    "valueType": "u64",
+    "valueType": "i32",
     "visibility": "room-public"
   },
   {
@@ -85,6 +120,13 @@
   },
   {
     "attributeId": "BomberHatPile.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberHatPile.cellZ",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "i32",
@@ -154,6 +196,13 @@
     "visibility": "room-public"
   },
   {
+    "attributeId": "BomberPickupItem.cellZ",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberPickupItem.kind",
     "persistence": "persistent",
     "replication": "replicated",
@@ -189,6 +238,13 @@
     "visibility": "room-public"
   },
   {
+    "attributeId": "BomberPlayerState.cellZ",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberPlayerState.hatCount",
     "persistence": "persistent",
     "replication": "replicated",
@@ -196,7 +252,7 @@
     "visibility": "room-public"
   },
   {
-    "attributeId": "BomberPlayerState.hearts",
+    "attributeId": "BomberPlayerState.healthPoints",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "i32",
@@ -211,6 +267,13 @@
   },
   {
     "attributeId": "BomberPlayerState.posMilliY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.posMilliZ",
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "i32",

@@ -13,12 +13,32 @@ public sealed partial class BomberBombState : IGeneratedComponent
     partial void OnCellXChanged(int old, int @new, ChangeReason reason);
     partial void OnCellYChanging(int old, int @new, ChangeReason reason);
     partial void OnCellYChanged(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanging(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanged(int old, int @new, ChangeReason reason);
     partial void OnFuseEndTickChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnFuseEndTickChanged(ulong old, ulong @new, ChangeReason reason);
     partial void OnPowerChanging(int old, int @new, ChangeReason reason);
     partial void OnPowerChanged(int old, int @new, ChangeReason reason);
     partial void OnChainIdChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnChainIdChanged(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBombKindChanging(int old, int @new, ChangeReason reason);
+    partial void OnBombKindChanged(int old, int @new, ChangeReason reason);
+    partial void OnPierceLayersChanging(int old, int @new, ChangeReason reason);
+    partial void OnPierceLayersChanged(int old, int @new, ChangeReason reason);
+    partial void OnExplodedAtTickChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnExplodedAtTickChanged(ulong old, ulong @new, ChangeReason reason);
+    partial void OnDangerUntilTickChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnDangerUntilTickChanged(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBurnUntilTickChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBurnUntilTickChanged(ulong old, ulong @new, ChangeReason reason);
+    partial void OnReachUpChanging(int old, int @new, ChangeReason reason);
+    partial void OnReachUpChanged(int old, int @new, ChangeReason reason);
+    partial void OnReachDownChanging(int old, int @new, ChangeReason reason);
+    partial void OnReachDownChanged(int old, int @new, ChangeReason reason);
+    partial void OnReachLeftChanging(int old, int @new, ChangeReason reason);
+    partial void OnReachLeftChanged(int old, int @new, ChangeReason reason);
+    partial void OnReachRightChanging(int old, int @new, ChangeReason reason);
+    partial void OnReachRightChanged(int old, int @new, ChangeReason reason);
     partial void OnClientWrite(in SyncWrite w, ref bool accept);
 
 
@@ -27,9 +47,19 @@ public sealed partial class BomberBombState : IGeneratedComponent
         OwnerNetEntityIdRaw = OwnerNetEntityIdRaw.Bound(host, this, 0, "BomberBombState.ownerNetEntityIdRaw");
         CellX = CellX.Bound(host, this, 1, "BomberBombState.cellX");
         CellY = CellY.Bound(host, this, 2, "BomberBombState.cellY");
-        FuseEndTick = FuseEndTick.Bound(host, this, 3, "BomberBombState.fuseEndTick");
-        Power = Power.Bound(host, this, 4, "BomberBombState.power");
-        ChainId = ChainId.Bound(host, this, 5, "BomberBombState.chainId");
+        CellZ = CellZ.Bound(host, this, 3, "BomberBombState.cellZ");
+        FuseEndTick = FuseEndTick.Bound(host, this, 4, "BomberBombState.fuseEndTick");
+        Power = Power.Bound(host, this, 5, "BomberBombState.power");
+        ChainId = ChainId.Bound(host, this, 6, "BomberBombState.chainId");
+        BombKind = BombKind.Bound(host, this, 7, "BomberBombState.bombKind");
+        PierceLayers = PierceLayers.Bound(host, this, 8, "BomberBombState.pierceLayers");
+        ExplodedAtTick = ExplodedAtTick.Bound(host, this, 9, "BomberBombState.explodedAtTick");
+        DangerUntilTick = DangerUntilTick.Bound(host, this, 10, "BomberBombState.dangerUntilTick");
+        BurnUntilTick = BurnUntilTick.Bound(host, this, 11, "BomberBombState.burnUntilTick");
+        ReachUp = ReachUp.Bound(host, this, 12, "BomberBombState.reachUp");
+        ReachDown = ReachDown.Bound(host, this, 13, "BomberBombState.reachDown");
+        ReachLeft = ReachLeft.Bound(host, this, 14, "BomberBombState.reachLeft");
+        ReachRight = ReachRight.Bound(host, this, 15, "BomberBombState.reachRight");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -40,9 +70,19 @@ public sealed partial class BomberBombState : IGeneratedComponent
         if (ordinal == 0) OnOwnerNetEntityIdRawChanging((ulong)oldValue!, (ulong)newValue!, reason);
         if (ordinal == 1) OnCellXChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnCellYChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 3) OnFuseEndTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 4) OnPowerChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 5) OnChainIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnCellZChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnFuseEndTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 5) OnPowerChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 6) OnChainIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnBombKindChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnPierceLayersChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnExplodedAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnDangerUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnBurnUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 12) OnReachUpChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnReachDownChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnReachLeftChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 15) OnReachRightChanging((int)oldValue!, (int)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
@@ -50,9 +90,19 @@ public sealed partial class BomberBombState : IGeneratedComponent
         if (ordinal == 0) OnOwnerNetEntityIdRawChanged((ulong)oldValue!, (ulong)newValue!, reason);
         if (ordinal == 1) OnCellXChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnCellYChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 3) OnFuseEndTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 4) OnPowerChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 5) OnChainIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnCellZChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnFuseEndTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 5) OnPowerChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 6) OnChainIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnBombKindChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnPierceLayersChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnExplodedAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnDangerUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnBurnUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 12) OnReachUpChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnReachDownChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnReachLeftChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 15) OnReachRightChanged((int)oldValue!, (int)newValue!, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -75,6 +125,9 @@ public sealed partial class BomberBombState : IGeneratedComponent
         writer.WriteUInt64("BomberBombState.ownerNetEntityIdRaw", OwnerNetEntityIdRaw.Value);
         writer.WriteUInt64("BomberBombState.fuseEndTick", FuseEndTick.Value);
         writer.WriteUInt64("BomberBombState.chainId", ChainId.Value);
+        writer.WriteUInt64("BomberBombState.explodedAtTick", ExplodedAtTick.Value);
+        writer.WriteUInt64("BomberBombState.dangerUntilTick", DangerUntilTick.Value);
+        writer.WriteUInt64("BomberBombState.burnUntilTick", BurnUntilTick.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
@@ -82,6 +135,9 @@ public sealed partial class BomberBombState : IGeneratedComponent
         writer.WriteUInt64("BomberBombState.ownerNetEntityIdRaw", OwnerNetEntityIdRaw.Value);
         writer.WriteUInt64("BomberBombState.fuseEndTick", FuseEndTick.Value);
         writer.WriteUInt64("BomberBombState.chainId", ChainId.Value);
+        writer.WriteUInt64("BomberBombState.explodedAtTick", ExplodedAtTick.Value);
+        writer.WriteUInt64("BomberBombState.dangerUntilTick", DangerUntilTick.Value);
+        writer.WriteUInt64("BomberBombState.burnUntilTick", BurnUntilTick.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
@@ -92,6 +148,12 @@ public sealed partial class BomberBombState : IGeneratedComponent
             FuseEndTick.SetSilent(fuseEndTickRestore);
         if (reader.TryReadUInt64("BomberBombState.chainId", out ulong chainIdRestore))
             ChainId.SetSilent(chainIdRestore);
+        if (reader.TryReadUInt64("BomberBombState.explodedAtTick", out ulong explodedAtTickRestore))
+            ExplodedAtTick.SetSilent(explodedAtTickRestore);
+        if (reader.TryReadUInt64("BomberBombState.dangerUntilTick", out ulong dangerUntilTickRestore))
+            DangerUntilTick.SetSilent(dangerUntilTickRestore);
+        if (reader.TryReadUInt64("BomberBombState.burnUntilTick", out ulong burnUntilTickRestore))
+            BurnUntilTick.SetSilent(burnUntilTickRestore);
     }
 
     object? IGeneratedComponent.ReadField(string fieldId)
@@ -99,9 +161,19 @@ public sealed partial class BomberBombState : IGeneratedComponent
         if (string.Equals(fieldId, "ownerNetEntityIdRaw", StringComparison.Ordinal) || string.Equals(fieldId, "OwnerNetEntityIdRaw", StringComparison.Ordinal)) return OwnerNetEntityIdRaw.Value;
         if (string.Equals(fieldId, "cellX", StringComparison.Ordinal) || string.Equals(fieldId, "CellX", StringComparison.Ordinal)) return CellX.Value;
         if (string.Equals(fieldId, "cellY", StringComparison.Ordinal) || string.Equals(fieldId, "CellY", StringComparison.Ordinal)) return CellY.Value;
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal)) return CellZ.Value;
         if (string.Equals(fieldId, "fuseEndTick", StringComparison.Ordinal) || string.Equals(fieldId, "FuseEndTick", StringComparison.Ordinal)) return FuseEndTick.Value;
         if (string.Equals(fieldId, "power", StringComparison.Ordinal) || string.Equals(fieldId, "Power", StringComparison.Ordinal)) return Power.Value;
         if (string.Equals(fieldId, "chainId", StringComparison.Ordinal) || string.Equals(fieldId, "ChainId", StringComparison.Ordinal)) return ChainId.Value;
+        if (string.Equals(fieldId, "bombKind", StringComparison.Ordinal) || string.Equals(fieldId, "BombKind", StringComparison.Ordinal)) return BombKind.Value;
+        if (string.Equals(fieldId, "pierceLayers", StringComparison.Ordinal) || string.Equals(fieldId, "PierceLayers", StringComparison.Ordinal)) return PierceLayers.Value;
+        if (string.Equals(fieldId, "explodedAtTick", StringComparison.Ordinal) || string.Equals(fieldId, "ExplodedAtTick", StringComparison.Ordinal)) return ExplodedAtTick.Value;
+        if (string.Equals(fieldId, "dangerUntilTick", StringComparison.Ordinal) || string.Equals(fieldId, "DangerUntilTick", StringComparison.Ordinal)) return DangerUntilTick.Value;
+        if (string.Equals(fieldId, "burnUntilTick", StringComparison.Ordinal) || string.Equals(fieldId, "BurnUntilTick", StringComparison.Ordinal)) return BurnUntilTick.Value;
+        if (string.Equals(fieldId, "reachUp", StringComparison.Ordinal) || string.Equals(fieldId, "ReachUp", StringComparison.Ordinal)) return ReachUp.Value;
+        if (string.Equals(fieldId, "reachDown", StringComparison.Ordinal) || string.Equals(fieldId, "ReachDown", StringComparison.Ordinal)) return ReachDown.Value;
+        if (string.Equals(fieldId, "reachLeft", StringComparison.Ordinal) || string.Equals(fieldId, "ReachLeft", StringComparison.Ordinal)) return ReachLeft.Value;
+        if (string.Equals(fieldId, "reachRight", StringComparison.Ordinal) || string.Equals(fieldId, "ReachRight", StringComparison.Ordinal)) return ReachRight.Value;
         return null;
     }
 
@@ -125,6 +197,12 @@ public sealed partial class BomberBombState : IGeneratedComponent
             else CellY.Value = (int)value!;
             return;
         }
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal))
+        {
+            if (silent) CellZ.SetSilent((int)value!);
+            else CellZ.Value = (int)value!;
+            return;
+        }
         if (string.Equals(fieldId, "fuseEndTick", StringComparison.Ordinal) || string.Equals(fieldId, "FuseEndTick", StringComparison.Ordinal))
         {
             if (silent) FuseEndTick.SetSilent((ulong)value!);
@@ -141,6 +219,60 @@ public sealed partial class BomberBombState : IGeneratedComponent
         {
             if (silent) ChainId.SetSilent((ulong)value!);
             else ChainId.Value = (ulong)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "bombKind", StringComparison.Ordinal) || string.Equals(fieldId, "BombKind", StringComparison.Ordinal))
+        {
+            if (silent) BombKind.SetSilent((int)value!);
+            else BombKind.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "pierceLayers", StringComparison.Ordinal) || string.Equals(fieldId, "PierceLayers", StringComparison.Ordinal))
+        {
+            if (silent) PierceLayers.SetSilent((int)value!);
+            else PierceLayers.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "explodedAtTick", StringComparison.Ordinal) || string.Equals(fieldId, "ExplodedAtTick", StringComparison.Ordinal))
+        {
+            if (silent) ExplodedAtTick.SetSilent((ulong)value!);
+            else ExplodedAtTick.Value = (ulong)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "dangerUntilTick", StringComparison.Ordinal) || string.Equals(fieldId, "DangerUntilTick", StringComparison.Ordinal))
+        {
+            if (silent) DangerUntilTick.SetSilent((ulong)value!);
+            else DangerUntilTick.Value = (ulong)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "burnUntilTick", StringComparison.Ordinal) || string.Equals(fieldId, "BurnUntilTick", StringComparison.Ordinal))
+        {
+            if (silent) BurnUntilTick.SetSilent((ulong)value!);
+            else BurnUntilTick.Value = (ulong)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "reachUp", StringComparison.Ordinal) || string.Equals(fieldId, "ReachUp", StringComparison.Ordinal))
+        {
+            if (silent) ReachUp.SetSilent((int)value!);
+            else ReachUp.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "reachDown", StringComparison.Ordinal) || string.Equals(fieldId, "ReachDown", StringComparison.Ordinal))
+        {
+            if (silent) ReachDown.SetSilent((int)value!);
+            else ReachDown.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "reachLeft", StringComparison.Ordinal) || string.Equals(fieldId, "ReachLeft", StringComparison.Ordinal))
+        {
+            if (silent) ReachLeft.SetSilent((int)value!);
+            else ReachLeft.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "reachRight", StringComparison.Ordinal) || string.Equals(fieldId, "ReachRight", StringComparison.Ordinal))
+        {
+            if (silent) ReachRight.SetSilent((int)value!);
+            else ReachRight.Value = (int)value!;
             return;
         }
     }

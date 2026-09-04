@@ -9,4 +9,5 @@ public sealed partial class BomberPickupItem : Component
     [Persist] public Sync<int> Kind = new(Scope.Room, Authority.Server);
     [Persist] public Sync<int> CellX = new(Scope.Room, Authority.Server);
     [Persist] public Sync<int> CellY = new(Scope.Room, Authority.Server);
+    [Persist] public Sync<int> CellZ = new(Scope.Room, Authority.Server);
 }
