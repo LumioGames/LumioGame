@@ -15,7 +15,7 @@
 
 | # | 待核验能力 | 结论 | 证据 |
 |---|---|---|---|
-| ① | Game 可定义并注册全新 Component（不复用 Username 样例） | **可行** | `[EcsComponent]`/`[EntityType]`/`[Has]` 等注解全部 `public`；`EcsRegistry`/`WorldManager.Create(EcsRegistry, ulong?)` 接受任意注册表；`gen-declarations` CLI（`LumioGameRuntime/tools/gen-declarations`）以 `--namespace`/`--assembly-name`/`--sources` 为参数、与命名空间无关，可直接对 Game 自己的源码目录生成 Registry + 组件 partial。已用 6 个自定义 EntityType/Component 实证（见 §1）。 |
+| ① | Game 可定义并注册全新 Component（不复用 Username 样例） | **可行** | `[EcsComponent]`/`[EntityType]`/`[Has]` 等注解全部 `public`；`EcsRegistry`/`WorldManager.Create(EcsRegistry, ulong?)` 接受任意注册表；`gen-declarations` CLI（`LumioGameRuntime/tools/gen-declarations`）以 `--namespace`/`--assembly-name`/`--sources` 为参数、与命名空间无关，可直接对 Game 自己的源码目录生成 Registry + 组件 partial。已用自定义 EntityType/Component 实证（见 §1）——v1.0.0 时为 6 个，v1.2.0 起为 5 个（`BomberExplosionCellEntity` 已按 ADR 0017 删除，爆炸由炸弹实体持有）。 |
 | ② | Game 可注册 Processor，参与 Runtime 的 Logical Tick 编排 | **不可行，硬阻塞** | `modules/ecs` 无任何 `ISystem`/`IProcessor` 抽象；`modules/simulation` 的 `TickExecutorComposition` 构造函数、`SimulationSession` 构造函数、`SimulationModule.CreateSession(options, composition)` 重载均为 `internal`，`InternalsVisibleTo` 只授权 Runtime 自身测试程序集。`WorldManager.Tick()` 公开但内部序列（ApplyInputs→CommitCreates→StampAndProject→ConsumeSave）固定、无扩展点。**Game 现有 Chat 功能本就不经此路径**——`ChatSetMessageSystem.Admit/SetMessage` 由 Game 代码直接调用，配合 `manager.Tick()`，同一模式本次沿用（见 §2）。 |
 | ③ | Game 可发起 CrossWorldTxn，触及 `IVoxelWorldPort` | **不可行，设计上刻意阻塞** | `internal interface IVoxelWorldPort`（`coordination/Prepare/TxnPrepareCoordinator.cs:73`）与全部请求/结果类型 `internal`；唯一公开的 `CoordinationModule.Create(initialRevision)` 固定接一个私有 `FailClosedVoxelWorldPort`；接受自定义端口的重载 `internal static`。Runtime 自身用反射测试 `VoxelAdapterSurfaceTests.SubstituteVoxelContractTypesAreNotExported` 断言 Voxel 契约类型永不导出。与 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A2（`LumioVoxelEngine` 尚未导出 C 接口）互证：即便端口公开，当前也无真实 Voxel 后端可接。 |
 | ④ | 可取得确定性逐 Tick 快照并哈希，用于「同 Seed 可重放」 | **可行** | `WorldManager.CaptureSnapshot()` 公开，返回可复制 `byte[]`；Game 自行 SHA-256。已用真实测试证明：同一命令序列在两个独立 `WorldManager` 实例上产出逐字节相等的快照哈希（`SameSeedAndCommandSequenceProducesByteIdenticalSnapshotOnTwoIndependentWorlds`）。Runtime 内部另有更完整的 `StateHashCoordinator`（`Determinism/StateHashCoordinator.cs`），但其官方接线只经 `TickExecutionContext`（internal），Game 不可达；Game 自算快照哈希已足够 Stage 0a 的确定性门。 |
@@ -151,7 +151,7 @@ sha256Hex = SHA256( manager.CaptureSnapshot() ‖ terrain.CanonicalBytes() )
 
 回放 oracle 判据：两次运行的 `statehash.ndjson` 逐行相等（不得只比行数）；空文件或截断文件必须 FAIL（沿用 `integration/entity-chat` 的 oracle 纪律）。
 
-## 7. 已知缺口（v1.1.0 登记，未在本版解决）
+## 7. 已知缺口（v1.1.0 登记，已于 v1.2.0 由 ADR 0018 全部关闭）
 
 > v1.1.0 登记的 K1 / K2 **已由 ADR [0018](../../../.spec/decisions/0018-bomber-k1-k2-resolution.md) 在 v1.2.0 关闭**，保留在表内供追溯。当前无未决缺口。
 
