@@ -130,8 +130,8 @@ material-palette v1
 - 2: Stone
 ```
 
-- `MaterialId` 是本仓拥有的产品语义目录；Voxel 侧按不透明 uint16 存取（经 `IVoxelWorldPort`），VoxelEngine 不解释其含义（假设 A6，§7）。
-- **目录与行为绑定分属两处**（ADR [0016](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)）：**方块目录**（世界里存在哪些方块、外观与存储）是平台级公共材质库，归 Voxel 侧；**每个方块在某一产品里的行为绑定**（可破坏、阻断爆炸、破坏后残留、掉落、地面效果、可通行）归本仓、随 `GameReleaseId` 锁定。同一块「水」在炸弹人是阻断爆炸 + 禁止放弹 + 溺水，在其他产品可以是别的语义——这正是 Voxel 只存不透明 uint16 的原因。本表 `material-palette v1` 是 PlaceVoxel MVP 的最小目录；炸弹人自己的方块清单见 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9 ①。
+- `MaterialId` 是本仓拥有的产品语义目录；Voxel 侧按不透明 uint16 存取（经 `IVoxelWorldPort`），VoxelEngine 不解释其含义（假设 A6，§7）。**⚠ 假设 A6 已被上游证伪**（ADR [0019](../../../.spec/decisions/0019-bomber-terrain-align-voxel-world-contract.md)）：公共契约 `voxel-world-v1.json` 冻结的格值是 **32 位无符号 `BlockId` = `BlockType << 8 | BlockState`**，引擎按 BlockType 查材质类表解释它（网格 / 渲染通道 / 碰撞 / 透光四轴）。本节按 uint16 不透明目录写的部分随本文档整体重做时一并修正，本次只作标注。
+- **目录内容归本仓，引擎只给机制**（ADR [0019](../../../.spec/decisions/0019-bomber-terrain-align-voxel-world-contract.md)，取代 ADR [0016](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)「方块目录归 Voxel 侧」一条）：上游 `blockCatalog.mintingProcedure` 原文「官方内容层在目录里加一行；**实现仓不得自行铸号**」。引擎交付的是段表（作用域位 bit 23、全局段 256 起连号稠密）、材质类的两个类（Solid / Liquid）与四轴、目录行的六字段结构与加载期校验；**表里填哪些方块、什么外观、归哪一类是本仓的配置**，随 `GameReleaseId` 锁定。**每个方块在某一产品里的行为绑定**（可破坏、阻断爆炸、破坏后残留、掉落、地面效果、可通行）同样归本仓，且**不是引擎四轴之一**——引擎的 `Liquid.collision = passable`，水在引擎里不挡路。同一块「水」在炸弹人是阻断爆炸 + 禁止放弹 + 溺水，在其他产品可以是别的语义。本表 `material-palette v1` 是 PlaceVoxel MVP 的最小目录；炸弹人自己的方块清单见 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9 ①。
 - `Place(MaterialId=0)` 在 Schema 校验层拒绝，挖块只走 `DigVoxelCommand`——两条路径不混用。
 
 ### 6.3 Config/Content Hash 口径（ADR-041 现状消费）
@@ -151,7 +151,7 @@ material-palette v1
 | A3 | Runtime `replication` 提供 Mapping Registry，接受 per-Component 声明（§4 全字段）并负责生成稳定 ID/序列化器/权限元数据；Game 只交声明不写 Serializer | v1.4 §5.3、README「Replication Mapping」；R-00172 卡面 |
 | A4 | `NetEntityId`（128 位不透明）/`LocalEntityId` 语义按 v1.4 §5.2；Game 不解析位布局 | v1.4 §5.2；R-00172 卡面「Net/Local Identity Context」 |
 | A5 | CrossWorldTxnV1、十三相、`GasAndEventFinalize` 唯一 Commit Point 按 v1.4 §4/§6 由 Runtime `coordination`/`simulation` 提供；Game 只消费 | v1.4 §4.5、§6.2 |
-| A6 | `IVoxelWorldPort` 提供带 Revision 只读查询与 CrossWorldTxn 置块/清块；MaterialId 对 Voxel 不透明 | README「职责」；v1.4 §6 |
+| A6 | ~~`IVoxelWorldPort` 提供带 Revision 只读查询与 CrossWorldTxn 置块/清块；MaterialId 对 Voxel 不透明~~ **已证伪**：`IVoxelWorldPort` 是 `internal` 且有反射测试断言 Voxel 契约类型永不导出（ADR 0015）；格值是 32 位无符号 `BlockId`，引擎要解释它（ADR 0019） | README「职责」；v1.4 §6；ADR 0015 / 0019 |
 | A7 | Config/Content Hash 按 §6.3 口径、暂无专属 digestDomain；Runtime Config Port 消费 typed binary table 与 `ConfigRevision` | v1.4 §11.3；ADR-041 现状 |
 | A8 | C# generated 面经本仓 `Lumio.Game.GeneratedContracts` 单点消费（**分层纪律**，非 TFM 约束）；**凡 generated 面已提供者必须委托使用、不得另造**（ADR-048 published rule，含 `ProtocolGate.Evaluate`；gate 不校验角色权限，不足则 BLOCKED 上报不得本地补表）；同时设计不因 generated 面缺失或收窄而阻塞。现状以 §6.1 为准 | [`module-scaffolding-design.md`](module-scaffolding-design.md) §6 |
 

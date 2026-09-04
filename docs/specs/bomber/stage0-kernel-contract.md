@@ -1,9 +1,11 @@
 # 体素炸弹人 · Stage 0a 内核契约
 
-> **状态**：已冻结 v1.2.0
+> **状态**：已冻结 v1.3.0
 > **序位 / 适用范围**：体素炸弹人 Stage 0a（headless）内核实现卡（G-1..G-7）与网络契约卡（C-1）的唯一契约来源
-> **上游**：[`design.md`](design.md)（策划案）、ADR [`0013`](../../../.spec/decisions/0013-logic-first-browser-client-no-engine.md)（逻辑先行）、[`0014`](../../../.spec/decisions/0014-bomber-v04-stage0-convergence.md)（v0.4 收敛）、[`0015`](../../../.spec/decisions/0015-bomber-stage0a-runtime-capability-finding.md)（Runtime 接入核验结论）、[`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)（三维坐标与地形出 ECS）、[`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)（爆炸与血量模型）
+> **上游**：[`design.md`](design.md)（策划案）、ADR [`0013`](../../../.spec/decisions/0013-logic-first-browser-client-no-engine.md)（逻辑先行）、[`0014`](../../../.spec/decisions/0014-bomber-v04-stage0-convergence.md)（v0.4 收敛）、[`0015`](../../../.spec/decisions/0015-bomber-stage0a-runtime-capability-finding.md)（Runtime 接入核验结论）、[`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)（三维坐标与地形出 ECS）、[`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)（爆炸与血量模型）、[`0019`](../../../.spec/decisions/0019-bomber-terrain-align-voxel-world-contract.md)（地形口径对齐上游体素契约）
 > **冻结物**：`modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/**`（不含 `generated/`）；内容 sha256（源文件按**仓库相对路径**升序、只拼接**文件内容**后整体哈希）：`d16de07a9d5d7f6d05d1fadfd54b9bb8b0709a4925f4bbb779549a40ff98fc08`
+>
+> **v1.3.0 相对 v1.2.0 的变化**（ADR 0019）：`ITerrainStore` 改照上游公共契约 `voxel-world-v1.json` 的 `blockRead` / `blockWrite` 定形——读改为 `GetCell` / `GetColumn` / `GetBox` 三请求并回带 `sectionRevision` 与四态，`ChunkRevision` 删除，写的 `expectedRevision` 改为每条目一个，格值 `MaterialId`(uint16) 改 `BlockId`(uint32 无符号)；§6 StateHash 的地形那一半改由确定性 box 读定义，`CanonicalBytes()` 删除；新增游戏坐标到引擎坐标的映射。**冻结物 sha256 不变**——`ITerrainStore` 不在 `Bomber/Contracts/**` 内，本次一行 C# 都没碰。
 >
 > **v1.2.0 相对 v1.1.0 的变化**（ADR 0018）：`DamageApplied` 增加 `SourceBombNetEntityIdRaw`；`dangerWindowMs` = 400、`inputBufferMs` = 125（原为区间，不可写进整数配表）；A/B 变体由 14 增至 18。§7 的 K1 / K2 两条缺口随之关闭。
 >
@@ -21,19 +23,25 @@
 | ④ | 可取得确定性逐 Tick 快照并哈希，用于「同 Seed 可重放」 | **可行** | `WorldManager.CaptureSnapshot()` 公开，返回可复制 `byte[]`；Game 自行 SHA-256。已用真实测试证明：同一命令序列在两个独立 `WorldManager` 实例上产出逐字节相等的快照哈希（`SameSeedAndCommandSequenceProducesByteIdenticalSnapshotOnTwoIndependentWorlds`）。Runtime 内部另有更完整的 `StateHashCoordinator`（`Determinism/StateHashCoordinator.cs`），但其官方接线只经 `TickExecutionContext`（internal），Game 不可达；Game 自算快照哈希已足够 Stage 0a 的确定性门。 |
 | ⑤ | Component 可以承载整张地图网格（每格一个材质枚举） | **不可行** | `modules/ecs/src/Lumio.GameRuntime.Ecs/Sync/SyncTypes.cs:216` 的 `Sync<T>` 文档注释原文是 "Replicated scalar"：每个字段一个 `SyncSlot<T>`、一个 ordinal、一个 attributeId，由 `gen-declarations` 逐字段绑定，**无数组 / 集合 / blob 字段类型**。19×19 = 361 个字段已不可维护，design.md §5 的 61×61 = 3721 个字段不可能；塞进单个 `Sync<string>` 则每炸一格全图重传且每次写入做一次全图相等比较。**处置**：地图网格移出 ECS，改走 `ITerrainStore`（ADR 0016）。 |
 
-**结论对实现口径的影响**（ADR 0015 定案第一段，0016 修订第二段）：
+**结论对实现口径的影响**（ADR 0015 定案第一段，0016 修订第二段，0019 重定接口形状）：
 
 - 规则内核（G-1/G-2/G-3/G-4）**不经** Runtime `simulation`/`coordination`，改为 Game 自有普通 C# 函数、由 Scenario 宿主（G-6）在每次 `WorldManager.Tick()` 前后按固定顺序调用。
-- 地图网格**不在 ECS 里**，走 Game 自有的 `ITerrainStore`（ADR 0016，取代 0015 的「Game 自有 EcsComponent」）。接口形状照 Voxel 的分块布局定义，Stage 0a 的实现是 `InMemoryChunkStore`，Stage 2 起换成 `VoxelWorldStore`——**只换实现不改调用方**：
+- 地图网格**不在 ECS 里**，走 Game 自有的 `ITerrainStore`（ADR 0016，取代 0015 的「Game 自有 EcsComponent」）。**接口形状照上游公共契约 `voxel-world-v1.json` 的 `blockRead` / `blockWrite` 定义**（ADR 0019，取代 0016 自拟的三方法），Stage 0a 的实现是 `InMemoryChunkStore`，Stage 2 起换成 `VoxelWorldStore`——**只换实现不改调用方**：
 
   ```text
-  GetBlock(x, y, z) -> MaterialId          带 revision 的只读
-  ApplyBatch(mutations, expectedRevision)  批量写，一笔事务
-  ChunkRevision(chunkId) -> u64
+  读  GetCell(x, y, z)                          → 一格
+      GetColumn(x, y, zFrom..zTo)               → 一列，自下而上
+      GetBox(min, max)                          → 矩形，固定序（竖直外层 / Y 中层 / X 内层）
+      三者的结果都带 BlockId + 每个被覆盖 Section 的 sectionRevision + 四态
+      （Ready / Unchanged / Pending / Unavailable），上限 262144 格 / 请求
+  写  entry{sectionKey, cellOffset, blockId, expectedSectionRevision}
+      批 = 若干 entry + transactionId，all-or-nothing、幂等，上限 65536 条 / 批
   ```
 
-- 地形分两层：`z = -1` 地面层（地面 / 水方格 / 冰面）、`z = 0` 砖层（Air / 铁皮 / 积木 / 木箱 / 木头 / 鞭炮）；`z ≥ 1` 预留。**爆炸传播每步要同时读两层**——水方格在地面层却要挡火。
-- 真实 Voxel 集成仍留给 Stage 2+，前置是 A2 与 A8（见 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9）。
+  三处与 0016 不同，都是硬要求：① 格值是 **`BlockId`（uint32 无符号）**，不是 `MaterialId`（uint16）——玩法层不得对它做位运算，一律走转换函数；② **`expectedRevision` 的粒度是每条目一个**，不是整批一个（单次爆炸 ≤ 24 格会跨多个 Section）；③ `ChunkRevision(chunkId)` **删除**——revision 随读结果返回，且 Chunk 本来就不持有 revision。读结果**必须能表达「不知道」**：Stage 0a 的 `InMemoryChunkStore` 永远返回 Ready，但接口现在就要留出 Pending / Unavailable，缺块不得填空气、不得填 0、不得省略。
+
+- 地形分两层：`z = -1` 地面层（地面 / 水方格 / 冰面）、`z = 0` 砖层（Air / 铁皮 / 积木 / 木箱 / 木头 / 鞭炮）；`z ≥ 1` 预留。**爆炸传播每步要同时读两层**——水方格在地面层却要挡火；用一次 `GetColumn` 拿到两层，不是两次单格读。以上是**游戏坐标**；到引擎坐标的映射是 **游戏 (X, Y, Z) → 引擎 (x = X, z = Y, y = Z + 1)**（ADR 0019），只出现在 `ITerrainStore` 的实现里。
+- 真实 Voxel 集成仍留给 Stage 2+，前置是 A2 与「Voxel 侧尚无块存储」（见 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9 ⑧，按此顺序）。
 
 **复现命令**：
 
@@ -64,7 +72,7 @@ dotnet exec modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/bin/De
 
 **同弹命中记忆不在契约内**：§7.5「同一颗炸弹对同一玩家最多命中一次」需按 bombId 记录已命中集合，它不复制、不持久，落服务端临时结构。
 
-**明确不在本冻结物内**：地图网格**不是 Component**（ADR 0016，见 §0 结论）——它在 `ITerrainStore` 后面，G-4 负责 `InMemoryChunkStore` 的实现与地形数据的序列化格式；`ITerrainStore` 的失败语义细节（RevisionConflict / ChunkNotLoaded / Expired）与 chunk 尺寸未锁，chunk 尺寸在架构源标 `VOX-D-001` 未决。装备/技能相关 Component 属 Stage 5，不进 Stage 0a 契约。
+**明确不在本冻结物内**：地图网格**不是 Component**（ADR 0016，见 §0 结论）——它在 `ITerrainStore` 后面，G-4 负责 `InMemoryChunkStore` 的实现与地形数据的序列化格式；`ITerrainStore` 的失败语义细节（RevisionConflict / SectionNotReady / Expired）未锁。**Section 尺寸不再是未决项**（ADR 0019）：上游契约 `limits` 已冻结 Section 16³、每 Chunk 16 层、世界高 256，且注明「改动它等于全量转档，没有例外」。装备/技能相关 Component 属 Stage 5，不进 Stage 0a 契约。
 
 ## 2. 内部命令（`Bomber/Contracts/Commands/`）
 
@@ -99,9 +107,9 @@ Game 内部 DTO，不依赖 Runtime；Bot 与回放场景直接构造，不经�
 |---|---|---|
 | `IBomberTelemetrySink` | `Emit(string eventName, ulong tick, string payloadJson)` | G-7 实现 JSONL Sink；实现不得阻塞 Simulation Thread（须缓冲/批刷） |
 | `IBomberRandom` | `NextInt(minInclusive, maxExclusive)`、`NextDouble()` | 确定性随机源；同一 Seed 派生的调用序列必须逐次产出相同结果，不得读取系统时钟/GUID |
-| `ITerrainStore` | `GetBlock(x, y, z)`、`ApplyBatch(mutations, expectedRevision)`、`ChunkRevision(chunkId)`、`CanonicalBytes()` | **三个读写方法的签名由 ADR 0016 锁定**，G-1 / G-2 / G-3 都消费它。接口与实现均由 G-4 落地（Stage 0a 后端 `InMemoryChunkStore`），**不在本冻结物内**——所以它不在 `Bomber/Contracts/Ports/` 下，也不计入 §0 的 sha256。`CanonicalBytes()` 供 §6 的 StateHash 使用 |
+| `ITerrainStore` | `GetCell`、`GetColumn`、`GetBox`、`ApplyBatch(entries, transactionId)` | **签名由 ADR 0019 按上游 `blockRead` / `blockWrite` 锁定**（取代 0016 自拟的三方法），G-1 / G-2 / G-3 都消费它。接口与实现均由 G-4 落地（Stage 0a 后端 `InMemoryChunkStore`），**不在本冻结物内**——所以它不在 `Bomber/Contracts/Ports/` 下，也不计入 §0 的 sha256。`CanonicalBytes()` 已删除，§6 的 StateHash 改用 `GetBox` 的确定性结果 |
 
-> **wave 编排提醒**：`ITerrainStore` 的接口面在 G-4 而不在 G-0，意味着 G-1 / G-2 / G-3 与 G-4 **不能真正并行**——它们要调 `GetBlock` / `ApplyBatch`。要么 G-4 先出接口再扇出，要么把接口本身提进 G-0 的下一次冻结（会再触发一次 sha256 重算）。这是编排选择，不是缺陷。
+> **wave 编排提醒**：`ITerrainStore` 的接口面在 G-4 而不在 G-0，意味着 G-1 / G-2 / G-3 与 G-4 **不能真正并行**——它们要调 `GetColumn` / `ApplyBatch`。要么 G-4 先出接口再扇出，要么把接口本身提进 G-0 的下一次冻结（会再触发一次 sha256 重算）。这是编排选择，不是缺陷。
 
 ## 5. Config Schema（G-5 落地，键名与默认值冻结）
 
@@ -144,10 +152,10 @@ A/B 变体文件（每个只改一键）：`fuse-1800`、`fuse-2400`、`power-1`
 **StateHash 必须覆盖地形**：地形移出 ECS 后 `manager.CaptureSnapshot()` 拍不到它，只哈希 ECS 会让「同 Seed 回放」对地形完全失效——地形炸得不一样，hash 照样逐行相等。故
 
 ```text
-sha256Hex = SHA256( manager.CaptureSnapshot() ‖ terrain.CanonicalBytes() )
+sha256Hex = SHA256( manager.CaptureSnapshot() ‖ SHA256(terrain.GetBox(全图).BlockIds) )
 ```
 
-`terrain.CanonicalBytes()` 的编码口径对齐架构源 `voxel-snapshot-payload`（ADR-035，随 `LGE-V1.4-2026-08-27` 冻结），使 Stage 2 换成真实 Voxel 存储时哈希连续、历史回放基线不作废；硬要求是**同一份地形两次编码逐字节相同**。具体格式归 Voxel 侧（[`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9 ④），Stage 0a 的 `InMemoryChunkStore` 按同一口径产出。
+**地形那一半由确定性 box 读定义**（ADR 0019，取代 v1.1.0 的「对齐架构源 `voxel-snapshot-payload` / ADR-035」——核验发现该 ADR 定的是 snapshot 载荷信封，从不定义方块字节）。上游 `blockRead` 的 box 请求已冻结「顺序排死，同一请求两次运行逐字节相同」，故取一次覆盖全图的 `GetBox`、按固定序铺开的 `BlockId` 数组求 SHA-256 即可，Stage 2 换真实 Voxel 存储时哈希连续、历史回放基线不作废。**不需要引擎另外提供地形 canonical 存档字节。** Stage 0a 的 `InMemoryChunkStore` 按同一顺序产出。
 
 回放 oracle 判据：两次运行的 `statehash.ndjson` 逐行相等（不得只比行数）；空文件或截断文件必须 FAIL（沿用 `integration/entity-chat` 的 oracle 纪律）。
 

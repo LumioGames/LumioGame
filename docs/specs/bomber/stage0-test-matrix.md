@@ -79,7 +79,7 @@
 | 6.5 | 四象限镜像对称（软砖分布随机但镜像同步） | G-4 | 单元 |
 | 6.6 | 5 个固定 Seed 快照 → 逐格比对，防生成器回归 | G-4 | 快照回归 |
 | 6.7 | 地形分两层：`z = -1` 永不为 Air（没有坑）；实体坐标恒 `Z = 0` | G-4 | 单元 |
-| 6.8 | `ITerrainStore.ApplyBatch` 摧毁一批软砖 → `GetBlock` 立即读到新值（Stage 0a 全提交、不分帧），`ChunkRevision` 单调递增 | G-4 | 单元 |
+| 6.8 | `ITerrainStore.ApplyBatch` 摧毁一批软砖 → `GetCell` 立即读到新值（Stage 0a 全提交、不分帧），读结果回带的 `sectionRevision` 单调递增 | G-4 | 单元 |
 | 6.9 | 连片水域最长跨度 ≤ 上限；水方格 ≤ 5% 格子；水不封死分区缺口或出生安全区 | G-4 | 单元（Stage 2 起） |
 
 ## 7. 回放确定性
@@ -88,7 +88,7 @@
 |---|---|---|---|
 | 7.1 | 同一 Seed + Config + 命令流 → 两次运行逐 Tick `statehash.ndjson` 相等 | G-6 | 集成（真实运行） |
 | 7.1a | **StateHash 必须覆盖地形**：只改地形、不改 ECS 的两次运行 → 哈希必须不同（防「地形不进快照」的假通过） | G-6 + G-4 | 集成（反向断言） |
-| 7.1b | 同一份地形两次 `CanonicalBytes()` → 逐字节相同（无遍历顺序不确定性） | G-4 | 单元 |
+| 7.1b | 同一份地形两次覆盖全图的 `GetBox` → 固定序 `BlockId` 数组逐字节相同（无遍历顺序不确定性）；ADR 0019 后 StateHash 的地形那一半取自它 | G-4 | 单元 |
 | 7.1c | `scenario.json` 携带地形数据 → 生成器代码变化不影响既有回放基线 | G-6 | 集成 |
 | 7.2 | 篡改任一哈希行 → oracle 判 FAILED | G-6 | 集成 |
 | 7.3 | 空 `commands.ndjson`/`statehash.ndjson` → oracle 判 FAILED（不得合成行） | G-6 | 集成 |
