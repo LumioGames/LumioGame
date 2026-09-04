@@ -28,6 +28,6 @@
 
 | 文档 | 状态 | 一句话 |
 |---|---|---|
-| [bomber/design.md](bomber/design.md) | 设计中 | 体素炸弹人完整设计稿:帽子计分乱斗与滚动房间、地图、炸弹机制、道具与数值框架——首发产品(阶梯 ①) |
+| [bomber/design.md](bomber/design.md) | 设计中 | 体素炸弹人完整设计稿:100 人 .io 帽子乱斗与滚动房间、三心血量、人数-地图联动、场景材质与交互、据点与地标、3 槽装备与技能池、爽感时刻、数值框架与三阶段切片——首发产品(阶梯 ①) |
 | [bedwars/direction.md](bedwars/direction.md) | 设计中(方向级) | 起床战争俯视改编方向稿:以水平空隙替代垂直落差——阶梯 ② |
 | [duckoff/direction.md](duckoff/direction.md) | 设计中(方向级) | 逃离鸭科夫方向稿:撤离玩法与跨局存档诉求——阶梯 ③ |
