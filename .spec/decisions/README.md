@@ -45,3 +45,4 @@
 | [0015](0015-bomber-stage0a-runtime-capability-finding.md) | Stage 0a 不依赖 Runtime Processor 与公开 CrossWorldTxn/IVoxelWorldPort,网格改为 Game 自有 EcsComponent 状态 | 生效（「网格为 EcsComponent」一条被 0016 取代,Runtime 能力核验结论继续有效） |
 | [0016](0016-bomber-terrain-out-of-ecs-3d-coords.md) | 炸弹人场景改为三维坐标与 ECS 外的地形存储,地图以数据持久化 | 生效 |
 | [0017](0017-bomber-explosion-and-health-model.md) | 炸弹人爆炸与血量模型修订:炸弹实体持有火焰、血量改半心点、水改为可溺死 | 生效 |
+| [0018](0018-bomber-k1-k2-resolution.md) | 解决契约 v1.1.0 的两条缺口:DamageApplied 补来源炸弹身份、两个区间默认值收敛为单值 | 生效 |

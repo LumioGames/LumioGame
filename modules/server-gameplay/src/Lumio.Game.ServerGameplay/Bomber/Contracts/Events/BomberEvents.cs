@@ -10,10 +10,10 @@ public readonly record struct BombExploded(ulong ChainId, ulong SourceBombOwnerN
 
 /// <summary>
 /// 单次扣血事件；同一颗炸弹对同一玩家只出现一次（§7.5 连锁结算口径）。HealthPointsLeft 单位是半心点（ADR 0017）。
-/// 注意：本事件**不携带来源炸弹的身份**，只有主人与 ChainId——逐炸弹归因不可从事件流还原，
-/// 规则本身由服务端按 bombId 的临时命中记忆强制执行。缺口登记见契约 §7 K1。
+/// SourceBombNetEntityIdRaw 是来源炸弹本身的身份（ADR 0018 补齐）——§9.6 的死亡回顾要逐炸弹归因，
+/// 只有主人分不开同一人在同一 Tick 放的两颗弹。
 /// </summary>
-public readonly record struct DamageApplied(ulong VictimNetEntityIdRaw, ulong SourceBombOwnerNetEntityIdRaw, ulong ChainId, int HealthPointsLeft, ulong Tick);
+public readonly record struct DamageApplied(ulong VictimNetEntityIdRaw, ulong SourceBombNetEntityIdRaw, ulong SourceBombOwnerNetEntityIdRaw, ulong ChainId, int HealthPointsLeft, ulong Tick);
 
 /// <summary>
 /// Killer = 打掉最后一点血的炸弹主人；自杀与溺死时 KillerNetEntityIdRaw == VictimNetEntityIdRaw（§9.1）。

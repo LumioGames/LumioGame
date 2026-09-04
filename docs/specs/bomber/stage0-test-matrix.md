@@ -1,6 +1,6 @@
 # 体素炸弹人 · Stage 0a 用例矩阵
 
-> **状态**：已冻结 v1.1.0（随契约 v1.1.0，ADR [`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md) / [`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)）
+> **状态**：已冻结 v1.2.0（随契约 v1.2.0，ADR [`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md) / [`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)）
 > **序位 / 适用范围**：G-1..G-7 实现卡与 I-1 集成收尾的风险驱动用例清单
 > **上游**：[`stage0-kernel-contract.md`](stage0-kernel-contract.md)、[`design.md`](design.md)
 
@@ -27,8 +27,9 @@
 | 2.1 | 同一颗炸弹对同一玩家 → 最多命中一次 | G-1 | 单元 |
 | 2.2 | 同一 `ChainId` 对同一玩家累计伤害 → 不超过 `maxHealthPoints`（6 个半心点） | G-1 | 单元 |
 | 2.3 | 三颗同链炸弹对满血（6 点）玩家 → 每颗 −2 点，第三颗致死，第四颗不再产生 `DamageApplied` | G-1 | 单元 |
-| 2.4 | 每次扣血 → 恰好一条 `DamageApplied` 事件，字段含主人/ChainId，`HealthPointsLeft` 为半心点。**「来源炸弹」当前不可断言**——事件不带炸弹身份，见契约 §7 缺口 K1；本条只验主人与 ChainId，逐炸弹归因待 K1 决策后补 | G-1 | 单元 |
+| 2.4 | 每次扣血 → 恰好一条 `DamageApplied` 事件，字段含**来源炸弹**（`SourceBombNetEntityIdRaw`）/主人/ChainId，`HealthPointsLeft` 为半心点 | G-1 | 单元 |
 | 2.5 | 同一 Tick 内完成整条链的权威结算（非跨 Tick） | G-1 | 单元 |
+| 2.6 | 同一主人在同一 Tick 放的**两颗**弹同时命中同一玩家 → 两条 `DamageApplied` 的 `SourceBombNetEntityIdRaw` 不同（逐炸弹归因，ADR 0018） | G-1 | 单元 |
 
 ## 3. 血量与死亡
 
