@@ -1,9 +1,11 @@
 # 体素炸弹人 · Stage 0a 内核契约
 
-> **状态**：已冻结 v1.1.0
+> **状态**：已冻结 v1.2.0
 > **序位 / 适用范围**：体素炸弹人 Stage 0a（headless）内核实现卡（G-1..G-7）与网络契约卡（C-1）的唯一契约来源
 > **上游**：[`design.md`](design.md)（策划案）、ADR [`0013`](../../../.spec/decisions/0013-logic-first-browser-client-no-engine.md)（逻辑先行）、[`0014`](../../../.spec/decisions/0014-bomber-v04-stage0-convergence.md)（v0.4 收敛）、[`0015`](../../../.spec/decisions/0015-bomber-stage0a-runtime-capability-finding.md)（Runtime 接入核验结论）、[`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)（三维坐标与地形出 ECS）、[`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)（爆炸与血量模型）
-> **冻结物**：`modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/**`（不含 `generated/`）；内容 sha256（源文件按**仓库相对路径**升序、只拼接**文件内容**后整体哈希）：`1e9a665b2fb8855ac668279181b97b157c798edd7dd4b0931fd7e195b3407b48`
+> **冻结物**：`modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/**`（不含 `generated/`）；内容 sha256（源文件按**仓库相对路径**升序、只拼接**文件内容**后整体哈希）：`d16de07a9d5d7f6d05d1fadfd54b9bb8b0709a4925f4bbb779549a40ff98fc08`
+>
+> **v1.2.0 相对 v1.1.0 的变化**（ADR 0018）：`DamageApplied` 增加 `SourceBombNetEntityIdRaw`；`dangerWindowMs` = 400、`inputBufferMs` = 125（原为区间，不可写进整数配表）；A/B 变体由 14 增至 18。§7 的 K1 / K2 两条缺口随之关闭。
 >
 > **v1.1.0 相对 v1.0.0 的变化**（ADR 0016 / 0017）：坐标升三维（实体恒 `Z=0`）；地图网格移出 ECS 改走 `ITerrainStore`；删除 `BomberExplosionCell` / `BomberExplosionCellEntity`，爆炸由炸弹实体持有；血量单位改半心点；`scenario.json` 携带地形数据；Config 键增删见 §5。
 
@@ -81,7 +83,7 @@ Game 内部 DTO，不依赖 Runtime；Bot 与回放场景直接构造，不经�
 |---|---|---|
 | `BombPlaced` | `OwnerNetEntityIdRaw, CellX, CellY, CellZ, FuseEndTick, Tick` | §7.1 |
 | `BombExploded` | `ChainId, SourceBombOwnerNetEntityIdRaw, CellCount, Tick` | §7.2 |
-| `DamageApplied` | `VictimNetEntityIdRaw, SourceBombOwnerNetEntityIdRaw, ChainId, HealthPointsLeft, Tick` | §7.5（同一颗炸弹对同一玩家只出现一次；单位半心点）。**已知缺口**见 §7 |
+| `DamageApplied` | `VictimNetEntityIdRaw, SourceBombNetEntityIdRaw, SourceBombOwnerNetEntityIdRaw, ChainId, HealthPointsLeft, Tick` | §7.5（同一颗炸弹对同一玩家只出现一次；单位半心点）。`SourceBombNetEntityIdRaw` 由 ADR 0018 补齐，供 §9.6 死亡回顾逐炸弹归因 |
 | `PlayerDied` | `VictimNetEntityIdRaw, KillerNetEntityIdRaw, ChainId, Cause, CellX, CellY, CellZ, Tick` | §9.1（自杀与溺死时 Killer==Victim；`Cause` 0=爆炸 1=溺水 2=燃烧，§9.6 要求死亡可解释，只靠 Killer==Victim 分不出自炸与淹死） |
 | `PlayerRespawned` | `NetEntityIdRaw, CellX, CellY, CellZ, Tick` | §12 |
 | `HatPileSpawned` | `CellX, CellY, CellZ, Count, ExpireAtTick, Tick` | §9.2 |
@@ -108,7 +110,7 @@ Game 内部 DTO，不依赖 Runtime；Bot 与回放场景直接构造，不经�
 | 键 | 类型 | 首轮默认值 | design.md 出处 |
 |---|---|---|---|
 | `fuseMs` | int | 2100 | §7.1（A/B：1800/2400） |
-| `dangerWindowMs` | int | 350–400 | §7.1（A/B：300/500） |
+| `dangerWindowMs` | int | 400 | §7.1（ADR 0018 由区间 350–400 收敛；取 A/B 三档 0.3/0.4/0.5 的中档，两侧对称可测；推断待验证） |
 | `initialBombPower` | int | 2 | §7.1（A/B：1） |
 | `initialBombCapacity` | int | 1 | §7.1（固定） |
 | `speedTierToCellsPerSecond[]` | int[] | Tier0=3500（milli-格/秒） | §7.1（A/B：3300/3800） |
@@ -116,7 +118,7 @@ Game 内部 DTO，不依赖 Runtime；Bot 与回放场景直接构造，不经�
 | `respawnProtectionMs` | int | **3000** | §12（ADR 0017 由 1500 抬到 3000；放弹即解除必须保留） |
 | `hatPileExpireMs` | int | 15000 | §9.2（A/B：12000/20000） |
 | `matchDurationMs` | int | 360000（6 分钟） | §4（A/B：300000/480000） |
-| `inputBufferMs` | int | 100–150 | §6.1 |
+| `inputBufferMs` | int | 125 | §6.1（ADR 0018 由区间 100–150 收敛，取中点；推断待验证） |
 | `tickRateHz` | int | 20 | Gate 0（推断待验证） |
 | `maxHealthPoints` | int | 6 | §12（ADR 0017 取代 `heartsMax`；6 个半心点 = 3 颗心） |
 | `healthPointsPerHeart` | int | 2 | §12（表现层 `hearts = floor(HealthPoints / 2)`） |
@@ -127,7 +129,7 @@ Game 内部 DTO，不依赖 Runtime；Bot 与回放场景直接构造，不经�
 | `mapSize` | int | 19 | §5（Stage 0a 固定，无分区档位） |
 | `coverReachCells` | int | 10 | §5.3 断言 4（3 秒 × 3.5 格/秒 的换算，按可通行路径长度） |
 
-A/B 变体文件（每个只改一键）：`fuse-1800`、`fuse-2400`、`power-1`、`speed-3300`（Tier0=3.3）、`speed-3800`、`respawn-4000`、`hat-expire-12000`、`hat-expire-20000`、`match-300000`、`match-480000`、`protect-1500`、`protect-2500`、`protect-4000`、`drown-2s`（`drownIntervalMs` = 2000，即每 2 秒 −1 点、12 秒溺死）。
+A/B 变体文件（每个只改一键）：`fuse-1800`、`fuse-2400`、`power-1`、`speed-3300`（Tier0=3.3）、`speed-3800`、`respawn-4000`、`hat-expire-12000`、`hat-expire-20000`、`match-300000`、`match-480000`、`protect-1500`、`protect-2500`、`protect-4000`、`drown-2s`（`drownIntervalMs` = 2000，即每 2 秒 −1 点、12 秒溺死）、`danger-300`、`danger-500`、`buffer-100`、`buffer-150`——**共 18 个**。
 
 > 溺水速率**必须拆成间隔 + 点数两个键**：全表整数（IntegerOnly 纪律），若只留一个「每秒扣几点」的整数键，则「每 2 秒 −0.5 心」这一档改任何单键都表达不出来（1 → 6 秒，0 → 不溺水），而变体纪律要求「每个只改一键」。
 
@@ -151,10 +153,12 @@ sha256Hex = SHA256( manager.CaptureSnapshot() ‖ terrain.CanonicalBytes() )
 
 ## 7. 已知缺口（v1.1.0 登记，未在本版解决）
 
+> v1.1.0 登记的 K1 / K2 **已由 ADR [0018](../../../.spec/decisions/0018-bomber-k1-k2-resolution.md) 在 v1.2.0 关闭**，保留在表内供追溯。当前无未决缺口。
+
 | # | 缺口 | 影响 | 处置 |
 |---|---|---|---|
-| K2 | 两个键的「默认值」是**区间不是整数**：`dangerWindowMs` = 350–400、`inputBufferMs` = 100–150 | 与本表头「全部整数」及 IntegerOnly 纪律冲突，执行者无法把 `350–400` 写进整数配表。另：`dangerWindowMs` 出处列声明了 A/B 300/500，但 §5 的变体清单里没有 `danger-300` / `danger-500` | 收敛为单值属产品数值决策，不由实现者代定；**G-5 开工前须先裁决**，裁决后同时补两个变体文件 |
-| K1 | `DamageApplied` **不携带来源炸弹的身份**，只有主人（`SourceBombOwnerNetEntityIdRaw`）与 `ChainId` | design.md §7.5 要求「同一颗炸弹对同一玩家最多命中一次」、§9.6 要求「死亡回顾列出每个伤害来源的**炸弹**、主人与 ChainId」；服务端可用临时的按 bombId 命中记忆强制执行规则，但**遥测与死亡回顾无法逐炸弹归因**，用例矩阵 2.4 的「字段含来源炸弹」在当前事件形状下不可满足。同一主人同一 Tick 放的两颗弹在事件流里分不开 | v1.0.0 既有缺口，非本次引入；补 `SourceBombNetEntityIdRaw` 属契约字段增补，**须单独决策后随下一次冻结落地**，不在 v1.1.0 范围内 |
+| K2 ✅已解决 | 两个键的「默认值」是**区间不是整数**：`dangerWindowMs` = 350–400、`inputBufferMs` = 100–150 | 与本表头「全部整数」及 IntegerOnly 纪律冲突，执行者无法把 `350–400` 写进整数配表。另：`dangerWindowMs` 出处列声明了 A/B 300/500，但 §5 的变体清单里没有 `danger-300` / `danger-500` | **已解决**（ADR 0018）：`dangerWindowMs` = 400、`inputBufferMs` = 125，均标推断待验证；补 `danger-300` / `danger-500` / `buffer-100` / `buffer-150` 四个变体，清单增至 18 个 |
+| K1 ✅已解决 | `DamageApplied` **不携带来源炸弹的身份**，只有主人（`SourceBombOwnerNetEntityIdRaw`）与 `ChainId` | design.md §7.5 要求「同一颗炸弹对同一玩家最多命中一次」、§9.6 要求「死亡回顾列出每个伤害来源的**炸弹**、主人与 ChainId」；服务端可用临时的按 bombId 命中记忆强制执行规则，但**遥测与死亡回顾无法逐炸弹归因**，用例矩阵 2.4 的「字段含来源炸弹」在当前事件形状下不可满足。同一主人同一 Tick 放的两颗弹在事件流里分不开 | **已解决**（ADR 0018）：v1.2.0 增加 `SourceBombNetEntityIdRaw:u64`——原缺口属遗漏而非取舍，design.md §7.5 / §9.6 本就要求逐炸弹归因。用例矩阵 2.4 已恢复完整断言 |
 
 ## 8. 与 design.md 待验证项的对应
 
