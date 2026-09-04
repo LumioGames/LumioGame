@@ -1,6 +1,6 @@
 # 体素炸弹人 · Stage 0a 用例矩阵
 
-> **状态**：已冻结 v1.0.0
+> **状态**：已冻结 v1.1.0（随契约 v1.1.0，ADR [`0016`](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md) / [`0017`](../../../.spec/decisions/0017-bomber-explosion-and-health-model.md)）
 > **序位 / 适用范围**：G-1..G-7 实现卡与 I-1 集成收尾的风险驱动用例清单
 > **上游**：[`stage0-kernel-contract.md`](stage0-kernel-contract.md)、[`design.md`](design.md)
 
@@ -16,26 +16,33 @@
 | 1.4 | 单次爆炸摧毁格数上限 24（火力上限 6 × 4 向） | G-1 | 单元 + 边界 |
 | 1.5 | 放弹：同格已有炸弹或超过 `BombCapacity` → 拒绝 | G-1 | 单元 |
 | 1.6 | 离格穿透：放弹者离开该格前可穿过；离开后重新进入被阻挡 | G-1 | 单元 |
+| 1.7 | 传播每步同时读地面层与砖层；遇水方格 → **覆盖该格后停**（站水里会被炸到，火焰不穿过） | G-1 + G-4 | 单元 |
+| 1.8 | 爆炸不新建实体：炸弹实体转入爆炸态，`Reach*` 四臂等于实际到达格数（已含地形阻断） | G-1 | 单元 |
+| 1.9 | 火焰阶段（至 `DangerUntilTick`）内进入覆盖格 → 受伤；`DangerUntilTick` 之后进入 → 不受伤 | G-1 | 单元 + 边界 |
 
 ## 2. 连锁与结算
 
 | # | 输入 → 期望 | 消费卡 | 自动化层级 |
 |---|---|---|---|
 | 2.1 | 同一颗炸弹对同一玩家 → 最多命中一次 | G-1 | 单元 |
-| 2.2 | 同一 `ChainId` 对同一玩家累计伤害 → 不超过心数上限 | G-1 | 单元 |
-| 2.3 | 三颗同链炸弹对满心（3）玩家 → 第三颗致死，第四颗不再产生 `DamageApplied` | G-1 | 单元 |
-| 2.4 | 每次扣心 → 恰好一条 `DamageApplied` 事件，字段含来源炸弹/主人/ChainId | G-1 | 单元 |
+| 2.2 | 同一 `ChainId` 对同一玩家累计伤害 → 不超过 `maxHealthPoints`（6 个半心点） | G-1 | 单元 |
+| 2.3 | 三颗同链炸弹对满血（6 点）玩家 → 每颗 −2 点，第三颗致死，第四颗不再产生 `DamageApplied` | G-1 | 单元 |
+| 2.4 | 每次扣血 → 恰好一条 `DamageApplied` 事件，字段含主人/ChainId，`HealthPointsLeft` 为半心点。**「来源炸弹」当前不可断言**——事件不带炸弹身份，见契约 §7 缺口 K1；本条只验主人与 ChainId，逐炸弹归因待 K1 决策后补 | G-1 | 单元 |
 | 2.5 | 同一 Tick 内完成整条链的权威结算（非跨 Tick） | G-1 | 单元 |
 
 ## 3. 血量与死亡
 
 | # | 输入 → 期望 | 消费卡 | 自动化层级 |
 |---|---|---|---|
-| 3.1 | 心归零 → `PlayerDied`，Killer=打掉最后一颗心的炸弹主人 | G-1 | 单元 |
-| 3.2 | 自杀（自己的炸弹打掉自己最后一颗心）→ Killer==Victim | G-1 | 单元 |
+| 3.1 | 血量归零 → `PlayerDied`，Killer=打掉最后一点血的炸弹主人，`Cause = 0`（爆炸） | G-1 | 单元 |
+| 3.2 | 自杀（自己的炸弹打掉自己最后一点血）→ Killer==Victim，`Cause = 0` | G-1 | 单元 |
 | 3.3 | 死亡 → `RespawnAtTick = 死亡 Tick + respawnMs` | G-1 | 单元 |
-| 3.4 | 重生 → 满心、位于合法出生候选格、带 `ProtectedUntilTick` | G-1 + G-4（出生点查询） | 单元 |
-| 3.5 | 保护期内 → 不受伤；玩家放弹 → 保护立即解除 | G-1 | 单元 |
+| 3.4 | 重生 → 满血（`maxHealthPoints`）、位于合法出生候选格、带 `ProtectedUntilTick` | G-1 + G-4（出生点查询） | 单元 |
+| 3.5 | 保护期内（`respawnProtectionMs` = 3000）→ 不受伤；玩家放弹 → 保护立即解除 | G-1 | 单元 |
+| 3.6 | 站在水方格中 → 每 `drownIntervalMs` 扣 `drownPointsPerInterval` 点；默认 1000 ms / 1 点，满血起算 6 秒溺死 | G-1 + G-4 | 单元 |
+| 3.7 | 溺死 → `PlayerDied` 且 Killer==Victim、`Cause = 1`（溺水）；帽子走同一散落路径 | G-1 + G-2 | 单元 |
+| 3.8 | 离开水方格 → 溺水立即停止；已掉的血不回（无自然回血） | G-1 | 单元 |
+| 3.9 | 站在火地（炸弹留火阶段覆盖范围）→ 每秒 −2 点、可致死；致死记 `PlayerDied.Cause = 2` | G-1 | 单元（Stage 5） |
 
 ## 4. 帽子守恒与竞争
 
@@ -64,18 +71,24 @@
 
 | # | 输入 → 期望 | 消费卡 | 自动化层级 |
 |---|---|---|---|
-| 6.1 | 双密度指标（`potential_walkable_cells_per_player`/`initial_open_cells_per_player`）落在目标带，否则换 Seed 重生成 | G-4 | 单元 |
+| 6.1 | 双密度指标落在目标带，否则换 Seed 重生成；两者均按**可放弹格**（可通行且地面层非水）统计，不计水格 | G-4 | 单元 |
 | 6.2 | 软砖全清后 → 任意两可通行格连通 | G-4 | 单元 |
-| 6.3 | 每个可通行格 3 秒内可达一处掩体（硬砖阵列） | G-4 | 单元 |
-| 6.4 | 出生候选点 ≥ 8 个，各带 L 形 3 格安全区，彼此距离 ≥ 6 格 | G-4 | 单元 |
+| 6.3 | 每个可通行格 `coverReachCells`（10）格内可达一处掩体；**掩体 = 相邻四格中至少有一个硬砖的可通行格**；按可通行路径长度而非直线距离；软砖全清后重算仍成立 | G-4 | 单元 |
+| 6.4 | 出生候选点 ≥ 8 个，各带 L 形 3 格安全区（不含水方格与鞭炮），彼此距离 ≥ 6 格 | G-4 | 单元 |
 | 6.5 | 四象限镜像对称（软砖分布随机但镜像同步） | G-4 | 单元 |
 | 6.6 | 5 个固定 Seed 快照 → 逐格比对，防生成器回归 | G-4 | 快照回归 |
+| 6.7 | 地形分两层：`z = -1` 永不为 Air（没有坑）；实体坐标恒 `Z = 0` | G-4 | 单元 |
+| 6.8 | `ITerrainStore.ApplyBatch` 摧毁一批软砖 → `GetBlock` 立即读到新值（Stage 0a 全提交、不分帧），`ChunkRevision` 单调递增 | G-4 | 单元 |
+| 6.9 | 连片水域最长跨度 ≤ 上限；水方格 ≤ 5% 格子；水不封死分区缺口或出生安全区 | G-4 | 单元（Stage 2 起） |
 
 ## 7. 回放确定性
 
 | # | 输入 → 期望 | 消费卡 | 自动化层级 |
 |---|---|---|---|
 | 7.1 | 同一 Seed + Config + 命令流 → 两次运行逐 Tick `statehash.ndjson` 相等 | G-6 | 集成（真实运行） |
+| 7.1a | **StateHash 必须覆盖地形**：只改地形、不改 ECS 的两次运行 → 哈希必须不同（防「地形不进快照」的假通过） | G-6 + G-4 | 集成（反向断言） |
+| 7.1b | 同一份地形两次 `CanonicalBytes()` → 逐字节相同（无遍历顺序不确定性） | G-4 | 单元 |
+| 7.1c | `scenario.json` 携带地形数据 → 生成器代码变化不影响既有回放基线 | G-6 | 集成 |
 | 7.2 | 篡改任一哈希行 → oracle 判 FAILED | G-6 | 集成 |
 | 7.3 | 空 `commands.ndjson`/`statehash.ndjson` → oracle 判 FAILED（不得合成行） | G-6 | 集成 |
 | 7.4 | 19×19 场景 → 可无渲染连续运行 10 分钟不崩溃 | G-6（Gate 0 退出条件） | 集成 |
@@ -85,7 +98,7 @@
 
 | # | 输入 → 期望 | 消费卡 | 自动化层级 |
 |---|---|---|---|
-| 8.1 | §17.1 全部 18 个事件 → 均有 JSON Schema 与合法样例，样例通过校验 | G-7 | 单元 |
+| 8.1 | §17.1 全部 21 个事件 → 均有 JSON Schema 与合法样例，样例通过校验 | G-7 | 单元 |
 | 8.2 | 缺必带字段（matchId/playerId/tick/…）→ 校验失败 | G-7 | 单元 |
 | 8.3 | 一次 6 分钟 Bot 运行的 JSONL → 报告工具产出完整报告（体验指标中位数、帽子经济七项、性能项） | G-7 + I-1 | 集成 |
 | 8.4 | Sink 写入 → 不在 Simulation Thread 同步阻塞（压力测试或代码审查证据） | G-7 | 单元/审查 |
@@ -94,6 +107,7 @@
 
 | # | 断言 | 证据 |
 |---|---|---|
-| 9.1 | 6 个自定义 EntityType/Component 注册、创建、Tick、快照全部成功 | `RuntimeIntegrationProbeTests.AllSixEntityTypesRegisterCreateAndParticipateInSnapshot` |
+| 9.1 | 5 个自定义 EntityType/Component 注册、创建、Tick、快照全部成功（v1.0.0 时为 6 个，`BomberExplosionCellEntity` 已按 ADR 0017 删除） | `RuntimeIntegrationProbeTests.AllFiveEntityTypesRegisterCreateAndParticipateInSnapshot` |
 | 9.2 | 同一命令序列在两个独立 World 上产出逐字节相等快照 | `RuntimeIntegrationProbeTests.SameSeedAndCommandSequenceProducesByteIdenticalSnapshotOnTwoIndependentWorlds` |
 | 9.3 | Runtime 无公开 Processor 注册面、无公开 IVoxelWorldPort（阻塞项，已定案不等待） | `docs/specs/bomber/stage0-kernel-contract.md` §0 |
+| 9.4 | `Sync<T>` 是 scalar-only（无数组/集合/blob），Component 承载不了整张地图网格 → 地形移出 ECS 走 `ITerrainStore` | `stage0-kernel-contract.md` §0 核验项 ⑤；ADR 0016 |

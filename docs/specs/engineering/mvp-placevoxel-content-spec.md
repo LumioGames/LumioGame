@@ -131,6 +131,7 @@ material-palette v1
 ```
 
 - `MaterialId` 是本仓拥有的产品语义目录；Voxel 侧按不透明 uint16 存取（经 `IVoxelWorldPort`），VoxelEngine 不解释其含义（假设 A6，§7）。
+- **目录与行为绑定分属两处**（ADR [0016](../../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)）：**方块目录**（世界里存在哪些方块、外观与存储）是平台级公共材质库，归 Voxel 侧；**每个方块在某一产品里的行为绑定**（可破坏、阻断爆炸、破坏后残留、掉落、地面效果、可通行）归本仓、随 `GameReleaseId` 锁定。同一块「水」在炸弹人是阻断爆炸 + 禁止放弹 + 溺水，在其他产品可以是别的语义——这正是 Voxel 只存不透明 uint16 的原因。本表 `material-palette v1` 是 PlaceVoxel MVP 的最小目录；炸弹人自己的方块清单见 [`../risks-and-engine-asks.md`](../risks-and-engine-asks.md) A9 ①。
 - `Place(MaterialId=0)` 在 Schema 校验层拒绝，挖块只走 `DigVoxelCommand`——两条路径不混用。
 
 ### 6.3 Config/Content Hash 口径（ADR-041 现状消费）

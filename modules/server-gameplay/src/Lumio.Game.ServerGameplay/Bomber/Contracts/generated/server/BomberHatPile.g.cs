@@ -13,6 +13,8 @@ public sealed partial class BomberHatPile : IGeneratedComponent
     partial void OnCellXChanged(int old, int @new, ChangeReason reason);
     partial void OnCellYChanging(int old, int @new, ChangeReason reason);
     partial void OnCellYChanged(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanging(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanged(int old, int @new, ChangeReason reason);
     partial void OnExpireAtTickChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnExpireAtTickChanged(ulong old, ulong @new, ChangeReason reason);
     partial void OnClientWrite(in SyncWrite w, ref bool accept);
@@ -23,7 +25,8 @@ public sealed partial class BomberHatPile : IGeneratedComponent
         Count = Count.Bound(host, this, 0, "BomberHatPile.count");
         CellX = CellX.Bound(host, this, 1, "BomberHatPile.cellX");
         CellY = CellY.Bound(host, this, 2, "BomberHatPile.cellY");
-        ExpireAtTick = ExpireAtTick.Bound(host, this, 3, "BomberHatPile.expireAtTick");
+        CellZ = CellZ.Bound(host, this, 3, "BomberHatPile.cellZ");
+        ExpireAtTick = ExpireAtTick.Bound(host, this, 4, "BomberHatPile.expireAtTick");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -34,7 +37,8 @@ public sealed partial class BomberHatPile : IGeneratedComponent
         if (ordinal == 0) OnCountChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 1) OnCellXChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnCellYChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 3) OnExpireAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnCellZChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnExpireAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
@@ -42,7 +46,8 @@ public sealed partial class BomberHatPile : IGeneratedComponent
         if (ordinal == 0) OnCountChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 1) OnCellXChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnCellYChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 3) OnExpireAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnCellZChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnExpireAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -81,6 +86,7 @@ public sealed partial class BomberHatPile : IGeneratedComponent
         if (string.Equals(fieldId, "count", StringComparison.Ordinal) || string.Equals(fieldId, "Count", StringComparison.Ordinal)) return Count.Value;
         if (string.Equals(fieldId, "cellX", StringComparison.Ordinal) || string.Equals(fieldId, "CellX", StringComparison.Ordinal)) return CellX.Value;
         if (string.Equals(fieldId, "cellY", StringComparison.Ordinal) || string.Equals(fieldId, "CellY", StringComparison.Ordinal)) return CellY.Value;
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal)) return CellZ.Value;
         if (string.Equals(fieldId, "expireAtTick", StringComparison.Ordinal) || string.Equals(fieldId, "ExpireAtTick", StringComparison.Ordinal)) return ExpireAtTick.Value;
         return null;
     }
@@ -103,6 +109,12 @@ public sealed partial class BomberHatPile : IGeneratedComponent
         {
             if (silent) CellY.SetSilent((int)value!);
             else CellY.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal))
+        {
+            if (silent) CellZ.SetSilent((int)value!);
+            else CellZ.Value = (int)value!;
             return;
         }
         if (string.Equals(fieldId, "expireAtTick", StringComparison.Ordinal) || string.Equals(fieldId, "ExpireAtTick", StringComparison.Ordinal))

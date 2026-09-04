@@ -7,8 +7,8 @@ namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
 public sealed partial class BomberPlayerState : IGeneratedComponent
 {
-    partial void OnHeartsChanging(int old, int @new, ChangeReason reason);
-    partial void OnHeartsChanged(int old, int @new, ChangeReason reason);
+    partial void OnHealthPointsChanging(int old, int @new, ChangeReason reason);
+    partial void OnHealthPointsChanged(int old, int @new, ChangeReason reason);
     partial void OnHatCountChanging(int old, int @new, ChangeReason reason);
     partial void OnHatCountChanged(int old, int @new, ChangeReason reason);
     partial void OnBombPowerChanging(int old, int @new, ChangeReason reason);
@@ -25,16 +25,20 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
     partial void OnCellXChanged(int old, int @new, ChangeReason reason);
     partial void OnCellYChanging(int old, int @new, ChangeReason reason);
     partial void OnCellYChanged(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanging(int old, int @new, ChangeReason reason);
+    partial void OnCellZChanged(int old, int @new, ChangeReason reason);
     partial void OnPosMilliXChanging(int old, int @new, ChangeReason reason);
     partial void OnPosMilliXChanged(int old, int @new, ChangeReason reason);
     partial void OnPosMilliYChanging(int old, int @new, ChangeReason reason);
     partial void OnPosMilliYChanged(int old, int @new, ChangeReason reason);
+    partial void OnPosMilliZChanging(int old, int @new, ChangeReason reason);
+    partial void OnPosMilliZChanged(int old, int @new, ChangeReason reason);
     partial void OnClientWrite(in SyncWrite w, ref bool accept);
 
 
     void IGeneratedComponent.BindFields(ISyncHost host)
     {
-        Hearts = Hearts.Bound(host, this, 0, "BomberPlayerState.hearts");
+        HealthPoints = HealthPoints.Bound(host, this, 0, "BomberPlayerState.healthPoints");
         HatCount = HatCount.Bound(host, this, 1, "BomberPlayerState.hatCount");
         BombPower = BombPower.Bound(host, this, 2, "BomberPlayerState.bombPower");
         BombCapacity = BombCapacity.Bound(host, this, 3, "BomberPlayerState.bombCapacity");
@@ -43,8 +47,10 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
         ProtectedUntilTick = ProtectedUntilTick.Bound(host, this, 6, "BomberPlayerState.protectedUntilTick");
         CellX = CellX.Bound(host, this, 7, "BomberPlayerState.cellX");
         CellY = CellY.Bound(host, this, 8, "BomberPlayerState.cellY");
-        PosMilliX = PosMilliX.Bound(host, this, 9, "BomberPlayerState.posMilliX");
-        PosMilliY = PosMilliY.Bound(host, this, 10, "BomberPlayerState.posMilliY");
+        CellZ = CellZ.Bound(host, this, 9, "BomberPlayerState.cellZ");
+        PosMilliX = PosMilliX.Bound(host, this, 10, "BomberPlayerState.posMilliX");
+        PosMilliY = PosMilliY.Bound(host, this, 11, "BomberPlayerState.posMilliY");
+        PosMilliZ = PosMilliZ.Bound(host, this, 12, "BomberPlayerState.posMilliZ");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -52,7 +58,7 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
 
     void IGeneratedComponent.InvokeFieldChanging(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnHeartsChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 0) OnHealthPointsChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 1) OnHatCountChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnBombPowerChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 3) OnBombCapacityChanging((int)oldValue!, (int)newValue!, reason);
@@ -61,13 +67,15 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
         if (ordinal == 6) OnProtectedUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
         if (ordinal == 7) OnCellXChanging((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 8) OnCellYChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 9) OnPosMilliXChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnPosMilliYChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnCellZChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 10) OnPosMilliXChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 11) OnPosMilliYChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 12) OnPosMilliZChanging((int)oldValue!, (int)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnHeartsChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 0) OnHealthPointsChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 1) OnHatCountChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 2) OnBombPowerChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 3) OnBombCapacityChanged((int)oldValue!, (int)newValue!, reason);
@@ -76,8 +84,10 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
         if (ordinal == 6) OnProtectedUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
         if (ordinal == 7) OnCellXChanged((int)oldValue!, (int)newValue!, reason);
         if (ordinal == 8) OnCellYChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 9) OnPosMilliXChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnPosMilliYChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnCellZChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 10) OnPosMilliXChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 11) OnPosMilliYChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 12) OnPosMilliZChanged((int)oldValue!, (int)newValue!, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -117,7 +127,7 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
 
     object? IGeneratedComponent.ReadField(string fieldId)
     {
-        if (string.Equals(fieldId, "hearts", StringComparison.Ordinal) || string.Equals(fieldId, "Hearts", StringComparison.Ordinal)) return Hearts.Value;
+        if (string.Equals(fieldId, "healthPoints", StringComparison.Ordinal) || string.Equals(fieldId, "HealthPoints", StringComparison.Ordinal)) return HealthPoints.Value;
         if (string.Equals(fieldId, "hatCount", StringComparison.Ordinal) || string.Equals(fieldId, "HatCount", StringComparison.Ordinal)) return HatCount.Value;
         if (string.Equals(fieldId, "bombPower", StringComparison.Ordinal) || string.Equals(fieldId, "BombPower", StringComparison.Ordinal)) return BombPower.Value;
         if (string.Equals(fieldId, "bombCapacity", StringComparison.Ordinal) || string.Equals(fieldId, "BombCapacity", StringComparison.Ordinal)) return BombCapacity.Value;
@@ -126,17 +136,19 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
         if (string.Equals(fieldId, "protectedUntilTick", StringComparison.Ordinal) || string.Equals(fieldId, "ProtectedUntilTick", StringComparison.Ordinal)) return ProtectedUntilTick.Value;
         if (string.Equals(fieldId, "cellX", StringComparison.Ordinal) || string.Equals(fieldId, "CellX", StringComparison.Ordinal)) return CellX.Value;
         if (string.Equals(fieldId, "cellY", StringComparison.Ordinal) || string.Equals(fieldId, "CellY", StringComparison.Ordinal)) return CellY.Value;
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal)) return CellZ.Value;
         if (string.Equals(fieldId, "posMilliX", StringComparison.Ordinal) || string.Equals(fieldId, "PosMilliX", StringComparison.Ordinal)) return PosMilliX.Value;
         if (string.Equals(fieldId, "posMilliY", StringComparison.Ordinal) || string.Equals(fieldId, "PosMilliY", StringComparison.Ordinal)) return PosMilliY.Value;
+        if (string.Equals(fieldId, "posMilliZ", StringComparison.Ordinal) || string.Equals(fieldId, "PosMilliZ", StringComparison.Ordinal)) return PosMilliZ.Value;
         return null;
     }
 
     void IGeneratedComponent.WriteField(string fieldId, object? value, bool silent)
     {
-        if (string.Equals(fieldId, "hearts", StringComparison.Ordinal) || string.Equals(fieldId, "Hearts", StringComparison.Ordinal))
+        if (string.Equals(fieldId, "healthPoints", StringComparison.Ordinal) || string.Equals(fieldId, "HealthPoints", StringComparison.Ordinal))
         {
-            if (silent) Hearts.SetSilent((int)value!);
-            else Hearts.Value = (int)value!;
+            if (silent) HealthPoints.SetSilent((int)value!);
+            else HealthPoints.Value = (int)value!;
             return;
         }
         if (string.Equals(fieldId, "hatCount", StringComparison.Ordinal) || string.Equals(fieldId, "HatCount", StringComparison.Ordinal))
@@ -187,6 +199,12 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
             else CellY.Value = (int)value!;
             return;
         }
+        if (string.Equals(fieldId, "cellZ", StringComparison.Ordinal) || string.Equals(fieldId, "CellZ", StringComparison.Ordinal))
+        {
+            if (silent) CellZ.SetSilent((int)value!);
+            else CellZ.Value = (int)value!;
+            return;
+        }
         if (string.Equals(fieldId, "posMilliX", StringComparison.Ordinal) || string.Equals(fieldId, "PosMilliX", StringComparison.Ordinal))
         {
             if (silent) PosMilliX.SetSilent((int)value!);
@@ -197,6 +215,12 @@ public sealed partial class BomberPlayerState : IGeneratedComponent
         {
             if (silent) PosMilliY.SetSilent((int)value!);
             else PosMilliY.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "posMilliZ", StringComparison.Ordinal) || string.Equals(fieldId, "PosMilliZ", StringComparison.Ordinal))
+        {
+            if (silent) PosMilliZ.SetSilent((int)value!);
+            else PosMilliZ.Value = (int)value!;
             return;
         }
     }

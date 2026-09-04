@@ -77,9 +77,49 @@
 
 **现状**：架构明确「跨 World 事务有成本」，但没有可接受的每秒方块修改率与 Voxel Delta 复制阈值。
 
-**诉求**：100 人满负载估算**每秒 100–300 格**软砖破坏（推断，[`bomber/design.md`](bomber/design.md) §7.4），外加软砖再生批量写入与「筑墙 / 钻头」技能的 CrossWorldTxn。设计侧已封顶（单次爆炸 ≤ 24 格、穿透 / 分裂只在高等级、再生低频批写；据点围院内无软砖，人群最密处不产生方块写入；技能 × 场景交互只有「冰冻水面」产生临时方块写入，列为阶段 3 候选，木头燃烧是区域 Effect 不写方块）；需要引擎侧给出可接受阈值，超出则策划下调火力上限或穿透规则。
+**诉求**：100 人满负载估算**每秒 100–300 格**软砖破坏（推断，[`bomber/design.md`](bomber/design.md) §7.4），外加软砖再生批量写入与「筑墙 / 钻头」技能的 CrossWorldTxn。**最需要阈值的是尖峰而非均值**：连锁不设上限（ADR [0016](../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md)），一条链最坏约 **1200 格落在同一 tick**（100 人、约 50 颗弹并入同一 ChainId）；此外出生点清软砖 ≤ 2 格 / 次、峰值约 33 次 / 秒（100 人 ÷ 3 秒重生）。分帧提交策略与每 tick 预算归 Voxel 侧决定，本仓只提供数字并按设计稿 §17.2 埋点。设计侧已封顶（单次爆炸 ≤ 24 格、穿透 / 分裂只在高等级、再生低频批写；据点围院内无软砖，人群最密处不产生方块写入；技能 × 场景交互只有「冰冻水方格」产生临时方块写入，列为阶段 3 候选，木头燃烧是区域 Effect 不写方块）；需要引擎侧给出可接受阈值，超出则策划下调火力上限或穿透规则。
 
 **2026-09-04 实测补充（ADR [0015](../../.spec/decisions/0015-bomber-stage0a-runtime-capability-finding.md)）**：对 `LumioGameRuntime` 源码与其自身测试的直接核验证实，`IVoxelWorldPort` 及其请求/结果类型全部 `internal`，唯一公开的 `CoordinationModule.Create` 固定接一个私有 `FailClosedVoxelWorldPort`；Runtime 自身有一条反向测试（`VoxelAdapterSurfaceTests.SubstituteVoxelContractTypesAreNotExported`）用反射断言 Voxel 契约类型永不导出——这是刻意的架构边界，不是尚未补齐的疏漏。同时确认 `modules/ecs` 无任何 `ISystem`/`IProcessor` 抽象，`modules/simulation` 的 Processor 组合/会话构造均为 `internal`，消费方无法注册自定义 Processor 参与 Logical Tick。两项合起来意味着：即使 A2（Voxel C 接口导出）解决，Game 今天也**没有公开入口**发起真实 CrossWorldTxn 或挂入 Runtime 的 Tick 编排。**应对**（ADR 0015）：炸弹人 Stage 0a 不等待这两项能力——网格与规则结算改为 Game 自有 EcsComponent 状态、由 Game 自行编排的普通 C# 函数驱动（Chat 功能已验证的同一模式），真实 Voxel 集成留给 Stage 2+ 且以本条与 A2 解除为前置。**这两项（公开 Processor 注册面、公开或可测试替身的 IVoxelWorldPort）目前只是消费方观察到的现状，是否开放属 `LumioGameRuntime` 自身路线图决策，本仓不代其立项，只记录消费方影响。**
+
+### A9 · 炸弹人对 Voxel 侧的需求清单（汇总）
+
+ADR [0016](../../.spec/decisions/0016-bomber-terrain-out-of-ecs-3d-coords.md) 把炸弹人的地形从 ECS 移到 `ITerrainStore` 之后，本仓对 Voxel 侧的诉求可以完整列出。**方块目录与存储归 Voxel 仓自己排期，本仓只提需求。**
+
+**① 方块目录（公共材质库）** —— 炸弹人需要九种方块，按层分：
+
+- 砖层 `z = 0`：Air（空地）、铁皮（硬砖）、积木（软砖）、木箱、木头、鞭炮
+- 地面层 `z = -1`：地面、水、冰
+
+Stage 0a 只用前三种（Air / 铁皮 / 积木）。方块的行为绑定（可破坏、阻断爆炸、破坏后残留、掉落、地面效果、可通行）留在本仓——Voxel 侧 README 明确不负责 Gameplay 判断，且同一块「水」在不同产品里语义不同。
+
+**② 接口形状**：
+
+```text
+GetBlock(x, y, z) -> MaterialId          带 revision 的只读
+ApplyBatch(mutations, expectedRevision)  批量写，一笔事务
+ChunkRevision(chunkId) -> u64
+```
+
+一条容易漏的：**爆炸传播每走一步要读两层**（`z = 0` 砖层判阻断与破坏，`z = -1` 地面层判水是否挡火），单次爆炸最多 48 次读。若逐格调用开销高，需要一个「读一列」或「读矩形」的批量查询。
+
+**③ 写入量**：见 A8。
+
+**④ 确定性快照**：地形必须能产出确定性 canonical 字节以支撑同 Seed 回放逐 tick 对账，编码对齐架构源的 `voxel-snapshot-payload`（ADR-035，随 `LGE-V1.4-2026-08-27` 冻结）。硬要求是**同一份地形两次编码逐字节相同**——不能有哈希表遍历顺序之类的不确定性。
+
+**⑤ 极扁世界的 chunk 尺寸**：炸弹人的世界是 61×61 宽、只有 2 层高（`z = -1` / `z = 0`），`z ≥ 1` 预留。Voxel 侧的 chunk 尺寸标着未决数值（`VOX-D-001`）；若 chunk 是立方体（如 16³），这张图是 4×4×1 个 chunk、每个只用了 2/16 的高度。需要 Voxel 侧确认这是否可接受。
+
+**⑥ 明确不需要的**（同样是有用的信息）：
+
+| 模块 | 为什么不需要 |
+|---|---|
+| `streaming` | 61×61×2 ≈ 7442 格，全图常驻，无需 Load/Unload |
+| `mesh-collision` | 俯视格子移动，碰撞是玩法层的格判定 |
+| `migration` | [`product-direction.md`](product-direction.md)「每局独立地图，局结束即回收」，无跨局存档 |
+| `spatial` | 爆炸是十字直线扫描，不需要空间索引 |
+
+即游戏 ① 的关键路径上只有 `world / chunk / revision / query / mutation / snapshot` 六个 P0 模块。
+
+**⑦ 两条硬阻塞（现状，不是需求）**：`LumioVoxelEngine` 尚未导出 C ABI（A2，2026-09-04 实测：零 `#[no_mangle]`、零 `crate-type = ["cdylib"]`，`extern "C"` 只出现在生成的函数指针声明与头文件里）；Runtime 侧 `IVoxelWorldPort` 是 `internal` 且有反射测试断言 Voxel 契约类型永不导出（A8 的实测补充）。这两条不解除，Rust 侧已完成的领域实现在 C# 这边一行也调不到。
 
 ---
 
@@ -138,7 +178,7 @@
 |---|---|
 | **阻塞 ① Stage 0b 起（浏览器客户端接入）** | A1 网络传输、A2 Rust↔C# 桥、A3 浏览器客户端宿主与渲染 |
 | **① Stage 0a（headless 逻辑层）** | 不被 A1–A3 阻塞（ADR 0013）；依赖上游命令包络 / Component Schema / 契约生成器可运行（设计稿 §16 Gate 0） |
-| **① Stage 2–3（24/48/100 Bot）前置** | A7 100 人 AOI 复制、A8 方块写入与复制预算 |
+| **① Stage 2–3（24/48/100 Bot）前置** | A7 100 人 AOI 复制、A8 方块写入与复制预算、A9 的 ①②④⑤（Stage 0a 用 Game 自有 `InMemoryChunkStore`，不阻塞） |
 | **① 期间必须并行** | B1 画面验证（后移到浏览器渲染原型）、B2 模式数据格式设计、B6 100 人可读性、B7 首发范围对冲 |
 | **阻塞 ②** | A4 断线重连 |
 | **阻塞 ③** | A4 断线重连（红线）、A5 账号级持久化 |

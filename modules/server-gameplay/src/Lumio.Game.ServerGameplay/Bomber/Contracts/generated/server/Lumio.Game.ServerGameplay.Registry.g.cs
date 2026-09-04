@@ -44,11 +44,6 @@ public sealed class GeneratedRegistry : EcsRegistry
             list.Add(new BomberBombState());
             return;
         }
-        if (entityType == typeof(BomberExplosionCellEntity))
-        {
-            list.Add(new BomberExplosionCell());
-            return;
-        }
         if (entityType == typeof(BomberHatPileEntity))
         {
             list.Add(new BomberHatPile());
@@ -89,8 +84,6 @@ public sealed class GeneratedRegistry : EcsRegistry
         entityType = null!;
         if (string.Equals(name, "BomberBombEntity", StringComparison.Ordinal) || string.Equals(name, "bomberBomb", StringComparison.Ordinal))
         { entityType = typeof(BomberBombEntity); return true; }
-        if (string.Equals(name, "BomberExplosionCellEntity", StringComparison.Ordinal) || string.Equals(name, "bomberExplosionCell", StringComparison.Ordinal))
-        { entityType = typeof(BomberExplosionCellEntity); return true; }
         if (string.Equals(name, "BomberHatPileEntity", StringComparison.Ordinal) || string.Equals(name, "bomberHatPile", StringComparison.Ordinal))
         { entityType = typeof(BomberHatPileEntity); return true; }
         if (string.Equals(name, "BomberPickupItemEntity", StringComparison.Ordinal) || string.Equals(name, "bomberPickupItem", StringComparison.Ordinal))
@@ -119,19 +112,25 @@ public sealed class GeneratedRegistry : EcsRegistry
     {
         return new FieldAttributeDeclaration[]
         {
+            new FieldAttributeDeclaration("BomberBombState.bombKind", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.burnUntilTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.cellX", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.cellY", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.cellZ", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.chainId", "u64", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.dangerUntilTick", "u64", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.explodedAtTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.fuseEndTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.ownerNetEntityIdRaw", "u64", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.pierceLayers", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberBombState.power", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberExplosionCell.cellX", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberExplosionCell.cellY", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberExplosionCell.chainId", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberExplosionCell.dangerUntilTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberExplosionCell.sourceBombOwnerNetEntityIdRaw", "u64", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.reachDown", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.reachLeft", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.reachRight", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberBombState.reachUp", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberHatPile.cellX", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberHatPile.cellY", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberHatPile.cellZ", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberHatPile.count", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberHatPile.expireAtTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberMatchState.endTick", "u64", "persistent", "replicated", "room-public"),
@@ -141,15 +140,18 @@ public sealed class GeneratedRegistry : EcsRegistry
             new FieldAttributeDeclaration("BomberMatchState.startTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPickupItem.cellX", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPickupItem.cellY", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberPickupItem.cellZ", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPickupItem.kind", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.bombCapacity", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.bombPower", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.cellX", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.cellY", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberPlayerState.cellZ", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.hatCount", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPlayerState.hearts", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberPlayerState.healthPoints", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.posMilliX", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.posMilliY", "i32", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("BomberPlayerState.posMilliZ", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.protectedUntilTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.respawnAtTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.speedTier", "i32", "persistent", "replicated", "room-public"),
