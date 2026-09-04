@@ -39,4 +39,6 @@
 | [0009](0009-entity-chat-csharp-mvp-host.md) | 101-entity 联调用 Game 仓 C# MVP Room 宿主 | 被 0010 取代 |
 | [0010](0010-entity-chat-requires-mvp-host.md) | 101-entity SUCCESS 必须由 sibling lumio-mvp-host 实连 | 生效 |
 | [0011](0011-bomber-100-player-io-gear-slots.md) | 炸弹人升级为 100 人 .io 混战,新增 3 槽装备与击杀铸帽 | 被 0012 取代 |
-| [0012](0012-bomber-hearts-replace-one-hit-kill.md) | 炸弹人由一击即死改为三颗心血量,单发削血、连锁秒杀 | 生效 |
+| [0012](0012-bomber-hearts-replace-one-hit-kill.md) | 炸弹人由一击即死改为三颗心血量,单发削血、连锁秒杀 | 被 0014 取代 |
+| [0013](0013-logic-first-browser-client-no-engine.md) | 交付顺序逻辑先行、表现最后接;后续客户端暂定浏览器,首发不接任何游戏引擎 | 生效 |
+| [0014](0014-bomber-v04-stage0-convergence.md) | 炸弹人采纳 v0.4 收敛:Stage 0 前置、官方房范围收敛、据点改补给、装备替换需确认 | 生效 |
