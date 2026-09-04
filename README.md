@@ -44,7 +44,7 @@ Gameplay Schema、Replication Mapping、GAS/Config/Content/Migration Schema、ID
 - Client Gameplay 的 Replica、Prediction/Presentation Component 和输入映射。
 - Component/Entity/Field/Role/AOI 的 Replication Mapping 与权限声明。
 - Config/Content/Scenario/Replay Fixture、Product Release 和语义 Migration。
-- GameWorld/ReplicaWorld 的初始化、注册、快照投影和销毁 Hook；不拥有宿主状态机。
+- GameWorld/客户端 World 的初始化、注册、快照投影和销毁 Hook；不拥有宿主状态机。
 
 ## 子模块
 
@@ -81,7 +81,7 @@ Gameplay Schema、Replication Mapping、GAS/Config/Content/Migration Schema、ID
 
 ## Gameplay 与 World 边界
 
-Server GameWorld 是 Gameplay/ECS/GAS 权威域；VoxelWorld 是 Rust Voxel 权威域；Client ReplicaWorld/VoxelReplicaWorld 是投影和预测域。任何同时修改资源和方块的能力必须通过 Runtime `CrossWorldTxnV1`，不能直接跨 World 读写或保存第二份 Voxel 真相。
+Server GameWorld 是 Gameplay/ECS/GAS 权威域；VoxelWorld 是 Rust Voxel 权威域；客户端 World / VoxelReplicaWorld 是投影和预测域。任何同时修改资源和方块的能力必须通过 Runtime `CrossWorldTxnV1`，不能直接跨 World 读写或保存第二份 Voxel 真相。
 
 ## Replication Mapping
 
