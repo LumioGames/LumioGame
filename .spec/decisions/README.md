@@ -42,3 +42,4 @@
 | [0012](0012-bomber-hearts-replace-one-hit-kill.md) | 炸弹人由一击即死改为三颗心血量,单发削血、连锁秒杀 | 被 0014 取代 |
 | [0013](0013-logic-first-browser-client-no-engine.md) | 交付顺序逻辑先行、表现最后接;后续客户端暂定浏览器,首发不接任何游戏引擎 | 生效 |
 | [0014](0014-bomber-v04-stage0-convergence.md) | 炸弹人采纳 v0.4 收敛:Stage 0 前置、官方房范围收敛、据点改补给、装备替换需确认 | 生效 |
+| [0015](0015-bomber-stage0a-runtime-capability-finding.md) | Stage 0a 不依赖 Runtime Processor 与公开 CrossWorldTxn/IVoxelWorldPort,网格改为 Game 自有 EcsComponent 状态 | 生效 |

@@ -1,0 +1,268 @@
+[
+  {
+    "attributeId": "BomberBombState.cellX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.chainId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.fuseEndTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.ownerNetEntityIdRaw",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberBombState.power",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberExplosionCell.cellX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberExplosionCell.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberExplosionCell.chainId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberExplosionCell.dangerUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberExplosionCell.sourceBombOwnerNetEntityIdRaw",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberHatPile.cellX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberHatPile.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberHatPile.count",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberHatPile.expireAtTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.endTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.hatKingNetEntityIdRaw",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.matchTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.startTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPickupItem.cellX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPickupItem.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPickupItem.kind",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombCapacity",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombPower",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.cellX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.cellY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.hatCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.hearts",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.posMilliX",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.posMilliY",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.protectedUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.respawnAtTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.speedTier",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "ChatComponent.lastMessagePersistOnly",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "EntityIdentity.claimedMark",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "claim-scoped"
+  },
+  {
+    "attributeId": "EntityIdentity.entityType",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "enum:entityType",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "EntityIdentity.unmappedMark",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "room-public"
+  }
+]

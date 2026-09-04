@@ -29,5 +29,7 @@
 | 文档 | 状态 | 一句话 |
 |---|---|---|
 | [bomber/design.md](bomber/design.md) | 设计中 | 体素炸弹人完整设计稿:100 人 .io 帽子乱斗与滚动房间、三心血量与连锁结算、人数-地图联动与双密度指标、场景材质、分区补给箱与中央定时补给、3 槽装备(Stage 5)、可读性功能、首轮默认值、Gate 0 + Stage 0–6 切片与遥测门槛——首发产品(阶梯 ①) |
+| [bomber/stage0-kernel-contract.md](bomber/stage0-kernel-contract.md) | 已冻结 v1.0.0 | Stage 0a 内核契约:Runtime 接入核验结论(ADR 0015)、6 个 Component/EntityType、命令/事件/端口、Config Schema、Scenario 文件格式——做 G-1..G-7/C-1 实现卡前查 |
+| [bomber/stage0-test-matrix.md](bomber/stage0-test-matrix.md) | 已冻结 v1.0.0 | Stage 0a 风险驱动用例矩阵,按传播/连锁/血量/帽子/拾取/地图/回放/遥测分组,每条标消费卡与自动化层级——G-1..G-7 写测试前查 |
 | [bedwars/direction.md](bedwars/direction.md) | 设计中(方向级) | 起床战争俯视改编方向稿:以水平空隙替代垂直落差——阶梯 ② |
 | [duckoff/direction.md](duckoff/direction.md) | 设计中(方向级) | 逃离鸭科夫方向稿:撤离玩法与跨局存档诉求——阶梯 ③ |
