@@ -79,6 +79,8 @@
 
 **诉求**：100 人满负载估算**每秒 100–300 格**软砖破坏（推断，[`bomber/design.md`](bomber/design.md) §7.4），外加软砖再生批量写入与「筑墙 / 钻头」技能的 CrossWorldTxn。设计侧已封顶（单次爆炸 ≤ 24 格、穿透 / 分裂只在高等级、再生低频批写；据点围院内无软砖，人群最密处不产生方块写入；技能 × 场景交互只有「冰冻水面」产生临时方块写入，列为阶段 3 候选，木头燃烧是区域 Effect 不写方块）；需要引擎侧给出可接受阈值，超出则策划下调火力上限或穿透规则。
 
+**2026-09-04 实测补充（ADR [0015](../../.spec/decisions/0015-bomber-stage0a-runtime-capability-finding.md)）**：对 `LumioGameRuntime` 源码与其自身测试的直接核验证实，`IVoxelWorldPort` 及其请求/结果类型全部 `internal`，唯一公开的 `CoordinationModule.Create` 固定接一个私有 `FailClosedVoxelWorldPort`；Runtime 自身有一条反向测试（`VoxelAdapterSurfaceTests.SubstituteVoxelContractTypesAreNotExported`）用反射断言 Voxel 契约类型永不导出——这是刻意的架构边界，不是尚未补齐的疏漏。同时确认 `modules/ecs` 无任何 `ISystem`/`IProcessor` 抽象，`modules/simulation` 的 Processor 组合/会话构造均为 `internal`，消费方无法注册自定义 Processor 参与 Logical Tick。两项合起来意味着：即使 A2（Voxel C 接口导出）解决，Game 今天也**没有公开入口**发起真实 CrossWorldTxn 或挂入 Runtime 的 Tick 编排。**应对**（ADR 0015）：炸弹人 Stage 0a 不等待这两项能力——网格与规则结算改为 Game 自有 EcsComponent 状态、由 Game 自行编排的普通 C# 函数驱动（Chat 功能已验证的同一模式），真实 Voxel 集成留给 Stage 2+ 且以本条与 A2 解除为前置。**这两项（公开 Processor 注册面、公开或可测试替身的 IVoxelWorldPort）目前只是消费方观察到的现状，是否开放属 `LumioGameRuntime` 自身路线图决策，本仓不代其立项，只记录消费方影响。**
+
 ---
 
 ## 二、策划侧自己承担的风险

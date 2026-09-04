@@ -4,7 +4,8 @@
     <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
     <AssemblyName>Lumio.Game.ServerGameplay</AssemblyName>
     <RootNamespace>Lumio.Game.ServerGameplay</RootNamespace>
-    <NoWarn>$(NoWarn);CA1510</NoWarn>
+    <!-- CA1051: Runtime 的 Sync<T> 字段协定要求公开可变字段（见 LumioGameRuntime samples/username 的 IdentityComponent/ChatComponent），Bomber Contracts 组件遵循同一协定。 -->
+    <NoWarn>$(NoWarn);CA1510;CA1051</NoWarn>
     <_GameRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../'))</_GameRepoRoot>
     <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and '$(LUMIO_RUNTIME_ROOT)' != ''">$(LUMIO_RUNTIME_ROOT)</LumioRuntimeRoot>
     <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
