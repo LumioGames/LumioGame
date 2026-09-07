@@ -135,3 +135,16 @@ Game 只定义具体内容和产品语义：Ability/Effect/AttributeSet/Tag、Fo
 3. **Stage 1 及以后**：8 人产品纵切 → 地图与 24/48 人 → 100 Bot 性能门 → 完整官方 MVP → 装备切片 → 硬化与候选发布。
 
 Stage 0 的内核契约见 [`docs/specs/bomber/stage0-kernel-contract.md`](docs/specs/bomber/stage0-kernel-contract.md)。
+
+## 许可证
+
+本仓库是 **Demo / 示例仓库**，采用 **Apache License 2.0** —— 见 [LICENSE](LICENSE)。
+你可以自由 fork、修改、二次创作，并用它开发和商业运营你自己的游戏，无需额外授权。
+
+> ⚠️ **引擎本体不在本许可证范围内。** 本仓库所依赖的 Lumio 引擎（`Lumio.Engine.*`、`Lumio.GameRuntime.*` 等）单独采用 **Business Source License 1.1（BUSL-1.1）**，条款独立于本仓库：
+>
+> - ✅ 允许：用它开发、发行、商业运营你自己的游戏与游戏内容
+> - ❌ 不允许：用它对外提供游戏引擎、游戏开发套件、运行时、服务端框架等与之竞争的面向开发者的产品或服务
+> - 2030-09-07 自动转为 Apache License 2.0
+>
+> 完整条款见引擎分发物随附的 LICENSE 文件。
