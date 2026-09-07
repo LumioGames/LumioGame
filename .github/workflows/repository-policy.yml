@@ -46,6 +46,8 @@ jobs:
           repository: LumioGames/LumioGameRuntime
           ref: main
           path: runtime
+          token: ${{ secrets.LUMIO_CI_PAT }}
+          persist-credentials: false
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@v4
         with:
