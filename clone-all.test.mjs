@@ -113,3 +113,32 @@ test('私有仓被判无权限时,原有「私有仓」措辞与 0 退出码不�
   assert.equal(code, 0)
   assert.ok(text.includes('跳过(无权限,私有仓)'), text)
 })
+
+test('公开仓被判无权限时以非 0 退出——一个仓都没拉到不算成功', () => {
+  const out = []
+  const code = main(['--dest', '/nonexistent-dest-for-test'], {
+    // 企业代理 / GitHub 侧对公开仓也返回 403 的场景
+    run: () => ({ status: 128, stderr: 'The requested URL returned error: 403' }),
+    log: (line) => out.push(line),
+    error: (line) => out.push(line),
+  })
+  assert.notEqual(code, 0)
+  assert.ok(out.join('\n').includes('公开仓被判无权限'), out.join('\n'))
+})
+
+test('只有私有仓被跳过时仍以 0 退出——外部开发者默认路径不受影响', () => {
+  const out = []
+  const code = main(['--include-private', '--dest', '/nonexistent-dest-for-test'], {
+    run: (args) => {
+      const isPrivate = REPOS.some(
+        (r) => r.visibility === 'private' && args.some((a) => a.includes(`/${r.name}.git`)),
+      )
+      return isPrivate
+        ? { status: 128, stderr: 'remote: Repository not found.' }
+        : { status: 0, stderr: '' }
+    },
+    log: (line) => out.push(line),
+    error: (line) => out.push(line),
+  })
+  assert.equal(code, 0)
+})
