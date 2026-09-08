@@ -1,6 +1,85 @@
 # LumioGame
 
-> Lumio 游戏产品、Gameplay Content、发布组合和产品语义的唯一事实源。
+> **LumioGames 组织的导航入口** —— 想知道该 clone 哪个仓，看这里就够了。
+> 本仓同时是**炸弹人**游戏产品的 Gameplay、内容与发布语义事实源；导航与产品暂时同仓，是过渡态。
+
+## 五分钟上手
+
+第一次接触 Lumio，**不要从本仓开始** —— 从模板仓 [`LumioSample`](https://github.com/LumioGames/LumioSample) 开始。它是引擎的参考实现，也是新游戏的模板：
+
+```bash
+gh repo create my-game --template LumioGames/LumioSample --public --clone
+```
+
+没装 [`gh`](https://cli.github.com/) 就直接 clone 模板：
+
+```bash
+git clone https://github.com/LumioGames/LumioSample.git
+```
+
+想一次拉齐全部公开仓（落到脚本所在仓的同级目录）：
+
+```bash
+git clone https://github.com/LumioGames/LumioGame.git
+node LumioGame/clone-all.mjs
+```
+
+私有仓拉不到也不需要 —— 脚本打印「跳过（无权限）」后正常结束，它们的 SDK 经 NuGet 包分发。有权限的内部开发者加 `--include-private`。
+
+## 产品拓扑
+
+```mermaid
+flowchart TB
+    subgraph pub["公开 · 可直接 clone"]
+        Sample["LumioSample<br/>模板仓 · 从这里开始"]
+        Game["LumioGame<br/>本仓 · 导航 + 炸弹人"]
+        Config["LumioConfig<br/>配表源与编译器"]
+    end
+    subgraph priv["私有 · SDK 经 NuGet 包分发"]
+        Engine["LumioGameEngine<br/>架构与公共契约"]
+        Runtime["LumioGameRuntime<br/>C# ECS / Tick / GAS"]
+        Server["LumioServer"]
+        Client["LumioClient"]
+        Voxel["LumioVoxelEngine"]
+        Native["LumioNativeCore"]
+        Platform["LumioPlatform"]
+    end
+
+    Sample --> Runtime
+    Sample --> Config
+    Game --> Runtime
+    Game --> Config
+    Server --> Runtime
+    Client --> Runtime
+    Runtime --> Voxel
+    Server --> Voxel
+    Voxel --> Native
+    Engine -. 定义公共契约 .-> Runtime
+    Engine -. 定义公共契约 .-> Server
+    Engine -. 定义公共契约 .-> Client
+    Platform -. 账号 / 大厅 / 后台 .-> Server
+```
+
+箭头是依赖方向：上层消费下层。公开仓不依赖任何私有仓的源码 —— 引擎能力一律经 NuGet 包消费。
+
+## 仓库导航
+
+| 仓库 | 可见性 | 一句话 |
+| --- | --- | --- |
+| [`LumioSample`](https://github.com/LumioGames/LumioSample) | 公开 | 游戏「示例」：引擎参考实现，也是新游戏的模板仓 —— **外部开发者从这里开始** |
+| [`LumioGame`](https://github.com/LumioGames/LumioGame) | 公开 | 本仓：组织导航，以及炸弹人游戏产品的 Gameplay、配置、内容与发布语义 |
+| [`LumioConfig`](https://github.com/LumioGames/LumioConfig) | 公开 | Schema-first 配表源、编译器与导出工具 |
+| [`LumioAgentSpec`](https://github.com/LumioGames/LumioAgentSpec) | 公开 | 开发项目管理 Agent 框架：调度、对抗审查、常驻规则 |
+| [`workflow-plugin`](https://github.com/LumioGames/workflow-plugin) | 公开 | 把 Claude Code / Cursor / Codex 接到 Workflow 的插件 |
+| `LumioGameEngine` | 私有 | 架构与公共契约的唯一事实源 |
+| `LumioGameRuntime` | 私有 | C# ECS、Tick、GAS 与 Gameplay 热重载宿主 |
+| `LumioServer` | 私有 | Rust 专用服务器宿主、网络与 CoreCLR 托管 |
+| `LumioClient` | 私有 | 引擎无关的 C# 客户端运行时、复制与预测 |
+| `LumioVoxelEngine` | 私有 | Rust 体素引擎 |
+| `LumioNativeCore` | 私有 | Rust 原生底座与版本化 native 契约 |
+| `LumioPlatform` | 私有 | 账号权威、大厅、反馈与运营后台 |
+
+私有仓不对外开放源码；开发游戏所需的引擎能力全部经 **NuGet 包**分发，不需要它们的源码检出。
 
 <!-- lumio-community:start -->
 <div align="center">
@@ -22,19 +101,17 @@
 </div>
 <!-- lumio-community:end -->
 
+---
+
+以下是**本仓作为炸弹人游戏产品**的说明。
+
 ## 契约来源
 
-本仓处于预上线 Living Architecture 阶段，不发布或复制冻结基线。公共语义的唯一事实源是架构仓 [`LumioGameEngine`](https://github.com/LumioGames/LumioGameEngine)，本仓只消费、不复制，也不保存镜像：
+本仓处于预上线 Living Architecture 阶段，不发布或复制冻结基线。公共语义（ABI、线上契约、依赖方向）的唯一事实源是架构仓 `LumioGameEngine`，本仓只消费、不复制，也不保存镜像；本仓文档只写「在炸弹人里这条契约怎么用」。公共语义要改，先在架构仓改，不在本仓自行改写。
 
-- ABI：`engine/abi/native-abi.json`
-- 线上语义：`engine/wire/*.json`（每条公共契约各一份）
-- 设计概要：`.spec/knowledge/features/` 下的 `architecture` / `bomber-slice` / `tick` / `ecs` / `gas` / `movement` / `voxel`
-
-本仓不复述任何公共契约字段。要查字段、错误码、消息 ID 或依赖方向，一律回架构仓读上述来源；本仓文档只写「在炸弹人里这条契约怎么用」。公共语义要改，先在架构仓改，不在本仓自行改写。
+内部贡献者查具体字段、错误码与消息 ID 的入口见 [`.spec/knowledge/standards/repository-architecture.md`](.spec/knowledge/standards/repository-architecture.md)。
 
 `LumioGame` 位于依赖图最上层，把 Runtime、Server、Client 和玩法内容组合成具体游戏，产出同一 `ProductId + GameReleaseId` 下的 Gameplay、配置、内容、Scenario 与 Migration。
-
-本仓库拥有玩法语义，不拥有 Native、Voxel 内部、网络连接、Host 进程或 Runtime 生命周期。
 
 本仓库拥有玩法语义，不拥有 Native、Voxel 内部、网络连接、Host 进程或 Runtime 生命周期。
 
@@ -97,13 +174,13 @@ Game 只定义具体内容和产品语义：Ability/Effect/AttributeSet/Tag、Fo
 
 ## Source / Compile-Time Dependencies
 
-- `LumioGameRuntime`：稳定 ECS、Tick、GAS、Coordinator、Replication、Persistence 和 Config API。
-- `LumioServer`/`LumioClient`：只引用公开 Host/Adapter Contract，不依赖实现源码。
+- `LumioGameRuntime`（私有，SDK 经 NuGet 包分发）：稳定 ECS、Tick、GAS、Coordinator、Replication、Persistence 和 Config API。
+- `LumioServer`/`LumioClient`（私有，SDK 经 NuGet 包分发）：只引用公开 Host/Adapter Contract，不依赖实现源码。
 - .NET SDK、C# 编译器和经过许可证/SBOM/漏洞/AOT/确定性/性能审查的包。
 
 业务代码禁止对 NativeCore/VoxelEngine 源码建立 Compile-Time 依赖。
 
-本仓的 C# 工程经 `LUMIO_RUNTIME_ROOT`（未设时回落到同级目录）定位 `LumioGameRuntime` 检出；构建与测试见 [`.spec/AGENTS.md`](.spec/AGENTS.md)「收口门槛」。
+内部贡献者的跨仓检出与本地构建口径见 [`.spec/knowledge/standards/repository-architecture.md`](.spec/knowledge/standards/repository-architecture.md)「跨仓检出」，构建与测试命令见 [`.spec/AGENTS.md`](.spec/AGENTS.md)「收口门槛」。
 
 ## Headless Test Surface
 
