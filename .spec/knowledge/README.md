@@ -28,6 +28,7 @@ metadata:
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
 | [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 唯一真源在 Runtime Username.Server——查 Game 无第二份类、SendMessage 与 persist last-message |
 | [`features/gameplay/entity-chat-harness.md`](features/gameplay/entity-chat-harness.md) | 101-entity 验收 oracle——查日志目录、compareRuns 逐位比较与 --dir 行尾归一化 |
+| [`features/tools/clone-all.md`](features/tools/clone-all.md) | 组织仓一次性 clone 工具——查失败分级(远端授权 vs 本地/网络)、退出码语义与清单维护纪律 |
 
 ## lessons(经验教训 · 复发问题暂存区)
 
