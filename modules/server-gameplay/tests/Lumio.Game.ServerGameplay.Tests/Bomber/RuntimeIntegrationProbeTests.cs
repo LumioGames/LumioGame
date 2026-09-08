@@ -7,6 +7,7 @@ using Lumio.Game.ServerGameplay.Bomber.Contracts;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 using Lumio.GameRuntime.Ecs;
+using Lumio.GameRuntime.Simulation;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests.Bomber;
@@ -25,8 +26,7 @@ public sealed class RuntimeIntegrationProbeTests
     [Fact]
     public void CustomComponentRegistersAndParticipatesInSnapshot()
     {
-        using WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
-        manager.Start(Thread.CurrentThread);
+        using WorldManager manager = BootProbeWorld();
 
         BomberMatchState world = manager.World.Single<BomberMatchState>();
         Assert.NotNull(world);
@@ -61,8 +61,7 @@ public sealed class RuntimeIntegrationProbeTests
     [Fact]
     public void AllFiveEntityTypesRegisterCreateAndParticipateInSnapshot()
     {
-        using WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
-        manager.Start(Thread.CurrentThread);
+        using WorldManager manager = BootProbeWorld();
 
         manager.World.Single<BomberMatchState>().MatchTick.SetSilent(0);
 
@@ -129,8 +128,7 @@ public sealed class RuntimeIntegrationProbeTests
 
     private static byte[] RunSinglePlayerAt(Vector3 position)
     {
-        using WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
-        manager.Start(Thread.CurrentThread);
+        using WorldManager manager = BootProbeWorld();
 
         var order = manager.World.Commands.Create<BomberPlayerEntity>();
         order.Get<BomberPlayerState>().HatCount.SetSilent(0);
@@ -144,8 +142,7 @@ public sealed class RuntimeIntegrationProbeTests
 
     private static byte[] RunFixedScenario()
     {
-        using WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
-        manager.Start(Thread.CurrentThread);
+        using WorldManager manager = BootProbeWorld();
 
         for (int i = 0; i < 3; i++)
         {
@@ -165,6 +162,19 @@ public sealed class RuntimeIntegrationProbeTests
 
         byte[] snapshot = manager.CaptureSnapshot();
         return SHA256.HashData(snapshot);
+    }
+
+    /// <summary>
+    /// 探针世界的启动序列，与 Runtime 宿主样例 ServerBootstrap.Boot 同序：Create → Start（记线程归属）
+    /// → WorldTickBinding.Bind（把 13 相 tick loop 挂上）。Tick() 只经绑定的 tick loop 跑 13 相，
+    /// 未绑定即拒绝，所以四个用例共用这一份，别再各自手抄启动序列。
+    /// </summary>
+    private static WorldManager BootProbeWorld()
+    {
+        WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
+        manager.Start(Thread.CurrentThread);
+        WorldTickBinding.Bind(manager);
+        return manager;
     }
 
     /// <summary>
