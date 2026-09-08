@@ -89,7 +89,6 @@ test('公开仓被判无权限时不得打印「私有仓」措辞', () => {
     error: (line) => out.push(line),
   })
   const text = out.join('\n')
-  assert.ok(text.includes('跳过(无权限'), text)
   // 只查会把公开仓说成私有仓的两处措辞;用法提示行里的「私有仓」是正常的。
   assert.ok(!text.includes('跳过(无权限,私有仓)'), text)
   assert.ok(!text.includes('无权限的都是私有仓'), text)
@@ -112,4 +111,36 @@ test('私有仓被判无权限时,原有「私有仓」措辞与 0 退出码不�
   const text = out.join('\n')
   assert.equal(code, 0)
   assert.ok(text.includes('跳过(无权限,私有仓)'), text)
+})
+
+test('公开仓被判无权限时改判失败并以 1 退出——一个仓都没拉到不算成功', () => {
+  const out = []
+  const code = main(['--dest', '/nonexistent-dest-for-test'], {
+    // 企业代理 / GitHub 侧对公开仓也返回 403 的场景
+    run: () => ({ status: 128, stderr: 'The requested URL returned error: 403' }),
+    log: (line) => out.push(line),
+    error: (line) => out.push(line),
+  })
+  const text = out.join('\n')
+  assert.equal(code, 1)
+  // 汇总口径必须和退出码一致:不能一边说「失败 0」一边非 0 退出。
+  assert.ok(text.includes('/ 失败 6'), text)
+  assert.ok(text.includes('公开仓却被判无权限'), text)
+  assert.ok(!text.includes('🔒'), text)
+})
+
+test('部分公开仓到手、剩下的被判无权限时,整体仍以 1 退出', () => {
+  const out = []
+  const code = main(['--dest', '/nonexistent-dest-for-test'], {
+    run: (args) =>
+      args.some((a) => a.includes('/LumioConfig.git'))
+        ? { status: 128, stderr: 'remote: Repository not found.' }
+        : { status: 0, stderr: '' },
+    log: (line) => out.push(line),
+    error: (line) => out.push(line),
+  })
+  const text = out.join('\n')
+  assert.equal(code, 1)
+  assert.ok(text.includes('新 clone 5'), text)
+  assert.ok(text.includes('失败的仓: LumioConfig'), text)
 })

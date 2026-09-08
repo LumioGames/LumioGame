@@ -9,8 +9,10 @@
  *   node clone-all.mjs --depth 1           浅克隆,只要最新一次提交
  *
  * 只有确证的远端授权失败(401/403、仓不存在、认证失败、拒绝交互式取凭据)才算
- * 「跳过(无权限)」:打印并继续,不影响退出码。网络与本地文件系统故障(工作树目录
- * 不可写、EACCES、ENOSPC、只读盘)一律算真实失败,并以非 0 退出。
+ * 「跳过(无权限)」,且只有清单里的**私有仓**才允许被这样跳过 —— 拿不到私有仓是外部开发者
+ * 的正常路径,不影响退出码。公开仓被判无权限一律改判为失败(公开仓人人可读,判成无权限
+ * 只可能是代理/凭据出问题);网络与本地文件系统故障(工作树目录不可写、EACCES、ENOSPC、
+ * 只读盘)同样是失败。有任何失败即以非 0 退出。
  *
  * 清单是手写的,刷新用: gh repo list LumioGames --limit 100 --json name,visibility
  */
@@ -135,25 +137,26 @@ export function main(argv, deps = {}) {
 
   const tally = { cloned: [], exists: [], 'no-access': [], error: [] }
   for (const repo of repos) {
-    const { state, detail } = cloneOne(repo, dest, opts.depth, run)
+    let { state, detail } = cloneOne(repo, dest, opts.depth, run)
+    // 公开仓本该人人可读:判成无权限一定是环境出了问题(代理 / 陈旧凭据),不算「正常跳过」。
+    if (state === 'no-access' && repo.visibility === 'public') {
+      state = 'error'
+      detail = `公开仓却被判无权限,多半是网络/代理/凭据问题 —— ${detail}`
+    }
     tally[state].push(repo)
     if (state === 'cloned') log(`✅ ${repo.name} —— 已 clone`)
     else if (state === 'exists') log(`⏭️  ${repo.name} —— 已存在,跳过`)
-    else if (state === 'no-access') log(`🔒 ${repo.name} —— 跳过(无权限,${repo.visibility === 'private' ? '私有仓' : '仓不可见'})`)
+    else if (state === 'no-access') log(`🔒 ${repo.name} —— 跳过(无权限,私有仓)`)
     else error(`❌ ${repo.name} —— 失败: ${detail}`)
   }
 
   log(`\n汇总: 新 clone ${tally.cloned.length} / 已存在 ${tally.exists.length} / 无权限跳过 ${tally['no-access'].length} / 失败 ${tally.error.length}`)
-  const skipped = tally['no-access']
-  // 只有当被跳过的确实全是清单里的私有仓,才给「都是私有仓」这句安抚话。
-  if (skipped.length && skipped.every((r) => r.visibility === 'private')) {
+  // 走到这里的 no-access 只剩私有仓——公开仓在上面已被改判为失败。
+  if (tally['no-access'].length) {
     log('无权限的都是私有仓,外部开发者不需要它们:SDK 经 NuGet 包分发。')
-  } else if (skipped.length) {
-    const publics = skipped.filter((r) => r.visibility === 'public').map((r) => r.name)
-    error(`公开仓被判无权限(${publics.join(', ')}),多半是网络/代理/凭据问题,请检查后重试。`)
   }
   if (tally.error.length) {
-    error(`真实故障(非权限问题): ${tally.error.map((r) => r.name).join(', ')}`)
+    error(`失败的仓: ${tally.error.map((r) => r.name).join(', ')}`)
     return 1
   }
   return 0
