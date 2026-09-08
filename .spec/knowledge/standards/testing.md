@@ -44,7 +44,14 @@ dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.Se
 dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
 ```
 
-测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。xUnit v3 要求 apphost；user-local SDK（无 HKLM `InstallLocation`）下 `dotnet test --project` 可能以退出码 5 跑 0 个测试。此时把 `DOTNET_ROOT` 设为 `dotnet.exe` 所在目录，或对已构建 dll 使用 `dotnet exec`。不得把「运行了零个测试」当成通过。
+测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。xUnit v3 要求 apphost。
+
+`dotnet test` 可能以退出码 5 报 `Zero tests ran`（user-local SDK 无 HKLM `InstallLocation`；Apple Silicon 上跑 x86_64 SDK 时 apphost 找不到运行时）。**不得把「运行了零个测试」当成通过**，改用下面两条之一，且必须核对 total 数：
+
+- `DOTNET_ROOT=<SDK 根> <测试项目>/bin/Debug/net10.0/<Assembly>` —— 直接跑 apphost，测试的真实入口。`<SDK 根>` 是**含 `shared/Microsoft.NETCore.App/` 的目录**，不是 `dotnet` 可执行文件所在目录：Homebrew 装的是 `/usr/local/Cellar/dotnet/<版本>/libexec`（`bin/` 里只有 wrapper 脚本，设成它无效）；`dotnet --list-runtimes` 打印的路径去掉末尾 `shared/...` 即是。
+- `dotnet exec <测试项目>/bin/Debug/net10.0/<Assembly>.dll` —— 经 `dotnet` muxer 启动，自行解析运行时，**不需要** `DOTNET_ROOT`。
+
+注意设了 `DOTNET_ROOT` 后 `dotnet test` 本身仍可能报 `Zero tests ran`（发现阶段拿到空 UID 列表），这是宿主侧问题，不是测试真的为零。
 
 101-entity 端到端（显式触发，不进默认收口）：
 
