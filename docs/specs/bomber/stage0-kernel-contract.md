@@ -282,7 +282,7 @@ sha256Hex = SHA256( manager.CaptureSnapshot() ‖ 各 Section 的 (sectionKey, s
 
 地形那一半改用 **Section revision**，不再是全图 `BlockId` 数组的哈希。理由：revision 是引擎权威的版本锚点，读一次批量读就随结果带回，不需要为了做哈希再拉一次全图；而 `blockWrite` 的 `expectedSectionRevision` 本就以它为准，两者同源。地形只要有一格变了，覆盖它的 Section revision 必变，哈希随之变。**位置真值已在 `LogicTransform` 里，随 `CaptureSnapshot()` 一起拍到**，不需要单独哈希。
 
-回放 oracle 判据：两次运行的 `statehash.ndjson` 逐行相等（不得只比行数）；空文件或截断文件必须 FAIL（沿用 `integration/entity-chat` 的 oracle 纪律）。
+回放 oracle 判据：两次运行的 `statehash.ndjson` 逐行相等（不得只比行数）；空文件或截断文件必须 FAIL（oracle 纪律沿用自已退役的 entity-chat harness，见 ADR 0022；判据以本节所写为准）。
 
 ## 7. 已知缺口
 
