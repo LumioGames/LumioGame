@@ -56,6 +56,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: clone-all tests
+        working-directory: game
+        run: node --test clone-all.test.mjs
       - name: dotnet build
         working-directory: game
         env:

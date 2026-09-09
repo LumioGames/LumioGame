@@ -40,6 +40,7 @@ metadata:
 ```text
 node .spec/tools/spec-lint.mjs
 node --test .spec/tools/spec-lint.test.mjs
+node --test clone-all.test.mjs
 dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj --nologo
 dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
 ```
