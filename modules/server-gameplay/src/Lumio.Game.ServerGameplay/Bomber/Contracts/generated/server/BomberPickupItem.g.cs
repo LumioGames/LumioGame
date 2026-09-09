@@ -79,4 +79,9 @@ public sealed partial class BomberPickupItem : IGeneratedComponent, IGeneratedSy
         field = null!;
         return false;
     }
+
+    void IGeneratedComponent.ResetToDefault()
+    {
+        Kind.SetSilent(0);
+    }
 }

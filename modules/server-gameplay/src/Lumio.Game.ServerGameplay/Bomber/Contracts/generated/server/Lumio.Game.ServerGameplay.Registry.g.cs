@@ -17,7 +17,20 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     private GeneratedRegistry()
     {
-        Current = this;
+    }
+
+    /// <inheritdoc />
+    public override bool TryMapServerRpc(string componentId, string method, object?[] args, out string mappingId, out byte[] payload)
+    {
+        mappingId = string.Empty;
+        payload = Array.Empty<byte>();
+        return false;
+    }
+
+    /// <inheritdoc />
+    public override bool TryApplyMappedInput(World world, InputCommandMessage input)
+    {
+        return false;
     }
 
     /// <inheritdoc />
@@ -28,6 +41,9 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     /// <inheritdoc />
     public override IReadOnlyList<FieldAttributeDeclaration> AttributeDeclarations { get; } = BuildAttributes();
+
+    /// <inheritdoc />
+    public override IReadOnlyList<EcsSystemDescriptor> Systems { get; } = BuildSystems();
 
     /// <inheritdoc />
     public override Component[] CreateComponents(Type entityType)
@@ -149,15 +165,15 @@ public sealed class GeneratedRegistry : EcsRegistry
     public override bool TryResolveEntityType(string name, out Type entityType)
     {
         entityType = null!;
-        if (string.Equals(name, "bomberBomb", StringComparison.Ordinal))
+        if (string.Equals(name, "bomberBomb", StringComparison.Ordinal) || string.Equals(name, "BomberBombEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberBombEntity); return true; }
-        if (string.Equals(name, "bomberHatPile", StringComparison.Ordinal))
+        if (string.Equals(name, "bomberHatPile", StringComparison.Ordinal) || string.Equals(name, "BomberHatPileEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberHatPileEntity); return true; }
-        if (string.Equals(name, "bomberPickupItem", StringComparison.Ordinal))
+        if (string.Equals(name, "bomberPickupItem", StringComparison.Ordinal) || string.Equals(name, "BomberPickupItemEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberPickupItemEntity); return true; }
-        if (string.Equals(name, "bomberPlayer", StringComparison.Ordinal))
+        if (string.Equals(name, "bomberPlayer", StringComparison.Ordinal) || string.Equals(name, "BomberPlayerEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberPlayerEntity); return true; }
-        if (string.Equals(name, "bomberWorld", StringComparison.Ordinal))
+        if (string.Equals(name, "bomberWorld", StringComparison.Ordinal) || string.Equals(name, "BomberWorldEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberWorldEntity); return true; }
         return false;
     }
@@ -204,5 +220,10 @@ public sealed class GeneratedRegistry : EcsRegistry
             new FieldAttributeDeclaration("BomberPlayerState.protectedUntilTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.respawnAtTick", "u64", "persistent", "replicated", "room-public")
         };
+    }
+
+    private static IReadOnlyList<EcsSystemDescriptor> BuildSystems()
+    {
+        return Array.Empty<EcsSystemDescriptor>();
     }
 }
