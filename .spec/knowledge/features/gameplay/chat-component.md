@@ -27,7 +27,7 @@ metadata:
 
 ## 待解决
 
-- 101-entity SUCCESS 路径是 sibling `lumio-entity-chat-replay` 上日志入库后 `verify-evidence.mjs --dir` exit 0；`GameRoomHost` 与 `lumio-mvp-host` 不是 SUCCESS 路径。见 [`entity-chat-harness.md`](./entity-chat-harness.md)。
+- 101-entity 端到端 oracle 已随 entity-chat harness 退役（见 ADR [0022](../../../decisions/0022-retire-entity-chat-harness.md)）；ChatComponent 的验收面现在只有 `Lumio.Game.ServerGameplay.Tests` 的契约与有界输入用例，端到端由 Sample 侧的 11 场景链承接。
 
 ## 相关
 

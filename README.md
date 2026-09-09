@@ -129,7 +129,7 @@ flowchart TB
 | `modules/server-gameplay` | 权威 Component、Processor、Chat 系统与炸弹人 Stage 0 契约壳 | 已建 |
 | `modules/config` | 源配表、Schema、默认值和 typed table 输入 | 骨架 |
 | `modules/scenario` | 初始状态、输入、Bot、断言、Capability 要求 | 骨架 |
-| `integration/` | 端到端集成验收工具（`entity-chat`、`hello`） | 已建 |
+| `integration/` | 端到端集成验收工具（`hello`） | 已建 |
 
 尚未建立的子模块不在本表中；需要时按 [`docs/specs/engineering/module-scaffolding-design.md`](docs/specs/engineering/module-scaffolding-design.md) 逐个立卡新建。
 
@@ -189,7 +189,6 @@ Game 只定义具体内容和产品语义：Ability/Effect/AttributeSet/Tag、Fo
 - Replay 首差异、Save/Load/Migration Golden。
 - Config Schema/优先级/快照、Content Hash 与握手拒绝。
 - 日志/审计关联、Failure Bundle、100 Bot Workload、Tick/复制/内存指标。
-- `integration/entity-chat` 的端到端证据对账（101-entity oracle）。
 
 ## 开源优先与供应链
 

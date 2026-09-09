@@ -1,7 +1,7 @@
 # 0010 · 101-entity SUCCESS 必须由 sibling lumio-mvp-host 实连
 
 - 日期:2026-09-02
-- 状态:生效
+- 状态:被 0022 取代
 
 ## 背景
 

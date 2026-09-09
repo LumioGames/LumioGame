@@ -4,6 +4,7 @@ using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Samples.Username.Components.Chat;
 using Xunit;
+using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
@@ -15,7 +16,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = new(ChatWorldHarness.InstanceId, 1UL);
         InputCommandMessage command = new(
             17UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("hello"),
             "C1");
@@ -25,7 +26,7 @@ public sealed class RuntimeCodecBoundaryTests
 
         Assert.Equal(sender, decoded.Sender);
         Assert.Equal(17UL, decoded.Sequence);
-        Assert.Equal(ChatMapping.InputMappingId, decoded.MappingId);
+        Assert.Equal(RuntimeChatMapping.InputMappingId, decoded.MappingId);
         Assert.True(WireCodec.TryReadUtf8Payload(decoded.Payload.Span, out string text));
         Assert.Equal("hello", text);
     }
@@ -37,7 +38,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         byte[] envelope = WireCodec.EncodeInput(new InputCommandMessage(
             1UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("hello"),
             "C1"));
@@ -59,7 +60,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         string envelope = Encoding.UTF8.GetString(WireCodec.EncodeInput(new InputCommandMessage(
             1UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("hello"),
             "C1")));
@@ -106,7 +107,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         string encoded = Encoding.UTF8.GetString(WireCodec.EncodeInput(new InputCommandMessage(
             1UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("hello"),
             "C1")));
@@ -133,7 +134,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         byte[] envelope = WireCodec.EncodeInput(new InputCommandMessage(
             2UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("out-of-order"),
             "C1"));
@@ -154,7 +155,7 @@ public sealed class RuntimeCodecBoundaryTests
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
         byte[] envelope = WireCodec.EncodeInput(new InputCommandMessage(
             1UL,
-            ChatMapping.InputMappingId,
+            RuntimeChatMapping.InputMappingId,
             sender,
             ChatPayload("stale-generation"),
             "C1"));

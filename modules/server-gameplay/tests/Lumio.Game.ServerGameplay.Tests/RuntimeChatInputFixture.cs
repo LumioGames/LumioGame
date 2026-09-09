@@ -2,6 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.Text;
 using Lumio.GameRuntime.Ecs;
+using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
@@ -9,7 +10,7 @@ namespace Lumio.Game.ServerGameplay.Tests;
 internal static class RuntimeChatInputFixture
 {
     public static InputCommandMessage Create(ulong sequence, NetEntityId sender, string text, string? connection = null) =>
-        new(sequence, ChatMapping.InputMappingId, sender, Payload(text), connection);
+        new(sequence, RuntimeChatMapping.InputMappingId, sender, Payload(text), connection);
 
     private static byte[] Payload(string text)
     {
