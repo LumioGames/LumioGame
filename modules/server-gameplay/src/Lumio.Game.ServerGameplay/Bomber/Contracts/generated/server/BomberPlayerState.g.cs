@@ -113,4 +113,11 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
         field = null!;
         return false;
     }
+
+    void IGeneratedComponent.ResetToDefault()
+    {
+        HatCount.SetSilent(0);
+        RespawnAtTick.SetSilent(0UL);
+        ProtectedUntilTick.SetSilent(0UL);
+    }
 }

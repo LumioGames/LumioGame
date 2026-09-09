@@ -147,4 +147,13 @@ public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSy
         field = null!;
         return false;
     }
+
+    void IGeneratedComponent.ResetToDefault()
+    {
+        MatchTick.SetSilent(0UL);
+        StartTick.SetSilent(0UL);
+        EndTick.SetSilent(0UL);
+        Phase.SetSilent(0);
+        HatKingNetEntityIdRaw.SetSilent(0UL);
+    }
 }

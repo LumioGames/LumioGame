@@ -259,4 +259,21 @@ public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyn
         field = null!;
         return false;
     }
+
+    void IGeneratedComponent.ResetToDefault()
+    {
+        OwnerNetEntityIdRaw.SetSilent(0UL);
+        FuseEndTick.SetSilent(0UL);
+        Power.SetSilent(0);
+        ChainId.SetSilent(0UL);
+        BombKind.SetSilent(0);
+        PierceLayers.SetSilent(0);
+        ExplodedAtTick.SetSilent(0UL);
+        DangerUntilTick.SetSilent(0UL);
+        BurnUntilTick.SetSilent(0UL);
+        ReachUp.SetSilent(0);
+        ReachDown.SetSilent(0);
+        ReachLeft.SetSilent(0);
+        ReachRight.SetSilent(0);
+    }
 }

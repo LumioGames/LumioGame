@@ -96,4 +96,10 @@ public sealed partial class BomberHatPile : IGeneratedComponent, IGeneratedSyncM
         field = null!;
         return false;
     }
+
+    void IGeneratedComponent.ResetToDefault()
+    {
+        Count.SetSilent(0);
+        ExpireAtTick.SetSilent(0UL);
+    }
 }
