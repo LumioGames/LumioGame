@@ -4,6 +4,7 @@ using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Samples.Username.Components.Chat;
 using Xunit;
+using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
@@ -20,9 +21,9 @@ public sealed class ChatBoundedInputTests
         manager.Tick();
         _ = manager.DrainOutbox();
         Assert.Equal(cap, Component(manager, sender).LastMessageText);
-        Assert.Equal(512, ChatMapping.MaxTextUtf8Bytes);
+        Assert.Equal(512, RuntimeChatMapping.MaxTextUtf8Bytes);
 
-        string over = new string('a', ChatMapping.MaxTextUtf8Bytes + 1);
+        string over = new string('a', RuntimeChatMapping.MaxTextUtf8Bytes + 1);
         Assert.Equal(513, Encoding.UTF8.GetByteCount(over));
         ChatOperationResult admit = ChatSetMessageSystem.Admit(manager, "room-01", sender, "C1", 1UL, RuntimeChatInputFixture.Create(2UL, sender, over, "C1"));
         Assert.Equal(ChatOperationKind.Rejected, admit.Kind);
@@ -58,8 +59,8 @@ public sealed class ChatBoundedInputTests
         }
 
         Assert.Equal(2, seen.Count);
-        Assert.Equal(ChatMapping.MaxChatInputPerSenderPerTick, 1);
-        Assert.Equal("reject", ChatMapping.BoundedInputPolicy);
+        Assert.Equal(RuntimeChatMapping.MaxChatInputPerSenderPerTick, 1);
+        Assert.Equal("reject", RuntimeChatMapping.BoundedInputPolicy);
     }
 
     private static ChatComponent Component(WorldManager manager, NetEntityId netEntityId)

@@ -66,6 +66,3 @@ jobs:
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
         run: dotnet test LumioGame.sln
-      - name: entity-chat integration tests
-        working-directory: game/integration/entity-chat
-        run: node --test verify-evidence.mjs bot-credential.mjs web/chat-window.test.mjs

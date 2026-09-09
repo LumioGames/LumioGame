@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Samples.Username.Components.Chat;
+using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay;
 
@@ -59,7 +60,7 @@ public static class ChatSetMessageSystem
             return ChatOperationResult.Rejected(ChatErrorCodes.BadEnvelope);
         }
 
-        if (input.Commands.Count != 1 || input.MappingId != ChatMapping.InputMappingId)
+        if (input.Commands.Count != 1 || input.MappingId != RuntimeChatMapping.InputMappingId)
         {
             return ChatOperationResult.Rejected(input.Commands.Count == 1
                 ? ChatErrorCodes.UnknownCommandType
@@ -71,7 +72,7 @@ public static class ChatSetMessageSystem
             return ChatOperationResult.Rejected(ChatErrorCodes.UndecodablePayload);
         }
 
-        if (Encoding.UTF8.GetByteCount(text) > ChatMapping.MaxTextUtf8Bytes)
+        if (Encoding.UTF8.GetByteCount(text) > RuntimeChatMapping.MaxTextUtf8Bytes)
         {
             return ChatOperationResult.Rejected(ChatErrorCodes.ChatTextTooLong);
         }
@@ -101,7 +102,7 @@ public static class ChatSetMessageSystem
             throw new ArgumentNullException(nameof(text));
         }
 
-        if (Encoding.UTF8.GetByteCount(text) > ChatMapping.MaxTextUtf8Bytes)
+        if (Encoding.UTF8.GetByteCount(text) > RuntimeChatMapping.MaxTextUtf8Bytes)
         {
             return ChatOperationResult.Rejected(ChatErrorCodes.ChatTextTooLong);
         }

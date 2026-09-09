@@ -1,5 +1,0 @@
-node_modules/
-keys/
-*.secret
-*.bin
-.tmp-oracle-*

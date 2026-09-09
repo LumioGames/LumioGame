@@ -10,6 +10,7 @@ using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Samples.Username;
 using Xunit;
 using RuntimeChatComponent = Lumio.GameRuntime.Samples.Username.Components.Chat.ChatComponent;
+using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
@@ -36,11 +37,11 @@ public sealed class ChatComponentSchemaTests
     [Fact]
     public void FrozenMappingIdsMatchGameplayEnvelopeTenants()
     {
-        Assert.Equal("lumio.gameplay-envelope.v1", ChatMapping.ContractId);
-        Assert.Equal("chat.input", ChatMapping.InputMappingId);
-        Assert.Equal("chat.event", ChatMapping.EventMappingId);
-        Assert.Equal("chat.component", ChatMapping.ComponentMappingId);
-        Assert.Equal(new[] { "text" }, ChatMapping.InputFieldOrder);
+        Assert.Equal("lumio.gameplay-envelope.v1", RuntimeChatMapping.ContractId);
+        Assert.Equal("chat.input", RuntimeChatMapping.InputMappingId);
+        Assert.Equal("chat.event", ChatGameplayMapping.EventMappingId);
+        Assert.Equal("chat.component", ChatGameplayMapping.ComponentMappingId);
+        Assert.Equal(new[] { "text" }, RuntimeChatMapping.InputFieldOrder);
         Assert.Equal(
             new[]
             {
@@ -51,18 +52,18 @@ public sealed class ChatComponentSchemaTests
                 "text",
                 "appliedTick"
             },
-            ChatMapping.EventFieldOrder);
-        Assert.Equal(512, ChatMapping.MaxTextUtf8Bytes);
-        Assert.Equal(1, ChatMapping.MaxChatInputPerSenderPerTick);
+            ChatGameplayMapping.EventFieldOrder);
+        Assert.Equal(512, RuntimeChatMapping.MaxTextUtf8Bytes);
+        Assert.Equal(1, RuntimeChatMapping.MaxChatInputPerSenderPerTick);
     }
 
     [Fact]
     public void ComponentFieldOrderMatchesFrozenLumioBinV1HashExample()
     {
-        Assert.Equal(new[] { "lastMessageText", "lastMessageTick" }, ChatMapping.ComponentFieldOrder);
+        Assert.Equal(new[] { "lastMessageText", "lastMessageTick" }, ChatGameplayMapping.ComponentFieldOrder);
 
         byte[] payload = EncodeByFieldOrder(
-            ChatMapping.ComponentFieldOrder,
+            ChatGameplayMapping.ComponentFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["lastMessageText"] = "gg",
@@ -77,7 +78,7 @@ public sealed class ChatComponentSchemaTests
     public void EventFieldOrderMatchesC1TwoU64SenderHashExample()
     {
         byte[] payload = EncodeByFieldOrder(
-            ChatMapping.EventFieldOrder,
+            ChatGameplayMapping.EventFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["messageId"] = 1UL,
@@ -98,7 +99,7 @@ public sealed class ChatComponentSchemaTests
     public void InputFieldOrderMatchesFrozenLumioBinV1HashExample()
     {
         byte[] payload = EncodeByFieldOrder(
-            ChatMapping.InputFieldOrder,
+            RuntimeChatMapping.InputFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["text"] = "gg"

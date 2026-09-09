@@ -9,7 +9,7 @@ public static class ChatErrorCodes
     /// <summary>More than one chat.input from the same sender in one authoritative tick.</summary>
     public const string ChatRateExceeded = "chat_rate_exceeded";
 
-    /// <summary>Ingress queue at <see cref="ChatMapping.IngressQueueCapacity"/>.</summary>
+    /// <summary>Ingress queue at <see cref="Lumio.GameRuntime.Replication.Chat.ChatMapping.IngressQueueCapacity"/>.</summary>
     public const string QueueFull = "queue_full";
 
     /// <summary>A component write ran off the simulation owner thread (fail-stop, not a wire Error).</summary>
