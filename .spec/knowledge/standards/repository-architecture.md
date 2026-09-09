@@ -51,4 +51,6 @@ metadata:
 
 本仓的 C# 工程编译期引用同级 `LumioGameRuntime`：优先取环境变量 `LUMIO_RUNTIME_ROOT`，未设时回落到同级或上两级的 `LumioGameRuntime` 目录。不得在工程文件里硬编码机器绝对路径。
 
+**测试期另需同级 `LumioGameEngine` 检出**：wire 契约一致性用例直接打开架构仓的 `engine/wire/*.json` 逐条比对，优先取环境变量 `LUMIO_ENGINE_ROOT`，未设时从测试输出目录逐级向上找同级 `LumioGameEngine`（worktree 下也成立）。**缺检出即失败，不 skip**——契约真值读不到时静默跳过等于把漂移放行（见 ADR [0023](../../decisions/0023-wire-contract-pinned-in-tests.md)）。本仓仍不保存 wire JSON 的任何副本。
+
 **这一段是内部贡献者口径，不进根 `README.md`。** 根 README 是组织的公开导航入口，私有仓的检出路径与环境变量名不在那里出现（R-00526 / ADR-074 §5）；外部开发者经 NuGet 包消费引擎，不需要任何私有仓检出。构建与测试命令见 [`../../AGENTS.md`](../../AGENTS.md)「收口门槛」。

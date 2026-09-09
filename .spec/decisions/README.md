@@ -50,3 +50,4 @@
 | [0020](0020-exit-legacy-contract-regime.md) | 退出旧合同制:删架构镜像与基线闸门,公共语义改指架构仓 Living Architecture | 生效 |
 | [0021](0021-bomber-contract-v2-align-engine-second-exemplar.md) | 炸弹人 Stage 0 契约升 v2.0.0,六个环节改按架构第二样板重写 | 生效 |
 | [0022](0022-retire-entity-chat-harness.md) | entity-chat harness 整体退役,101-entity 端到端验收交由 Sample 11 场景链承接 | 生效 |
+| [0023](0023-wire-contract-pinned-in-tests.md) | 契约一致性测试在测试期直接读架构仓 wire JSON,缺检出即失败 | 生效 |

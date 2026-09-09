@@ -54,7 +54,7 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 注意设了 `DOTNET_ROOT` 后 `dotnet test` 本身仍可能报 `Zero tests ran`（发现阶段拿到空 UID 列表），这是宿主侧问题，不是测试真的为零。
 
-公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「收口门槛」）；本仓只消费 `engine/wire/*.json`，不另写协议。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
+公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「收口门槛」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
 
 ## 本仓 Headless / 契约测试面
 

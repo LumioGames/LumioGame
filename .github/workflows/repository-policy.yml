@@ -48,6 +48,14 @@ jobs:
           path: runtime
           token: ${{ secrets.LUMIO_CI_PAT }}
           persist-credentials: false
+      - name: Checkout LumioGameEngine (main)
+        uses: actions/checkout@v4
+        with:
+          repository: LumioGames/LumioGameEngine
+          ref: main
+          path: engine
+          token: ${{ secrets.LUMIO_CI_PAT }}
+          persist-credentials: false
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@v4
         with:
@@ -68,4 +76,5 @@ jobs:
         working-directory: game
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
+          LUMIO_ENGINE_ROOT: ${{ github.workspace }}/engine
         run: dotnet test LumioGame.sln

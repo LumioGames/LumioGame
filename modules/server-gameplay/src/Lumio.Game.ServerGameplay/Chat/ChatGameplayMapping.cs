@@ -1,13 +1,16 @@
 namespace Lumio.Game.ServerGameplay;
 
 /// <summary>
-/// Chat mapping identifiers that <c>lumio.gameplay-envelope.v1</c> freezes but Runtime
-/// <see cref="Lumio.GameRuntime.Replication.Chat.ChatMapping"/> does not expose. Envelope-wide
-/// identifiers and bounds live there and are consumed from there — never redeclared here.
+/// Chat mapping identifiers this repository owns. ADR-060 / R5-01 removed <c>chat.event</c> and
+/// <c>chat.component</c> from <c>lumio.gameplay-envelope.v1</c> — a chat event now travels as the
+/// <c>ChatComponent.OnChatMessage</c> ClientRpc record and last-message state is persist-only — so neither
+/// is an envelope mapping. Envelope-wide identifiers and bounds live in Runtime
+/// <see cref="Lumio.GameRuntime.Replication.Chat.ChatMapping"/> and are consumed from there — never
+/// redeclared here.
 /// </summary>
 public static class ChatGameplayMapping
 {
-    /// <summary>Delta-live-only event mapping. Kind = event.</summary>
+    /// <summary>Live-only event mapping: never persisted, never replayed on reconnect. Kind = event.</summary>
     public const string EventMappingId = "chat.event";
 
     /// <summary>Persist-only component mapping. Kind = componentState; never on the wire.</summary>

@@ -1,10 +1,7 @@
 using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Samples.Username;
@@ -62,7 +59,7 @@ public sealed class ChatComponentSchemaTests
     {
         Assert.Equal(new[] { "lastMessageText", "lastMessageTick" }, ChatGameplayMapping.ComponentFieldOrder);
 
-        byte[] payload = EncodeByFieldOrder(
+        byte[] payload = LumioBinV1TestCodec.EncodeByFieldOrder(
             ChatGameplayMapping.ComponentFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
@@ -70,14 +67,14 @@ public sealed class ChatComponentSchemaTests
                 ["lastMessageTick"] = 7UL
             });
 
-        Assert.Equal("0200000067670700000000000000", ToHex(payload));
-        Assert.Equal("ba9d631032a1ecb5c1b4723b9d9603cf29c8db92736620112cac56b0051d5259", Sha256Hex(payload));
+        Assert.Equal("0200000067670700000000000000", LumioBinV1TestCodec.ToHex(payload));
+        Assert.Equal("ba9d631032a1ecb5c1b4723b9d9603cf29c8db92736620112cac56b0051d5259", LumioBinV1TestCodec.Sha256Hex(payload));
     }
 
     [Fact]
     public void EventFieldOrderMatchesC1TwoU64SenderHashExample()
     {
-        byte[] payload = EncodeByFieldOrder(
+        byte[] payload = LumioBinV1TestCodec.EncodeByFieldOrder(
             ChatGameplayMapping.EventFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
@@ -91,60 +88,21 @@ public sealed class ChatComponentSchemaTests
 
         Assert.Equal(
             "01000000000000000100000000000000000000000000000065000000000000000200000067670700000000000000",
-            ToHex(payload));
-        Assert.Equal("019c19137fdcc3eadf322f67067c254ef33fc2f81a7123bc89253d9a41d0d179", Sha256Hex(payload));
+            LumioBinV1TestCodec.ToHex(payload));
+        Assert.Equal("019c19137fdcc3eadf322f67067c254ef33fc2f81a7123bc89253d9a41d0d179", LumioBinV1TestCodec.Sha256Hex(payload));
     }
 
     [Fact]
     public void InputFieldOrderMatchesFrozenLumioBinV1HashExample()
     {
-        byte[] payload = EncodeByFieldOrder(
+        byte[] payload = LumioBinV1TestCodec.EncodeByFieldOrder(
             RuntimeChatMapping.InputFieldOrder,
             new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["text"] = "gg"
             });
 
-        Assert.Equal("020000006767", ToHex(payload));
-        Assert.Equal("5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab", Sha256Hex(payload));
-    }
-
-    private static byte[] EncodeByFieldOrder(IReadOnlyList<string> fieldOrder, Dictionary<string, object> body)
-    {
-        var buffer = new List<byte>();
-        byte[] lengthPrefix = new byte[4];
-        byte[] integerBytes = new byte[8];
-        foreach (string field in fieldOrder)
-        {
-            object value = body[field];
-            if (value is string text)
-            {
-                byte[] utf8 = Encoding.UTF8.GetBytes(text);
-                BinaryPrimitives.WriteUInt32LittleEndian(lengthPrefix, (uint)utf8.Length);
-                buffer.AddRange(lengthPrefix);
-                buffer.AddRange(utf8);
-            }
-            else if (value is ulong number)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(integerBytes, number);
-                buffer.AddRange(integerBytes);
-            }
-            else
-            {
-                throw new InvalidOperationException("Unsupported field type " + value.GetType().FullName);
-            }
-        }
-
-        return buffer.ToArray();
-    }
-
-    private static string ToHex(byte[] payload)
-    {
-        return Convert.ToHexString(payload).ToLowerInvariant();
-    }
-
-    private static string Sha256Hex(byte[] payload)
-    {
-        return Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+        Assert.Equal("020000006767", LumioBinV1TestCodec.ToHex(payload));
+        Assert.Equal("5dbd584f1718b8bcd0dab4abeea83169f4a990defab81a8316ed845798d92dab", LumioBinV1TestCodec.Sha256Hex(payload));
     }
 }

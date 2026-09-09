@@ -12,7 +12,7 @@ metadata:
 
 ## 背景 / 目标
 
-- 消费冻结契约 `lumio.gameplay-envelope.v1`（`chat.input` / `chat.event` / `chat.component`）。
+- 消费公共契约 `lumio.gameplay-envelope.v1` 的 `chat.input`；`chat.event` / `chat.component` 已被架构仓 ADR-060 / R5-01 从信封删除，如今是本仓自有标识（见 ADR [0023](../../../decisions/0023-wire-contract-pinned-in-tests.md)）。
 - 不拥有传输、账号服务、聊天历史或独立持久化。
 
 ## 设计
@@ -22,7 +22,7 @@ metadata:
 - **入口**：服务器玩法从 `ServerBootstrap.Boot(instanceId)` 建 World Manager（R-00385）。
 - **输入**：`ChatInput` 只有 `text`。发送者由宿主会话注入为 128 位 `NetEntityId`（instanceId + counter，32-hex），客户端不能自选。
 - **状态**：`LastMessageText` + `LastMessageTick`（契约字段 `lastMessageText` / `lastMessageTick`），服务器私有、`[Persist]`、不同步。
-- **事件**：`OnChatMessage` ClientRpc；`chat.event` sender 编码为 `senderNetEntityIdInstanceId` + `senderNetEntityIdCounter`（u64 LE ×2）。世界不保留历史列表。
+- **事件**：`OnChatMessage` ClientRpc（信封侧即 `WorldChange.rpcs` 的 `ClientRpcRecord`）；本仓自有的 `chat.event` 是它的本地投影，sender 编码为 `senderNetEntityIdInstanceId` + `senderNetEntityIdCounter`（u64 LE ×2，对应记录里的 128 位 `sender`）。世界不保留历史列表。
 - **有界输入**：C-1 `chat.input` UTF-8 512 字节在 Game Admit 层 `reject`（`chat_text_too_long`）；Runtime 另按拼好的「名字: 内容」行卡 512。
 
 ## 待解决
@@ -33,4 +33,4 @@ metadata:
 
 - 代码：`modules/server-gameplay/`（引用 Runtime Username.Server）
 - 契约：架构源 `engine/wire/gameplay-command-envelope-v1.json`
-- 测试：`modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/`
+- 测试：`modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/`——`ChatComponentSchemaTests` 钉「Game 消费到的值 == Runtime 真源」，`ChatWireContractTests` 钉「== 架构仓 wire 契约」（需 `LumioGameEngine` 检出，见 ADR [0023](../../../decisions/0023-wire-contract-pinned-in-tests.md)）
