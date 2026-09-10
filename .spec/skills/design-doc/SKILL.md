@@ -21,10 +21,10 @@ description: 把已定调的策划决策沉淀为策划案文档并长期维护�
    - 单产品方向级(只定调、不展开)→ `docs/specs/<product>/direction.md`
 
    常驻策划案用稳定名、**不带日期**;`brainstorming` 的 `docs/specs/YYYY-MM-DD-<topic>-design.md` 是一次性探索稿,两者形态不同、不混用。
-2. **写文档头。** `docs/specs/` 不受 spec-lint 的 frontmatter 校验,用 H1 下的引用块承载元信息:`状态`(设计中 / 实施中 / 已交付 / 历史归档,沿用本仓枚举)、`序位` 或 `适用范围`、`上游`(相对链接)。方向级文档在状态后注明「方向级,不展开细节」。
+2. **写文档头。** `docs/specs/` 不受 lint-extensions 的 frontmatter 校验,用 H1 下的引用块承载元信息:`状态`(设计中 / 实施中 / 已交付 / 历史归档,沿用本仓枚举)、`序位` 或 `适用范围`、`上游`(相对链接)。方向级文档在状态后注明「方向级,不展开细节」。
 3. **写正文。** 结构见快速参考骨架。每条结论必须是**可对照判据**(供 design-review 直接引用),**每个数值必须标来源**(见数值来源纪律);只保留当前有效结论,历史在 git;域分类指回 [design-director](../design-director/SKILL.md) 快速参考,此处不复述。
 4. **同步导航。** 在 `docs/specs/README.md` 索引表加一行(不存在则新建),与文档头「状态 + 一句话」同口径。一篇一行,**修订不新增行**。
-5. **校验。** `node .spec/tools/spec-lint.mjs` 通过;文档内相对链接可达。
+5. **校验。** `node .spec/tools/lint-extensions.mjs` 通过;文档内相对链接可达。
 
 ## 快速参考(策划案骨架)
 
@@ -68,7 +68,7 @@ description: 把已定调的策划决策沉淀为策划案文档并长期维护�
 
 ## 验证
 
-- spec-lint 通过;`docs/specs/README.md` 索引行已加,与文档头同口径。
+- lint-extensions 通过;`docs/specs/README.md` 索引行已加,与文档头同口径。
 - 每条结论可被 design-review 直接引用对照。
 - 每个数值都有来源标注;推断值均已进「待验证项」。
 - 文档里只有已定调结论,无「待定」「可能」类条款。
