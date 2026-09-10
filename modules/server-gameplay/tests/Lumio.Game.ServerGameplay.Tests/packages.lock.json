@@ -231,6 +231,16 @@
           "xunit.v3.runner.common": "[4.0.0]"
         }
       },
+      "lumio.engine.nativeloader": {
+        "type": "Project",
+        "dependencies": {
+          "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
+        }
+      },
+      "lumio.engine.nativeloader.hfsm": {
+        "type": "Project"
+      },
       "lumio.game.servergameplay": {
         "type": "Project",
         "dependencies": {
@@ -265,6 +275,7 @@
       "lumio.gameruntime.ecs": {
         "type": "Project",
         "dependencies": {
+          "Lumio.Engine.NativeLoader": "[1.0.0, )",
           "Lumio.GameRuntime.Primitives": "[0.1.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
@@ -310,6 +321,7 @@
       "lumio.gameruntime.simulation": {
         "type": "Project",
         "dependencies": {
+          "Lumio.Engine.NativeLoader": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Config": "[0.1.0, )",
           "Lumio.GameRuntime.Coordination": "[0.1.0, )",
