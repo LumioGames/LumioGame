@@ -53,7 +53,8 @@ jobs:
         with:
           repository: LumioGames/LumioGameEngine
           ref: main
-          path: engine
+          # Runtime Ecs/Simulation net10.0 只探测同级目录名 LumioGameEngine（或 -p:LumioArchRoot）。
+          path: LumioGameEngine
           token: ${{ secrets.LUMIO_CI_PAT }}
           persist-credentials: false
       - name: Set up .NET from global.json
@@ -71,10 +72,13 @@ jobs:
         working-directory: game
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
+          LUMIO_ENGINE_ROOT: ${{ github.workspace }}/LumioGameEngine
+          LumioArchRoot: ${{ github.workspace }}/LumioGameEngine
         run: dotnet build LumioGame.sln
       - name: dotnet test
         working-directory: game
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
-          LUMIO_ENGINE_ROOT: ${{ github.workspace }}/engine
+          LUMIO_ENGINE_ROOT: ${{ github.workspace }}/LumioGameEngine
+          LumioArchRoot: ${{ github.workspace }}/LumioGameEngine
         run: dotnet test LumioGame.sln
