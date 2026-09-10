@@ -15,6 +15,11 @@ public sealed class GeneratedRegistry : EcsRegistry
     /// <summary>Singleton used by WorldManager.Create.</summary>
     public static GeneratedRegistry Instance { get; } = new GeneratedRegistry();
 
+    static GeneratedRegistry()
+    {
+        GeneratedAbilityRegistry.RegisterAll();
+    }
+
     private GeneratedRegistry()
     {
     }
