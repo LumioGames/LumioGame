@@ -1,9 +1,8 @@
-# LumioAgent — 中心文档
+# LumioGame — 中心文档
 
-通用的开发项目管理 Agent。**主 Agent 调度,子 Agent 执行,Skill 是方法,.md 是规则。**
-主 loop 理解目标、拆任务、调度、收口:清晰小改动直接编码,创造性工作走 `brainstorming` → `writing-plans` → `subagent-driven-development` 主工作流,多卡并行用 `task-breakdown` 扇出通用 worker;职能子 Agent 只有 `reviewer`(写的人 ≠ 审的人)。
+本仓的项目介绍与本仓专有的路由约定。**通用调度与编码规程在 Workflow 插件的常驻规则里,本文件不复述**(ADR-089 第二步:插件注入通用调度规则与硬红线,并自带 brainstorming / receiving-code-review / spec-steward / systematic-debugging / test-driven-development 五个技能与 `reviewer` 子 Agent)。
 
-> 知识导航(`knowledge/README.md`)与硬红线(`rules/system.md`)经 `CLAUDE.md` 的 `@import` 每次 init 强制载入,本文件不复述;沉淀 / 同步能力用 `spec-steward` 技能。
+> 知识导航(`knowledge/README.md`)经 `CLAUDE.md` 的 `@import` 每次 init 强制载入,本文件不复述。
 
 ## 项目是什么
 
@@ -13,56 +12,18 @@
 - 本仓拥有玩法与产品发布语义，不拥有 Native/Voxel 内部、网络连接、Host 进程或 Runtime 生命周期。
 - 开工前先读 [`repository-architecture.md`](knowledge/standards/repository-architecture.md)；详细模块边界见根 [`README.md`](../README.md)。
 
-## 调度核心
+## 本仓验证入口
 
-**子 Agent 名册**(便利镜像;权威是各 `.agent.md`):
+`node .spec/tools/lint-extensions.mjs && node --test .spec/tools/lint-extensions.test.mjs && node --test clone-all.test.mjs && dotnet build LumioGame.sln && dotnet test LumioGame.sln`；`dotnet` 两条需要同级 `LumioGameRuntime` 检出(或 `LUMIO_RUNTIME_ROOT` 指向)。Runtime net10.0 的 Ecs/Simulation 编译期绑定 `Lumio.Engine.NativeLoader`，因此 **build 与 test 都要**同级 `LumioGameEngine`（目录名必须是 `LumioGameEngine`，或传 `-p:LumioArchRoot` / 环境变量 `LumioArchRoot`）。`dotnet test` 另用 `LUMIO_ENGINE_ROOT` 读架构仓 `engine/wire/*.json`，缺检出即失败,不跳过。公共语义要改先去架构仓 `LumioGameEngine`，不在本仓自行改写。命令与排障细节见 [`testing.md`](knowledge/standards/testing.md)。
 
-| 名称 | 职责 | 何时调度 |
-|------|------|----------|
-| `reviewer` | 对照任务卡与规范对抗式审查完整交付,产出放行 / 退回裁决 | 计划执行中**每任务完成**后审一次(两级:spec 合规 + 代码质量);**整体收口**(收口门槛通过)再审一次;不审半成品 |
+## 本仓专有路由(美术 / 策划)
 
-> **agents/ 准入门槛:只收「隔离本身即是产出价值」的角色**(当前仅 `reviewer`)。编码 / 拆解不设角色,规程见「编码约定」与 `task-breakdown`。
+通用技能归插件;下面两族是本仓自有、插件没有的,涉及时一律按此路由。
 
-- **调度取向:快 > 稳 > 好。** 默认并行:文件集互不重叠即并行扇出;能继承上下文的 fork 优先于冷启动 worker;串行只留给有依赖或文件重叠的工作。
-- **默认流程:** 创造性工作(新功能 / 建组件 / 改行为)→ `brainstorming` 出设计共识 → `writing-plans` 出实现计划(设计落 `.spec/knowledge/features/`、计划落 `.spec/plans/`,策划案与美术规范仍落 `docs/specs/`(ADR 0002);跨宿主任务状态真值仍是 `.spec/tasks/`,计划内 checkbox 只是执行内部进度)→ `subagent-driven-development` 逐任务执行(每任务两级审查:spec 合规 + 代码质量;无子代理宿主按其 Inline Fallback 降级);修 bug / 排障先 `systematic-debugging` 找根因再动手;多张独立卡并行扇出仍走 `task-breakdown` + wave(见「并行边界与合入」)。交付 → 收口门槛机器验证 + `verification-before-completion`(证据先于声称);整体收口审查按「派活模板」触发 `reviewer`(默认快审、显式要求才深审),退回按 `receiving-code-review` 处理。分级见 [`agents/reviewer.agent.md`](agents/reviewer.agent.md)。
 - **美术向工作:** 涉及游戏美术(整体风格 / 2D UI / 原画 / 特效 / TA / 3D 场景)的讨论定调、规范沉淀、AI 出图 prompt 与资产评审,一律路由 [`skills/art-director`](skills/art-director/SKILL.md) 技能族(hub 内再分发 art-bible / art-prompt / art-review);美术规范落 `docs/specs/`(见 ADR-0002),方向级决策照常记 `decisions/`。
 - **策划向工作:** 涉及游戏策划(玩法 / 系统 / 数值 / 关卡 / 商业化 / UGC)的方向讨论定调、策划案沉淀、需求翻译与方案评审,一律路由 [`skills/design-director`](skills/design-director/SKILL.md) 技能族(hub 内再分发 design-doc / design-request / design-review);策划案落 `docs/specs/`,策划需求落 Workflow 平台,方向级决策照常记 `decisions/`。
-- **快速模式(收口白名单,默认优先尝试):** 纯文档 / 纯注释 / 纯配置数据 / 机械套用既有模式 / revert / 生成物随源更新 / 有效 diff < 20 行(去空行注释)——lint + 测试直接收口,交付附一行豁免声明,不派任何 agent。判定须机器可判(文件类型 + diff 行数),拿不准 = 快审。**红线面永不快速**:触碰 `rules/`、鉴权、安全面、可执行配置(如 hooks)的改动至少快审。
-- **审查闭环:** 交付即待审;completed 由主 loop 在 reviewer 通过(或按豁免跳过)后标记;高风险改动审查通过前**不得提交**。
-- **派 worker 三选一:** ① 多个互不依赖任务可并行 ② 改动大到撑爆编排上下文 ③ 需要隔离的干净实现环境。
-- **收口门槛:** `node .spec/tools/spec-lint.mjs && node --test .spec/tools/spec-lint.test.mjs && node --test clone-all.test.mjs && dotnet build LumioGame.sln && dotnet test LumioGame.sln`；`dotnet` 两条需要同级 `LumioGameRuntime` 检出(或 `LUMIO_RUNTIME_ROOT` 指向)。Runtime net10.0 的 Ecs/Simulation 编译期绑定 `Lumio.Engine.NativeLoader`，因此 **build 与 test 都要**同级 `LumioGameEngine`（目录名必须是 `LumioGameEngine`，或传 `-p:LumioArchRoot` / 环境变量 `LumioArchRoot`）。`dotnet test` 另用 `LUMIO_ENGINE_ROOT` 读架构仓 `engine/wire/*.json`，缺检出即失败,不跳过。公共语义要改先去架构仓 `LumioGameEngine`，不在本仓自行改写；交付前必须通过。
-- **并行边界与合入:** 任务文件集**互不重叠**才可并行(最小化冲突),重叠必串行;拆解产物按 wave 分批扇出,批间串行。并行 worker 各在独立 git worktree 实现(Claude Code 用 Agent 工具的 worktree 隔离),reviewer 审 worktree 相对基线的完整 diff,通过后主 loop 合入主工作区,未过审不合入,冲突退回实现方。多宿主并存时共享任务真值是 `.spec/tasks/`,宿主内置任务工具只作个人草稿。
-- **派活模板:** worker 派遣与 reviewer 触发的 prompt 骨架见 [`knowledge/standards/dispatch.md`](knowledge/standards/dispatch.md)。
-- **交回物格式(全仓单一权威):** ① 改动清单;② **验证证据**——命令与关键输出,不得只声称「已通过」;③ known gaps;④ 知识沉淀落点(或声明无需沉淀)。拆解类交任务卡集合,②以自检结论 + 待澄清项代替;reviewer 交审查报告(见 [`agents/reviewer.agent.md`](agents/reviewer.agent.md))。
-- **谁来调度:** 只有主 loop 派活;子 Agent 只执行,各自上下文只拿任务卡 + 相关文件。
-- **失败处理:** P0 / P1 → 附审查报告退回重做;同一问题三次不过 → 质疑方案:拆解问题重修卡,方向问题升级用户。
-
-## 编码约定
-
-**约束一切写代码的上下文——主 loop 直编或通用 worker,一视同仁。**
-
-- **领任务先标记**:动手前标为进行中(Claude Code 用 `TaskUpdate`;多宿主更新 `.spec/tasks/<slug>.md` 的 `status`);不自标 completed(归「审查闭环」)。
-- **先加载再动手**:用 `before-you-code` 校准要读什么、读多深。
-- **测试先行**:用 `test-driven-development`(铁律:没有先失败的测试就没有生产代码;反模式见其 `testing-anti-patterns.md`)。
-- **排障先找根因**:遇到 bug / 测试失败 / 异常行为,先走 `systematic-debugging` 四阶段,**未完成根因调查不得动手修**;修 3 次不成 = 质疑架构,停下上报。
-- **不夹带(全仓单一权威)**:只做当前目标要求的改动,不顺手重构、不加未要求的功能、不引入任务外新依赖。
-- **收工即验证**:交付前必过「收口门槛」;任何「完成 / 修好 / 通过」的声称前先过 `verification-before-completion`——没跑过验证命令就不许声称。
-- **交付带证据**:按「交回物格式」交付;主 loop 直编则据此向用户交代。
-- **改完沉淀**:新模式 / 新规范用 `spec-steward` 落 `knowledge/`,决策记 `decisions/`;纯修复 / 微调可豁免,豁免须在交回物声明。
-
-## 宿主差异
-
-| 能力 | Claude Code | Codex |
-|------|-------------|-------|
-| 任务持久化 | `TaskCreate` / `TaskUpdate` / `TaskList` | `.spec/tasks/<slug>.md`（frontmatter `status`）|
-| 子 Agent 发现 | `.claude/agents/` 自动发现 | 主 loop 手动读 `.spec/agents/` |
-| 技能加载 | `.claude/skills/` 自动发现 | `.agents/skills/` 索引,手动调用 |
-
-Codex 主 loop 本地执行:设计与计划用 `brainstorming` / `writing-plans`,执行按 `subagent-driven-development` 的 Inline Fallback,拆卡扇出用 `task-breakdown`,实现按「编码约定」,实质改动交付后读 `reviewer.agent.md` 本地对抗审查——同上下文自审丧失「写 ≠ 审」独立性,**属已知降级**;fork(继承上下文的子代理)与 worktree 隔离是 Claude Code 侧能力,Codex 无对应物时并行退化为串行,仅用户明确要求并行时用 Codex 多代理工具。宿主能力演进快,以官方文档为准,偏差时更新本表。
 
 ## 框架自身的决策与校验
 
 - 决策**一律**记 [`decisions/`](decisions/README.md)(ADR,不改写、只新增取代)——功能内与框架级共用,唯一落点;feature 文档只描述设计现状,不留决策记录。
-- 结构一致性由 `node .spec/tools/spec-lint.mjs` 校验,改完 `.spec/` 必跑;校验项清单以脚本头部注释为单一权威。
-
-> 硬性禁令(不得再派生子 Agent、frontmatter 限制、调度变更须同步)在 [`rules/system.md`](rules/system.md)。
+- 结构一致性由 `node .spec/tools/lint-extensions.mjs` 校验,改完 `.spec/` 必跑;校验项清单以脚本头部注释为单一权威。

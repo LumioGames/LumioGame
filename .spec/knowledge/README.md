@@ -9,7 +9,7 @@ metadata:
 
 本文件是 `knowledge/` 下所有 .md 的导航 meta:一行描述 + 路径,按需下钻。
 
-> **导航行与各文档 frontmatter `description` 同一句话口径,只写「是什么 + 何时查」。** 交付历史在 git,不进文档;长度 / status 枚举 / 登记覆盖 / 链接可达由 `node .spec/tools/spec-lint.mjs` 机械校验。
+> **导航行与各文档 frontmatter `description` 同一句话口径,只写「是什么 + 何时查」。** 交付历史在 git,不进文档;长度 / status 枚举 / 登记覆盖 / 链接可达由 `node .spec/tools/lint-extensions.mjs` 机械校验。
 
 ## standards/(开发规范 · 要遵守的「怎么做」)
 
@@ -18,7 +18,6 @@ metadata:
 | [`standards/workflow.md`](standards/workflow.md) | 开发工作流:分支/提交/合并·PR 与知识同步义务——动手改代码、开 PR 前查 |
 | [`standards/code-style.md`](standards/code-style.md) | 代码与文档风格:语言约定、命名、注释原则、生成物纪律——写代码/建文档时查 |
 | [`standards/testing.md`](standards/testing.md) | 测试与验收:测试分层政策、TDD 时机、验收 DoD 与验证证据——实现功能/修 bug 时查 |
-| [`standards/dispatch.md`](standards/dispatch.md) | 派活模板:worker 派遣与 reviewer 触发的 prompt 骨架——主 loop 扇出任务或触发审查时查 |
 | [`standards/repository-architecture.md`](standards/repository-architecture.md) | 仓库边界与架构契约——Gameplay 所有权、跨仓依赖和公共语义消费纪律;改职责、公共契约或发布组合前查 |
 
 ## features/(功能设计与记录 · 供了解)

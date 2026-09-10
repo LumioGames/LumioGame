@@ -17,8 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate LumioAgent specification
         run: |
-          node .spec/tools/spec-lint.mjs
-          node --test .spec/tools/spec-lint.test.mjs
+          node .spec/tools/lint-extensions.mjs
+          node --test .spec/tools/lint-extensions.test.mjs
       - name: Validate repository boundary documentation
         run: |
           test -s README.md

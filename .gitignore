@@ -7,3 +7,5 @@ node_modules/
 bin/
 obj/
 TestResults/
+
+.workflow-drafts/

@@ -8,11 +8,11 @@ metadata:
 
 # 测试与验收（含 TDD 政策）
 
-> 本文定**政策**（测什么、何时测、怎么算过）；“先写失败测试再实现”的**方法**在技能 [`skills/test-driven-development`](../../skills/test-driven-development/SKILL.md)。
+> 本文定**政策**（测什么、何时测、怎么算过）；“先写失败测试再实现”的**方法**在插件技能 `test-driven-development`。
 
 ## 测试分层（通用政策）
 
-- **单元测试**：默认层，随项目验证命令（`AGENTS.md`「收口门槛」）每次跑，快、无外部依赖。
+- **单元测试**：默认层，随项目验证命令（`AGENTS.md`「本仓验证入口」）每次跑，快、无外部依赖。
 - **集成测试**（真库 / 真服务）：显式触发，不进默认验证命令，保持收口快。
 - **端到端 / E2E**：显式触发；关键主链路至少一条。
 
@@ -20,26 +20,26 @@ metadata:
 
 - 必须走：新功能、修 bug（先写能复现的失败测试，修完留作回归测试）、改无测试保护的关键逻辑。
 - 可不走：纯文档改动、一次性脚本。豁免在交回物里声明。
-- 写测试、加 mock、想给生产类加 test-only 方法前，先查反模式清单：[`testing-anti-patterns.md`](../../skills/test-driven-development/testing-anti-patterns.md)——测 mock 行为、test-only 方法入生产、不理解依赖就 mock、不完整 mock，一律禁止。
+- 写测试、加 mock、想给生产类加 test-only 方法前，先查插件技能 `test-driven-development` 的反模式清单（`testing-anti-patterns.md`）——测 mock 行为、test-only 方法入生产、不理解依赖就 mock、不完整 mock，一律禁止。
 
 ## 验证证据
 
-形式要求以 `AGENTS.md`「交回物格式」为单一权威——「已通过」三个字不是证据。
+形式要求以Workflow 插件的常驻规则的「交回物格式」为单一权威——「已通过」三个字不是证据。
 
 ## 验收标准（Definition of Done）
 
-- [ ] 收口门槛命令全绿（见 `AGENTS.md`「收口门槛」：spec-lint 与 Server Gameplay 单元测试）。
+- [ ] 验证命令全绿（见 `AGENTS.md`「本仓验证入口」：lint-extensions 与 Server Gameplay 单元测试）。
 - [ ] 新增 / 修改行为有测试覆盖；bug 修复留有回归测试。
 - [ ] 无 lint / 类型错误、无调试残留。
 - [ ] 相关知识文档已更新（见 [`workflow.md`](./workflow.md)）。
 
 ## 项目测试栈与命令
 
-默认验证为 spec-lint 加上 Server Gameplay 单元测试：
+默认验证为 lint-extensions 加上 Server Gameplay 单元测试：
 
 ```text
-node .spec/tools/spec-lint.mjs
-node --test .spec/tools/spec-lint.test.mjs
+node .spec/tools/lint-extensions.mjs
+node --test .spec/tools/lint-extensions.test.mjs
 node --test clone-all.test.mjs
 dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj --nologo
 dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
@@ -54,7 +54,7 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 注意设了 `DOTNET_ROOT` 后 `dotnet test` 本身仍可能报 `Zero tests ran`（发现阶段拿到空 UID 列表），这是宿主侧问题，不是测试真的为零。
 
-公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「收口门槛」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。Scenario/Headless 与 formatter 命令随后续模块补进收口门槛。
+公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「本仓验证入口」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。Scenario/Headless 与 formatter 命令随后续模块补进验证入口。
 
 ## 本仓 Headless / 契约测试面
 

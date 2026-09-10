@@ -15,11 +15,11 @@ description: 把已定调的美术决策沉淀为美术规范文档并长期维�
 
 ## 操作步骤
 
-1. **判落点(单一权威)。** 美术规范总纲落 `docs/specs/art-direction.md`;初期只建这一份,五域各占一节。拆分判据:某域条款膨胀到总纲难以维护(该域小节超过总纲一半篇幅)才拆出独立文档(如 `docs/specs/art-ui.md`),并在总纲留链接。建档与修订按本技能流程走;`.spec/` 侧的结构维护仍归 [spec-steward](../spec-steward/SKILL.md)。
-2. **写文档头。** `docs/specs/` 不受 spec-lint 的 frontmatter 校验,用 H1 下的引用块承载元信息:`状态`(设计中 / 实施中 / 已交付 / 历史归档,沿用本仓枚举)、`适用范围`、`上游`(相对链接)。
+1. **判落点(单一权威)。** 美术规范总纲落 `docs/specs/art-direction.md`;初期只建这一份,五域各占一节。拆分判据:某域条款膨胀到总纲难以维护(该域小节超过总纲一半篇幅)才拆出独立文档(如 `docs/specs/art-ui.md`),并在总纲留链接。建档与修订按本技能流程走;`.spec/` 侧的结构维护仍归插件技能 `spec-steward`。
+2. **写文档头。** `docs/specs/` 不受 lint-extensions 的 frontmatter 校验,用 H1 下的引用块承载元信息:`状态`(设计中 / 实施中 / 已交付 / 历史归档,沿用本仓枚举)、`适用范围`、`上游`(相对链接)。
 3. **写正文。** 结构见快速参考骨架。每条规范必须是**可对照判据**(供 art-review 直接引用),并附一句「为什么」;只保留当前有效结论,历史在 git;域分类指回 [art-director](../art-director/SKILL.md) 快速参考,此处不复述。
 4. **同步导航。** 在 `docs/specs/README.md` 索引表加一行,与文档头「状态 + 一句话」同口径。
-5. **校验。** `node .spec/tools/spec-lint.mjs` 通过。
+5. **校验。** `node .spec/tools/lint-extensions.mjs` 通过。
 
 ## 快速参考(art-direction.md 骨架)
 
@@ -92,6 +92,6 @@ description: 把已定调的美术决策沉淀为美术规范文档并长期维�
 
 ## 验证
 
-- spec-lint 通过;`docs/specs/README.md` 索引行与文档头同口径。
+- lint-extensions 通过;`docs/specs/README.md` 索引行与文档头同口径。
 - 每条新条款可被 art-review 直接引用对照;带数值的条款都有来源标注。
 - 文档里只有已定调结论,无「待定」「可能」类条款。
