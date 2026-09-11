@@ -34,6 +34,9 @@
         "resolved": "10.0.0",
         "contentHash": "fwRdkJpKisUEVNaEdsL5w5EwidzuVw0BOTfzDvYB1Yg8sq1pqNfUZxBOVFgSj6i6tNhpT3HP8BEDXf1+kFkTDA=="
       },
+      "lumio.engine.nativeloader.hfsm": {
+        "type": "Project"
+      },
       "lumio.gameruntime.command": {
         "type": "Project",
         "dependencies": {
@@ -68,6 +71,7 @@
       "lumio.gameruntime.gas": {
         "type": "Project",
         "dependencies": {
+          "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Config": "[0.1.0, )",
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
@@ -195,6 +199,8 @@
       "lumio.gameruntime.gas": {
         "type": "Project",
         "dependencies": {
+          "Lumio.Engine.NativeLoader": "[1.0.0, )",
+          "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Config": "[0.1.0, )",
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
