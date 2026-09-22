@@ -3,7 +3,7 @@ using System.Linq;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Replication.Binding;
-using Lumio.GameRuntime.Samples.Username.Host;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Host;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;

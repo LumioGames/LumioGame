@@ -2,14 +2,14 @@ using System;
 using System.Text;
 using System.Threading;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Samples.Username.Components.Chat;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat;
 using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay;
 
 /// <summary>
 /// Gameplay admit / SetMessage surface. The unique ChatComponent lives in
-/// <c>Lumio.GameRuntime.Samples.Username.Server</c>; Game does not own a world or queue.
+/// <c>Lumio.GameRuntime.Ecs.GameplayFixture.Server</c>; Game does not own a world or queue.
 /// </summary>
 public static class ChatSetMessageSystem
 {

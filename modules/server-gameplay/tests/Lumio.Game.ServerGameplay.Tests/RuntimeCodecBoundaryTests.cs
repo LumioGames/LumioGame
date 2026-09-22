@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Samples.Username.Components.Chat;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat;
 using Xunit;
 using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 

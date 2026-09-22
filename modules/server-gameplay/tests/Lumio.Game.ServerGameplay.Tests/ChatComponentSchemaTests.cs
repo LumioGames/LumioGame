@@ -4,9 +4,9 @@ using System.Linq;
 using System.Reflection;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Samples.Username;
+using Lumio.GameRuntime.Ecs.GameplayFixture;
 using Xunit;
-using RuntimeChatComponent = Lumio.GameRuntime.Samples.Username.Components.Chat.ChatComponent;
+using RuntimeChatComponent = Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat.ChatComponent;
 using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -24,7 +24,7 @@ public sealed class ChatComponentSchemaTests
                 && string.Equals(type.Name, "ChatComponent", StringComparison.Ordinal));
 
         Assert.NotNull(typeof(RuntimeChatComponent).GetCustomAttribute<EcsComponentAttribute>());
-        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(RuntimeChatComponent).Assembly.GetName().Name);
+        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(RuntimeChatComponent).Assembly.GetName().Name);
 
         Assert.Contains(
             GeneratedRegistry.Instance.AttributeDeclarations,

@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Threading;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Samples.Username.Components.Chat;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -23,8 +23,8 @@ public sealed class ChatComponentSetMessageTests
             static name => string.Equals(name.Name, "Lumio.GameRuntime.Ecs", StringComparison.Ordinal));
         Assert.Contains(
             assembly.GetReferencedAssemblies(),
-            static name => string.Equals(name.Name, "Lumio.GameRuntime.Samples.Username.Server", StringComparison.Ordinal));
-        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(ChatComponent).Assembly.GetName().Name);
+            static name => string.Equals(name.Name, "Lumio.GameRuntime.Ecs.GameplayFixture.Server", StringComparison.Ordinal));
+        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(ChatComponent).Assembly.GetName().Name);
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public sealed class ChatComponentSetMessageTests
         Assert.True(committed.IsCommitted);
         ChatComponent component = Component(manager, sender);
         Assert.Equal("direct", component.LastMessageText);
-        Assert.Equal("Lumio.GameRuntime.Samples.Username.Server", typeof(ChatComponent).Assembly.GetName().Name);
+        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(ChatComponent).Assembly.GetName().Name);
     }
 
     private static ChatComponent Component(WorldManager manager, NetEntityId netEntityId)
