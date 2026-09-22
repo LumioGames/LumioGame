@@ -9,8 +9,8 @@
     <NoWarn>$(NoWarn);CA1861;CA1859;CA1707;xUnit2013;xUnit2029</NoWarn>
     <_GameRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../..'))</_GameRepoRoot>
     <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and '$(LUMIO_RUNTIME_ROOT)' != ''">$(LUMIO_RUNTIME_ROOT)</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/modules/ecs/samples/username/Lumio.GameRuntime.Samples.Username.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../../LumioGameRuntime'))</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../../LumioGameRuntime'))</LumioRuntimeRoot>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj" />

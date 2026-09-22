@@ -241,11 +241,17 @@
       "lumio.engine.nativeloader.hfsm": {
         "type": "Project"
       },
+      "lumio.engine.sdk": {
+        "type": "Project",
+        "dependencies": {
+          "Lumio.Engine.NativeLoader": "[1.0.0, )"
+        }
+      },
       "lumio.game.servergameplay": {
         "type": "Project",
         "dependencies": {
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
-          "Lumio.GameRuntime.Samples.Username.Server": "[0.1.0, )"
+          "Lumio.GameRuntime.Ecs.GameplayFixture.Server": "[0.1.0, )"
         }
       },
       "lumio.gameruntime.command": {
@@ -266,6 +272,7 @@
       "lumio.gameruntime.coordination": {
         "type": "Project",
         "dependencies": {
+          "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
           "Lumio.GameRuntime.Observability": "[0.1.0, )",
@@ -284,8 +291,17 @@
         "type": "Project",
         "dependencies": {
           "Lumio.Engine.NativeLoader": "[1.0.0, )",
+          "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
+          "Lumio.GameRuntime.Config": "[0.1.0, )",
           "Lumio.GameRuntime.Primitives": "[0.1.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
+        }
+      },
+      "lumio.gameruntime.ecs.gameplayfixture.server": {
+        "type": "Project",
+        "dependencies": {
+          "Lumio.GameRuntime.Ecs": "[0.1.0, )",
+          "Lumio.GameRuntime.Simulation": "[0.1.0, )"
         }
       },
       "lumio.gameruntime.gas": {
@@ -295,6 +311,7 @@
           "Lumio.Engine.NativeLoader.Hfsm": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Config": "[0.1.0, )",
+          "Lumio.GameRuntime.Coordination": "[0.1.0, )",
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
           "Lumio.GameRuntime.Observability": "[0.1.0, )",
           "Lumio.GameRuntime.Primitives": "[0.1.0, )"
@@ -309,6 +326,7 @@
       "lumio.gameruntime.persistence": {
         "type": "Project",
         "dependencies": {
+          "Lumio.GameRuntime.Coordination": "[0.1.0, )",
           "Lumio.GameRuntime.Ecs": "[0.1.0, )",
           "Lumio.GameRuntime.Primitives": "[0.1.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
@@ -329,17 +347,11 @@
           "Lumio.GameRuntime.Primitives": "[0.1.0, )"
         }
       },
-      "lumio.gameruntime.samples.username.server": {
-        "type": "Project",
-        "dependencies": {
-          "Lumio.GameRuntime.Ecs": "[0.1.0, )",
-          "Lumio.GameRuntime.Simulation": "[0.1.0, )"
-        }
-      },
       "lumio.gameruntime.simulation": {
         "type": "Project",
         "dependencies": {
           "Lumio.Engine.NativeLoader": "[1.0.0, )",
+          "Lumio.Engine.SDK": "[1.0.0, )",
           "Lumio.GameRuntime.Command": "[0.1.0, )",
           "Lumio.GameRuntime.Config": "[0.1.0, )",
           "Lumio.GameRuntime.Coordination": "[0.1.0, )",

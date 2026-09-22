@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Samples.Username.Components.Identity;
-using Lumio.GameRuntime.Samples.Username.Host;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Identity;
+using Lumio.GameRuntime.Ecs.GameplayFixture.Host;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 

@@ -6,7 +6,7 @@
 
 ## 负责什么
 
-- 引用 Runtime `Lumio.GameRuntime.Samples.Username.Server` 的唯一 `[EcsComponent] ChatComponent`（Game 不声明第二份类）。
+- 引用 Runtime `Lumio.GameRuntime.Ecs.GameplayFixture.Server` 的唯一 `[EcsComponent] ChatComponent`（Game 不声明第二份类）。
 - `ChatSetMessageSystem` 将 C-1 输入交给 Runtime `WireCodec` 校验并把 typed `InputCommandMessage` 送进 `WorldManager.Enqueue`，或在 Owner Thread 调用 Runtime `ChatComponent.SendMessage`。
 - `RuntimeDrainConsumer` 只消费 Runtime `Drain` 的 `Frames` 与 `drain.queries`，并通过 Runtime owner-thread controls 提交绑定查询和过期请求；Game 不维护本地绑定、查询结果或 tombstone。
 - 执行 C-1 冻结的输入 UTF-8 512 字节上限（政策 reject：`chat_text_too_long`）。
@@ -25,5 +25,5 @@
 ## 依赖方向
 
 - 消费架构仓 `LumioGameEngine` 的公共契约，不反向修改，也不在本仓复述其字段。
-- 引用 `Lumio.GameRuntime.Ecs` 与 `Lumio.GameRuntime.Samples.Username.Server`（路径经 `LumioRuntimeRoot` / `LUMIO_RUNTIME_ROOT` 或仓根相对 sibling 发现）。
+- 引用 `Lumio.GameRuntime.Ecs` 与 `Lumio.GameRuntime.Ecs.GameplayFixture.Server`（路径经 `LumioRuntimeRoot` / `LUMIO_RUNTIME_ROOT` 或仓根相对 sibling 发现）。
 - 不引用 `LumioServer` / `LumioClient` 实现，不引用 NativeCore / VoxelEngine 源码。

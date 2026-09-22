@@ -8,7 +8,7 @@ metadata:
 
 # ChatComponent
 
-简介：PlayerEntity/BotEntity 上的权威 last-message 组件。唯一 `[EcsComponent]` 源是 Runtime `Lumio.GameRuntime.Samples.Username.Server`。Game 不声明第二份 ChatComponent。
+简介：PlayerEntity/BotEntity 上的权威 last-message 组件。唯一 `[EcsComponent]` 源是 Runtime `Lumio.GameRuntime.Ecs.GameplayFixture.Server`。Game 不声明第二份 ChatComponent。
 
 ## 背景 / 目标
 
