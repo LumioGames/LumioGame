@@ -58,7 +58,7 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 **CI 与本地的分工（ADR-114 豁免）。** 本仓是公开仓，CI 在 GitHub 托管机上造不出 native（ADR-080；Owner 2026-09-23 裁定不扩大 `LUMIO_CI_PAT` 去检出私有的 NativeCore / VoxelEngine）。所以经 `ServerWorldBoot` 启动服务端世界的用例都带 `[RequiresEngineNative]` 标记，CI 用 `--filter-not-trait "RequiresEngineNative=true" --fail-skips on` 排除它们，其余用例真跑、跳过即失败。本地照常全量跑：有 native 时带标记的用例一起执行，没有 native 照旧 `LUMIO_ENGINE_NATIVE_MISSING` 失败——标记不是跳过。
 
-带标记的集合必须与架构仓 `standards/development-verification.md`「真 Native 覆盖豁免登记册」的 LumioGame 行**逐条相等**，由 `node eng/native-exemption-guard.mjs` 对账（CI 同一条命令，本地可复现）：多标、漏标、登记册多一行或少一行都红。**新增一条需要 native 的用例，必须同批做三件事**：加标记、在架构仓登记册加一行、在单里附带 native 的全量计数；只做其一 CI 就红。改 `modules/server-gameplay` 或其测试的单，按登记册的替代复核方式附一次带 native 的全量 `dotnet test` 计数。解除卡 R-00712（前置 R-00519 SDK 公开包）落地后，标记、过滤器、守卫与登记行一并删除。
+带标记的集合必须与架构仓 `standards/development-verification.md`「真 Native 覆盖豁免登记册」的 LumioGame 行**逐条相等**，由 `node eng/native-exemption-guard.mjs` 对账（CI 同一条命令，本地可复现）：多标、漏标、登记册多一行或少一行都红。排除条件只有一份：CI 工作流 `id: dotnet-test` 那一步的 `dotnet test` 命令。守卫直接读这一行，用它的全部参数列用例，再拿不带过滤的全量列表减去它算「未执行」——测试步骤里多加的任何排除（再加一个过滤器或过滤值、缩小测试目标）都会落进「未执行」并要求登记；这一行写成守卫无法静态确定参数的形式（变量或表达式展开、管道、多条命令、多行），守卫直接报错。单程序集与多程序集的 `--list-tests` 摘要行都能对账。守卫的纯逻辑单测 `node --test eng/native-exemption-guard.test.mjs` 同在 CI 里跑。**新增一条需要 native 的用例，必须同批做三件事**：加标记、在架构仓登记册加一行、在单里附带 native 的全量计数；只做其一 CI 就红。改 `modules/server-gameplay` 或其测试的单，按登记册的替代复核方式附一次带 native 的全量 `dotnet test` 计数。解除卡 R-00712（前置 R-00519 SDK 公开包）落地后，标记、过滤器、守卫与登记行一并删除。
 
 ## 本仓 Headless / 契约测试面
 
