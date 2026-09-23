@@ -29,6 +29,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void ValidChatInputUpdatesExactlyOneSenderComponentAtNextFixedTick()
     {
         using WorldManager manager = ChatWorldHarness.Boot(2);
@@ -58,6 +59,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void EventAndComponentStateCarryTheSameAppliedTick()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -79,6 +81,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void NetworkThreadSetMessageRejectsWithZeroComponentWrite()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -113,6 +116,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void SetMessageOnUnknownEntityRejectsWithZeroComponentWrite()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -128,6 +132,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void NetworkThreadAdmitQueuesWithoutWritingUntilOwnerTick()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -158,6 +163,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void SetMessageCallsGameChatComponentSendMessage()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
