@@ -4,20 +4,20 @@
     <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
     <AssemblyName>Lumio.Game.ServerGameplay</AssemblyName>
     <RootNamespace>Lumio.Game.ServerGameplay</RootNamespace>
-    <!-- CA1051: Runtime 的 Sync<T> 字段协定要求公开可变字段（见 LumioGameRuntime tests/fixtures/gameplay 的 IdentityComponent/ChatComponent），Bomber Contracts 组件遵循同一协定。 -->
+    <!-- 本工程拥有自己的 ECS 声明（ADR-117）：注册表、实体模板与同步表由 Runtime 的 gen-declarations
+         在构建时生成到 generated/server/，生成物入库、不手改。接线见仓根 Directory.Build.targets。 -->
+    <LumioEcsGenerate>true</LumioEcsGenerate>
+    <LumioEcsSide>server</LumioEcsSide>
+    <!-- CA1051: Runtime 的 Sync<T> 字段协定要求公开可变字段，本工程的 ECS 组件遵循同一协定。 -->
     <NoWarn>$(NoWarn);CA1510;CA1051</NoWarn>
-    <_GameRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../'))</_GameRepoRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and '$(LUMIO_RUNTIME_ROOT)' != ''">$(LUMIO_RUNTIME_ROOT)</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../LumioGameRuntime'))</LumioRuntimeRoot>
-    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj')">$([System.IO.Path]::GetFullPath('$(_GameRepoRoot)../../LumioGameRuntime'))</LumioRuntimeRoot>
   </PropertyGroup>
   <Target Name="RequireLumioRuntimeRoot" BeforeTargets="CollectPackageReferences;ResolveProjectReferences">
     <Error
-      Condition="'$(LumioRuntimeRoot)' == '' or !Exists('$(LumioRuntimeRoot)/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj')"
-      Text="BLOCKED: LumioGameRuntime Ecs.GameplayFixture.Server was not found. Set LumioRuntimeRoot or LUMIO_RUNTIME_ROOT to a checkout that contains modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj; a sibling LumioGameRuntime is also searched. Do not hardcode machine-absolute paths." />
+      Condition="'$(_LumioRuntimeRoot)' == '' or !Exists('$(LumioRuntimeEcsProject)')"
+      Text="LUMIO_RUNTIME_MISSING: LumioGameRuntime was not found. Set LumioRuntimeRoot or LUMIO_RUNTIME_ROOT to a LumioGameRuntime checkout that contains modules/ecs/src/Lumio.GameRuntime.Ecs/Lumio.GameRuntime.Ecs.csproj; a sibling LumioGameRuntime is also searched. Do not hardcode machine-absolute paths." />
   </Target>
   <ItemGroup>
-    <ProjectReference Include="$(LumioRuntimeRoot)/modules/ecs/src/Lumio.GameRuntime.Ecs/Lumio.GameRuntime.Ecs.csproj" />
-    <ProjectReference Include="$(LumioRuntimeRoot)/modules/ecs/tests/fixtures/gameplay/Lumio.GameRuntime.Ecs.GameplayFixture.Server.csproj" />
+    <ProjectReference Include="$(LumioRuntimeEcsProject)" />
+    <ProjectReference Include="$(LumioRuntimeReplicationProject)" />
   </ItemGroup>
 </Project>

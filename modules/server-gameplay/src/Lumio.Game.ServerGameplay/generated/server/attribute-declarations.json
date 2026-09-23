@@ -166,5 +166,33 @@
     "replication": "replicated",
     "valueType": "u64",
     "visibility": "room-public"
+  },
+  {
+    "attributeId": "ChatComponent.lastMessageText",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "ChatComponent.lastMessageTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "IdentityComponent.accountId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "IdentityComponent.name",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "room-public"
   }
 ]

@@ -178,7 +178,7 @@ Game 只定义具体内容和产品语义：Ability/Effect/AttributeSet/Tag、Fo
 - `LumioServer`/`LumioClient`（私有，SDK 经 NuGet 包分发）：只引用公开 Host/Adapter Contract，不依赖实现源码。
 - .NET SDK、C# 编译器和经过许可证/SBOM/漏洞/AOT/确定性/性能审查的包。
 
-业务代码禁止对 NativeCore/VoxelEngine 源码建立 Compile-Time 依赖。
+业务代码禁止对 NativeCore/VoxelEngine 源码建立 Compile-Time 依赖。生产与测试工程都只引用引擎的公开面，不引用引擎仓的测试、夹具或样例工程；玩法用到的组件与实体（含聊天与身份）归本仓自有，测试世界的启动也由本仓自建。
 
 内部贡献者的跨仓检出与本地构建口径见 [`.spec/knowledge/standards/repository-architecture.md`](.spec/knowledge/standards/repository-architecture.md)「跨仓检出」，构建与测试命令见 [`.spec/AGENTS.md`](.spec/AGENTS.md)「收口门槛」。
 

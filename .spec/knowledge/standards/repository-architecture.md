@@ -49,9 +49,13 @@ metadata:
 
 ## 跨仓检出
 
-本仓的 C# 工程编译期引用同级 `LumioGameRuntime`：优先取环境变量 `LUMIO_RUNTIME_ROOT`，未设时回落到同级或上两级的 `LumioGameRuntime` 目录。不得在工程文件里硬编码机器绝对路径。
+本仓的 C# 工程编译期引用同级 `LumioGameRuntime` 的**生产工程**（`modules/*/src` 与声明生成器 `tools/gen-declarations`）：唯一解析点是仓根 `Directory.Build.targets`，先取 MSBuild 属性 / 环境变量 `LumioRuntimeRoot`，再取环境变量 `LUMIO_RUNTIME_ROOT`，都未设时回落到同级或上两级的 `LumioGameRuntime` 目录。不得在工程文件里硬编码机器绝对路径。
+
+**不得编译期引用引擎仓的 `tests/`、`fixtures/`、`samples/`**（架构仓 ADR-117）：引擎夹具不承诺 API 稳定，需要的组件、实体类型与世界启动由本仓自建（聊天与身份组件见 [`chat-component.md`](../features/gameplay/chat-component.md)，测试世界启动见 `ServerWorldBoot`）。守卫是 `Lumio.Game.ServerGameplay.Tests` 的 `EngineTestAssetReferenceGuardTests`：对 `LumioGame.sln` 每个工程按外层与每个目标框架做 MSBuild 求值，任一 `ProjectReference` / `Reference` 落进引擎仓这三类目录即失败并指名路径。
 
 **编译期另需同级 `LumioGameEngine` 检出**：Runtime net10.0 的 Ecs / Simulation 编译绑定 `Lumio.Engine.NativeLoader`，只探测 Runtime 同级目录名 `LumioGameEngine`，或接受 MSBuild 属性 / 环境变量 `LumioArchRoot`。CI 把架构仓 checkout 到 `LumioGameEngine`（不要用短名 `engine`），并同时设 `LumioArchRoot`。缺检出则 net10.0 报 `LUMIO_ARCH_REPO_MISSING`，没有 C# 替代实现。
+
+**测试期要一份现打的 native**：服务器世界的空间索引与 13 相 tick loop 的 lumio-hfsm 都挂在每世界一份的 Native Context 上，`ServerWorldBoot` 绑不上即抛 `LUMIO_ENGINE_NATIVE_MISSING`，不降级、不跳过。在架构仓跑 `node eng/dev-build.mjs --hfsm-test-support`，把输出的 `NATIVE_PATH` 设给 `LUMIO_ENGINE_NATIVE_PATH`；产物架构要与本机 .NET 宿主一致（x64 .NET 经 Rosetta 跑时要 `osx-x64`，用 `RUSTUP_TOOLCHAIN=<版本>-x86_64-apple-darwin` 选工具链）。
 
 **测试期继续用 `LUMIO_ENGINE_ROOT`**：wire 契约一致性用例直接打开架构仓的 `engine/wire/*.json` 逐条比对，优先取环境变量 `LUMIO_ENGINE_ROOT`，未设时从测试输出目录逐级向上找同级 `LumioGameEngine`（worktree 下也成立）。**缺检出即失败，不 skip**——契约真值读不到时静默跳过等于把漂移放行（见 ADR [0023](../../decisions/0023-wire-contract-pinned-in-tests.md)）。本仓仍不保存 wire JSON 的任何副本。
 

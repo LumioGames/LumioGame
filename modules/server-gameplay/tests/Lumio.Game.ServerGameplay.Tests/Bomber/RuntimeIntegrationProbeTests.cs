@@ -2,12 +2,9 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Threading;
-using Lumio.Game.ServerGameplay.Bomber.Contracts;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Simulation;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests.Bomber;
@@ -165,17 +162,11 @@ public sealed class RuntimeIntegrationProbeTests
     }
 
     /// <summary>
-    /// 探针世界的启动序列，与 Runtime 宿主样例 ServerBootstrap.Boot 同序：Create → Start（记线程归属）
-    /// → WorldTickBinding.Bind（把 13 相 tick loop 挂上）。Tick() 只经绑定的 tick loop 跑 13 相，
-    /// 未绑定即拒绝，所以四个用例共用这一份，别再各自手抄启动序列。
+    /// 探针世界走本仓唯一的测试世界启动 <see cref="ServerWorldBoot.Boot"/>：Create → Start（记线程归属）
+    /// → 绑 Native Context → WorldTickBinding.Bind（13 相 tick loop 的 lumio-hfsm 挂在 Native Context 上，
+    /// 未绑即拒绝）。注册表是本程序集生成的那一份，炸弹人实体与聊天玩家同表。
     /// </summary>
-    private static WorldManager BootProbeWorld()
-    {
-        WorldManager manager = WorldManager.Create(GeneratedRegistry.Instance, InstanceId);
-        manager.Start(Thread.CurrentThread);
-        WorldTickBinding.Bind(manager);
-        return manager;
-    }
+    private static WorldManager BootProbeWorld() => ServerWorldBoot.Boot(InstanceId);
 
     /// <summary>
     /// 位置只能经注册的 TransformController 在写作用域里改（Runtime 纪律，见 LogicTransform.BeginWrite），

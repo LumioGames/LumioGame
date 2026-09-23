@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Threading;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -11,7 +10,7 @@ namespace Lumio.Game.ServerGameplay.Tests;
 public sealed class ChatComponentSetMessageTests
 {
     [Fact]
-    public void GameHasNoPrivateWorldQueueOrRunTickAndReferencesUsernameServer()
+    public void GameHasNoPrivateWorldQueueOrRunTickAndOwnsItsChatComponent()
     {
         Assembly assembly = typeof(ChatSetMessageSystem).Assembly;
         Assert.Null(typeof(ChatSetMessageSystem).GetMethod("RunTick"));
@@ -21,10 +20,12 @@ public sealed class ChatComponentSetMessageTests
         Assert.Contains(
             assembly.GetReferencedAssemblies(),
             static name => string.Equals(name.Name, "Lumio.GameRuntime.Ecs", StringComparison.Ordinal));
-        Assert.Contains(
+        // ADR-117: the component is Game-owned, so the gameplay assembly carries it and references only
+        // Runtime production assemblies.
+        Assert.Same(assembly, typeof(ChatComponent).Assembly);
+        Assert.All(
             assembly.GetReferencedAssemblies(),
-            static name => string.Equals(name.Name, "Lumio.GameRuntime.Ecs.GameplayFixture.Server", StringComparison.Ordinal));
-        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(ChatComponent).Assembly.GetName().Name);
+            static name => Assert.DoesNotMatch(@"(?i)(Fixture|\.Tests?$|Samples?)", name.Name!));
     }
 
     [Fact]
@@ -157,7 +158,7 @@ public sealed class ChatComponentSetMessageTests
     }
 
     [Fact]
-    public void SetMessageCallsRuntimeChatComponentSendMessage()
+    public void SetMessageCallsGameChatComponentSendMessage()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
         NetEntityId sender = ChatWorldHarness.Net(manager, 0);
@@ -165,7 +166,7 @@ public sealed class ChatComponentSetMessageTests
         Assert.True(committed.IsCommitted);
         ChatComponent component = Component(manager, sender);
         Assert.Equal("direct", component.LastMessageText);
-        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(ChatComponent).Assembly.GetName().Name);
+        Assert.Equal("Lumio.Game.ServerGameplay", typeof(ChatComponent).Assembly.GetName().Name);
     }
 
     private static ChatComponent Component(WorldManager manager, NetEntityId netEntityId)

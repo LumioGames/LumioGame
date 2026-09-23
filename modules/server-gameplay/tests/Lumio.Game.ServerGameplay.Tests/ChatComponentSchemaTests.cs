@@ -4,9 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Ecs.GameplayFixture;
 using Xunit;
-using RuntimeChatComponent = Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat.ChatComponent;
 using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -14,21 +12,43 @@ namespace Lumio.Game.ServerGameplay.Tests;
 public sealed class ChatComponentSchemaTests
 {
     [Fact]
-    public void GameAssemblyHasNoEcsChatComponentAndRuntimeTableHasLastMessageText()
+    public void GameAssemblyOwnsExactlyOneEcsChatAndIdentityComponentAndItsRegistryDeclaresThem()
     {
+        // ADR-117 decision 4: chat is gameplay, so ChatComponent / IdentityComponent live in this assembly and
+        // are registered by this assembly's generated registry, not borrowed from an engine test fixture.
         Assembly game = typeof(ChatSetMessageSystem).Assembly;
-        Assert.DoesNotContain(game.GetTypes(), static type => string.Equals(type.Name, "ChatComponent", StringComparison.Ordinal));
-        Assert.DoesNotContain(
-            game.GetTypes(),
-            static type => type.GetCustomAttribute<EcsComponentAttribute>() is not null
-                && string.Equals(type.Name, "ChatComponent", StringComparison.Ordinal));
+        foreach (string component in new[] { "ChatComponent", "IdentityComponent" })
+        {
+            Type declared = Assert.Single(
+                game.GetTypes(),
+                type => type.GetCustomAttribute<EcsComponentAttribute>() is not null
+                    && string.Equals(type.Name, component, StringComparison.Ordinal));
+            Assert.Equal(typeof(ChatSetMessageSystem).Namespace, declared.Namespace);
+        }
 
-        Assert.NotNull(typeof(RuntimeChatComponent).GetCustomAttribute<EcsComponentAttribute>());
-        Assert.Equal("Lumio.GameRuntime.Ecs.GameplayFixture.Server", typeof(RuntimeChatComponent).Assembly.GetName().Name);
+        Assert.Same(game, GeneratedRegistry.Instance.GetType().Assembly);
+        Assert.Equal(RegistrySide.Server, GeneratedRegistry.Instance.Side);
+        Assert.True(GeneratedRegistry.Instance.TryResolveEntityType("player", out Type player));
+        Assert.Equal(typeof(PlayerEntity), player);
+        Assert.Equal(0, GeneratedRegistry.Instance.ComponentIndex(typeof(PlayerEntity), typeof(ObserverComponent)));
+        Assert.True(GeneratedRegistry.Instance.ComponentIndex(typeof(PlayerEntity), typeof(IdentityComponent)) > 0);
+        Assert.True(GeneratedRegistry.Instance.ComponentIndex(typeof(PlayerEntity), typeof(ChatComponent)) > 0);
 
-        Assert.Contains(
-            GeneratedRegistry.Instance.AttributeDeclarations,
-            static row => row.AttributeId == "ChatComponent.lastMessageText");
+        string[] attributeIds = GeneratedRegistry.Instance.AttributeDeclarations.Select(static row => row.AttributeId).ToArray();
+        Assert.Contains("ChatComponent.lastMessageText", attributeIds);
+        Assert.Contains("ChatComponent.lastMessageTick", attributeIds);
+        Assert.Contains("IdentityComponent.name", attributeIds);
+        Assert.Contains("IdentityComponent.accountId", attributeIds);
+    }
+
+    [Fact]
+    public void RegistryDeclaresNoGameplayConfigContractSoWorldsBootWithoutABinding()
+    {
+        // ServerWorldBoot creates worlds without a WorldConfigBinding. That is only correct while this registry
+        // declares no config contract: Runtime requires declaration and binding to agree. Declaring one without
+        // a real binding turns this red instead of letting the boot drift into a null/default binding.
+        Assert.Null(GeneratedRegistry.Instance.RequiredGameplayConfigContract);
+        Assert.Null(GeneratedRegistry.Instance.CreateGameplayConfigBinding());
     }
 
     [Fact]

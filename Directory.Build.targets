@@ -1,4 +1,24 @@
 <Project>
+  <!-- LumioGameRuntime 的唯一解析点：LumioRuntimeRoot（属性或同名环境变量）→ LUMIO_RUNTIME_ROOT →
+       同级 / 上两级的 LumioGameRuntime 检出。只探测 Runtime 的生产工程（modules/*/src 与 tools/）：
+       游戏不得编译期引用引擎仓 tests/、fixtures/、samples/ 下的任何东西（ADR-117），
+       守卫是 Lumio.Game.ServerGameplay.Tests 里的 EngineTestAssetReferenceGuardTests。 -->
+  <PropertyGroup>
+    <_GameRepoRoot>$(MSBuildThisFileDirectory)</_GameRepoRoot>
+    <_LumioRuntimeEcsRelative>modules/ecs/src/Lumio.GameRuntime.Ecs/Lumio.GameRuntime.Ecs.csproj</_LumioRuntimeEcsRelative>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and '$(LUMIO_RUNTIME_ROOT)' != ''">$(LUMIO_RUNTIME_ROOT)</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../LumioGameRuntime/$(_LumioRuntimeEcsRelative)')">$(_GameRepoRoot)../LumioGameRuntime</LumioRuntimeRoot>
+    <LumioRuntimeRoot Condition="'$(LumioRuntimeRoot)' == '' and Exists('$(_GameRepoRoot)../../LumioGameRuntime/$(_LumioRuntimeEcsRelative)')">$(_GameRepoRoot)../../LumioGameRuntime</LumioRuntimeRoot>
+    <_LumioRuntimeRoot Condition="'$(LumioRuntimeRoot.Trim())' != ''">$([System.IO.Path]::GetFullPath('$(LumioRuntimeRoot.Trim())'))</_LumioRuntimeRoot>
+    <LumioRuntimeEcsProject>$(_LumioRuntimeRoot)/$(_LumioRuntimeEcsRelative)</LumioRuntimeEcsProject>
+    <LumioRuntimeReplicationProject>$(_LumioRuntimeRoot)/modules/replication/src/Lumio.GameRuntime.Replication/Lumio.GameRuntime.Replication.csproj</LumioRuntimeReplicationProject>
+    <LumioRuntimeSimulationProject>$(_LumioRuntimeRoot)/modules/simulation/src/Lumio.GameRuntime.Simulation/Lumio.GameRuntime.Simulation.csproj</LumioRuntimeSimulationProject>
+    <_LumioEcsToolProject>$(_LumioRuntimeRoot)/tools/gen-declarations/Lumio.Tools.GenDeclarations.csproj</_LumioEcsToolProject>
+    <_LumioEcsSide Condition="'$(LumioEcsSide)' != ''">$(LumioEcsSide)</_LumioEcsSide>
+    <_LumioEcsSide Condition="'$(_LumioEcsSide)' == ''">server</_LumioEcsSide>
+    <_LumioEcsOutRelative>generated/$(_LumioEcsSide)</_LumioEcsOutRelative>
+  </PropertyGroup>
+
   <Target Name="ValidateGameBuildProfile" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <_GamePackageNames>@(PackageReference)</_GamePackageNames>
@@ -21,5 +41,58 @@
     <Error
       Condition="('$(GameProductionProject)' == 'true' or '$(GameTestProject)' == 'true') and '$(LangVersion)' != '14.0'"
       Text="GAME_BUILD_PROFILE_INVALID LangVersion must remain 14.0 for game projects; actual value is $(LangVersion)." />
+  </Target>
+
+  <!-- ECS 声明生成：接法照 LumioSample（sibling 模式）与 Runtime 自身的 GenerateLumioEcsDeclarations。
+       生成器在当前构建图里构建，再以 dotnet exec 调用；输入哈希未变则跳过（gen.hash 不入库）。
+       玩法工程是 net10.0;netstandard2.1 双目标：生成只在外层（分发内层构建之前）与 net10.0 内层跑，
+       避免两个内层同时写 generated/。内层可能早在生成之前就被求值（SDK 的 GetTargetFrameworks
+       会逐个 TFM 问内层），所以每个内层编译前都按目录补一次 Compile，不依赖求值时的默认通配。 -->
+  <ItemGroup Condition="'$(LumioEcsGenerate)' == 'true'">
+    <ProjectReference Include="$(_LumioEcsToolProject)"
+                      ReferenceOutputAssembly="false" PrivateAssets="all"
+                      SkipGetTargetFrameworkProperties="true"
+                      GlobalPropertiesToRemove="TargetFramework;TargetFrameworks" />
+  </ItemGroup>
+  <Target
+    Name="LumioGameGenerateEcsDeclarations"
+    BeforeTargets="DispatchToInnerBuilds"
+    Condition="'$(LumioEcsGenerate)' == 'true' and ('$(TargetFramework)' == '' or '$(TargetFramework)' == 'net10.0')">
+    <PropertyGroup>
+      <_LumioEcsSources>$(MSBuildProjectDirectory)</_LumioEcsSources>
+      <_LumioEcsOut>$(MSBuildProjectDirectory)/$(_LumioEcsOutRelative)</_LumioEcsOut>
+      <_LumioEcsJson>$(_LumioEcsOut)/attribute-declarations.json</_LumioEcsJson>
+      <_LumioEcsStamp>$(_LumioEcsOut)/gen.hash</_LumioEcsStamp>
+      <_LumioEcsNamespace Condition="'$(RootNamespace)' != ''">$(RootNamespace)</_LumioEcsNamespace>
+      <_LumioEcsNamespace Condition="'$(_LumioEcsNamespace)' == ''">$(MSBuildProjectName)</_LumioEcsNamespace>
+      <_LumioEcsArgs>--sources &quot;$(_LumioEcsSources)&quot; --side $(_LumioEcsSide) --output-dir &quot;$(_LumioEcsOut)&quot; --output &quot;$(_LumioEcsJson)&quot; --assembly-name &quot;$(AssemblyName)&quot; --namespace &quot;$(_LumioEcsNamespace)&quot;</_LumioEcsArgs>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_LumioEcsToolProject)')" Text="LUMIO_RUNTIME_MISSING: LumioGameRuntime tools/gen-declarations was not found under '$(_LumioRuntimeRoot)'." />
+    <MakeDir Directories="$(_LumioEcsOut)" />
+    <!-- 无条件重建生成器（增量构建下近乎零成本）：陈旧的生成器 DLL 会把入库的生成物静默写回旧内容。 -->
+    <MSBuild Projects="$(_LumioEcsToolProject)" Targets="Build"
+             RemoveProperties="TargetFramework;TargetFrameworks" BuildInParallel="false" />
+    <MSBuild Projects="$(_LumioEcsToolProject)" Targets="GetTargetPath"
+             RemoveProperties="TargetFramework;TargetFrameworks" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" PropertyName="_LumioEcsToolDll" />
+    </MSBuild>
+    <Exec Command="dotnet exec &quot;$(_LumioEcsToolDll)&quot; $(_LumioEcsArgs) --hash" ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_LumioEcsInputHash" />
+    </Exec>
+    <PropertyGroup>
+      <_LumioEcsPreviousHash Condition="Exists('$(_LumioEcsStamp)')">$([System.IO.File]::ReadAllText('$(_LumioEcsStamp)').Trim())</_LumioEcsPreviousHash>
+    </PropertyGroup>
+    <Exec Condition="'$(_LumioEcsInputHash)' != '$(_LumioEcsPreviousHash)'" Command="dotnet exec &quot;$(_LumioEcsToolDll)&quot; $(_LumioEcsArgs)" />
+    <WriteLinesToFile File="$(_LumioEcsStamp)" Lines="$(_LumioEcsInputHash)" Overwrite="true" Encoding="UTF-8" />
+  </Target>
+  <!-- 每个内层编译前：net10.0 先确保生成（DependsOnTargets），再按与默认通配相同的相对形式补 Compile，Exclude 去重。 -->
+  <Target
+    Name="LumioGameIncludeEcsDeclarations"
+    BeforeTargets="BeforeCompile"
+    DependsOnTargets="LumioGameGenerateEcsDeclarations"
+    Condition="'$(LumioEcsGenerate)' == 'true' and '$(TargetFramework)' != ''">
+    <ItemGroup>
+      <Compile Include="$(_LumioEcsOutRelative)/**/*.cs" Exclude="@(Compile)" />
+    </ItemGroup>
   </Target>
 </Project>

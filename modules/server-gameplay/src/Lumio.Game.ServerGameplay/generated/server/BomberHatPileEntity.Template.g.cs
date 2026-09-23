@@ -2,6 +2,7 @@
 #nullable enable
 using Lumio.GameRuntime.Ecs;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
+using Lumio.Game.ServerGameplay;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 
