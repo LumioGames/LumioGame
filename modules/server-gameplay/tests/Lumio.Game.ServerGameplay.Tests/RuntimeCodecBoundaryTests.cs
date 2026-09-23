@@ -12,6 +12,9 @@ public sealed class RuntimeCodecBoundaryTests
     [Fact]
     public void RuntimeCodecRoundTripsTypedInputCommand()
     {
+        // chat.input 由本仓生成注册表的静态构造注册（与测试世界同一份校验器）。本用例不起世界，
+        // 必须自己触发它；此前靠同进程里别的用例先建过世界，排除需 native 的用例后即失败（R-00711）。
+        _ = GeneratedRegistry.Instance;
         NetEntityId sender = new(ChatWorldHarness.InstanceId, 1UL);
         InputCommandMessage command = new(
             17UL,
