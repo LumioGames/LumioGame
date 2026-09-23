@@ -106,7 +106,8 @@ export function parseRegister(text) {
  * 条数必须与宿主自报的数对上，否则当作无法解析（失败关闭，不把空列表当成「没有排除」）。
  */
 export function parseListing(output) {
-  const lines = output.split(/\r?\n/)
+  // 已传 --no-ansi；CI 日志里 dotnet test 仍可能带颜色转义，先剥掉再按行解析。
+  const lines = output.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split(/\r?\n/)
   const names = new Set()
   let listed = 0
   let reportedTotal = -1
