@@ -10,6 +10,7 @@ namespace Lumio.Game.ServerGameplay.Tests;
 public sealed class ChatBoundedInputTests
 {
     [Fact]
+    [RequiresEngineNative]
     public void TextAtUtf8CapCommitsAndOneByteOverRejectsWithoutWrite()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -38,6 +39,7 @@ public sealed class ChatBoundedInputTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void RuntimeSendMessageIsTheSingleWritePathForTwoSendersInOneTick()
     {
         using WorldManager manager = ChatWorldHarness.Boot(2);

@@ -31,6 +31,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void GameAdmitEnvelopeDelegatesValidationToRuntimeCodec()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -53,6 +54,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void RuntimeCodecHashRejectionMapsToGameErrorWithoutEnqueue()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -81,6 +83,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void RuntimeCodecUnknownMappingMapsToGameError()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -100,6 +103,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void RuntimeCodecWrongMessageTypeMapsToBadEnvelope()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -127,6 +131,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void GameAdmitEnvelopePreservesDecodedSequence()
     {
         using WorldManager manager = ChatWorldHarness.Boot();
@@ -148,6 +153,7 @@ public sealed class RuntimeCodecBoundaryTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void GameAdmitEnvelopePreservesHostConnectionGeneration()
     {
         using WorldManager manager = ChatWorldHarness.Boot();

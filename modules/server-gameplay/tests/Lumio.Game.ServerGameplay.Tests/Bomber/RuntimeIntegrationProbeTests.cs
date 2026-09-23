@@ -21,6 +21,7 @@ public sealed class RuntimeIntegrationProbeTests
     private const ulong InstanceId = 0x424F4D4245520001UL; // "BOMBER" 前缀 + 0001
 
     [Fact]
+    [RequiresEngineNative]
     public void CustomComponentRegistersAndParticipatesInSnapshot()
     {
         using WorldManager manager = BootProbeWorld();
@@ -43,6 +44,7 @@ public sealed class RuntimeIntegrationProbeTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void SameSeedAndCommandSequenceProducesByteIdenticalSnapshotOnTwoIndependentWorlds()
     {
         byte[] hashA = RunFixedScenario();
@@ -56,6 +58,7 @@ public sealed class RuntimeIntegrationProbeTests
     /// World 实体不挂。五种实体全部注册、创建、Tick、入快照。
     /// </summary>
     [Fact]
+    [RequiresEngineNative]
     public void AllFiveEntityTypesRegisterCreateAndParticipateInSnapshot()
     {
         using WorldManager manager = BootProbeWorld();
@@ -115,6 +118,7 @@ public sealed class RuntimeIntegrationProbeTests
     /// 否则「位置进快照」是假的，同 Seed 回放对移动完全失效。
     /// </summary>
     [Fact]
+    [RequiresEngineNative]
     public void LogicTransformPositionEntersSnapshotHash()
     {
         byte[] atOrigin = RunSinglePlayerAt(new Vector3(1.5f, 1f, 1.5f));

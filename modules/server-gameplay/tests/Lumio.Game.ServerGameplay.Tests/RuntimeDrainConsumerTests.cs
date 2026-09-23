@@ -10,6 +10,7 @@ namespace Lumio.Game.ServerGameplay.Tests;
 public sealed class RuntimeDrainConsumerTests
 {
     [Fact]
+    [RequiresEngineNative]
     public void DrainKeepsRuntimeQueriesOutOfC1Frames()
     {
         using WorldManager manager = ServerWorldBoot.Boot(ChatWorldHarness.InstanceId);
@@ -32,6 +33,7 @@ public sealed class RuntimeDrainConsumerTests
     }
 
     [Fact]
+    [RequiresEngineNative]
     public void ExpiryIsSubmittedToRuntimeAndReportsTombstoneOnRepeatedRequest()
     {
         using WorldManager manager = ServerWorldBoot.Boot(ChatWorldHarness.InstanceId);

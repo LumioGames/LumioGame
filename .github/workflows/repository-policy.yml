@@ -69,16 +69,30 @@ jobs:
         working-directory: game
         run: node --test clone-all.test.mjs
       - name: dotnet build
+        id: build
         working-directory: game
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
           LUMIO_ENGINE_ROOT: ${{ github.workspace }}/LumioGameEngine
           LumioArchRoot: ${{ github.workspace }}/LumioGameEngine
         run: dotnet build LumioGame.sln
-      - name: dotnet test
+      # 公开仓 CI 造不出 liblumio_engine_native（ADR-080；Owner 2026-09-23 不扩大 LUMIO_CI_PAT），
+      # 需要它的用例带 [RequiresEngineNative]，这里按 trait 排除；其余用例真跑，跳过即失败。
+      # 被排除的集合由下一步对账架构仓登记册（ADR-114），解除卡 R-00712 删掉过滤与守卫。
+      - name: dotnet test (excluding ADR-114 registered native exemptions)
         working-directory: game
         env:
           LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
           LUMIO_ENGINE_ROOT: ${{ github.workspace }}/LumioGameEngine
           LumioArchRoot: ${{ github.workspace }}/LumioGameEngine
-        run: dotnet test LumioGame.sln
+        run: dotnet test LumioGame.sln --filter-not-trait "RequiresEngineNative=true" --fail-skips on
+      # 打印 CI 排除的用例清单与数量（「N 未执行，其中 M 条已登记豁免」），并要求它与架构仓
+      # development-verification.md 登记册的 LumioGame 行逐条相等；本地同一条命令即可复现。
+      - name: Native exemption report and register guard (ADR-114)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: game
+        env:
+          LUMIO_RUNTIME_ROOT: ${{ github.workspace }}/runtime
+          LUMIO_ENGINE_ROOT: ${{ github.workspace }}/LumioGameEngine
+          LumioArchRoot: ${{ github.workspace }}/LumioGameEngine
+        run: node eng/native-exemption-guard.mjs
