@@ -9,3 +9,6 @@ obj/
 TestResults/
 
 .workflow-drafts/
+
+# ECS 声明生成器的输入哈希戳（按机器与构建产生，不入库）
+**/generated/**/gen.hash

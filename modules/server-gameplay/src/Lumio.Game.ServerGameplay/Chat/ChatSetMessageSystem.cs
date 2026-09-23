@@ -2,14 +2,13 @@ using System;
 using System.Text;
 using System.Threading;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Chat;
 using RuntimeChatMapping = Lumio.GameRuntime.Replication.Chat.ChatMapping;
 
 namespace Lumio.Game.ServerGameplay;
 
 /// <summary>
-/// Gameplay admit / SetMessage surface. The unique ChatComponent lives in
-/// <c>Lumio.GameRuntime.Ecs.GameplayFixture.Server</c>; Game does not own a world or queue.
+/// Gameplay admit / SetMessage surface for this repository's <see cref="ChatComponent"/> (ADR-117: chat is
+/// gameplay, so the component is Game-owned). Game does not own a world or queue; both belong to Runtime.
 /// </summary>
 public static class ChatSetMessageSystem
 {
@@ -82,7 +81,7 @@ public static class ChatSetMessageSystem
     }
 
     /// <summary>
-    /// Authoritative SetMessage. Calls Runtime <see cref="ChatComponent.SendMessage"/> on the owner thread.
+    /// Authoritative SetMessage. Calls <see cref="ChatComponent.SendMessage"/> on the owner thread.
     /// Off-thread calls are rejected with zero component writes.
     /// </summary>
     public static ChatOperationResult SetMessage(
@@ -123,7 +122,7 @@ public static class ChatSetMessageSystem
         return ChatOperationResult.Committed();
     }
 
-    /// <summary>Reads persist-only last-message fields from the Runtime ChatComponent.</summary>
+    /// <summary>Reads persist-only last-message fields from the sender's <see cref="ChatComponent"/>.</summary>
     public static bool TryGetComponent(
         WorldManager manager,
         NetEntityId netEntityId,

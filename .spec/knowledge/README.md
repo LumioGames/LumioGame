@@ -25,7 +25,7 @@ metadata:
 | 文档 | 一句话 |
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
-| [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 唯一真源在 Runtime Username.Server——查 Game 无第二份类、SendMessage 与 persist last-message |
+| [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 与 IdentityComponent 归本仓——声明、声明生成、SendMessage 与 persist last-message、测试世界启动 |
 | [`features/tools/clone-all.md`](features/tools/clone-all.md) | 组织仓一次性 clone 工具——查失败分级(远端授权 vs 本地/网络)、退出码语义与清单维护纪律 |
 
 ## lessons(经验教训 · 复发问题暂存区)

@@ -5,7 +5,7 @@ using Lumio.GameRuntime.Ecs;
 
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
-public sealed partial class BomberPickupItem : IGeneratedComponent, IGeneratedSyncMetadata
+public sealed partial class BomberPickupItem : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
     partial void OnKindChanging(int old, int @new, ChangeReason reason);
     partial void OnKindChanged(int old, int @new, ChangeReason reason);
@@ -38,7 +38,13 @@ public sealed partial class BomberPickupItem : IGeneratedComponent, IGeneratedSy
     }
 
     void IGeneratedComponent.DispatchServerRpc(string method, object?[] args)
+        => ((IGeneratedOperationComponent)this).TryDispatchServerRpc(method, args, out _);
+
+    bool IGeneratedOperationComponent.TryDispatchServerRpc(string method, object?[] args, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+        return false;
     }
 
     void IGeneratedComponent.DispatchClientRpc(string method, object?[] args)
@@ -47,14 +53,24 @@ public sealed partial class BomberPickupItem : IGeneratedComponent, IGeneratedSy
 
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter) return;
+        writer.WriteInt32("BomberPickupItem.kind", Kind.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter prediction)
+        {
+            prediction.WritePredictionField("BomberPickupItem.kind", Kind.Value);
+            return;
+        }
+        writer.WriteInt32("BomberPickupItem.kind", Kind.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadInt32("BomberPickupItem.kind", out int kindRestore))
+            Kind.SetSilent(kindRestore);
     }
 
     object? IGeneratedComponent.ReadField(string fieldId)

@@ -5,7 +5,7 @@ using Lumio.GameRuntime.Ecs;
 
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
-public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedSyncMetadata
+public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
     partial void OnHatCountChanging(int old, int @new, ChangeReason reason);
     partial void OnHatCountChanged(int old, int @new, ChangeReason reason);
@@ -48,7 +48,13 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
     }
 
     void IGeneratedComponent.DispatchServerRpc(string method, object?[] args)
+        => ((IGeneratedOperationComponent)this).TryDispatchServerRpc(method, args, out _);
+
+    bool IGeneratedOperationComponent.TryDispatchServerRpc(string method, object?[] args, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+        return false;
     }
 
     void IGeneratedComponent.DispatchClientRpc(string method, object?[] args)
@@ -57,18 +63,30 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter) return;
+        writer.WriteInt32("BomberPlayerState.hatCount", HatCount.Value);
         writer.WriteUInt64("BomberPlayerState.respawnAtTick", RespawnAtTick.Value);
         writer.WriteUInt64("BomberPlayerState.protectedUntilTick", ProtectedUntilTick.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter prediction)
+        {
+            prediction.WritePredictionField("BomberPlayerState.hatCount", HatCount.Value);
+            prediction.WritePredictionField("BomberPlayerState.respawnAtTick", RespawnAtTick.Value);
+            prediction.WritePredictionField("BomberPlayerState.protectedUntilTick", ProtectedUntilTick.Value);
+            return;
+        }
+        writer.WriteInt32("BomberPlayerState.hatCount", HatCount.Value);
         writer.WriteUInt64("BomberPlayerState.respawnAtTick", RespawnAtTick.Value);
         writer.WriteUInt64("BomberPlayerState.protectedUntilTick", ProtectedUntilTick.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadInt32("BomberPlayerState.hatCount", out int hatCountRestore))
+            HatCount.SetSilent(hatCountRestore);
         if (reader.TryReadUInt64("BomberPlayerState.respawnAtTick", out ulong respawnAtTickRestore))
             RespawnAtTick.SetSilent(respawnAtTickRestore);
         if (reader.TryReadUInt64("BomberPlayerState.protectedUntilTick", out ulong protectedUntilTickRestore))

@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Lumio.GameRuntime.Ecs;
-using Lumio.GameRuntime.Ecs.GameplayFixture.Components.Identity;
-using Lumio.GameRuntime.Ecs.GameplayFixture.Host;
 
 namespace Lumio.Game.ServerGameplay.Tests;
 
@@ -13,11 +11,11 @@ internal static class ChatWorldHarness
 
     public static WorldManager Boot(int members = 1)
     {
-        WorldManager manager = ServerBootstrap.Boot(InstanceId);
+        WorldManager manager = ServerWorldBoot.Boot(InstanceId);
         for (int i = 0; i < members; i++)
         {
             string account = "acct-" + (7 + i).ToString(CultureInfo.InvariantCulture);
-            ServerBootstrap.AdmitPlayer(manager, account);
+            ServerWorldBoot.AdmitPlayer(manager, account);
             manager.Tick();
         }
 

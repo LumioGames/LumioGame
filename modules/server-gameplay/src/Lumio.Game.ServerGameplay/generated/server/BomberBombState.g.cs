@@ -5,7 +5,7 @@ using Lumio.GameRuntime.Ecs;
 
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
-public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyncMetadata
+public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
     partial void OnOwnerNetEntityIdRawChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnOwnerNetEntityIdRawChanged(ulong old, ulong @new, ChangeReason reason);
@@ -98,7 +98,13 @@ public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyn
     }
 
     void IGeneratedComponent.DispatchServerRpc(string method, object?[] args)
+        => ((IGeneratedOperationComponent)this).TryDispatchServerRpc(method, args, out _);
+
+    bool IGeneratedOperationComponent.TryDispatchServerRpc(string method, object?[] args, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+        return false;
     }
 
     void IGeneratedComponent.DispatchClientRpc(string method, object?[] args)
@@ -107,22 +113,54 @@ public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyn
 
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter) return;
         writer.WriteUInt64("BomberBombState.ownerNetEntityIdRaw", OwnerNetEntityIdRaw.Value);
         writer.WriteUInt64("BomberBombState.fuseEndTick", FuseEndTick.Value);
+        writer.WriteInt32("BomberBombState.power", Power.Value);
         writer.WriteUInt64("BomberBombState.chainId", ChainId.Value);
+        writer.WriteInt32("BomberBombState.bombKind", BombKind.Value);
+        writer.WriteInt32("BomberBombState.pierceLayers", PierceLayers.Value);
         writer.WriteUInt64("BomberBombState.explodedAtTick", ExplodedAtTick.Value);
         writer.WriteUInt64("BomberBombState.dangerUntilTick", DangerUntilTick.Value);
         writer.WriteUInt64("BomberBombState.burnUntilTick", BurnUntilTick.Value);
+        writer.WriteInt32("BomberBombState.reachUp", ReachUp.Value);
+        writer.WriteInt32("BomberBombState.reachDown", ReachDown.Value);
+        writer.WriteInt32("BomberBombState.reachLeft", ReachLeft.Value);
+        writer.WriteInt32("BomberBombState.reachRight", ReachRight.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter prediction)
+        {
+            prediction.WritePredictionField("BomberBombState.ownerNetEntityIdRaw", OwnerNetEntityIdRaw.Value);
+            prediction.WritePredictionField("BomberBombState.fuseEndTick", FuseEndTick.Value);
+            prediction.WritePredictionField("BomberBombState.power", Power.Value);
+            prediction.WritePredictionField("BomberBombState.chainId", ChainId.Value);
+            prediction.WritePredictionField("BomberBombState.bombKind", BombKind.Value);
+            prediction.WritePredictionField("BomberBombState.pierceLayers", PierceLayers.Value);
+            prediction.WritePredictionField("BomberBombState.explodedAtTick", ExplodedAtTick.Value);
+            prediction.WritePredictionField("BomberBombState.dangerUntilTick", DangerUntilTick.Value);
+            prediction.WritePredictionField("BomberBombState.burnUntilTick", BurnUntilTick.Value);
+            prediction.WritePredictionField("BomberBombState.reachUp", ReachUp.Value);
+            prediction.WritePredictionField("BomberBombState.reachDown", ReachDown.Value);
+            prediction.WritePredictionField("BomberBombState.reachLeft", ReachLeft.Value);
+            prediction.WritePredictionField("BomberBombState.reachRight", ReachRight.Value);
+            return;
+        }
         writer.WriteUInt64("BomberBombState.ownerNetEntityIdRaw", OwnerNetEntityIdRaw.Value);
         writer.WriteUInt64("BomberBombState.fuseEndTick", FuseEndTick.Value);
+        writer.WriteInt32("BomberBombState.power", Power.Value);
         writer.WriteUInt64("BomberBombState.chainId", ChainId.Value);
+        writer.WriteInt32("BomberBombState.bombKind", BombKind.Value);
+        writer.WriteInt32("BomberBombState.pierceLayers", PierceLayers.Value);
         writer.WriteUInt64("BomberBombState.explodedAtTick", ExplodedAtTick.Value);
         writer.WriteUInt64("BomberBombState.dangerUntilTick", DangerUntilTick.Value);
         writer.WriteUInt64("BomberBombState.burnUntilTick", BurnUntilTick.Value);
+        writer.WriteInt32("BomberBombState.reachUp", ReachUp.Value);
+        writer.WriteInt32("BomberBombState.reachDown", ReachDown.Value);
+        writer.WriteInt32("BomberBombState.reachLeft", ReachLeft.Value);
+        writer.WriteInt32("BomberBombState.reachRight", ReachRight.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
@@ -131,14 +169,28 @@ public sealed partial class BomberBombState : IGeneratedComponent, IGeneratedSyn
             OwnerNetEntityIdRaw.SetSilent(ownerNetEntityIdRawRestore);
         if (reader.TryReadUInt64("BomberBombState.fuseEndTick", out ulong fuseEndTickRestore))
             FuseEndTick.SetSilent(fuseEndTickRestore);
+        if (reader.TryReadInt32("BomberBombState.power", out int powerRestore))
+            Power.SetSilent(powerRestore);
         if (reader.TryReadUInt64("BomberBombState.chainId", out ulong chainIdRestore))
             ChainId.SetSilent(chainIdRestore);
+        if (reader.TryReadInt32("BomberBombState.bombKind", out int bombKindRestore))
+            BombKind.SetSilent(bombKindRestore);
+        if (reader.TryReadInt32("BomberBombState.pierceLayers", out int pierceLayersRestore))
+            PierceLayers.SetSilent(pierceLayersRestore);
         if (reader.TryReadUInt64("BomberBombState.explodedAtTick", out ulong explodedAtTickRestore))
             ExplodedAtTick.SetSilent(explodedAtTickRestore);
         if (reader.TryReadUInt64("BomberBombState.dangerUntilTick", out ulong dangerUntilTickRestore))
             DangerUntilTick.SetSilent(dangerUntilTickRestore);
         if (reader.TryReadUInt64("BomberBombState.burnUntilTick", out ulong burnUntilTickRestore))
             BurnUntilTick.SetSilent(burnUntilTickRestore);
+        if (reader.TryReadInt32("BomberBombState.reachUp", out int reachUpRestore))
+            ReachUp.SetSilent(reachUpRestore);
+        if (reader.TryReadInt32("BomberBombState.reachDown", out int reachDownRestore))
+            ReachDown.SetSilent(reachDownRestore);
+        if (reader.TryReadInt32("BomberBombState.reachLeft", out int reachLeftRestore))
+            ReachLeft.SetSilent(reachLeftRestore);
+        if (reader.TryReadInt32("BomberBombState.reachRight", out int reachRightRestore))
+            ReachRight.SetSilent(reachRightRestore);
     }
 
     object? IGeneratedComponent.ReadField(string fieldId)

@@ -5,7 +5,7 @@ using Lumio.GameRuntime.Ecs;
 
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
-public sealed partial class BomberHatPile : IGeneratedComponent, IGeneratedSyncMetadata
+public sealed partial class BomberHatPile : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
     partial void OnCountChanging(int old, int @new, ChangeReason reason);
     partial void OnCountChanged(int old, int @new, ChangeReason reason);
@@ -43,7 +43,13 @@ public sealed partial class BomberHatPile : IGeneratedComponent, IGeneratedSyncM
     }
 
     void IGeneratedComponent.DispatchServerRpc(string method, object?[] args)
+        => ((IGeneratedOperationComponent)this).TryDispatchServerRpc(method, args, out _);
+
+    bool IGeneratedOperationComponent.TryDispatchServerRpc(string method, object?[] args, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+        return false;
     }
 
     void IGeneratedComponent.DispatchClientRpc(string method, object?[] args)
@@ -52,16 +58,27 @@ public sealed partial class BomberHatPile : IGeneratedComponent, IGeneratedSyncM
 
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter) return;
+        writer.WriteInt32("BomberHatPile.count", Count.Value);
         writer.WriteUInt64("BomberHatPile.expireAtTick", ExpireAtTick.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter prediction)
+        {
+            prediction.WritePredictionField("BomberHatPile.count", Count.Value);
+            prediction.WritePredictionField("BomberHatPile.expireAtTick", ExpireAtTick.Value);
+            return;
+        }
+        writer.WriteInt32("BomberHatPile.count", Count.Value);
         writer.WriteUInt64("BomberHatPile.expireAtTick", ExpireAtTick.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadInt32("BomberHatPile.count", out int countRestore))
+            Count.SetSilent(countRestore);
         if (reader.TryReadUInt64("BomberHatPile.expireAtTick", out ulong expireAtTickRestore))
             ExpireAtTick.SetSilent(expireAtTickRestore);
     }

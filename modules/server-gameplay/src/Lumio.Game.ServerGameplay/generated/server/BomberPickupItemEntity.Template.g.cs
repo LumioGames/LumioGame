@@ -2,10 +2,11 @@
 #nullable enable
 using Lumio.GameRuntime.Ecs;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
+using Lumio.Game.ServerGameplay;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 
-internal sealed class BomberBombEntityTemplate
+internal sealed class BomberPickupItemEntityTemplate
 {
     internal static readonly int ComponentCount = 3;
     internal static readonly int ObserverIndex = 0;
@@ -13,6 +14,6 @@ internal sealed class BomberBombEntityTemplate
     {
         new ObserverComponent(),
         new LogicTransform(),
-        new BomberBombState()
+        new BomberPickupItem()
     };
 }

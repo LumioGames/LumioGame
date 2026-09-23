@@ -5,7 +5,7 @@ using Lumio.GameRuntime.Ecs;
 
 namespace Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 
-public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSyncMetadata
+public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
     partial void OnMatchTickChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnMatchTickChanged(ulong old, ulong @new, ChangeReason reason);
@@ -58,7 +58,13 @@ public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSy
     }
 
     void IGeneratedComponent.DispatchServerRpc(string method, object?[] args)
+        => ((IGeneratedOperationComponent)this).TryDispatchServerRpc(method, args, out _);
+
+    bool IGeneratedOperationComponent.TryDispatchServerRpc(string method, object?[] args, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+        return false;
     }
 
     void IGeneratedComponent.DispatchClientRpc(string method, object?[] args)
@@ -67,17 +73,29 @@ public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSy
 
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter) return;
         writer.WriteUInt64("BomberMatchState.matchTick", MatchTick.Value);
         writer.WriteUInt64("BomberMatchState.startTick", StartTick.Value);
         writer.WriteUInt64("BomberMatchState.endTick", EndTick.Value);
+        writer.WriteInt32("BomberMatchState.phase", Phase.Value);
         writer.WriteUInt64("BomberMatchState.hatKingNetEntityIdRaw", HatKingNetEntityIdRaw.Value);
     }
 
     void IGeneratedComponent.CaptureSync(IPersistWriter writer)
     {
+        if (writer is IPredictionFieldWriter prediction)
+        {
+            prediction.WritePredictionField("BomberMatchState.matchTick", MatchTick.Value);
+            prediction.WritePredictionField("BomberMatchState.startTick", StartTick.Value);
+            prediction.WritePredictionField("BomberMatchState.endTick", EndTick.Value);
+            prediction.WritePredictionField("BomberMatchState.phase", Phase.Value);
+            prediction.WritePredictionField("BomberMatchState.hatKingNetEntityIdRaw", HatKingNetEntityIdRaw.Value);
+            return;
+        }
         writer.WriteUInt64("BomberMatchState.matchTick", MatchTick.Value);
         writer.WriteUInt64("BomberMatchState.startTick", StartTick.Value);
         writer.WriteUInt64("BomberMatchState.endTick", EndTick.Value);
+        writer.WriteInt32("BomberMatchState.phase", Phase.Value);
         writer.WriteUInt64("BomberMatchState.hatKingNetEntityIdRaw", HatKingNetEntityIdRaw.Value);
     }
 
@@ -89,6 +107,8 @@ public sealed partial class BomberMatchState : IGeneratedComponent, IGeneratedSy
             StartTick.SetSilent(startTickRestore);
         if (reader.TryReadUInt64("BomberMatchState.endTick", out ulong endTickRestore))
             EndTick.SetSilent(endTickRestore);
+        if (reader.TryReadInt32("BomberMatchState.phase", out int phaseRestore))
+            Phase.SetSilent(phaseRestore);
         if (reader.TryReadUInt64("BomberMatchState.hatKingNetEntityIdRaw", out ulong hatKingNetEntityIdRawRestore))
             HatKingNetEntityIdRaw.SetSilent(hatKingNetEntityIdRawRestore);
     }

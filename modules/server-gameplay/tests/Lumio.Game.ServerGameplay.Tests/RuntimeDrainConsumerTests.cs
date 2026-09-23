@@ -3,7 +3,6 @@ using System.Linq;
 using Lumio.Game.ServerGameplay;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Replication.Binding;
-using Lumio.GameRuntime.Ecs.GameplayFixture.Host;
 using Xunit;
 
 namespace Lumio.Game.ServerGameplay.Tests;
@@ -13,7 +12,8 @@ public sealed class RuntimeDrainConsumerTests
     [Fact]
     public void DrainKeepsRuntimeQueriesOutOfC1Frames()
     {
-        using EntityBindingQuery binding = CreateBinding();
+        using WorldManager manager = ServerWorldBoot.Boot(ChatWorldHarness.InstanceId);
+        using EntityBindingQuery binding = EntityBindingQuery.Create(manager);
         Assert.Equal("accepted", binding.Admit("C1", "acct-drain", "room-01", "player").Outcome);
         binding.Manager.Tick();
         RuntimeDrainBatch admission = RuntimeDrainConsumer.Drain(binding.Manager);
@@ -34,7 +34,8 @@ public sealed class RuntimeDrainConsumerTests
     [Fact]
     public void ExpiryIsSubmittedToRuntimeAndReportsTombstoneOnRepeatedRequest()
     {
-        using EntityBindingQuery binding = CreateBinding();
+        using WorldManager manager = ServerWorldBoot.Boot(ChatWorldHarness.InstanceId);
+        using EntityBindingQuery binding = EntityBindingQuery.Create(manager);
         Assert.Equal("accepted", binding.Admit("C1", "acct-expiry", "room-01", "player").Outcome);
         binding.Manager.Tick();
         RuntimeDrainBatch admission = RuntimeDrainConsumer.Drain(binding.Manager);
@@ -52,11 +53,5 @@ public sealed class RuntimeDrainConsumerTests
         binding.Manager.Tick();
         RuntimeDrainBatch second = RuntimeDrainConsumer.Consume(binding.Manager.DrainOutbox());
         Assert.Equal("tombstoned", Assert.IsType<ExpireEntityResult>(Assert.Single(second.Queries)).Outcome);
-    }
-
-    private static EntityBindingQuery CreateBinding()
-    {
-        WorldManager manager = ServerBootstrap.Boot(ChatWorldHarness.InstanceId);
-        return EntityBindingQuery.Create(manager);
     }
 }

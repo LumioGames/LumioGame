@@ -54,7 +54,7 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 注意设了 `DOTNET_ROOT` 后 `dotnet test` 本身仍可能报 `Zero tests ran`（发现阶段拿到空 UID 列表），这是宿主侧问题，不是测试真的为零。
 
-公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「本仓验证入口」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。Scenario/Headless 与 formatter 命令随后续模块补进验证入口。
+公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「本仓验证入口」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。`dotnet test` 还要 `LUMIO_ENGINE_NATIVE_PATH` 指向现打的 native：测试世界由本仓的 `ServerWorldBoot` 启动，空间索引与 lumio-hfsm 都挂在 Native Context 上，缺 native 即 `LUMIO_ENGINE_NATIVE_MISSING` 失败——形态像代码红，先查环境（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。Scenario/Headless 与 formatter 命令随后续模块补进验证入口。
 
 ## 本仓 Headless / 契约测试面
 

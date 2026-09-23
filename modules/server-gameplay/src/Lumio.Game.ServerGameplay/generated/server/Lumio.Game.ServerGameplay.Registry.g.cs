@@ -5,9 +5,10 @@ using System.Collections.Generic;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Ecs.Annotations;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
+using Lumio.Game.ServerGameplay;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
 
-namespace Lumio.Game.ServerGameplay.Bomber.Contracts;
+namespace Lumio.Game.ServerGameplay;
 
 /// <summary>Generated registry for this gameplay assembly.</summary>
 public sealed class GeneratedRegistry : EcsRegistry
@@ -17,6 +18,7 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     static GeneratedRegistry()
     {
+        WireCodec.RegisterCommandMapping("chat.input", payload => WireCodec.TryReadUtf8Payload(payload, out string text) && WireCodec.StrictUtf8.GetByteCount(text) <= 512);
         GeneratedAbilityRegistry.RegisterAll();
     }
 
@@ -27,6 +29,12 @@ public sealed class GeneratedRegistry : EcsRegistry
     /// <inheritdoc />
     public override bool TryMapServerRpc(string componentId, string method, object?[] args, out string mappingId, out byte[] payload)
     {
+        if (string.Equals(componentId, "ChatComponent", StringComparison.Ordinal) && string.Equals(method, "SendMessage", StringComparison.Ordinal))
+        {
+            mappingId = "chat.input";
+            payload = WireCodec.EncodeUtf8(args.Length == 0 ? string.Empty : args[0]?.ToString() ?? string.Empty);
+            return true;
+        }
         mappingId = string.Empty;
         payload = Array.Empty<byte>();
         return false;
@@ -34,7 +42,33 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     /// <inheritdoc />
     public override bool TryApplyMappedInput(World world, InputCommandMessage input)
+        => TryApplyMappedInput(world, input, out _);
+
+    /// <inheritdoc />
+    public override bool TryApplyMappedInput(World world, InputCommandMessage input, out OperationExecutionOutcome outcome)
     {
+        outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_mapping");
+        if (string.Equals(input.MappingId, "chat.input", StringComparison.Ordinal))
+        {
+            outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_invalid_payload");
+            if (!WireCodec.TryReadUtf8Payload(input.Payload.Span, out string text)) return true;
+            outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_component");
+            if (!world.IsLive(input.Sender)) return true;
+            Component? component = world.NamedComponent(input.Sender, "ChatComponent");
+            if (component is null) return true;
+            component.SetRpcContext(new RpcContext(input.Sender, world.Tick));
+            if (component is IGeneratedOperationComponent operationComponent)
+            {
+                if (!operationComponent.TryDispatchServerRpc("SendMessage", new object[] { text }, out outcome))
+                    outcome = new(OperationOutcomeKind.ProtocolReject, OperationCommitFact.NotApplied, "operation_unknown_method");
+            }
+            else
+            {
+                Generated(component)?.DispatchServerRpc("SendMessage", new object[] { text });
+                outcome = new(OperationOutcomeKind.OutcomeUnavailable, OperationCommitFact.Unknown, "operation_outcome_unavailable");
+            }
+            return true;
+        }
         return false;
     }
 
@@ -73,6 +107,10 @@ public sealed class GeneratedRegistry : EcsRegistry
         {
             return BomberWorldEntityTemplate.CreateComponents();
         }
+        if (entityType == typeof(PlayerEntity))
+        {
+            return PlayerEntityTemplate.CreateComponents();
+        }
         throw new InvalidOperationException("Unknown entity type " + entityType.Name);
     }
 
@@ -110,6 +148,13 @@ public sealed class GeneratedRegistry : EcsRegistry
         if (entityType == typeof(BomberWorldEntity))
         {
             if (componentType == typeof(BomberMatchState)) return 0;
+            return -1;
+        }
+        if (entityType == typeof(PlayerEntity))
+        {
+            if (componentType == typeof(ObserverComponent)) return 0;
+            if (componentType == typeof(IdentityComponent)) return 1;
+            if (componentType == typeof(ChatComponent)) return 2;
             return -1;
         }
         return -1;
@@ -151,6 +196,13 @@ public sealed class GeneratedRegistry : EcsRegistry
             if (string.Equals(componentName, "BomberMatchState", StringComparison.Ordinal)) return 0;
             return -1;
         }
+        if (entityType == typeof(PlayerEntity))
+        {
+            if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
+            if (string.Equals(componentName, "IdentityComponent", StringComparison.Ordinal)) return 1;
+            if (string.Equals(componentName, "ChatComponent", StringComparison.Ordinal)) return 2;
+            return -1;
+        }
         return -1;
     }
 
@@ -163,6 +215,7 @@ public sealed class GeneratedRegistry : EcsRegistry
         if (entityType == typeof(BomberPickupItemEntity)) return "bomberPickupItem";
         if (entityType == typeof(BomberPlayerEntity)) return "bomberPlayer";
         if (entityType == typeof(BomberWorldEntity)) return "bomberWorld";
+        if (entityType == typeof(PlayerEntity)) return "player";
         throw new InvalidOperationException("Unknown entity type " + entityType.Name);
     }
 
@@ -180,6 +233,8 @@ public sealed class GeneratedRegistry : EcsRegistry
         { entityType = typeof(BomberPlayerEntity); return true; }
         if (string.Equals(name, "bomberWorld", StringComparison.Ordinal) || string.Equals(name, "BomberWorldEntity", StringComparison.Ordinal))
         { entityType = typeof(BomberWorldEntity); return true; }
+        if (string.Equals(name, "player", StringComparison.Ordinal) || string.Equals(name, "PlayerEntity", StringComparison.Ordinal))
+        { entityType = typeof(PlayerEntity); return true; }
         return false;
     }
 
@@ -223,7 +278,11 @@ public sealed class GeneratedRegistry : EcsRegistry
             new FieldAttributeDeclaration("BomberPickupItem.kind", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.hatCount", "i32", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("BomberPlayerState.protectedUntilTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPlayerState.respawnAtTick", "u64", "persistent", "replicated", "room-public")
+            new FieldAttributeDeclaration("BomberPlayerState.respawnAtTick", "u64", "persistent", "replicated", "room-public"),
+            new FieldAttributeDeclaration("ChatComponent.lastMessageText", "utf8-string", "persistent", "not-replicated", "server-only"),
+            new FieldAttributeDeclaration("ChatComponent.lastMessageTick", "u64", "persistent", "not-replicated", "server-only"),
+            new FieldAttributeDeclaration("IdentityComponent.accountId", "utf8-string", "persistent", "not-replicated", "server-only"),
+            new FieldAttributeDeclaration("IdentityComponent.name", "utf8-string", "persistent", "replicated", "room-public")
         };
     }
 
