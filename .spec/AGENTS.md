@@ -14,7 +14,7 @@
 
 ## 本仓验证入口
 
-`node .spec/tools/lint-extensions.mjs && node --test .spec/tools/lint-extensions.test.mjs && node --test clone-all.test.mjs && dotnet build LumioGame.sln && dotnet test LumioGame.sln`；`dotnet` 两条需要同级 `LumioGameRuntime` 检出(或 `LUMIO_RUNTIME_ROOT` 指向)。Runtime net10.0 的 Ecs/Simulation 编译期绑定 `Lumio.Engine.NativeLoader`，因此 **build 与 test 都要**同级 `LumioGameEngine`（目录名必须是 `LumioGameEngine`，或传 `-p:LumioArchRoot` / 环境变量 `LumioArchRoot`）。`dotnet test` 另用 `LUMIO_ENGINE_ROOT` 读架构仓 `engine/wire/*.json`，并要 `LUMIO_ENGINE_NATIVE_PATH` 指向现打的 native（架构仓 `node eng/dev-build.mjs --hfsm-test-support`），缺任一即失败,不跳过。本仓不得编译期引用引擎仓的 tests/fixtures/samples（ADR-117，守卫在测试工程里）。公共语义要改先去架构仓 `LumioGameEngine`，不在本仓自行改写。命令与排障细节见 [`testing.md`](knowledge/standards/testing.md)。
+`node .spec/tools/lint-extensions.mjs && node --test .spec/tools/lint-extensions.test.mjs && node --test clone-all.test.mjs && node --test eng/native-exemption-guard.test.mjs && dotnet build LumioGame.sln && dotnet test LumioGame.sln`；`dotnet` 两条需要同级 `LumioGameRuntime` 检出(或 `LUMIO_RUNTIME_ROOT` 指向)。Runtime net10.0 的 Ecs/Simulation 编译期绑定 `Lumio.Engine.NativeLoader`，因此 **build 与 test 都要**同级 `LumioGameEngine`（目录名必须是 `LumioGameEngine`，或传 `-p:LumioArchRoot` / 环境变量 `LumioArchRoot`）。`dotnet test` 另用 `LUMIO_ENGINE_ROOT` 读架构仓 `engine/wire/*.json`，并要 `LUMIO_ENGINE_NATIVE_PATH` 指向现打的 native（架构仓 `node eng/dev-build.mjs --hfsm-test-support`），缺任一即失败,不跳过。本仓不得编译期引用引擎仓的 tests/fixtures/samples（ADR-117，守卫在测试工程里）。公共语义要改先去架构仓 `LumioGameEngine`，不在本仓自行改写。命令与排障细节见 [`testing.md`](knowledge/standards/testing.md)。
 
 ## 本仓专有路由(美术 / 策划)
 
