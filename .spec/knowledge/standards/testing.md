@@ -56,6 +56,10 @@ dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Te
 
 公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「本仓验证入口」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。`dotnet test` 还要 `LUMIO_ENGINE_NATIVE_PATH` 指向现打的 native：测试世界由本仓的 `ServerWorldBoot` 启动，空间索引与 lumio-hfsm 都挂在 Native Context 上，缺 native 即 `LUMIO_ENGINE_NATIVE_MISSING` 失败——形态像代码红，先查环境（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。Scenario/Headless 与 formatter 命令随后续模块补进验证入口。
 
+**CI 与本地的分工（ADR-114 豁免）。** 本仓是公开仓，CI 在 GitHub 托管机上造不出 native（ADR-080；Owner 2026-09-23 裁定不扩大 `LUMIO_CI_PAT` 去检出私有的 NativeCore / VoxelEngine）。所以经 `ServerWorldBoot` 启动服务端世界的用例都带 `[RequiresEngineNative]` 标记，CI 用 `--filter-not-trait "RequiresEngineNative=true" --fail-skips on` 排除它们，其余用例真跑、跳过即失败。本地照常全量跑：有 native 时带标记的用例一起执行，没有 native 照旧 `LUMIO_ENGINE_NATIVE_MISSING` 失败——标记不是跳过。
+
+带标记的集合必须与架构仓 `standards/development-verification.md`「真 Native 覆盖豁免登记册」的 LumioGame 行**逐条相等**，由 `node eng/native-exemption-guard.mjs` 对账（CI 同一条命令，本地可复现）：多标、漏标、登记册多一行或少一行都红。**新增一条需要 native 的用例，必须同批做三件事**：加标记、在架构仓登记册加一行、在单里附带 native 的全量计数；只做其一 CI 就红。改 `modules/server-gameplay` 或其测试的单，按登记册的替代复核方式附一次带 native 的全量 `dotnet test` 计数。解除卡 R-00712（前置 R-00519 SDK 公开包）落地后，标记、过滤器、守卫与登记行一并删除。
+
 ## 本仓 Headless / 契约测试面
 
 - Component/Mapping/权限、GAS Content、Scenario 初始状态和业务断言。
