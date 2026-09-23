@@ -14,6 +14,10 @@
  * 再用全量列表（--solution，缺省本仓 LumioGame.sln，不带任何过滤）减去它——测试步骤里任何额外排除
  * （多一个过滤器、多一个值、缩小测试目标）都会落进「未执行」并要求登记；那一步写成守卫无法静态确定
  * 参数的形式（变量 / 表达式展开、管道、多条命令、多行），守卫直接报错，不猜。
+ * 列表只反映过滤与测试目标。让用例不执行、作业却可能照样绿、而列表看不出来的开关（只列不跑的
+ * --list-tests / --xunit-list、--help、--info、--explicit、--debug、--ignore-exit-code、配置文件与响应文件
+ * 间接传参），以及缺 `--fail-skips on`，守卫一律报错（退出码 2），不去重、不忽略（R-00741，清单见
+ * NON_EXECUTING_OPTIONS）。
  *
  * 用法（先 `dotnet build LumioGame.sln`；脚本只列用例，不构建、不执行用例）：
  *   node eng/native-exemption-guard.mjs [--register <登记册路径>] [--solution <全量基线 sln>]
@@ -21,7 +25,7 @@
  * 纯逻辑单测：node --test eng/native-exemption-guard.test.mjs（CI 同跑）。
  *
  * 退出码：0 逐条相等；1 集合不等或登记行无效；2 环境 / 用法错误（登记册缺失、工作流测试步骤无法解析、
- * dotnet 列表失败或无法对账）。
+ * 测试步骤含不执行用例的开关、dotnet 列表失败或无法对账）。
  *
  * 解除卡 R-00712（前置 R-00519 SDK 公开包）落地后，本脚本、CI 过滤与标记一并删除。
  */
@@ -37,8 +41,32 @@ const REPO_TAG = 'LumioGame'
 /** CI 测试步骤所在的工作流与步骤 id：排除条件的唯一来源。 */
 export const CI_WORKFLOW_RELATIVE = '.github/workflows/repository-policy.yml'
 export const CI_TEST_STEP_ID = 'dotnet-test'
-/** 守卫在 CI 参数之后追加的列表开关（参数里已有的不重复加）。 */
+/**
+ * 守卫在 CI 参数之后追加的列表开关。--list-tests 出现在 CI 参数里时已被 checkCiTestArgs 拒绝；
+ * 其余三个不影响执行，参数里已有的不重复加。
+ */
 const LIST_FLAGS = ['--no-build', '--list-tests', '--no-ansi', '--no-progress']
+/**
+ * CI 测试步骤里不得出现的选项（按选项名，大小写不敏感；`--x`、`-x`、`/x` 与 `=值` / `:值` 写法都认——
+ * 测试宿主实测接受 `--LIST-TESTS`、`-list-tests`、`--explicit:only`）。它们让用例不执行、作业却可能照样绿，
+ * 而 --list-tests 列表反映不出来，所以只能拒绝。依据 `dotnet test --help`（dotnet 10.0.400、
+ * Microsoft.Testing.Platform 2.3.3、xunit.v3）逐项核对；括号里是 2026-09-23 本地实测，都是在 CI 参数后追加该选项。
+ * `-?` / `/?` 已被 splitCommand 当作通配符拒绝。
+ */
+export const NON_EXECUTING_OPTIONS = Object.freeze({
+  'list-tests': '只列用例、不执行（exit 0，列出 16 条，一条没跑）',
+  help: '只打印帮助、不执行（--help / -h / /h 都 exit 0）',
+  h: '即 --help：只打印帮助、不执行',
+  info: '只打印测试程序信息、不执行',
+  'xunit-list': '只列 xunit 发现信息、不执行（exit 8；配 --ignore-exit-code 8 即 exit 0）',
+  explicit: 'on / only 改变哪些用例执行，--list-tests 反映不出来（only 时 16 条全部 Not run，带 --fail-skips on 仍 exit 0）；off 是缺省，不必写',
+  debug: '等调试器附加才执行，无人值守时挂起',
+  'ignore-exit-code': '把零用例、失败、中止等非成功退出码当成功',
+  'config-file': 'testconfig.json 能改变执行方式，守卫看不到文件内容（xUnit.explicit=only 时 16 条全部 Not run 且 exit 0）',
+  'xunit-config-filename': 'xunit.runner.json 能改变执行方式，守卫看不到文件内容',
+})
+/** --ignore-exit-code 的环境变量形式；-e 或进程环境里设它都生效（实测 exit 0、零用例）。 */
+const EXIT_CODE_IGNORE_ENV = 'TESTINGPLATFORM_EXITCODE_IGNORE'
 /** Microsoft Testing Platform 退出码 8 = 零用例：过滤器把某个程序集排空时列表仍完整，照常解析对账。 */
 const EXIT_ZERO_TESTS = 8
 
@@ -202,6 +230,52 @@ export function parseCiTestStep(workflowText) {
   return { line: line + 1, command, args: tokens.slice(2) }
 }
 
+/** 选项名：去掉 `--` / `-` / `/` 前缀与 `=值` / `:值` 后缀，转小写；不是选项返回 null。 */
+function optionName(token) {
+  const match = /^(?:--?|\/)([^=:]+)/.exec(token)
+  return match ? match[1].toLowerCase() : null
+}
+
+/**
+ * 拒绝让 CI 测试步骤不执行用例、却可能以 0 退出的写法（R-00741）：NON_EXECUTING_OPTIONS 里的选项、
+ * `@文件` 响应文件（dotnet test 会展开它，守卫看不到内容；实测里面写 --list-tests 即只列不跑、exit 0）、
+ * 工作流任何位置出现 TESTINGPLATFORM_EXITCODE_IGNORE，以及没有恰好一个 `--fail-skips on`
+ * （缺它或写成 off，跳过的用例不执行也不算失败）。任一即抛 GuardEnvError，列出全部问题。
+ */
+export function checkCiTestArgs(step, workflowText) {
+  const problems = []
+  const failSkips = []
+  step.args.forEach((token, i) => {
+    if (token.startsWith('@')) {
+      problems.push(`${token}：响应文件，dotnet test 会展开其中的参数，守卫看不到内容`)
+      return
+    }
+    const name = optionName(token)
+    if (name && Object.hasOwn(NON_EXECUTING_OPTIONS, name)) {
+      problems.push(`${token}：${NON_EXECUTING_OPTIONS[name]}`)
+    }
+    if (name === 'fail-skips') {
+      const inline = /^[^=:]*[=:](.*)$/.exec(token)
+      failSkips.push(inline ? inline[1] : step.args[i + 1])
+    }
+  })
+  if (failSkips.length !== 1 || String(failSkips[0]).toLowerCase() !== 'on') {
+    const seen = failSkips.length === 0 ? '没有 --fail-skips' : `--fail-skips 取值为 ${failSkips.map(value => value ?? '（缺值）').join('、')}`
+    problems.push(`${seen}：必须恰好一个 --fail-skips on，否则跳过的用例不执行也不算失败`)
+  }
+  const envLine = workflowText.split(/\r?\n/).findIndex(text => text.toUpperCase().includes(EXIT_CODE_IGNORE_ENV))
+  if (envLine !== -1) {
+    problems.push(`${CI_WORKFLOW_RELATIVE} 第 ${envLine + 1} 行出现 ${EXIT_CODE_IGNORE_ENV}：它是 --ignore-exit-code 的环境变量形式`)
+  }
+  if (problems.length > 0) {
+    throw new GuardEnvError([
+      `CI 测试步骤（${CI_WORKFLOW_RELATIVE} 第 ${step.line} 行，id: ${CI_TEST_STEP_ID}）含让用例不执行、作业却可能照样绿的写法，`
+        + '守卫不据此对账（--list-tests 列表反映不出它们，否则会把没执行的用例算成已执行）：',
+      ...problems.map(problem => `  ${problem}`),
+    ].join('\n'))
+  }
+}
+
 /**
  * 解析 `dotnet test --list-tests`（Microsoft Testing Platform 模式）的文本输出：每个程序集一块
  * `Discovered N tests in assembly - <path>`，其后 N 行两空格缩进的用例显示名；末尾一行摘要，
@@ -274,6 +348,7 @@ export function reconcile({ all, run, register }) {
 /** 守卫主体：listAll() 列全量基线，listCi(args) 按 CI 测试步骤参数列用例；两者都返回用例名集合。 */
 export function runGuard({ workflowText, registerText, listAll, listCi }) {
   const step = parseCiTestStep(workflowText)
+  checkCiTestArgs(step, workflowText)
   const register = parseRegister(registerText)
   const all = listAll()
   const run = listCi(step.args)

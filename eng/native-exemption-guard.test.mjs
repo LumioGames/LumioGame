@@ -1,5 +1,5 @@
 // node --test eng/native-exemption-guard.test.mjs
-// 守卫的纯逻辑单测：列表解析（单 / 多程序集）、CI 测试步骤参数提取、与登记册对账。不调 dotnet。
+// 守卫的纯逻辑单测：列表解析（单 / 多程序集）、CI 测试步骤参数提取、拒绝不执行用例的开关、与登记册对账。不调 dotnet。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -272,4 +272,115 @@ test('CI 列出的用例不在全量基线里 → 守卫前提不成立，报错
     listAll: () => new Set(),
     listCi: () => new Set(),
   }), GuardEnvError)
+})
+
+// R-00741：让 CI 测试步骤不执行用例、作业却可能照样绿、而 --list-tests 列表反映不出来的写法，
+// 守卫一律报错（GuardEnvError，脚本退出码 2），不去重、不据此列用例。
+const REAL_COMMAND = parseCiTestStep(REAL_WORKFLOW).command
+const withRun = command => {
+  const mutated = REAL_WORKFLOW.replace(`run: ${REAL_COMMAND}`, `run: ${command}`)
+  assert.notEqual(mutated, REAL_WORKFLOW)
+  return mutated
+}
+
+function guardOn(workflowText) {
+  const calls = []
+  const names = new Set(['A.Tests.Chat.SendsOne'])
+  const run = () => runGuard({
+    workflowText,
+    registerText: REGISTER([]),
+    listAll: () => { calls.push('all'); return names },
+    listCi: args => { calls.push(args); return names },
+  })
+  return { run, calls }
+}
+
+function assertRejected(workflowText, expected, label) {
+  const { run, calls } = guardOn(workflowText)
+  assert.throws(run, error => {
+    assert.ok(error instanceof GuardEnvError, `${label}：应为 GuardEnvError，实际 ${error}`)
+    for (const text of [expected].flat()) assert.ok(error.message.includes(text), `${label}：报错里应有「${text}」：\n${error.message}`)
+    return true
+  }, label)
+  assert.deepEqual(calls, [], `${label}：报错前不应列用例`)
+}
+
+test('卡面场景：测试步骤加 --list-tests → 报错并说明只列不跑，不去重、不列用例', () => {
+  assertRejected(withRun(`${REAL_COMMAND} --list-tests`), ['id: dotnet-test', '--list-tests：只列用例、不执行'], '--list-tests')
+})
+
+test('只列不跑 / 不执行 / 判定放水的选项逐个被拒；大小写、单横线、/ 前缀、=值 与 :值 写法都认', () => {
+  const rejected = [
+    ['--list-tests', '只列用例'],
+    ['--LIST-TESTS', '只列用例'],
+    ['-list-tests', '只列用例'],
+    ['--list-tests=true', '只列用例'],
+    ['--list-tests:true', '只列用例'],
+    ['--help', '只打印帮助'],
+    ['-h', '只打印帮助'],
+    ['/h', '只打印帮助'],
+    ['-HELP', '只打印帮助'],
+    ['--info', '只打印测试程序信息'],
+    ['-Info', '只打印测试程序信息'],
+    ['--xunit-list tests', '只列 xunit 发现信息'],
+    ['--explicit only', 'Not run'],
+    ['--Explicit=only', 'Not run'],
+    ['--explicit:on', 'Not run'],
+    ['--explicit off', 'off 是缺省'],
+    ['--debug', '等调试器'],
+    ['--ignore-exit-code 8', '非成功退出码当成功'],
+    ['--config-file ci.testconfig.json', 'testconfig.json'],
+    ['--xunit-config-filename ci.xunit.json', 'xunit.runner.json'],
+    ['@ci.rsp', '响应文件'],
+  ]
+  for (const [extra, reason] of rejected) {
+    const token = extra.split(' ')[0]
+    assertRejected(withRun(`${REAL_COMMAND} ${extra}`), [`${token}：`, reason], extra)
+  }
+})
+
+test('--fail-skips 必须恰好一个且为 on：缺、off、重复、缺值都拒', () => {
+  const base = REAL_COMMAND.replace(' --fail-skips on', '')
+  assert.notEqual(base, REAL_COMMAND)
+  const cases = {
+    缺: [base, '没有 --fail-skips'],
+    off: [`${base} --fail-skips off`, '--fail-skips 取值为 off'],
+    重复: [`${base} --fail-skips on --fail-skips off`, '--fail-skips 取值为 on、off'],
+    缺值: [`${base} --fail-skips`, '--fail-skips 取值为 （缺值）'],
+    等号off: [`${base} --fail-skips=off`, '--fail-skips 取值为 off'],
+  }
+  for (const [label, [command, reason]] of Object.entries(cases)) {
+    assertRejected(withRun(command), [reason, '必须恰好一个 --fail-skips on'], label)
+  }
+})
+
+test('TESTINGPLATFORM_EXITCODE_IGNORE（--ignore-exit-code 的环境变量形式）出现在 -e 参数或工作流 env 都拒', () => {
+  assertRejected(withRun(`${REAL_COMMAND} -e TESTINGPLATFORM_EXITCODE_IGNORE=8`), 'TESTINGPLATFORM_EXITCODE_IGNORE', '-e')
+  const envBlock = REAL_WORKFLOW.replace(/\njobs:\n/, "\nenv:\n  TESTINGPLATFORM_EXITCODE_IGNORE: '8'\n\njobs:\n")
+  assert.notEqual(envBlock, REAL_WORKFLOW)
+  assertRejected(envBlock, ['第 ', '行出现 TESTINGPLATFORM_EXITCODE_IGNORE'], 'env')
+})
+
+test('多处问题一次列全', () => {
+  const { run } = guardOn(withRun(`${REAL_COMMAND.replace(' --fail-skips on', '')} --list-tests --explicit only`))
+  assert.throws(run, error => ['--list-tests：', '--explicit：', '没有 --fail-skips'].every(text => error.message.includes(text)))
+})
+
+test('真实工作流与不影响「执行哪些用例、失败算不算失败」的选项照常对账', () => {
+  const allowed = [
+    REAL_COMMAND,
+    REAL_COMMAND.replace('--fail-skips on', '--fail-skips=on'),
+    `${REAL_COMMAND} --xunit-info`,
+    `${REAL_COMMAND} --stop-on-fail on`,
+    `${REAL_COMMAND} --minimum-expected-tests 16`,
+    `${REAL_COMMAND} --output Detailed --report-xunit-trx`,
+    `${REAL_COMMAND} -e LUMIO_TRACE=1`,
+  ]
+  for (const command of allowed) {
+    const workflow = command === REAL_COMMAND ? REAL_WORKFLOW : withRun(command)
+    const { run, calls } = guardOn(workflow)
+    const result = run()
+    assert.deepEqual(result.problems, [], command)
+    assert.equal(calls.length, 2, command)
+  }
 })
