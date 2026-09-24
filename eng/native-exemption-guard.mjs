@@ -14,10 +14,22 @@
  * 再用全量列表（--solution，缺省本仓 LumioGame.sln，不带任何过滤）减去它——测试步骤里任何额外排除
  * （多一个过滤器、多一个值、缩小测试目标）都会落进「未执行」并要求登记；那一步写成守卫无法静态确定
  * 参数的形式（变量 / 表达式展开、管道、多条命令、多行），守卫直接报错，不猜。
- * 列表只反映过滤与测试目标。让用例不执行、作业却可能照样绿、而列表看不出来的开关（只列不跑的
- * --list-tests / --xunit-list、--help、--info、--explicit、--debug、--ignore-exit-code、配置文件与响应文件
- * 间接传参），以及缺 `--fail-skips on`，守卫一律报错（退出码 2），不去重、不忽略（R-00741，清单见
- * NON_EXECUTING_OPTIONS）。
+ * 列表只反映过滤与测试目标。让用例不执行、作业却可能照样绿、而列表看不出来的写法，守卫一律报错（退出码 2），
+ * 不去重、不忽略：
+ *   - CI 测试步骤的开关（R-00741，清单见 NON_EXECUTING_OPTIONS）：只列不跑的 --list-tests / --xunit-list、
+ *     --help、--info、--explicit、--debug、--ignore-exit-code、配置文件与响应文件间接传参、MSBuild 属性 -p，
+ *     以及缺 `--fail-skips on`。
+ *   - 仓内配置文件（R-00742，清单见 EXECUTION_CONFIG_FILES）：xunit.runner.json、testconfig.json、
+ *     launchSettings.json、<项目>.run.json、Directory.Build.rsp。出现即报错，不解析内容——它们能写的键
+ *     （命令行选项、环境变量、各扩展自己的段）随版本增加，守卫判断不了哪些无害。
+ *   - 给测试宿主加启动参数的 MSBuild 属性（R-00742，清单见 RUN_ARGUMENT_PROPERTIES）：出现在仓内 MSBuild
+ *     文件、或工作流任何位置（MSBuild 把环境变量当属性读）都报错。
+ *   - xunit v3 显式用例（R-00742）：`[Fact(Explicit = true)]` 之类。--list-tests 照样列出它，缺省却不执行、
+ *     --fail-skips on 也不把它的 Not run 算失败，所以列表会把它算成「已执行」。守卫两路找：扫仓内 .cs 的
+ *     Explicit 标识符（EXPLICIT_IDENTIFIER，连运行时才展开的数据行也能看到），再用 xunit 自己的发现清单
+ *     （--xunit-list full）核对 CI 要执行的用例里有没有 `Explicit: true`（连仓外定义的特性也能看到）。
+ *     任一命中即报错，不计入「未执行」：显式用例在本地缺省也不执行，不是 ADR-114 允许的豁免手段，
+ *     若把它计入并允许登记，等于给登记册开了第二种豁免入口。
  *
  * 用法（先 `dotnet build LumioGame.sln`；脚本只列用例，不构建、不执行用例）：
  *   node eng/native-exemption-guard.mjs [--register <登记册路径>] [--solution <全量基线 sln>]
@@ -25,12 +37,13 @@
  * 纯逻辑单测：node --test eng/native-exemption-guard.test.mjs（CI 同跑）。
  *
  * 退出码：0 逐条相等；1 集合不等或登记行无效；2 环境 / 用法错误（登记册缺失、工作流测试步骤无法解析、
- * 测试步骤含不执行用例的开关、dotnet 列表失败或无法对账）。
+ * 测试步骤含不执行用例的开关、仓内有改变执行方式的配置文件或 MSBuild 属性、有显式用例、dotnet 列表失败
+ * 或无法对账）。
  *
  * 解除卡 R-00712（前置 R-00519 SDK 公开包）落地后，本脚本、CI 过滤与标记一并删除。
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -64,9 +77,72 @@ export const NON_EXECUTING_OPTIONS = Object.freeze({
   'ignore-exit-code': '把零用例、失败、中止等非成功退出码当成功',
   'config-file': 'testconfig.json 能改变执行方式，守卫看不到文件内容（xUnit.explicit=only 时 16 条全部 Not run 且 exit 0）',
   'xunit-config-filename': 'xunit.runner.json 能改变执行方式，守卫看不到文件内容',
+  // R-00742（2026-09-24 本地实测）：-p:TestingPlatformCommandLineArguments / RunArguments 设成 "--explicit only"，
+  // 非显式用例全部 Not run、带 --fail-skips on 仍 exit 0；-p 还会让测试步骤按另一套属性重新构建。
+  p: 'MSBuild 属性能给测试宿主加启动参数或改变构建（-p:TestingPlatformCommandLineArguments="--explicit only" 实测全部 Not run 且 exit 0），列表反映不出来',
+  property: '即 -p：MSBuild 属性能给测试宿主加启动参数或改变构建，列表反映不出来',
 })
 /** --ignore-exit-code 的环境变量形式；-e 或进程环境里设它都生效（实测 exit 0、零用例）。 */
 const EXIT_CODE_IGNORE_ENV = 'TESTINGPLATFORM_EXITCODE_IGNORE'
+
+/**
+ * 仓内会改变用例执行方式的配置文件（R-00742）：按文件名认（不分大小写），出现在仓内任何位置（含 bin/obj——
+ * 构建把 testconfig.json 复制成输出目录里的 <程序集>.testconfig.json，宿主读的是那一份）即报错，不解析内容。
+ * 括号里是 2026-09-24 本地实测（dotnet 10.0.400、Microsoft.Testing.Platform 2.3.3、xunit.v3 4.0.0，CI 同一条命令）。
+ */
+export const EXECUTION_CONFIG_FILES = Object.freeze([
+  {
+    pattern: /^(?:.+\.)?testconfig\.json$/i,
+    reason: 'Microsoft Testing Platform 配置文件，可写 xUnit 段、commandLineOptions、environmentVariables'
+      + '（输出目录里放 {"xUnit":{"explicit":"only"}}：非显式用例全部 Not run、exit 0）',
+  },
+  {
+    pattern: /^(?:.+\.)?xunit\.runner\.json$/i,
+    reason: 'xunit v3 配置文件，宿主从输出目录读取（methodDisplay 实测生效；explicit 键实测不生效），'
+      + '可改显示名、并行、理论预枚举等，守卫不逐键判定',
+  },
+  {
+    pattern: /^launchSettings\.json$/i,
+    reason: 'dotnet test 按启动配置给测试宿主加参数与环境变量'
+      + '（Properties/launchSettings.json 写 commandLineArgs "--explicit only"：非显式用例全部 Not run、exit 0）',
+  },
+  {
+    pattern: /.\.run\.json$/i,
+    reason: '<项目>.run.json 与 launchSettings.json 同等（项目目录里放同样内容：非显式用例全部 Not run、exit 0）',
+  },
+  {
+    pattern: /^Directory\.Build\.rsp$/i,
+    reason: 'MSBuild 自动读取的响应文件，等于给每次构建追加参数（里面写 -property:TestingPlatformCommandLineArguments=…，'
+      + '带构建的 dotnet test 实测测试宿主以 exit 5 结束，说明参数到了宿主；守卫判断不了哪些写法无害）',
+  },
+])
+
+/**
+ * 给测试宿主加启动参数或换启动命令的 MSBuild 属性 / 目标（R-00742）。按名字认（不分大小写，MSBuild 属性名本就
+ * 不分大小写）：出现在仓内 MSBuild 文件（*.csproj、*.props、*.targets 等，不含 bin/obj 下的还原生成物）或工作流
+ * 任何位置（MSBuild 把环境变量当属性读）即报错。括号里是 2026-09-24 本地实测或未实测的依据。
+ */
+export const RUN_ARGUMENT_PROPERTIES = Object.freeze({
+  TestingPlatformCommandLineArguments: 'Directory.Build.props 里设 "--explicit only" 实测非显式用例全部 Not run、exit 0',
+  RunArguments: '-p:RunArguments="--explicit only" 实测同上',
+  StartArguments: '-p 与同名环境变量设 "--explicit only" 实测同上',
+  RunCommand: 'dotnet test 用它启动测试宿主，可换成别的程序（按 SDK targets 同源推定，未单独实测）',
+  StartProgram: 'SDK targets 用它决定 RunCommand（未单独实测）',
+  ComputeRunArguments: 'SDK 留给工具改写 RunCommand / RunArguments 的目标（未单独实测）',
+})
+const RUN_ARGUMENT_PATTERN = new RegExp(`\\b(${Object.keys(RUN_ARGUMENT_PROPERTIES).join('|')})\\b`, 'i')
+const MSBUILD_FILE = /\.(?:\w*proj|props|targets)$/i
+
+/**
+ * xunit v3 显式用例的标识符（R-00742）：Explicit（特性命名参数、数据行、TheoryDataRow 初始化器、派生特性构造函数）、
+ * ExplicitAsNullable、ExplicitOption*、WithExplicit。只扫 .cs（不含 bin/obj），区分大小写；守卫不解析 C#，
+ * 注释或字符串里出现也算——请改写避开这个词。`explicit operator` 是小写关键字，不算。
+ */
+export const EXPLICIT_IDENTIFIER = /\b(?:With)?Explicit(?:AsNullable|Option\w*)?\b/
+/** 遍历仓内文件时跳过的目录名。 */
+const WALK_SKIP_DIRS = new Set(['.git', 'node_modules'])
+/** 源码类扫描（.cs、MSBuild 文件）额外跳过的构建输出目录名；配置文件扫描不跳过它们。 */
+const BUILD_OUTPUT_DIRS = new Set(['bin', 'obj'])
 /** Microsoft Testing Platform 退出码 8 = 零用例：过滤器把某个程序集排空时列表仍完整，照常解析对账。 */
 const EXIT_ZERO_TESTS = 8
 
@@ -239,8 +315,9 @@ function optionName(token) {
 /**
  * 拒绝让 CI 测试步骤不执行用例、却可能以 0 退出的写法（R-00741）：NON_EXECUTING_OPTIONS 里的选项、
  * `@文件` 响应文件（dotnet test 会展开它，守卫看不到内容；实测里面写 --list-tests 即只列不跑、exit 0）、
- * 工作流任何位置出现 TESTINGPLATFORM_EXITCODE_IGNORE，以及没有恰好一个 `--fail-skips on`
- * （缺它或写成 off，跳过的用例不执行也不算失败）。任一即抛 GuardEnvError，列出全部问题。
+ * 工作流任何位置出现 TESTINGPLATFORM_EXITCODE_IGNORE 或 RUN_ARGUMENT_PROPERTIES 里的属性名（MSBuild 把环境变量
+ * 当属性读，R-00742），以及没有恰好一个 `--fail-skips on`（缺它或写成 off，跳过的用例不执行也不算失败）。
+ * 任一即抛 GuardEnvError，列出全部问题。
  */
 export function checkCiTestArgs(step, workflowText) {
   const problems = []
@@ -263,15 +340,102 @@ export function checkCiTestArgs(step, workflowText) {
     const seen = failSkips.length === 0 ? '没有 --fail-skips' : `--fail-skips 取值为 ${failSkips.map(value => value ?? '（缺值）').join('、')}`
     problems.push(`${seen}：必须恰好一个 --fail-skips on，否则跳过的用例不执行也不算失败`)
   }
-  const envLine = workflowText.split(/\r?\n/).findIndex(text => text.toUpperCase().includes(EXIT_CODE_IGNORE_ENV))
+  const workflowLines = workflowText.split(/\r?\n/)
+  const envLine = workflowLines.findIndex(text => text.toUpperCase().includes(EXIT_CODE_IGNORE_ENV))
   if (envLine !== -1) {
     problems.push(`${CI_WORKFLOW_RELATIVE} 第 ${envLine + 1} 行出现 ${EXIT_CODE_IGNORE_ENV}：它是 --ignore-exit-code 的环境变量形式`)
   }
+  workflowLines.forEach((text, i) => {
+    const property = RUN_ARGUMENT_PATTERN.exec(text)?.[1]
+    if (property) {
+      problems.push(`${CI_WORKFLOW_RELATIVE} 第 ${i + 1} 行出现 ${property}：MSBuild 把同名环境变量当属性读，`
+        + `它能给测试宿主加启动参数（${RUN_ARGUMENT_PROPERTIES[canonicalProperty(property)]}）`)
+    }
+  })
   if (problems.length > 0) {
     throw new GuardEnvError([
       `CI 测试步骤（${CI_WORKFLOW_RELATIVE} 第 ${step.line} 行，id: ${CI_TEST_STEP_ID}）含让用例不执行、作业却可能照样绿的写法，`
         + '守卫不据此对账（--list-tests 列表反映不出它们，否则会把没执行的用例算成已执行）：',
       ...problems.map(problem => `  ${problem}`),
+    ].join('\n'))
+  }
+}
+
+/** RUN_ARGUMENT_PROPERTIES 的键（MSBuild 属性名不分大小写，报错时用规范写法取依据）。 */
+function canonicalProperty(name) {
+  return Object.keys(RUN_ARGUMENT_PROPERTIES).find(key => key.toLowerCase() === name.toLowerCase())
+}
+
+/**
+ * 仓内扫描（R-00742）：files 为相对仓根、以 / 分隔的全部文件路径，read(path) 返回文本。
+ * 找三类东西——EXECUTION_CONFIG_FILES 里的配置文件（按文件名，含 bin/obj）、MSBuild 文件里的
+ * RUN_ARGUMENT_PROPERTIES、.cs 里的 EXPLICIT_IDENTIFIER（后两类不含 bin/obj）。任一即抛 GuardEnvError，列出全部命中。
+ */
+export function checkRepoFiles(files, read) {
+  const problems = []
+  for (const path of [...files].sort()) {
+    const segments = path.split('/')
+    const name = segments.at(-1)
+    const config = EXECUTION_CONFIG_FILES.find(({ pattern }) => pattern.test(name))
+    if (config) problems.push(`${path}：${config.reason}`)
+    if (segments.slice(0, -1).some(segment => BUILD_OUTPUT_DIRS.has(segment.toLowerCase()))) continue
+    const source = MSBUILD_FILE.test(name) ? RUN_ARGUMENT_PATTERN : /\.cs$/i.test(name) ? EXPLICIT_IDENTIFIER : null
+    if (!source) continue
+    read(path).split(/\r?\n/).forEach((text, i) => {
+      const hit = source.exec(text)?.[0]
+      if (!hit) return
+      problems.push(source === EXPLICIT_IDENTIFIER
+        ? `${path} 第 ${i + 1} 行出现 ${hit}：xunit 显式用例缺省不执行，--list-tests 照样列出、--fail-skips on 也不算失败`
+        : `${path} 第 ${i + 1} 行出现 ${hit}：给测试宿主加启动参数（${RUN_ARGUMENT_PROPERTIES[canonicalProperty(hit)]}）`)
+    })
+  }
+  if (problems.length > 0) {
+    throw new GuardEnvError([
+      '仓内有让用例不执行、作业却可能照样绿的配置或写法，守卫不据此对账（--list-tests 列表反映不出它们，'
+        + '否则会把没执行的用例算成已执行；R-00742）：',
+      ...problems.map(problem => `  ${problem}`),
+    ].join('\n'))
+  }
+}
+
+/**
+ * 解析 `dotnet test <CI 参数> --xunit-list full` 的文本输出（xunit v3 4.0.0 实测格式）：每条用例一行
+ * `- Display name: "<显示名>"`，显式用例在其后几行带 `Explicit:     true`。返回 [{ display, name, explicit }]，
+ * name 去掉 Theory 参数后缀，与 parseListing 同口径。
+ */
+export function parseXunitDiscovery(output) {
+  const entries = []
+  for (const line of output.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split(/\r?\n/)) {
+    const display = /^\s*- Display name: "(.*)"\s*$/.exec(line)?.[1]
+    if (display !== undefined) {
+      entries.push({ display, name: display.replace(/\(.*\)$/, ''), explicit: false })
+    } else if (/^\s*Explicit:\s+true\s*$/.test(line)) {
+      if (entries.length === 0) throw new GuardEnvError(`无法解析 xunit 发现清单：Explicit 行之前没有用例。原始输出：\n${output}`)
+      entries.at(-1).explicit = true
+    }
+  }
+  return entries
+}
+
+/**
+ * 用 xunit 自己的发现清单核对 CI 要执行的用例里没有显式用例（R-00742）。清单必须与 CI 列表逐条对上，
+ * 否则当作无法解析（失败关闭，不把空清单当成「没有显式用例」）。
+ */
+export function checkNoExplicit(discovered, run) {
+  const names = new Set(discovered.map(entry => entry.name))
+  const missing = [...run].filter(name => !names.has(name))
+  const extra = [...names].filter(name => !run.has(name))
+  if (missing.length > 0 || extra.length > 0) {
+    throw new GuardEnvError(`xunit 发现清单（--xunit-list full）与 CI 列表对不上，无法确认有没有显式用例：`
+      + `清单缺 ${missing.length} 条、多 ${extra.length} 条。\n  ${[...missing, ...extra].sort().join('\n  ')}`)
+  }
+  const explicit = discovered.filter(entry => entry.explicit).map(entry => entry.display).sort()
+  if (explicit.length > 0) {
+    throw new GuardEnvError([
+      `CI 测试步骤要执行的用例里有 ${explicit.length} 条 xunit 显式用例（Explicit: true）：缺省不执行，`
+        + '--list-tests 照样列出、--fail-skips on 也不算失败，守卫会把它算成已执行（R-00742）。'
+        + '显式用例不是 ADR-114 的豁免手段：去掉 Explicit，需要 native 的改用 [RequiresEngineNative] 并登记。',
+      ...explicit.map(name => `  ${name}`),
     ].join('\n'))
   }
 }
@@ -345,13 +509,19 @@ export function reconcile({ all, run, register }) {
   return { excluded, exempted, problems }
 }
 
-/** 守卫主体：listAll() 列全量基线，listCi(args) 按 CI 测试步骤参数列用例；两者都返回用例名集合。 */
-export function runGuard({ workflowText, registerText, listAll, listCi }) {
+/**
+ * 守卫主体：repoFiles / readRepoFile 为仓内全部文件与读取函数（checkRepoFiles），listAll() 列全量基线，
+ * listCi(args) 按 CI 测试步骤参数列用例（都返回用例名集合），discoverCi(args) 按同一参数返回 xunit 发现清单
+ * （parseXunitDiscovery 的结果）。先做不调 dotnet 的检查，任一不过即报错、不列用例。
+ */
+export function runGuard({ workflowText, registerText, repoFiles, readRepoFile, listAll, listCi, discoverCi }) {
   const step = parseCiTestStep(workflowText)
   checkCiTestArgs(step, workflowText)
+  checkRepoFiles(repoFiles, readRepoFile)
   const register = parseRegister(registerText)
   const all = listAll()
   const run = listCi(step.args)
+  checkNoExplicit(discoverCi(step.args), run)
   return { step, register, all, run, ...reconcile({ all, run, register }) }
 }
 
@@ -362,6 +532,7 @@ export function formatReport(result, { registerPath }) {
     `ADR-114 真 Native 豁免对账（${REPO_TAG}）`,
     `登记册：${registerPath}（${REPO_TAG} 行 ${register.names.length} 条）`,
     `CI 测试步骤（${CI_WORKFLOW_RELATIVE} 第 ${step.line} 行，id: ${CI_TEST_STEP_ID}）：${step.command}`,
+    '执行方式检查：CI 测试步骤无不执行用例的开关，仓内无改变执行方式的配置文件、MSBuild 启动参数属性与显式用例（R-00741 / R-00742）',
     `用例 ${all.size} 条：CI 执行 ${run.size} 条，排除 ${excluded.length} 条`,
     `${excluded.length} 未执行，其中 ${exempted.length} 条已登记豁免（ADR-114）`,
     ...excluded.map(name => `  - ${name}${registered.has(name) ? '' : '    <- 未登记'}`),
@@ -378,14 +549,41 @@ export function formatReport(result, { registerPath }) {
   return { out, err: [], exitCode: 0 }
 }
 
-function listTests(args) {
-  const full = ['test', ...args, ...LIST_FLAGS.filter(flag => !args.includes(flag))]
-  const run = spawnSync('dotnet', full, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+/**
+ * 按参数跑一次 dotnet test 的列表模式，返回原始输出；退出码只接受 0 与 8（零用例）。
+ * flags 里的开关 CI 参数已有的不重复加（选项值如 full 总是追加）。
+ */
+function dotnetList(args, flags) {
+  const full = ['test', ...args, ...flags.filter(flag => !(flag.startsWith('--') && args.includes(flag)))]
+  const run = spawnSync('dotnet', full, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 })
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`
   if (run.error || (run.status !== 0 && run.status !== EXIT_ZERO_TESTS)) {
     throw new GuardEnvError(`dotnet ${full.join(' ')} 失败（退出码 ${run.status ?? run.error}）。先 dotnet build LumioGame.sln。\n${output}`)
   }
-  return parseListing(output)
+  return output
+}
+
+const listTests = args => parseListing(dotnetList(args, LIST_FLAGS))
+/** xunit 自己的发现清单：只列不跑，恒以退出码 8（零用例）结束。 */
+const discoverTests = args => parseXunitDiscovery(dotnetList(args, ['--no-build', '--xunit-list', 'full', '--no-ansi', '--no-progress']))
+
+/** 仓内全部文件（相对仓根、以 / 分隔）。跟随指向目录的符号链接，按真实路径去重防环；跳过 WALK_SKIP_DIRS。 */
+function listRepoFiles(root) {
+  const files = []
+  const seen = new Set()
+  const walk = (dir, prefix) => {
+    const real = realpathSync(dir)
+    if (seen.has(real)) return
+    seen.add(real)
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = prefix + entry.name
+      const isDir = entry.isDirectory() || (entry.isSymbolicLink() && existsSync(join(dir, entry.name)) && statSync(join(dir, entry.name)).isDirectory())
+      if (!isDir) files.push(path)
+      else if (!WALK_SKIP_DIRS.has(entry.name)) walk(join(dir, entry.name), `${path}/`)
+    }
+  }
+  walk(root, '')
+  return files
 }
 
 function main() {
@@ -394,8 +592,11 @@ function main() {
   const result = runGuard({
     workflowText: readFileSync(join(REPO_ROOT, CI_WORKFLOW_RELATIVE), 'utf8'),
     registerText: readFileSync(registerPath, 'utf8'),
+    repoFiles: listRepoFiles(REPO_ROOT),
+    readRepoFile: path => readFileSync(join(REPO_ROOT, path), 'utf8'),
     listAll: () => listTests(['--solution', options.solution]),
     listCi: args => listTests(args),
+    discoverCi: args => discoverTests(args),
   })
   const report = formatReport(result, { registerPath })
   for (const line of report.out) console.log(line)
