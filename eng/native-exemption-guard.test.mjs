@@ -1,5 +1,6 @@
 // node --test eng/native-exemption-guard.test.mjs
-// 守卫的纯逻辑单测：列表解析（单 / 多程序集）、CI 测试步骤参数提取、拒绝不执行用例的开关、与登记册对账。不调 dotnet。
+// 守卫的纯逻辑单测：列表解析（单 / 多程序集）、CI 测试步骤参数提取、拒绝不执行用例的开关、仓内配置文件 /
+// MSBuild 启动参数属性 / 显式用例、xunit 发现清单解析、与登记册对账。不调 dotnet。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -9,9 +10,11 @@ import { fileURLToPath } from 'node:url'
 import {
   CI_WORKFLOW_RELATIVE,
   GuardEnvError,
+  checkRepoFiles,
   formatReport,
   parseCiTestStep,
   parseListing,
+  parseXunitDiscovery,
   runGuard,
   splitCommand,
 } from './native-exemption-guard.mjs'
@@ -206,13 +209,41 @@ const REGISTER = (names) => [
   '',
 ].join('\n')
 
+// `dotnet test ... --xunit-list full` 的输出（xunit v3 4.0.0 经 dotnet test 10.0.400 实测格式：宿主退出码 8，
+// 标准输出缩进在 `Standard output:` 之下；显式用例带 `Explicit:     true`，trait 在其后）。
+const DLL_PATH = '/w/game/modules/a/tests/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|x64)'
+function xunitFull(displayNames, explicit = []) {
+  return [
+    `Running tests from ${DLL_PATH}`,
+    `${DLL_PATH} Zero tests ran (20s 487ms)`,
+    'Exit code: 8',
+    '  Standard output: ',
+    '  Assembly: A.Tests',
+    ...displayNames.flatMap(name => [
+      `    - Display name: "${name}"`,
+      `      Test method:  ${name.replace(/\(.*\)$/, '')}`,
+      '      ID:           dc1786e48563b9b949ce9253dbc0dea3fb6cb8c86950018ce70045a2621ba79a',
+      ...(explicit.includes(name) ? ['      Explicit:     true'] : []),
+      '      Traits:',
+      '        "Area": ["chat"]',
+    ]),
+    '',
+    'Test run summary: Zero tests ran',
+    '  total: 0',
+    'Test run completed with non-success exit code: 8 (see: https://aka.ms/testingplatform/exitcodes)',
+  ].join('\n')
+}
+
 function guard(workflowText, registered) {
   const calls = []
   const result = runGuard({
     workflowText,
     registerText: REGISTER(registered),
+    repoFiles: [],
+    readRepoFile: () => '',
     listAll: () => { calls.push('all'); return simulateList([]) },
     listCi: args => { calls.push(args); return simulateList(args) },
+    discoverCi: args => parseXunitDiscovery(xunitFull([...simulateList(args)])),
   })
   return { result, calls, report: formatReport(result, { registerPath: 'register.md' }) }
 }
@@ -260,18 +291,17 @@ test('变异：测试步骤去掉过滤器 → 登记行没被排除而红；登
 })
 
 test('CI 列出的用例不在全量基线里 → 守卫前提不成立，报错而不是放行', () => {
-  assert.throws(() => runGuard({
+  const inputs = (all, run) => ({
     workflowText: WITH_TRAIT,
     registerText: REGISTER(NATIVE),
-    listAll: () => new Set(['A.Tests.Chat.SendsOne']),
-    listCi: () => new Set(['A.Tests.Chat.SendsOne', 'C.Tests.Elsewhere.One']),
-  }), GuardEnvError)
-  assert.throws(() => runGuard({
-    workflowText: WITH_TRAIT,
-    registerText: REGISTER(NATIVE),
-    listAll: () => new Set(),
-    listCi: () => new Set(),
-  }), GuardEnvError)
+    repoFiles: [],
+    readRepoFile: () => '',
+    listAll: () => new Set(all),
+    listCi: () => new Set(run),
+    discoverCi: () => parseXunitDiscovery(xunitFull(run)),
+  })
+  assert.throws(() => runGuard(inputs(['A.Tests.Chat.SendsOne'], ['A.Tests.Chat.SendsOne', 'C.Tests.Elsewhere.One'])), GuardEnvError)
+  assert.throws(() => runGuard(inputs([], [])), GuardEnvError)
 })
 
 // R-00741：让 CI 测试步骤不执行用例、作业却可能照样绿、而 --list-tests 列表反映不出来的写法，
@@ -283,14 +313,17 @@ const withRun = command => {
   return mutated
 }
 
-function guardOn(workflowText) {
+function guardOn(workflowText, { repo = {}, discovery = xunitFull(['A.Tests.Chat.SendsOne']) } = {}) {
   const calls = []
   const names = new Set(['A.Tests.Chat.SendsOne'])
   const run = () => runGuard({
     workflowText,
     registerText: REGISTER([]),
+    repoFiles: Object.keys(repo),
+    readRepoFile: path => repo[path],
     listAll: () => { calls.push('all'); return names },
     listCi: args => { calls.push(args); return names },
+    discoverCi: args => { calls.push(['discover', ...args]); return parseXunitDiscovery(discovery) },
   })
   return { run, calls }
 }
@@ -332,6 +365,12 @@ test('只列不跑 / 不执行 / 判定放水的选项逐个被拒；大小写�
     ['--config-file ci.testconfig.json', 'testconfig.json'],
     ['--xunit-config-filename ci.xunit.json', 'xunit.runner.json'],
     ['@ci.rsp', '响应文件'],
+    ['-p:TestingPlatformCommandLineArguments=--list-tests', 'MSBuild 属性'],
+    ['-p:StartArguments=x', 'MSBuild 属性'],
+    ['/p:RunArguments=x', 'MSBuild 属性'],
+    ['--property:Configuration=Release', 'MSBuild 属性'],
+    ['-property:A=b', 'MSBuild 属性'],
+    ['-p A=b', 'MSBuild 属性'],
   ]
   for (const [extra, reason] of rejected) {
     const token = extra.split(' ')[0]
@@ -381,6 +420,172 @@ test('真实工作流与不影响「执行哪些用例、失败算不算失败�
     const { run, calls } = guardOn(workflow)
     const result = run()
     assert.deepEqual(result.problems, [], command)
-    assert.equal(calls.length, 2, command)
+    assert.equal(calls.length, 3, command)
   }
+})
+
+test('工作流任何位置出现给测试宿主加启动参数的 MSBuild 属性名（环境变量形式）都拒，不分大小写', () => {
+  for (const [name, value] of [
+    ['StartArguments', '--explicit only'],
+    ['RUNARGUMENTS', '--list-tests'],
+    ['TestingPlatformCommandLineArguments', '--explicit only'],
+    ['RunCommand', '/usr/bin/true'],
+    ['StartProgram', '/usr/bin/true'],
+  ]) {
+    const envBlock = REAL_WORKFLOW.replace(/\njobs:\n/, `\nenv:\n  ${name}: '${value}'\n\njobs:\n`)
+    assert.notEqual(envBlock, REAL_WORKFLOW)
+    assertRejected(envBlock, [`行出现 ${name}`, 'MSBuild 把同名环境变量当属性读'], name)
+  }
+  assertRejected(withRun(`${REAL_COMMAND} -e StartArguments=x`), '行出现 StartArguments', '-e')
+})
+
+// R-00742：仓内会改变执行方式、而列表与参数检查都看不到的文件与写法，守卫一律报错（退出码 2），不解析内容、不列用例。
+const CLEAN_REPO = {
+  'modules/a/tests/A.Tests/A.Tests.csproj': '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup></Project>',
+  'modules/a/tests/A.Tests/ChatTests.cs': '[Fact]\npublic void SendsOne() { }\n// explicit conversion 与 explicit operator 是小写，不算；ExplicitlyNamed 也不算\npublic void ExplicitlyNamed() { }',
+  'modules/a/tests/A.Tests/bin/Debug/net10.0/A.Tests.deps.json': '{}',
+  'modules/a/tests/A.Tests/packages.lock.json': '{}',
+  'global.json': '{"test":{"runner":"Microsoft.Testing.Platform"}}',
+  'integration/hello/evidence-run1/round-1/bot-result.json': '{}',
+  'Directory.Build.props': '<Project><PropertyGroup><Nullable>enable</Nullable></PropertyGroup></Project>',
+}
+
+test('干净的仓：配置文件、MSBuild 属性、显式用例检查都通过，照常列用例对账', () => {
+  const { run, calls } = guardOn(REAL_WORKFLOW, { repo: CLEAN_REPO })
+  assert.deepEqual(run().problems, [])
+  assert.equal(calls.length, 3)
+})
+
+test('改变执行方式的配置文件按文件名拒（不分大小写，含 bin/obj 输出目录），不解析内容、不列用例', () => {
+  const T = 'modules/a/tests/A.Tests'
+  const cases = {
+    [`${T}/xunit.runner.json`]: 'xunit v3 配置文件',
+    [`${T}/A.Tests.xunit.runner.json`]: 'xunit v3 配置文件',
+    [`${T}/bin/Debug/net10.0/xunit.runner.json`]: 'xunit v3 配置文件',
+    [`${T}/XUnit.Runner.JSON`]: 'xunit v3 配置文件',
+    [`${T}/testconfig.json`]: 'Microsoft Testing Platform 配置文件',
+    [`${T}/bin/Debug/net10.0/A.Tests.testconfig.json`]: 'Microsoft Testing Platform 配置文件',
+    [`${T}/Properties/launchSettings.json`]: '启动配置',
+    [`${T}/launchsettings.json`]: '启动配置',
+    [`${T}/A.Tests.run.json`]: '<项目>.run.json',
+    'Directory.Build.rsp': 'MSBuild 自动读取的响应文件',
+    [`${T}/directory.build.rsp`]: 'MSBuild 自动读取的响应文件',
+  }
+  for (const [path, reason] of Object.entries(cases)) {
+    // 内容写成「看起来无害」的空对象也拒：守卫不逐键判定。
+    const { run, calls } = guardOn(REAL_WORKFLOW, { repo: { ...CLEAN_REPO, [path]: '{}' } })
+    assert.throws(run, error => {
+      assert.ok(error instanceof GuardEnvError, `${path}：应为 GuardEnvError，实际 ${error}`)
+      assert.ok(error.message.includes(`  ${path}：`) && error.message.includes(reason) && error.message.includes('R-00742'), `${path}：\n${error.message}`)
+      return true
+    }, path)
+    assert.deepEqual(calls, [], `${path}：报错前不应列用例`)
+  }
+})
+
+test('仓内 MSBuild 文件里给测试宿主加启动参数的属性 / 目标都拒，不分大小写；bin/obj 下的还原生成物不扫', () => {
+  const T = 'modules/a/tests/A.Tests'
+  const cases = [
+    ['Directory.Build.props', '<Project>\n  <PropertyGroup>\n    <TestingPlatformCommandLineArguments>--explicit only</TestingPlatformCommandLineArguments>\n  </PropertyGroup>\n</Project>', 'TestingPlatformCommandLineArguments', 3],
+    [`${T}/A.Tests.csproj`, '<Project Sdk="Microsoft.NET.Sdk">\n<PropertyGroup><RunArguments>--list-tests</RunArguments></PropertyGroup>\n</Project>', 'RunArguments', 2],
+    ['Directory.Build.targets', '<Project>\n<PropertyGroup><startarguments>--explicit only</startarguments></PropertyGroup>\n</Project>', 'startarguments', 2],
+    ['eng/run.targets', '<Project>\n  <Target Name="ComputeRunArguments" />\n</Project>', 'ComputeRunArguments', 2],
+    ['eng/x.proj', '<Project><PropertyGroup><RunCommand>true</RunCommand></PropertyGroup></Project>', 'RunCommand', 1],
+    ['Directory.Build.props', '<Project><Target Name="T"><CreateProperty Value="--list-tests"><Output TaskParameter="Value" PropertyName="StartProgram" /></CreateProperty></Target></Project>', 'StartProgram', 1],
+  ]
+  for (const [path, text, hit, line] of cases) {
+    const { run, calls } = guardOn(REAL_WORKFLOW, { repo: { ...CLEAN_REPO, [path]: text } })
+    assert.throws(run, error => {
+      assert.ok(error instanceof GuardEnvError, `${path}：应为 GuardEnvError，实际 ${error}`)
+      assert.ok(error.message.includes(`${path} 第 ${line} 行出现 ${hit}：给测试宿主加启动参数`), `${path}：\n${error.message}`)
+      return true
+    }, path)
+    assert.deepEqual(calls, [], `${path}：报错前不应列用例`)
+  }
+  const generated = { ...CLEAN_REPO, [`${T}/obj/A.Tests.csproj.nuget.g.props`]: '<RunArguments>x</RunArguments>' }
+  assert.deepEqual(guardOn(REAL_WORKFLOW, { repo: generated }).run().problems, [])
+})
+
+test('仓内 .cs 出现 xunit 显式用例的标识符即拒（Explicit / ExplicitAsNullable / ExplicitOption* / WithExplicit），不管值是什么', () => {
+  const T = 'modules/a/tests/A.Tests'
+  const cases = [
+    ['[Fact(Explicit = true)]', 'Explicit'],
+    ['[Fact(Explicit=true)]', 'Explicit'],
+    ['[Theory(Explicit = true)]', 'Explicit'],
+    ['[InlineData(2, Explicit = true)]', 'Explicit'],
+    ['[MemberData(nameof(Rows), Explicit = true)]', 'Explicit'],
+    ['new TheoryDataRow<int>(2) { Explicit = true },', 'Explicit'],
+    ['    Explicit = true; // 派生特性的构造函数里', 'Explicit'],
+    ['public override bool Explicit => true;', 'Explicit'],
+    ['[Fact(Explicit = false)]', 'Explicit'],
+    ['new TheoryDataRow<int>(2).WithExplicit(true),', 'WithExplicit'],
+    ['ExplicitAsNullable = true,', 'ExplicitAsNullable'],
+    ['options.ExplicitOption = ExplicitOption.Only;', 'ExplicitOption'],
+  ]
+  for (const [code, hit] of cases) {
+    const path = `${T}/ProbeTests.cs`
+    const { run, calls } = guardOn(REAL_WORKFLOW, { repo: { ...CLEAN_REPO, [path]: `namespace A.Tests;\n\n${code}\n` } })
+    assert.throws(run, error => {
+      assert.ok(error instanceof GuardEnvError, `${code}：应为 GuardEnvError，实际 ${error}`)
+      assert.ok(error.message.includes(`${path} 第 3 行出现 ${hit}：xunit 显式用例缺省不执行`), `${code}：\n${error.message}`)
+      return true
+    }, code)
+    assert.deepEqual(calls, [], `${code}：报错前不应列用例`)
+  }
+  const buildOutput = { ...CLEAN_REPO, [`${T}/obj/Debug/net10.0/Generated.cs`]: '[Fact(Explicit = true)]' }
+  assert.deepEqual(guardOn(REAL_WORKFLOW, { repo: buildOutput }).run().problems, [], 'bin/obj 下的生成物不扫')
+})
+
+test('多处问题一次列全：配置文件、MSBuild 属性、显式标识符', () => {
+  const repo = {
+    ...CLEAN_REPO,
+    'modules/a/tests/A.Tests/Properties/launchSettings.json': '{}',
+    'Directory.Build.props': '<RunArguments>x</RunArguments>',
+    'modules/a/tests/A.Tests/ProbeTests.cs': '[Fact(Explicit = true)]',
+  }
+  const { run } = guardOn(REAL_WORKFLOW, { repo })
+  assert.throws(run, error => ['launchSettings.json：', '出现 RunArguments', '出现 Explicit'].every(text => error.message.includes(text)))
+})
+
+// 本地实测（xunit v3 4.0.0、dotnet test 10.0.400）：临时加的 [Fact(Explicit = true)]、派生特性构造函数里设 Explicit、
+// [InlineData(2, Explicit = true)] 三种都出现在 --list-tests 列表里，xunit 发现清单则给它们标 `Explicit: true`。
+test('xunit 发现清单：解析显示名、去 Theory 参数、认出 Explicit 行', () => {
+  const output = xunitFull(['A.Tests.Chat.SendsOne', 'A.Tests.Chat.Rows(value: 1)', 'A.Tests.Chat.Rows(value: 2)'], ['A.Tests.Chat.Rows(value: 2)'])
+  assert.deepEqual(parseXunitDiscovery(output), [
+    { display: 'A.Tests.Chat.SendsOne', name: 'A.Tests.Chat.SendsOne', explicit: false },
+    { display: 'A.Tests.Chat.Rows(value: 1)', name: 'A.Tests.Chat.Rows', explicit: false },
+    { display: 'A.Tests.Chat.Rows(value: 2)', name: 'A.Tests.Chat.Rows', explicit: true },
+  ])
+  assert.throws(() => parseXunitDiscovery('  Explicit:     true\n'), GuardEnvError, 'Explicit 行之前没有用例')
+})
+
+test('CI 要执行的用例里有显式用例 → 报错并列出显示名，不计入「未执行」', () => {
+  const discovery = xunitFull(['A.Tests.Chat.SendsOne'], ['A.Tests.Chat.SendsOne'])
+  const { run, calls } = guardOn(REAL_WORKFLOW, { discovery })
+  assert.throws(run, error => {
+    assert.ok(error instanceof GuardEnvError, `应为 GuardEnvError，实际 ${error}`)
+    for (const text of ['1 条 xunit 显式用例（Explicit: true）', '  A.Tests.Chat.SendsOne', '不是 ADR-114 的豁免手段']) {
+      assert.ok(error.message.includes(text), `报错里应有「${text}」：\n${error.message}`)
+    }
+    return true
+  })
+  // 发现清单按 CI 测试步骤的同一组参数取。
+  assert.deepEqual(calls.at(-1), ['discover', ...parseCiTestStep(REAL_WORKFLOW).args])
+})
+
+test('xunit 发现清单与 CI 列表对不上（空、缺、多）→ 失败关闭，不当成没有显式用例', () => {
+  for (const [label, discovery] of Object.entries({
+    空清单: '',
+    缺一条: xunitFull([]),
+    多一条: xunitFull(['A.Tests.Chat.SendsOne', 'A.Tests.Chat.Other']),
+  })) {
+    const { run } = guardOn(REAL_WORKFLOW, { discovery })
+    assert.throws(run, error => error instanceof GuardEnvError && error.message.includes('对不上'), label)
+  }
+})
+
+test('checkRepoFiles 只读源码类文件（.cs 与 MSBuild 文件），不读配置文件与其他文件', () => {
+  const read = []
+  checkRepoFiles(Object.keys(CLEAN_REPO), path => { read.push(path); return CLEAN_REPO[path] })
+  assert.deepEqual(read.sort(), ['Directory.Build.props', 'modules/a/tests/A.Tests/A.Tests.csproj', 'modules/a/tests/A.Tests/ChatTests.cs'])
 })
