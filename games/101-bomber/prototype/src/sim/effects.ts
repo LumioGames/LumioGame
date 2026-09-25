@@ -68,6 +68,7 @@ export function settleEffects(w: World): void {
       proto: { HatsLost: dropKinds.length, SourceBombNetEntityIdRaw: e.bomb },
     }
     emit(w, ev)
-    w.pendingDeaths.push({ victim: p.id, killer: e.killer, tick: t, dropKinds })
+    // dropSkills：W0 桩为空，技能切片在这里掷技能掉落（D8）。
+    w.pendingDeaths.push({ victim: p.id, killer: e.killer, tick: t, dropKinds, dropSkills: [] })
   }
 }

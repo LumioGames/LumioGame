@@ -8,6 +8,7 @@ import {
   type AnimalId,
   type BomberConfig,
   type BomberEvent,
+  type CharacterPick,
   type ProtoRules,
   type TickFrame,
 } from '../../contract'
@@ -16,7 +17,7 @@ import type { SimPlayerSpec } from '../local-sim'
 import { advanceRing, startFinalCircle } from '../final-circle'
 import { createWorld } from '../match-phase'
 import { stepWorld } from '../step'
-import { centerMilli, countResource, findPlayer, type SimBomb, type SimPlayer, type World } from '../world'
+import { centerMilli, countResource, findPlayer, makeBomb, type SimBomb, type SimPlayer, type World } from '../world'
 
 /**
  * 测试夹具：直接驱动内部 World（不经 Bot）。`makeWorld` 默认清空积木 / 木箱 / 水，只留外圈与铁皮柱，
@@ -24,8 +25,16 @@ import { centerMilli, countResource, findPlayer, type SimBomb, type SimPlayer, t
  */
 const ANIMALS: readonly AnimalId[] = ['rabbit', 'duck', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog']
 
-export function specs(n: number): SimPlayerSpec[] {
-  return Array.from({ length: n }, (_, i) => ({ name: `P${i}`, isBot: i > 0, animal: ANIMALS[i % 8], slot: i }))
+/**
+ * n 个玩家规格。picks 给第 i 个玩家选角（原型扩展 ADR 0030）；缺省 / null = 无角色（第 3 轮行为，旧用例不受影响）。
+ */
+export function specs(n: number, picks?: readonly (CharacterPick | null | undefined)[]): SimPlayerSpec[] {
+  return Array.from({ length: n }, (_, i) => {
+    const s: SimPlayerSpec = { name: `P${i}`, isBot: i > 0, animal: ANIMALS[i % 8], slot: i }
+    const pick = picks?.[i]
+    if (pick) s.character = pick
+    return s
+  })
 }
 
 export interface WorldOpts {
@@ -37,6 +46,8 @@ export interface WorldOpts {
   clear?: boolean
   /** 默认 true：直接进入 Running。 */
   running?: boolean
+  /** 按玩家序选角（见 {@link specs}）；缺省全员无角色。 */
+  picks?: readonly (CharacterPick | null | undefined)[]
 }
 
 export function makeWorld(opts: WorldOpts = {}): World {
@@ -45,7 +56,7 @@ export function makeWorld(opts: WorldOpts = {}): World {
     seed: opts.seed ?? 1,
     config: { ...DEFAULT_CONFIG, ...opts.cfg },
     rules: { ...DEFAULT_RULES, playerCount: n, ...opts.rules },
-    players: specs(n),
+    players: specs(n, opts.picks),
   })
   w.out = []
   if (opts.clear !== false) {
@@ -96,34 +107,20 @@ export function setGround(w: World, x: number, y: number, g: BlockType): void {
 export function addBomb(w: World, owner: number, x: number, y: number, fuseIn = 1, power = 2): SimBomb {
   const o = findPlayer(w, owner)
   if (o && o.capacity > 0) o.capacity--
-  const b: SimBomb = {
-    id: w.nextId++,
-    owner,
-    cell: cell(w, x, y),
-    bornTick: w.t,
-    fuseEndTick: w.t + fuseIn,
-    power,
-    chainId: 0,
-    explodedAtTick: 0,
-    dangerUntilTick: 0,
-    burnUntilTick: 0,
-    reachUp: 0,
-    reachDown: 0,
-    reachLeft: 0,
-    reachRight: 0,
-    covered: [],
-    hit: [],
-    seq: 0,
-  }
+  const b: SimBomb = makeBomb({ id: w.nextId++, owner, cell: cell(w, x, y), bornTick: w.t, fuseEndTick: w.t + fuseIn, power })
   w.bombs.push(b)
   return b
 }
 
 export const BOMB: AbilityActivation = { ability: '放弹' }
 
-export function mv(d: 方向, turn = false): AbilityActivation {
-  return { ability: '移动', 输入: { 方向: d, 按了转弯: turn } }
+/** 移动输入；side = 副方向（原型扩展 ADR 0032），缺省不带该键。 */
+export function mv(d: 方向, turn = false, side?: 方向): AbilityActivation {
+  return side === undefined ? { ability: '移动', 输入: { 方向: d, 按了转弯: turn } } : { ability: '移动', 输入: { 方向: d, 按了转弯: turn, 副方向: side } }
 }
+
+/** 技能键（原型扩展 ADR 0030）。 */
+export const SKILL: AbilityActivation = { ability: '技能' }
 
 export function step(w: World, inputs: Record<number, AbilityActivation[]> = {}): TickFrame {
   const m = new Map<number, AbilityActivation[]>()

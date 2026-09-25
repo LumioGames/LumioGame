@@ -1,10 +1,12 @@
-import type { AnimalId, BomberConfig, ProtoRules, TickFrame, U64, AbilityActivation } from '../contract'
+import { MatchPhase, PickupKind } from '../contract'
+import type { AnimalId, BomberConfig, CharacterPick, ProtoRules, SkillId, TickFrame, U64, AbilityActivation } from '../contract'
 import { hashWorld } from './hash'
 import { removePlayerFromWorld } from './hats'
 import { createWorld } from './match-phase'
+import { createPickup } from './pickup'
 import { buildFrame } from './snapshot'
 import { stepWorld } from './step'
-import type { World } from './world'
+import { findPlayer, isAlive, playerCell, type World } from './world'
 
 /**
  * TS 规则替身（Stage 0a 内核的浏览器内替身）。将来整体换成引擎 Replica 适配器，表现层不改。
@@ -15,6 +17,11 @@ export interface SimPlayerSpec {
   isBot: boolean
   animal: AnimalId
   slot: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0030）：选角。缺省 = 无角色、无技能（旧测试夹具行为不变）；
+   * 'auto' = 每局开局按均衡原则分配（Bot）。有角色时 name / animal 由角色决定（真人保留 name）。
+   */
+  character?: CharacterPick
 }
 
 export interface LocalSimOptions {
@@ -28,6 +35,8 @@ export class LocalSim {
   private readonly w: World
   private readonly slotIds = new Map<number, U64>()
   private frame: TickFrame
+  /** 开发钩子排队的技能糖：[玩家 id, 技能]，每个进行中的 Tick 放一颗。 */
+  private devCandies: [U64, SkillId][] = []
 
   constructor(opts: LocalSimOptions) {
     this.w = createWorld(opts)
@@ -44,8 +53,37 @@ export class LocalSim {
 
   /** 推进一个 Tick。inputs 以玩家 NetEntityIdRaw 为键，在 ApplyInputs 相按玩家 id 升序生效。 */
   step(inputs: ReadonlyMap<U64, readonly AbilityActivation[]>): TickFrame {
+    this.flushDevCandy()
     this.frame = stepWorld(this.w, inputs)
     return this.frame
+  }
+
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0030）：改选角，**下一局** startMatch 生效（D15）。null = 无角色。
+   */
+  setPick(slot: number, pick: CharacterPick | null): void {
+    const p = findPlayer(this.w, this.playerIdForSlot(slot))
+    if (p) p.pick = pick
+  }
+
+  /**
+   * 开发钩子（只在 import.meta.env.DEV 下由宿主调用）：接下来每个进行中的 Tick 在该玩家脚下放一颗技能糖
+   * （等级 skillCandyLevel，经 createPickup，PickupSpawned Source = 'crate'）。糖是普通拾取物，照常进哈希。
+   */
+  devSpawnSkillCandies(id: U64, skills: readonly SkillId[]): void {
+    for (const s of skills) this.devCandies.push([id, s])
+  }
+
+  private flushDevCandy(): void {
+    const w = this.w
+    if (this.devCandies.length === 0) return
+    if (w.match.phase !== MatchPhase.Running && w.match.phase !== MatchPhase.Endgame) return
+    const [id, skill] = this.devCandies[0]
+    const p = findPlayer(w, id)
+    if (!p || !isAlive(p)) return
+    this.devCandies.shift()
+    const cell = playerCell(w, p)
+    createPickup(w, cell, PickupKind.SkillCandy, { source: 'crate', droppedBy: 0, fromCell: cell }, { skill, level: w.rules.skillCandyLevel })
   }
 
   playerIdForSlot(slot: number): U64 {

@@ -141,6 +141,9 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         return a.移速当前 < ctx.rules.speedCapMilli
       case PickupKind.HealthPack:
         return a.血量当前 < ctx.config.maxHealthPoints
+      case PickupKind.SkillCandy:
+        // W0 桩：Bot 切片接入 resolveSkillPickup 判断值不值得捡；在此之前不去捡技能糖。
+        return false
     }
   }
   let best: Goal | null = null

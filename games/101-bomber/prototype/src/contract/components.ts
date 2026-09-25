@@ -54,9 +54,20 @@ export interface BomberHatPile {
   ExpireAtTick: U64
 }
 
-/** 0–2 为契约值；3 血包是**原型扩展**（design §8.5 Stage 1，契约 Kind 只到 2）。 */
-export const PickupKind = { FirePlus: 0, BombPlus: 1, SpeedPlus: 2, HealthPack: 3 } as const
+/**
+ * 0–2 为契约值；3 血包是**原型扩展**（design §8.5 Stage 1，契约 Kind 只到 2）。
+ * 4 SkillCandy 是**原型扩展（NON-CONTRACT，ADR 0030）**：技能糖，具体技能与等级在 `PickupView.skill`。
+ */
+export const PickupKind = { FirePlus: 0, BombPlus: 1, SpeedPlus: 2, HealthPack: 3, SkillCandy: 4 } as const
 export type PickupKind = (typeof PickupKind)[keyof typeof PickupKind]
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0030 / 0028）：是不是强化（火力 / 炸弹 / 速度）。帽数 = 强化级数，
+ * 血包与技能糖都不算帽子（D5）——凡是「除血包以外都是强化」的旧写法一律改用它。
+ */
+export function isPowerupKind(k: PickupKind): boolean {
+  return k === PickupKind.FirePlus || k === PickupKind.BombPlus || k === PickupKind.SpeedPlus
+}
 
 export interface BomberPickupItem {
   Kind: PickupKind

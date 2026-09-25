@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PickupKind } from '../../contract'
 import { removePlayerFromWorld } from '../hats'
-import { newId, type World } from '../world'
+import { makePickup, newId, type World } from '../world'
 import { addBomb, BOMB, cell, evs, giveLevels, hats, makeWorld, player, put, run, startCircle, step } from './helpers'
 
 /**
@@ -12,7 +12,7 @@ import { addBomb, BOMB, cell, evs, giveLevels, hats, makeWorld, player, put, run
 const K = PickupKind
 
 function drop(w: World, x: number, y: number, kind: PickupKind, droppedBy = 0): void {
-  w.pickups.push({ id: newId(w), cell: cell(w, x, y), kind, bornTick: w.t - 1, droppedBy })
+  w.pickups.push(makePickup({ id: newId(w), cell: cell(w, x, y), kind, bornTick: w.t - 1, droppedBy }))
 }
 
 function snapHats(f: ReturnType<typeof step>, id: number): number {
@@ -222,7 +222,7 @@ describe('final-circle elimination drops everything', () => {
     giveLevels(w, 2, 1, 1, 0)
     v.health = 0
     startCircle(w)
-    w.pendingDeaths.push({ victim: 2, killer: 1, tick: w.t, dropKinds: [] })
+    w.pendingDeaths.push({ victim: 2, killer: 1, tick: w.t, dropKinds: [], dropSkills: [] })
     const f = step(w)
     expect(evs(f, 'PlayerEliminated')).toHaveLength(1)
     expect(hats(w, 2)).toBe(0)

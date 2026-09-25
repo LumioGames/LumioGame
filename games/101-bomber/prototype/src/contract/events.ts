@@ -1,5 +1,7 @@
 import type { BlockType, PickupKind } from './components'
 import type { U64 } from './ids'
+import type { 方向 } from './input'
+import type { SkillId, SkillSlot } from './skills'
 
 /**
  * 事件面。前 11 个是服务器权威事件，字段名逐字照抄
@@ -18,7 +20,7 @@ export interface BomberCell {
 }
 
 /**
- * PlayerDied.Cause：0 = 爆炸、1 = 溺水、2 = 燃烧（Stage 5，原型不产生）；
+ * PlayerDied.Cause：0 = 爆炸、1 = 溺水、2 = 燃烧（契约值；原型第 4 轮由火焰光环 / 火墙产生，ADR 0030）；
  * 3 = 毒圈是**原型扩展**（design §12 / ADR 0025，契约 v2 只到 2，扩值待契约修订）。
  */
 export const DeathCause = { Bomb: 0, Drown: 1, Burn: 2, Poison: 3 } as const
@@ -104,7 +106,14 @@ export interface PickupTaken {
   PickerNetEntityIdRaw: U64
   Kind: PickupKind
   Tick: U64
-  proto?: { PickupNetEntityIdRaw: U64; Cell: BomberCell }
+  proto?: {
+    PickupNetEntityIdRaw: U64
+    Cell: BomberCell
+    /** 原型扩展（NON-CONTRACT，ADR 0030）：Kind = SkillCandy 时为糖里的技能。 */
+    Skill?: SkillId
+    /** 原型扩展（NON-CONTRACT，ADR 0030）：Kind = SkillCandy 时为糖的等级。 */
+    SkillLevel?: number
+  }
 }
 
 /** NewHatKingNetEntityIdRaw == 0 表示当前无帽王（§9.3）。 */
@@ -115,9 +124,14 @@ export interface HatKingChanged {
   Tick: U64
 }
 
+/** 原型扩展（NON-CONTRACT，ADR 0031）：对局结束原因——只剩一人 / 全员倒下 / 时间到。 */
+export type MatchEndReason = 'lastSurvivor' | 'allDown' | 'timeUp'
+
 export interface MatchEnded {
   type: 'MatchEnded'
   Tick: U64
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：结束原因与领奖台中央（= 名次表第一行）。 */
+  proto?: { Reason: MatchEndReason; WinnerNetEntityIdRaw: U64 }
 }
 
 // ---- 以下为原型表现事件（NON-CONTRACT，presentationOnly）----
@@ -145,6 +159,10 @@ export interface PickupSpawned {
   DroppedByNetEntityIdRaw: U64
   /** 喷出起点（死亡格 / 宝箱格）；砖块掉落时等于 Cell。 */
   FromCell: BomberCell
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：Kind = SkillCandy 时为糖里的技能（Source = 'death' 也包括死者掉出的技能）。 */
+  Skill?: SkillId
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：Kind = SkillCandy 时为糖的等级。 */
+  SkillLevel?: number
 }
 
 export interface PickupDestroyed {
@@ -206,7 +224,10 @@ export interface HatMinted {
   Tick: U64
 }
 
-/** 死者掉出的强化（design §8.5，ADR 0025）。Kinds 与随后的 PickupSpawned(Source='death') 一一对应。 */
+/**
+ * 死者掉出的强化（design §8.5，ADR 0025）。Kinds 与随后 `isPowerupKind(Kind)` 为真的 PickupSpawned(Source='death')
+ * 一一对应（技能糖另见 {@link SkillsDropped}，不算帽子，D5）。
+ */
 export interface PowerupsDropped {
   type: 'PowerupsDropped'
   presentationOnly: true
@@ -288,6 +309,106 @@ export interface ChestOpened {
   Tick: U64
 }
 
+// ---- 以下为第 4 轮角色 / 技能表现事件（原型扩展 NON-CONTRACT，ADR 0030，presentationOnly）----
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：主动技能施放成功（CD 从本 Tick 起算）。 */
+export interface SkillActivated {
+  type: 'SkillActivated'
+  presentationOnly: true
+  PlayerNetEntityIdRaw: U64
+  Skill: SkillId
+  Level: number
+  Cell: BomberCell
+  /** 闪现 / 冲刺的落点；其余 = Cell。 */
+  ToCell: BomberCell
+  /** 泡泡 / 光环 / 火墙的结束 Tick（不含）；瞬发为 0。 */
+  UntilTick: U64
+  CdUntilTick: U64
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：按了技能键但没放出来（不耗 CD）。 */
+export interface SkillFailed {
+  type: 'SkillFailed'
+  presentationOnly: true
+  PlayerNetEntityIdRaw: U64
+  /** 主动槽里的技能；空槽为 null。 */
+  Skill: SkillId | null
+  Reason: 'cooldown' | 'noSkill' | 'noLanding' | 'frozen'
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：吃技能糖——装进空槽或升级。 */
+export interface SkillGained {
+  type: 'SkillGained'
+  presentationOnly: true
+  PlayerNetEntityIdRaw: U64
+  Skill: SkillId
+  Slot: SkillSlot
+  /** 之后的等级。 */
+  Level: number
+  How: 'equip' | 'levelUp'
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：两个基础技能进化成组合技（D4 / D6）。 */
+export interface SkillEvolved {
+  type: 'SkillEvolved'
+  presentationOnly: true
+  PlayerNetEntityIdRaw: U64
+  From: readonly [SkillId, SkillId]
+  Combo: SkillId
+  Slot: SkillSlot
+  /** 进化腾出来的槽；原地进化为 null。 */
+  FreedSlot: SkillSlot | null
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：死者掉出的技能糖（D8）；随后每颗糖一条 PickupSpawned(Source='death')。 */
+export interface SkillsDropped {
+  type: 'SkillsDropped'
+  presentationOnly: true
+  VictimNetEntityIdRaw: U64
+  Skills: readonly { Skill: SkillId; Level: number }[]
+  /** 专属 + 拾取的组合技掉了拾取那半、退化回专属时非空。 */
+  Devolved: { Combo: SkillId; To: SkillId } | null
+  Cell: BomberCell
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：回血（棉花兔回春，design §12 的角色例外）。 */
+export interface PlayerHealed {
+  type: 'PlayerHealed'
+  presentationOnly: true
+  NetEntityIdRaw: U64
+  Points: number
+  HealthPointsLeft: number
+  Source: 'regen'
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：炸弹被踢出（design §8.4 踢弹 / 弹射泡泡）。 */
+export interface BombKicked {
+  type: 'BombKicked'
+  presentationOnly: true
+  BombNetEntityIdRaw: U64
+  KickerNetEntityIdRaw: U64
+  Dir: 方向
+  FromCell: BomberCell
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：被冰冻弹 / 冰川弹冻住，UntilTick（不含）前不接受任何输入。 */
+export interface PlayerFrozen {
+  type: 'PlayerFrozen'
+  presentationOnly: true
+  VictimNetEntityIdRaw: U64
+  SourceBombNetEntityIdRaw: U64
+  SourceBombOwnerNetEntityIdRaw: U64
+  UntilTick: U64
+  Tick: U64
+}
+
 export type ContractEvent =
   | BombPlaced
   | BombExploded
@@ -318,6 +439,14 @@ export type PresentationEvent =
   | ChestSpawned
   | ChestHit
   | ChestOpened
+  | SkillActivated
+  | SkillFailed
+  | SkillGained
+  | SkillEvolved
+  | SkillsDropped
+  | PlayerHealed
+  | BombKicked
+  | PlayerFrozen
 
 export type BomberEvent = ContractEvent | PresentationEvent
 export type BomberEventType = BomberEvent['type']

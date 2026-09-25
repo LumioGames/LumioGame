@@ -1,12 +1,13 @@
-import { MatchPhase } from '../contract'
+import { MatchPhase, 方向 } from '../contract'
 import type { LocalSimOptions } from './local-sim'
 import { advanceRing, finalCircleTrigger, startFinalCircle } from './final-circle'
 import { evaluateHatKing, processDeaths } from './hats'
 import { generateMap } from './mapgen'
 import { placeAtMatchStart } from './respawn'
 import { mixSeed, Sfc32 } from './rng'
+import { assignRoster } from './roster'
 import { tickTable } from './ticks'
-import { aliveCount, countResource, emit, resetAbilityFields, resetAttributes, type SimPlayer, type World } from './world'
+import { aliveCount, countResource, emit, emptySlots, resetAbilityFields, resetAttributes, type SimPlayer, type World } from './world'
 
 /**
  * 对局阶段机（契约 BomberMatchState.Phase；design §4 / §4.1 / §4.2 / §13）：
@@ -50,6 +51,23 @@ export function createWorld(opts: LocalSimOptions): World {
       poisonTicks: 0,
       capacityDebt: 0,
       eliminated: false,
+      pick: spec.character ?? null,
+      character: null,
+      name: spec.name,
+      animal: spec.animal,
+      facing: 方向.下,
+      slots: emptySlots(),
+      cdFromTick: 0,
+      cdUntilTick: 0,
+      bubbleUntilTick: 0,
+      auraUntilTick: 0,
+      frozenUntilTick: 0,
+      freezeImmuneUntilTick: 0,
+      burnReadyTick: 0,
+      regenFromTick: 0,
+      regenNextTick: 0,
+      blinkTick: 0,
+      eliminatedTick: 0,
     }
     resetAttributes(p, cfg)
     return p
@@ -71,6 +89,7 @@ export function createWorld(opts: LocalSimOptions): World {
     bombs: [],
     pickups: [],
     chests: [],
+    fireWalls: [],
     nextId: n + 1,
     explodeSeq: 1,
     rng: streams(seed),
@@ -86,7 +105,10 @@ export function createWorld(opts: LocalSimOptions): World {
   return w
 }
 
-/** 开一局：新地图、清场、玩家复位并摆到出生候选。在构造时与上一局结算结束的 Tick 调用。 */
+/**
+ * 开一局：新地图、清场、玩家复位、分配角色（原型扩展 ADR 0030，roster.ts）并摆到出生候选。
+ * 在构造时与上一局结算结束的 Tick 调用。
+ */
 export function startMatch(w: World, index: number): void {
   const matchSeed = mixSeed(w.seed, index)
   w.rng = streams(matchSeed)
@@ -98,6 +120,7 @@ export function startMatch(w: World, index: number): void {
   w.bombs = []
   w.pickups = []
   w.chests = []
+  w.fireWalls = []
   w.finalCircle = null
   w.resourceInitial = countResource(w)
   w.pendingDeaths = []
@@ -113,6 +136,7 @@ export function startMatch(w: World, index: number): void {
     p.capacityDebt = 0
     p.eliminated = false
   }
+  assignRoster(w)
   placeAtMatchStart(w)
   const prevKing = w.match.hatKing
   const startTick = w.t + w.ticks.warmup
@@ -127,6 +151,9 @@ function streams(seed: number): World['rng'] {
     spawn: new Sfc32(seed, 'spawn'),
     chest: new Sfc32(seed, 'chest'),
     regen: new Sfc32(seed, 'regen'),
+    // 第 4 轮新增（ADR 0030）：各流按名字独立派生，加流不改变旧流的序列。
+    skill: new Sfc32(seed, 'skill'),
+    roster: new Sfc32(seed, 'roster'),
   }
 }
 

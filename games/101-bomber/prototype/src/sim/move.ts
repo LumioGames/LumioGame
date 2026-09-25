@@ -8,9 +8,6 @@ import { CELL_MILLI, HALF_MILLI, chestAt, playerCell, unexplodedBombAt, type Sim
  * 垂直方向保留 turnBufferTicks，期间沿原方向继续走、走到路口自动转。
  */
 
-/** design §6.1「连续转角只做轻度吸附」：上一次吸附结束后这么多 Tick 内再吸附，用弱阈值。 */
-const ASSIST_REPEAT_WINDOW = 6
-
 /** 可通行 = 砖层为空（水可走）且无未爆炸弹、无宝箱；爆炸态炸弹不挡路。自己所在格从不检查（离格穿透由此而来）。 */
 export function passableCell(w: World, x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= w.size || y >= w.size) return false
@@ -29,7 +26,8 @@ const NO_MOVE: Advance = { mx: 0, my: 0, moved: false, slid: false }
 
 function assistTolerance(w: World, p: SimPlayer): { tol: number; fresh: boolean } {
   if (p.lastAssistTick === w.t - 1) return { tol: p.assistTol, fresh: false }
-  const recent = w.t - p.lastAssistTick <= ASSIST_REPEAT_WINDOW
+  // design §6.1「连续转角只做轻度吸附」：上一次吸附后 assistRepeatWindowTicks 内再吸附用弱阈值（ADR 0032 移入配表）。
+  const recent = w.t - p.lastAssistTick <= w.rules.assistRepeatWindowTicks
   return { tol: recent ? w.rules.cornerAssistRepeatMilli : w.rules.cornerAssistMilli, fresh: true }
 }
 
@@ -146,4 +144,11 @@ export function applyMove(w: World, p: SimPlayer, input: 移动技能输入, dan
 function entersDanger(w: World, p: SimPlayer, r: Advance, danger: Uint8Array): boolean {
   const to = Math.floor(r.my / CELL_MILLI) * w.size + Math.floor(r.mx / CELL_MILLI)
   return to !== playerCell(w, p) && danger[to] === 1
+}
+
+/** 冻结 / 闪现等「本 Tick 不走」：清掉在途移动（缓冲转向、接续），下一 Tick 从静止起步（ADR 0030 / 0032）。 */
+export function haltMove(p: SimPlayer): void {
+  p.moveAcc = 0
+  p.lastDir = 方向.停
+  p.turnBuf = 0
 }

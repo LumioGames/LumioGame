@@ -1,10 +1,11 @@
-import { BlockType, MATERIALS, PickupKind, type PickupKindName } from '../contract'
+import { BlockType, MATERIALS, PickupKind, type PickupKindName, type SkillId } from '../contract'
 import {
   CELL_MILLI,
   HALF_MILLI,
   cellOfIdx,
   emit,
   isAlive,
+  makePickup,
   newId,
   playerCell,
   type SimPickup,
@@ -32,9 +33,16 @@ export interface PickupOrigin {
   fromCell: number
 }
 
-export function createPickup(w: World, cell: number, kind: PickupKind, origin?: PickupOrigin): SimPickup {
+/** skill：Kind = SkillCandy 时糖里的技能与等级（原型扩展 NON-CONTRACT，ADR 0030）。 */
+export function createPickup(
+  w: World,
+  cell: number,
+  kind: PickupKind,
+  origin?: PickupOrigin,
+  skill?: { skill: SkillId; level: number } | null,
+): SimPickup {
   const o = origin ?? { source: 'brick', droppedBy: 0, fromCell: cell }
-  const it: SimPickup = { id: newId(w), cell, kind, bornTick: w.t, droppedBy: o.droppedBy }
+  const it = makePickup({ id: newId(w), cell, kind, bornTick: w.t, droppedBy: o.droppedBy, skill: skill?.skill ?? null, level: skill?.level })
   w.pickups.push(it)
   emit(w, {
     type: 'PickupSpawned',
@@ -46,6 +54,7 @@ export function createPickup(w: World, cell: number, kind: PickupKind, origin?: 
     Source: o.source,
     DroppedByNetEntityIdRaw: o.droppedBy,
     FromCell: cellOfIdx(w, o.fromCell),
+    ...(it.skill !== null ? { Skill: it.skill, SkillLevel: it.level } : {}),
   })
   return it
 }
@@ -90,6 +99,9 @@ function canTake(w: World, p: SimPlayer, kind: PickupKind): boolean {
       return p.speed < w.rules.speedCapMilli
     case PickupKind.HealthPack:
       return p.health < w.cfg.maxHealthPoints
+    case PickupKind.SkillCandy:
+      // W0 桩：技能切片接入 resolveSkillPickup（skill-candy.ts）；在此之前技能糖没人能捡。
+      return false
   }
 }
 
@@ -106,6 +118,9 @@ function applyPickup(w: World, p: SimPlayer, kind: PickupKind): void {
       break
     case PickupKind.HealthPack:
       p.health = Math.min(w.cfg.maxHealthPoints, p.health + w.rules.healthPackPoints)
+      break
+    case PickupKind.SkillCandy:
+      // W0 桩：技能切片接入 takeSkillCandy。
       break
   }
 }

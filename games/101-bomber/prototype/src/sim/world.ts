@@ -1,5 +1,18 @@
-import { BlockType } from '../contract'
-import type { BomberConfig, BomberEvent, DeathCause, MatchPhase, PickupKind, ProtoRules, 方向 } from '../contract'
+import { BlockType, BombKind, 方向 } from '../contract'
+import type {
+  AnimalId,
+  BomberConfig,
+  BomberEvent,
+  CharacterId,
+  CharacterPick,
+  DeathCause,
+  MatchPhase,
+  PickupKind,
+  ProtoRules,
+  SkillId,
+  SkillSlot,
+} from '../contract'
+import type { GridProbe } from '../shared/skill-geometry'
 import type { SimPlayerSpec } from './local-sim'
 import type { SpawnZone } from './mapgen'
 import type { Sfc32 } from './rng'
@@ -48,12 +61,72 @@ export interface SimPlayer {
   capacityDebt: number
   /** 决赛圈内死亡即出局：本局不再复活、不参与任何交互（ADR 0025）。 */
   eliminated: boolean
+  // ---- 原型扩展（NON-CONTRACT，ADR 0030 / 0031）：角色与技能。全部进哈希（name / animal 除外，由角色派生）。----
+  /** 选角：具体角色 / 'auto'（开局按均衡分配）/ null（无角色，旧夹具）。下一局 startMatch 生效。 */
+  pick: CharacterPick | null
+  /** 本局角色（开局由 roster.ts 定）。 */
+  character: CharacterId | null
+  /** 显示名 / 动物：由角色派生（每局重抽），不进哈希。 */
+  name: string
+  animal: AnimalId
+  /** 面向：最近一次非停的移动输入（被挡也更新），闪现 / 冲刺朝它放。 */
+  facing: 方向
+  /** 三个技能槽；槽内对象不可变，整体替换。 */
+  slots: Record<SkillSlot, SimSkillSlot | null>
+  /** 主动技能冷却 [cdFromTick, cdUntilTick)：死亡不清，开局清。 */
+  cdFromTick: number
+  cdUntilTick: number
+  /** 泡泡 / 光环 / 冻结 / 冻结后免疫：t < X 生效中；死亡、重生、开局清零。 */
+  bubbleUntilTick: number
+  auraUntilTick: number
+  frozenUntilTick: number
+  freezeImmuneUntilTick: number
+  /** 烧伤节拍：t < burnReadyTick 时不再被烧（同一受害者每 burnInterval 至多一次）。 */
+  burnReadyTick: number
+  /** 回春计时 [regenFromTick, regenNextTick)；regenNextTick = 0 表示不在计时。 */
+  regenFromTick: number
+  regenNextTick: number
+  /** 最近一次闪现 / 冲刺的 Tick（= teleportTick 时那次瞬移是闪现）。 */
+  blinkTick: number
+  /** 出局 Tick = 使其出局的死亡的 Tick（d.tick，RESOLUTIONS #4）；0 = 未出局。 */
+  eliminatedTick: number
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：技能槽里的一个技能（或组合技的一半）。 */
+export interface SimSkillPart {
+  readonly skill: SkillId
+  readonly level: number
+  /** 专属（或含专属的组合技）：不掉、不被替换。 */
+  readonly bound: boolean
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：槽内容，不可变、整体替换。parts = 进化的两半（拾取组合技糖装上的为 null）。 */
+export interface SimSkillSlot extends SimSkillPart {
+  readonly parts: readonly SimSkillPart[] | null
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030 / D8）：死亡结算 Tick 定下的一个技能掉落单位；keep = 掉落后槽里留下的。 */
+export interface SimSkillDrop {
+  readonly slot: SkillSlot
+  readonly skill: SkillId
+  readonly level: number
+  readonly keep: SimSkillSlot | null
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：火焰冲刺留下的火墙，存续 [bornTick, untilTick)，主人死了也照烧、照记主人。 */
+export interface SimFireWall {
+  readonly id: number
+  readonly owner: number
+  readonly cells: readonly number[]
+  readonly bornTick: number
+  readonly untilTick: number
 }
 
 export interface SimBomb {
   readonly id: number
   readonly owner: number
-  readonly cell: number
+  /** 被踢时会变（ADR 0030），其余时候不变。 */
+  cell: number
   readonly bornTick: number
   readonly fuseEndTick: number
   readonly power: number
@@ -71,6 +144,21 @@ export interface SimBomb {
   hit: number[]
   /** 爆炸先后序号，危险窗判定按它遍历。 */
   seq: number
+  // ---- 原型扩展（NON-CONTRACT，ADR 0030）：炸弹槽技能与踢弹。----
+  /** 契约 BombKind（冰冻弹 / 冰川弹 = Freeze，穿透弹 = Pierce）。 */
+  kind: BombKind
+  /** 每臂多穿的砖层数（穿透规则见 contract/skills.ts 文件头）。 */
+  pierceLayers: number
+  /** 冻结 Tick 数（已夹到 freezeCap）；非冰冻弹为 0。 */
+  freezeTicks: number
+  /** 滑行方向；停 = 静止。 */
+  kickDir: 方向
+  /** 还要滑的格数。 */
+  kickCellsLeft: number
+  /** 朝下一格累计的千分格。 */
+  kickAcc: number
+  /** 最近一次踢它的玩家；0 = 没被踢过。 */
+  kickedBy: number
 }
 
 export interface SimPickup {
@@ -80,6 +168,10 @@ export interface SimPickup {
   readonly bornTick: number
   /** 死者掉出的强化为死者 id，其余为 0。 */
   readonly droppedBy: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：kind = SkillCandy 时糖里的技能；其余 null。 */
+  readonly skill: SkillId | null
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：技能糖等级；其余 0。 */
+  readonly level: number
 }
 
 /** 决赛圈强力宝箱（design §4.2）：占格、挡路挡火，HitsRequired 次独立炸弹命中后开启。 */
@@ -138,6 +230,8 @@ export interface PendingDeath {
   readonly tick: number
   /** 死亡结算 Tick 定下的掉落强化（design §8.5）：常规阶段逐级掷、出局全部；帽数随之减少（ADR 0028）。 */
   readonly dropKinds: readonly PickupKind[]
+  /** 原型扩展（NON-CONTRACT，ADR 0030 / D8）：同一时刻定下的技能掉落（专属不掉；出局全掉）。 */
+  readonly dropSkills: readonly SimSkillDrop[]
 }
 
 export interface SimMatch {
@@ -164,9 +258,12 @@ export interface World {
   bombs: SimBomb[]
   pickups: SimPickup[]
   chests: SimChest[]
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：场上的火焰冲刺火墙。 */
+  fireWalls: SimFireWall[]
   nextId: number
   explodeSeq: number
-  rng: { drop: Sfc32; spawn: Sfc32; chest: Sfc32; regen: Sfc32 }
+  /** skill = 技能糖 / 技能掉落；roster = 每局角色分配（第 4 轮新增，旧流序列不变）。 */
+  rng: { drop: Sfc32; spawn: Sfc32; chest: Sfc32; regen: Sfc32; skill: Sfc32; roster: Sfc32 }
   /** 本局开局时的可破坏砖数量（积木 + 木箱），资源触发决赛圈的分母。 */
   resourceInitial: number
   finalCircle: SimFinalCircle | null
@@ -258,7 +355,10 @@ export function aliveCount(w: World): number {
   return n
 }
 
-/** 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。 */
+/**
+ * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时随之结束；
+ * 冷却不清（CD 跨死亡保留，开局由 {@link resetSkillsForMatch} 清）。闪现不得调用它。
+ */
 export function resetAbilityFields(p: SimPlayer): void {
   p.moveAcc = 0
   p.lastDir = 0
@@ -269,6 +369,14 @@ export function resetAbilityFields(p: SimPlayer): void {
   p.bombBufUntil = 0
   p.waterTicks = 0
   p.poisonTicks = 0
+  p.facing = 方向.下
+  p.bubbleUntilTick = 0
+  p.auraUntilTick = 0
+  p.frozenUntilTick = 0
+  p.freezeImmuneUntilTick = 0
+  p.burnReadyTick = 0
+  p.regenFromTick = 0
+  p.regenNextTick = 0
 }
 
 export function resetAttributes(p: SimPlayer, cfg: BomberConfig): void {
@@ -281,4 +389,90 @@ export function resetAttributes(p: SimPlayer, cfg: BomberConfig): void {
 /** ADR 0029：死者掉出的强化在落地后 deathDropProtect 内免疫爆炸；其余掉落物为 0（随时可被炸毁）。 */
 export function pickupProtectedUntil(w: World, it: SimPickup): number {
   return it.droppedBy !== 0 ? it.bornTick + w.ticks.deathDropProtect : 0
+}
+
+/** 炸弹构造（原型扩展字段缺省：标准弹、不穿透、不冻结、静止）。放弹与测试夹具都走它。 */
+export function makeBomb(
+  init: Pick<SimBomb, 'id' | 'owner' | 'cell' | 'bornTick' | 'fuseEndTick' | 'power'> &
+    Partial<Pick<SimBomb, 'kind' | 'pierceLayers' | 'freezeTicks'>>,
+): SimBomb {
+  return {
+    id: init.id,
+    owner: init.owner,
+    cell: init.cell,
+    bornTick: init.bornTick,
+    fuseEndTick: init.fuseEndTick,
+    power: init.power,
+    chainId: 0,
+    explodedAtTick: 0,
+    dangerUntilTick: 0,
+    burnUntilTick: 0,
+    reachUp: 0,
+    reachDown: 0,
+    reachLeft: 0,
+    reachRight: 0,
+    covered: [],
+    hit: [],
+    seq: 0,
+    kind: init.kind ?? BombKind.Standard,
+    pierceLayers: init.pierceLayers ?? 0,
+    freezeTicks: init.freezeTicks ?? 0,
+    kickDir: 方向.停,
+    kickCellsLeft: 0,
+    kickAcc: 0,
+    kickedBy: 0,
+  }
+}
+
+/** 糖果构造（非技能糖 skill = null、level = 0）。 */
+export function makePickup(
+  init: Pick<SimPickup, 'id' | 'cell' | 'kind' | 'bornTick' | 'droppedBy'> & { skill?: SkillId | null; level?: number },
+): SimPickup {
+  const skill = init.skill ?? null
+  return {
+    id: init.id,
+    cell: init.cell,
+    kind: init.kind,
+    bornTick: init.bornTick,
+    droppedBy: init.droppedBy,
+    skill,
+    level: skill === null ? 0 : (init.level ?? 1),
+  }
+}
+
+export function emptySlots(): Record<SkillSlot, SimSkillSlot | null> {
+  return { bomb: null, active: null, passive: null }
+}
+
+/**
+ * 开局：清空技能槽，专属技能以 Lv1、绑定装进它的槽；冷却 / 闪现 / 出局 Tick 归零（其余计时由 resetAbilityFields 清）。
+ */
+export function resetSkillsForMatch(p: SimPlayer, rules: Pick<ProtoRules, 'characters' | 'skills'>): void {
+  p.slots = emptySlots()
+  if (p.character !== null) {
+    const skill = rules.characters[p.character].skill
+    p.slots[rules.skills[skill].slot] = { skill, level: 1, bound: true, parts: null }
+  }
+  p.cdFromTick = 0
+  p.cdUntilTick = 0
+  p.blinkTick = 0
+  p.eliminatedTick = 0
+}
+
+/** 技能几何的规则层探针（shared/skill-geometry.ts）：occupied = 未爆炸弹或宝箱。 */
+export function gridProbe(w: World): GridProbe {
+  return {
+    size: w.size,
+    brick: w.brick,
+    ground: w.ground,
+    occupied: (ci) => unexplodedBombAt(w, ci) || chestAt(w, ci) !== undefined,
+  }
+}
+
+export function isBubbled(p: SimPlayer, t: number): boolean {
+  return t < p.bubbleUntilTick
+}
+
+export function isFrozen(p: SimPlayer, t: number): boolean {
+  return t < p.frozenUntilTick
 }

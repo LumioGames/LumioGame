@@ -63,4 +63,21 @@ describe('module boundaries', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  /**
+   * 确定性守卫（critic #19，ADR 0030）：规则替身、共享纯规则与 Bot 的产品代码不得读系统随机数或时钟
+   * （测试文件除外：性能预算要计时）。注释里提到这些名字没关系，先剥掉注释再查。
+   */
+  it('sim/, shared/ and bots/ never touch Math.random, Date.now or performance.now', () => {
+    const offenders: string[] = []
+    for (const f of files) {
+      const rel = relative(SRC, f).split(sep).join('/')
+      if (!/^(sim|shared|bots)\//.test(rel) || rel.includes('/__tests__/') || rel.endsWith('.test.ts')) continue
+      const code = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1')
+      for (const bad of ['Math.random', 'Date.now', 'performance.now']) if (code.includes(bad)) offenders.push(`${rel}: ${bad}`)
+    }
+    expect(offenders).toEqual([])
+  })
 })

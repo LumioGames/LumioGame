@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CONFIG, DEFAULT_RULES, MatchPhase, PickupKind } from '../../contract'
+import { DEFAULT_CONFIG, DEFAULT_RULES, isPowerupKind, MatchPhase } from '../../contract'
 import { createWorld } from '../match-phase'
 import { stepWorld } from '../step'
 import { playerCell } from '../world'
@@ -49,15 +49,16 @@ describe('headless multi-match run', () => {
       for (const ty of ['HatMinted', 'HatPileSpawned', 'HatPilePicked', 'HatPileExpired'] as const) expect(evs(f, ty)).toHaveLength(0)
       for (const e of evs(f, 'PlayerDied')) hatsLostDeclared += e.proto!.HatsLost
       const spawnedBy = new Map<number, number>()
+      // 技能糖不算帽子（D5）：只数死者掉出的强化。
       for (const e of evs(f, 'PickupSpawned'))
-        if (e.Source === 'death') {
+        if (e.Source === 'death' && isPowerupKind(e.Kind)) {
           deathPickups++
           spawnedBy.set(e.DroppedByNetEntityIdRaw, (spawnedBy.get(e.DroppedByNetEntityIdRaw) ?? 0) + 1)
         }
       for (const e of evs(f, 'PowerupsDropped')) expect(spawnedBy.get(e.VictimNetEntityIdRaw)).toBe(e.Kinds.length)
       const gained = new Map<number, number>()
       for (const e of evs(f, 'PickupTaken'))
-        if (e.Kind !== PickupKind.HealthPack) {
+        if (isPowerupKind(e.Kind)) {
           powerupPickups++
           gained.set(e.PickerNetEntityIdRaw, (gained.get(e.PickerNetEntityIdRaw) ?? 0) + 1)
         }
@@ -79,7 +80,7 @@ describe('headless multi-match run', () => {
       removedOnDeath += removedNow
       if (!restarted) {
         let spawnedNow = 0
-        for (const e of evs(f, 'PickupSpawned')) if (e.Source === 'death') spawnedNow++
+        for (const e of evs(f, 'PickupSpawned')) if (e.Source === 'death' && isPowerupKind(e.Kind)) spawnedNow++
         expect(removedNow).toBeGreaterThanOrEqual(spawnedNow)
         lostNoCell += removedNow - spawnedNow
       }

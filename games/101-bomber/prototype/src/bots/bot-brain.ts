@@ -1,4 +1,4 @@
-import type { AbilityActivation, BomberCell, BomberConfig, FinalCircleView, PlayerView, ProtoRules, U64, WorldSnapshot } from '../contract'
+import type { AbilityActivation, BomberCell, BomberConfig, BotProfile, FinalCircleView, PlayerView, ProtoRules, U64, WorldSnapshot } from '../contract'
 import { MatchPhase, msToTicks, 方向 } from '../contract'
 import { cellOf, idx, inBounds } from '../shared/grid'
 import {
@@ -43,6 +43,11 @@ export interface BotOptions {
   personality: BotPersonality
   config: BomberConfig
   rules: ProtoRules
+  /**
+   * 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：难度档；缺省 BOT_PROFILES.hard（= 第 3 轮强度，
+   * 旧种子测试不变）。W0 只接口，Bot 切片接入行为。
+   */
+  profile?: BotProfile
 }
 
 export type BotMode = 'idle' | 'escape' | 'noise' | 'pickup' | 'farm' | 'hunt' | 'roam' | 'wait' | 'bomb'

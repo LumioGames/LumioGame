@@ -3,6 +3,7 @@ import {
   DeathCause,
   MatchPhase,
   PickupKind,
+  isPowerupKind,
   type AnimalId,
   type PlayerView,
   type U64,
@@ -116,6 +117,7 @@ const PICKUP_TEXT: Readonly<Record<PickupKind, string>> = {
   [PickupKind.BombPlus]: '+1 炸弹',
   [PickupKind.SpeedPlus]: '+1 速度',
   [PickupKind.HealthPack]: '+1 心',
+  [PickupKind.SkillCandy]: '技能糖',
 }
 
 const DROP_NAME: Readonly<Record<PickupKind, string>> = {
@@ -123,6 +125,7 @@ const DROP_NAME: Readonly<Record<PickupKind, string>> = {
   [PickupKind.BombPlus]: '炸弹',
   [PickupKind.SpeedPlus]: '速度',
   [PickupKind.HealthPack]: '血包',
+  [PickupKind.SkillCandy]: '技能糖',
 }
 
 /** 死亡回顾的掉落行：「火力 ×1、速度 ×2」（按火力 / 炸弹 / 速度排序）；空列表为「无」。 */
@@ -282,8 +285,8 @@ export class HudBrain {
           if (e.PickerNetEntityIdRaw === me) {
             out.push({ kind: 'pickup', pickupKind: e.Kind, text: PICKUP_TEXT[e.Kind] ?? '+1' })
             out.push({ kind: 'tip', id: TipId.Candy })
-            // 帽子 = 强化数：吃到火力 / 炸弹 / 速度就多一顶帽子；血包不算。
-            if (e.Kind !== PickupKind.HealthPack) this.onHatGain(e.Tick, 1, out)
+            // 帽子 = 强化数：吃到火力 / 炸弹 / 速度就多一顶帽子；血包与技能糖不算（D5）。
+            if (isPowerupKind(e.Kind)) this.onHatGain(e.Tick, 1, out)
           }
           break
         case 'PowerupsDropped': {

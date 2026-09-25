@@ -1,17 +1,34 @@
-import type {
-  BomberEvent,
-  BombView,
-  ChestView,
-  FinalCircleView,
-  PickupView,
-  PlayerView,
-  TickFrame,
-  WorldSnapshot,
+import {
+  MatchPhase,
+  方向,
+  type BomberEvent,
+  type BombView,
+  type ChestView,
+  type FinalCircleView,
+  type FireZoneView,
+  type PickupView,
+  type PlayerSkillsView,
+  type PlayerView,
+  type SkillSlotView,
+  type TickFrame,
+  type WorldSnapshot,
 } from '../contract'
 import { hatCountOf } from './death-drops'
 import { rectView } from './final-circle'
+import { fireZones } from './fire-zones'
 import { phaseEndTick } from './match-phase'
-import { aliveCount, CELL_MILLI, centerMilli, countResource, pickupProtectedUntil, type World } from './world'
+import { simMatchResults } from './results'
+import {
+  aliveCount,
+  CELL_MILLI,
+  cellOfIdx,
+  centerMilli,
+  countResource,
+  pickupProtectedUntil,
+  type SimPlayer,
+  type SimSkillSlot,
+  type World,
+} from './world'
 
 /**
  * 发布帧：纯数据、不可变。决赛圈状态触发后一直发布到下一局开局（结算期也在，供结算表标注存活 / 出局）（无 class、无 Map，地形数组逐帧拷贝）。千分格 → 米；
@@ -19,6 +36,27 @@ import { aliveCount, CELL_MILLI, centerMilli, countResource, pickupProtectedUnti
  */
 function worldPos(cell: number, size: number): { x: number; y: number; z: number } {
   return { x: centerMilli(cell % size) / CELL_MILLI, y: 1, z: centerMilli(Math.floor(cell / size)) / CELL_MILLI }
+}
+
+function slotView(s: SimSkillSlot | null): SkillSlotView | null {
+  return s ? { skill: s.skill, level: s.level, bound: s.bound } : null
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：角色与技能视图（槽只给技能 / 等级 / 绑定，不给进化的两半）。 */
+function skillsView(p: SimPlayer): PlayerSkillsView {
+  return {
+    character: p.character,
+    facing: p.facing,
+    slots: { bomb: slotView(p.slots.bomb), active: slotView(p.slots.active), passive: slotView(p.slots.passive) },
+    cdFromTick: p.cdFromTick,
+    cdUntilTick: p.cdUntilTick,
+    bubbleUntilTick: p.bubbleUntilTick,
+    auraUntilTick: p.auraUntilTick,
+    frozenUntilTick: p.frozenUntilTick,
+    regenFromTick: p.regenFromTick,
+    regenNextTick: p.regenNextTick,
+    blinkTick: p.blinkTick,
+  }
 }
 
 export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame {
@@ -31,8 +69,10 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
     BomberPlayerState: { HatCount: hatCountOf(w, p), RespawnAtTick: p.respawnAtTick, ProtectedUntilTick: p.protectedUntilTick },
     玩家属性: { 血量当前: p.health, 火力当前: p.power, 移速当前: p.speed, 手上炸弹数当前: p.capacity },
     玩家属性基础: { 血量基础: p.health, 火力基础: p.power, 移速基础: p.speed, 手上炸弹数基础: p.capacity },
-    meta: { name: p.spec.name, isBot: p.spec.isBot, animal: p.spec.animal, slot: p.spec.slot },
+    meta: { name: p.name, isBot: p.spec.isBot, animal: p.animal, slot: p.spec.slot },
     eliminated: p.eliminated,
+    skills: skillsView(p),
+    eliminatedTick: p.eliminatedTick,
   }))
   const Bombs: BombView[] = w.bombs.map((b) => ({
     NetEntityIdRaw: b.id,
@@ -43,8 +83,8 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
       FuseEndTick: b.fuseEndTick,
       Power: b.power,
       ChainId: b.chainId,
-      BombKind: 0,
-      PierceLayers: 0,
+      BombKind: b.kind,
+      PierceLayers: b.pierceLayers,
       ExplodedAtTick: b.explodedAtTick,
       DangerUntilTick: b.dangerUntilTick,
       BurnUntilTick: b.burnUntilTick,
@@ -53,6 +93,10 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
       ReachLeft: b.reachLeft,
       ReachRight: b.reachRight,
     },
+    kick:
+      b.kickDir !== 方向.停
+        ? { dir: b.kickDir, progressMilli: b.kickAcc, cellsLeft: b.kickCellsLeft, speedMilli: w.rules.kickSpeedMilli }
+        : null,
   }))
   const Pickups: PickupView[] = w.pickups.map((it) => ({
     NetEntityIdRaw: it.id,
@@ -61,6 +105,7 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
     BomberPickupItem: { Kind: it.kind },
     droppedBy: it.droppedBy,
     protectedUntilTick: pickupProtectedUntil(w, it),
+    ...(it.skill !== null ? { skill: { id: it.skill, level: it.level } } : {}),
   }))
   const Chests: ChestView[] = w.chests.map((c) => ({
     NetEntityIdRaw: c.id,
@@ -104,7 +149,11 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
       resourceInitial: w.resourceInitial,
       resourceRemaining: countResource(w),
       finalCircle,
+      results: m.phase === MatchPhase.Settlement ? simMatchResults(w) : null,
     },
+    FireZones: fireZones(w).map(
+      (z): FireZoneView => ({ owner: z.owner, source: z.source, cells: z.cells.map((c) => cellOfIdx(w, c)), untilTick: z.untilTick }),
+    ),
   }
   return { snapshot, events }
 }

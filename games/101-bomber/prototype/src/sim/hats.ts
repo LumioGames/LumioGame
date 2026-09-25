@@ -49,6 +49,8 @@ export function processDeaths(w: World): void {
     resetAbilityFields(v)
     if (eliminated) {
       v.eliminated = true
+      // ADR 0031（RESOLUTIONS #4）：出局 Tick = 死亡 Tick，不是处理 Tick，名次才不会被晚一帧的处理合并。
+      v.eliminatedTick = d.tick
       v.awaitingRespawn = false
       v.respawnAtTick = 0
       out.push(v)

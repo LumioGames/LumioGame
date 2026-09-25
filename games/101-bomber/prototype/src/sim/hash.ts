@@ -1,4 +1,5 @@
-import type { World } from './world'
+import { characterCode, pickCode, SKILL_SLOTS, skillCode } from '../contract'
+import type { SimSkillSlot, World } from './world'
 
 /**
  * StateHash（原型口径）：双路 FNV-1a 32 位，对完整权威状态的规范数列求值——含地形两层、RNG 状态、
@@ -42,12 +43,27 @@ class Fnv2 {
   }
 }
 
+/** 技能槽的规范数列：空槽 [0]；否则 [技能码, 等级, 绑定, 两半数, 每半 (技能码, 等级, 绑定)…]。 */
+function slotNums(s: SimSkillSlot | null): number[] {
+  if (!s) return [0]
+  const out = [skillCode(s.skill), s.level, s.bound ? 1 : 0, s.parts ? s.parts.length : -1]
+  if (s.parts) for (const q of s.parts) out.push(skillCode(q.skill), q.level, q.bound ? 1 : 0)
+  return out
+}
+
 export function hashWorld(w: World): string {
   const h = new Fnv2()
   const m = w.match
   h.list([w.t, m.index, m.startTick, m.endTick, m.phase, m.hatKing, w.rev, w.nextId, w.explodeSeq])
   h.list([w.resourceInitial])
-  h.list([...w.rng.drop.state(), ...w.rng.spawn.state(), ...w.rng.chest.state(), ...w.rng.regen.state()])
+  h.list([
+    ...w.rng.drop.state(),
+    ...w.rng.spawn.state(),
+    ...w.rng.chest.state(),
+    ...w.rng.regen.state(),
+    ...w.rng.skill.state(),
+    ...w.rng.roster.state(),
+  ])
   const fc = w.finalCircle
   h.list(
     fc
@@ -57,7 +73,7 @@ export function hashWorld(w: World): string {
   h.bytes(w.ground)
   h.bytes(w.brick)
   h.n(w.players.length)
-  for (const p of w.players)
+  for (const p of w.players) {
     h.list([
       p.id,
       p.spec.slot,
@@ -82,7 +98,24 @@ export function hashWorld(w: World): string {
       p.poisonTicks,
       p.capacityDebt,
       p.eliminated ? 1 : 0,
+      // 原型扩展（ADR 0030 / 0031）；name / animal 由角色派生，不哈希。
+      p.facing,
+      pickCode(p.pick),
+      characterCode(p.character),
+      p.cdFromTick,
+      p.cdUntilTick,
+      p.bubbleUntilTick,
+      p.auraUntilTick,
+      p.frozenUntilTick,
+      p.freezeImmuneUntilTick,
+      p.burnReadyTick,
+      p.regenFromTick,
+      p.regenNextTick,
+      p.blinkTick,
+      p.eliminatedTick,
     ])
+    for (const slot of SKILL_SLOTS) h.list(slotNums(p.slots[slot]))
+  }
   h.n(w.bombs.length)
   for (const b of w.bombs) {
     h.list([
@@ -101,16 +134,28 @@ export function hashWorld(w: World): string {
       b.reachLeft,
       b.reachRight,
       b.seq,
+      b.kind,
+      b.pierceLayers,
+      b.freezeTicks,
+      b.kickDir,
+      b.kickCellsLeft,
+      b.kickAcc,
+      b.kickedBy,
     ])
     h.list(b.covered)
     h.list(b.hit)
   }
   h.n(w.pickups.length)
-  for (const it of w.pickups) h.list([it.id, it.cell, it.kind, it.bornTick, it.droppedBy])
+  for (const it of w.pickups) h.list([it.id, it.cell, it.kind, it.bornTick, it.droppedBy, skillCode(it.skill), it.level])
   h.n(w.chests.length)
   for (const c of w.chests) {
     h.list([c.id, c.cell, c.hitsRequired, c.stageIndex, c.bornTick, c.hitsLeft, c.opener])
     h.list(c.hitBy)
+  }
+  h.n(w.fireWalls.length)
+  for (const f of w.fireWalls) {
+    h.list([f.id, f.owner, f.bornTick, f.untilTick])
+    h.list(f.cells)
   }
   const chains = [...w.chainDmg.keys()].sort((a, b) => a - b)
   h.n(chains.length)
@@ -124,6 +169,7 @@ export function hashWorld(w: World): string {
   for (const d of w.pendingDeaths) {
     h.list([d.victim, d.killer, d.tick])
     h.list(d.dropKinds)
+    h.list(d.dropSkills.flatMap((s) => [SKILL_SLOTS.indexOf(s.slot), skillCode(s.skill), s.level, ...slotNums(s.keep)]))
   }
   return h.hex()
 }

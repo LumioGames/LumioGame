@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { PickupKind } from '../../contract'
-import { newId } from '../world'
+import { makePickup, newId } from '../world'
 import { addBomb, cell, evs, makeWorld, put, run, step } from './helpers'
 
 /** ADR 0029：死者掉出的强化落地后 deathDropProtect 内不会被爆炸摧毁；其余掉落物照旧可炸。 */
 describe('death-drop protection', () => {
   const drop = (w: ReturnType<typeof makeWorld>, x: number, y: number, droppedBy: number) => {
-    const it = { id: newId(w), cell: cell(w, x, y), kind: PickupKind.FirePlus, bornTick: w.t, droppedBy }
+    const it = makePickup({ id: newId(w), cell: cell(w, x, y), kind: PickupKind.FirePlus, bornTick: w.t, droppedBy })
     w.pickups.push(it)
     return it
   }
