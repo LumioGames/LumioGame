@@ -38,10 +38,10 @@
 | [0008](0008-worldview-animal-plush-party.md) | 世界观定调「动物玩偶派对」 | 生效 |
 | [0009](0009-entity-chat-csharp-mvp-host.md) | 101-entity 联调用 Game 仓 C# MVP Room 宿主 | 被 0010 取代 |
 | [0010](0010-entity-chat-requires-mvp-host.md) | 101-entity SUCCESS 必须由 sibling lumio-mvp-host 实连 | 被 0022 取代 |
-| [0011](0011-bomber-100-player-io-gear-slots.md) | 炸弹人升级为 100 人 .io 混战,新增 3 槽装备与击杀铸帽 | 被 0012 取代（「帽子只来自击杀」另被 0027 修订） |
+| [0011](0011-bomber-100-player-io-gear-slots.md) | 炸弹人升级为 100 人 .io 混战,新增 3 槽装备与击杀铸帽 | 被 0012 取代（「帽子只来自击杀」另被 0027 修订、0028 取消） |
 | [0012](0012-bomber-hearts-replace-one-hit-kill.md) | 炸弹人由一击即死改为三颗心血量,单发削血、连锁秒杀 | 被 0014 取代 |
 | [0013](0013-logic-first-browser-client-no-engine.md) | 交付顺序逻辑先行、表现最后接;后续客户端暂定浏览器,首发不接任何游戏引擎 | 生效 |
-| [0014](0014-bomber-v04-stage0-convergence.md) | 炸弹人采纳 v0.4 收敛:Stage 0 前置、官方房范围收敛、据点改补给、装备替换需确认 | 生效（血量表示一条被 0017 取代；终局演出 / 不用致死收缩圈 / 死亡不清糖果与无出局观战被 0025 取代） |
+| [0014](0014-bomber-v04-stage0-convergence.md) | 炸弹人采纳 v0.4 收敛:Stage 0 前置、官方房范围收敛、据点改补给、装备替换需确认 | 生效（血量表示一条被 0017 取代；终局演出 / 不用致死收缩圈 / 死亡不清糖果与无出局观战被 0025 取代；HatPile 被 0028 取代；首发不做角色 / 装备替换确认 / 首测技能清单被 0030 取代） |
 | [0015](0015-bomber-stage0a-runtime-capability-finding.md) | Stage 0a 不依赖 Runtime Processor 与公开 CrossWorldTxn/IVoxelWorldPort,网格改为 Game 自有 EcsComponent 状态 | 生效（「网格为 EcsComponent」一条被 0016 取代,Runtime 能力核验结论继续有效） |
 | [0016](0016-bomber-terrain-out-of-ecs-3d-coords.md) | 炸弹人场景改为三维坐标与 ECS 外的地形存储,地图以数据持久化 | 生效（`ITerrainStore` 三方法签名、`MaterialId` 类型、地形快照口径、不锁 chunk 尺寸、方块目录归属、分帧提交归属六条被 0019 取代,其余继续有效） |
 | [0017](0017-bomber-explosion-and-health-model.md) | 炸弹人爆炸与血量模型修订:炸弹实体持有火焰、血量改半心点、水改为可溺死 | 生效 |
@@ -51,9 +51,12 @@
 | [0021](0021-bomber-contract-v2-align-engine-second-exemplar.md) | 炸弹人 Stage 0 契约升 v2.0.0,六个环节改按架构第二样板重写 | 生效 |
 | [0022](0022-retire-entity-chat-harness.md) | entity-chat harness 整体退役,101-entity 端到端验收交由 Sample 11 场景链承接 | 生效 |
 | [0023](0023-wire-contract-pinned-in-tests.md) | 契约一致性测试在测试期直接读架构仓 wire JSON,缺检出即失败 | 生效 |
-| [0024](0024-per-game-directories-and-101-web-prototype.md) | 仓库按游戏分目录,炸弹人为 101;网页原型作为抛弃型参考落在 games/101-bomber/prototype | 生效 |
-| [0025](0025-bomber-final-circle-and-death-drops.md) | 炸弹人终局改为「最后一命决赛圈」,死亡掉落一半强化 | 生效 |
+| [0024](0024-per-game-directories-and-101-web-prototype.md) | 仓库按游戏分目录,炸弹人为 101;网页原型作为抛弃型参考落在 games/101-bomber/prototype | 生效（原型内容范围与「表现层不得依赖 NON-CONTRACT 字段」被 0030 取代） |
+| [0025](0025-bomber-final-circle-and-death-drops.md) | 炸弹人终局改为「最后一命决赛圈」,死亡掉落一半强化 | 生效（帽子资源条款被 0028 取代；90 秒 / 6 分钟封顶 / 3 段安全圈 / 恒定毒速 / 按帽子数定胜负 / 锁入 ≤ 90 秒被 0031 取代） |
 | [0026](0026-bomber-small-map-regen-and-resource-trigger-gate.md) | 19×19 档也做软砖再生,资源触发决赛圈只在再生停止后生效 | 生效 |
 | [0027](0027-bomber-powerup-pickup-mints-hat.md) | 炸弹人吃一个强化铸一顶帽,帽子塔同时表示「谁最富」 | 被 0028 取代 |
-| [0028](0028-bomber-hats-are-powerup-count.md) | 炸弹人取消独立的帽子资源,帽子只表示身上的强化数 | 生效 |
+| [0028](0028-bomber-hats-are-powerup-count.md) | 炸弹人取消独立的帽子资源,帽子只表示身上的强化数 | 生效（局终帽子最多者胜被 0031 取代） |
 | [0029](0029-bomber-death-drops-blast-protection.md) | 死者掉出的强化落地后 3 秒内不会被爆炸摧毁 | 生效 |
+| [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效 |
+| [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效 |
+| [0032](0032-bomber-movement-dual-direction-and-doll-footprint.md) | 炸弹人手感补充:同按两个方向走得通的那个、转角吸附 0.5 格、玩偶视觉占地不超过 0.7 格 | 生效 |
