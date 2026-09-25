@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`map generation > seed 1 layout snapshot (6.6 regression guard) 1`] = `
+"###################
+#...oooo...oooo...#
+#.#.#.#.#.#.#.#.#.#
+#Xo.oXo.o.o.oXo.oX#
+#.#o#.#.#o#.#.#o#.#
+#o.ooo..ooo..ooo.o#
+#o#o#o#o#o#o#o#o#o#
+#oX~~~.......~~~Xo#
+#.#.#~#o#.#o#~#.#.#
+#..oooooo.oooooo..#
+#.#.#~#o#.#o#~#.#.#
+#oX~~~.......~~~Xo#
+#o#o#o#o#o#o#o#o#o#
+#o.ooo..ooo..ooo.o#
+#.#o#.#.#o#.#.#o#.#
+#Xo.oXo.o.o.oXo.oX#
+#.#.#.#.#.#.#.#.#.#
+#...oooo...oooo...#
+###################"
+`;

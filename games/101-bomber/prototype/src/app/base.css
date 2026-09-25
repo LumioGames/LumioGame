@@ -1,0 +1,43 @@
+/* 全局层级：画布 < 世界标签 < HUD < 触屏控件。各层自身样式归各自模块。 */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #ddf1f7;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+#app {
+  position: fixed;
+  inset: 0;
+}
+#stage,
+#labels,
+#hud,
+#touch {
+  position: absolute;
+  inset: 0;
+}
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#labels,
+#hud,
+#touch {
+  pointer-events: none;
+}
+#labels {
+  z-index: 1;
+  overflow: hidden;
+}
+#hud {
+  z-index: 2;
+}
+#touch {
+  z-index: 3;
+}
