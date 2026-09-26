@@ -1,4 +1,4 @@
-import { msToTicks, type AnimalId, type MatchEndReason } from '../contract'
+import { CHARACTERS, msToTicks, SKILLS, type AnimalId, type CharacterId, type MatchEndReason, type SkillId } from '../contract'
 import type { FinalRow } from './ranking'
 
 /**
@@ -43,7 +43,7 @@ export interface PodiumModel {
 
 const STEPS: readonly PodiumStep[] = ['first', 'second', 'third']
 
-/** 领奖台标题 + 结束原因（唯一存活 / 时间到 / 同归于尽）；原因未知时只说规则。 */
+/** 领奖台标题 + 结束原因（唯一存活 / 时间到 / 同 Tick 全灭，design §4.1 / §13）；原因未知时只说规则。 */
 export function podiumHeadline(reason: MatchEndReason | null): PodiumHeadline {
   const title = '本局冠军'
   switch (reason) {
@@ -52,19 +52,37 @@ export function podiumHeadline(reason: MatchEndReason | null): PodiumHeadline {
     case 'timeUp':
       return { title, sub: '时间到 · 存活者里帽子最多' }
     case 'allDown':
-      return { title, sub: '同归于尽 · 最后倒下的并列第一' }
+      return { title, sub: '同 Tick 全灭 · 最后倒下的并列第一' }
     default:
       return { title, sub: '活到最后者赢' }
   }
 }
 
-/** 结束原因的短名：「唯一存活」/「时间到」/「同归于尽」。 */
-export const END_REASON_LABEL: Readonly<Record<MatchEndReason, string>> = { lastSurvivor: '唯一存活', timeUp: '时间到', allDown: '同归于尽' }
+/** 结束原因的短名（design §4.1 / §13 原文）：「唯一存活」/「时间到」/「同 Tick 全灭」。 */
+export const END_REASON_LABEL: Readonly<Record<MatchEndReason, string>> = { lastSurvivor: '唯一存活', timeUp: '时间到', allDown: '同 Tick 全灭' }
 
 /** 结算表标题下的规则行：「活到最后者赢 · 时间到时存活者比帽子，并列同名次 · 本局：唯一存活」。 */
 export function resultsRuleLine(reason: MatchEndReason | null): string {
   const base = '活到最后者赢 · 时间到时存活者比帽子，并列同名次'
   return reason ? `${base} · 本局：${END_REASON_LABEL[reason]}` : base
+}
+
+/** 结算表「角色」（design §13）：角色名；未知为「—」。 */
+export function resultsCharacterText(c: CharacterId | null): string {
+  return c ? CHARACTERS[c].name : '—'
+}
+
+/**
+ * 结算表「本局技能与进化」（design §13，ADR 0030）：基础技能按拿到顺序列出，进化出的组合技接在「→ 进化」后。
+ * 例：「闪现 · 火焰光环 → 进化 火焰冲刺」；什么都没有为「—」。
+ */
+export function resultsSkillText(skills: readonly SkillId[]): string {
+  const base = skills.filter((k) => !SKILLS[k].combo).map((k) => SKILLS[k].name)
+  const evolved = skills.filter((k) => SKILLS[k].combo).map((k) => SKILLS[k].name)
+  const parts: string[] = []
+  if (base.length) parts.push(base.join(' · '))
+  if (evolved.length) parts.push(`进化 ${evolved.join('、')}`)
+  return parts.length ? parts.join(' → ') : '—'
 }
 
 /** 按 `rankFinal` 的站位顺序取前三行上台；名次 1 的都是冠军。 */

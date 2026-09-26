@@ -68,7 +68,8 @@ describe('determinism', () => {
     expect(a.ended).toEqual(b.ended)
     expect(a.ended).toHaveLength(1)
     expect(a.ended[0].proto?.Reason).toBe('timeUp')
-    for (const t of ['FinalCircleStarted', 'RingShrinkAnnounced', 'ChestSpawned', 'ChestOpened', 'BrickDestroyed', 'PlayerEliminated', 'MatchEnded', 'MatchStarted'])
+    // 宝箱只在 3 次独立炸弹命中后开启（清场不再代开，ADR 0031），随机行走打不开；开启的确定性由 chest-drops.test.ts 覆盖。
+    for (const t of ['FinalCircleStarted', 'RingShrinkAnnounced', 'ChestSpawned', 'BrickDestroyed', 'PlayerEliminated', 'MatchEnded', 'MatchStarted'])
       expect(a.types).toContain(t)
   })
 

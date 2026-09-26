@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { matchEndReason, matchResults, rankMatch, type RankInput } from '../ranking'
 
-/** D2（ADR 0031）：活到最后者赢；出局越晚越靠前；同 Tick 出局同名次。 */
+/** D2（ADR 0031）：活到最后者赢；出局越晚越靠前；同 Tick 出局同名次；同名次按玩家 id 排版（design §13）。 */
 const alive = (id: number, hats: number): RankInput => ({ id, eliminated: false, eliminatedTick: 0, hats })
 const out = (id: number, tick: number, hats: number): RankInput => ({ id, eliminated: true, eliminatedTick: tick, hats })
 
@@ -14,26 +14,36 @@ describe('rankMatch', () => {
     ])
   })
 
-  it('time up: survivors by hats (ties share), then eliminations latest first; same tick shares', () => {
+  it('time up: survivors by hats (ties share), then eliminations latest first; same tick shares, ordered by id', () => {
     const rows = rankMatch([alive(1, 3), alive(2, 1), alive(3, 3), out(4, 200, 9), out(5, 100, 0), out(6, 100, 2)])
     expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
       [1, 1, 1],
       [3, 1, 2],
       [2, 3, 3],
       [4, 4, 4],
-      [6, 5, 5],
-      [5, 5, 6],
+      [5, 5, 5],
+      [6, 5, 6],
     ])
     expect(rows[3].eliminatedTick).toBe(200)
     expect(rows[0].eliminatedTick).toBe(0)
   })
 
-  it('all down: the last batch shares rank 1', () => {
+  it('all down: the last batch shares rank 1, laid out by id (not hats)', () => {
     const rows = rankMatch([out(1, 50, 0), out(2, 90, 1), out(3, 90, 4)])
     expect(rows.map((r) => [r.id, r.rank])).toEqual([
-      [3, 1],
       [2, 1],
+      [3, 1],
       [1, 3],
+    ])
+  })
+
+  it('same-tick ties are ordered by id regardless of hats or input order', () => {
+    const rows = rankMatch([out(9, 40, 7), out(7, 40, 0), out(8, 40, 3), out(1, 10, 9)])
+    expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
+      [7, 1, 1],
+      [8, 1, 2],
+      [9, 1, 3],
+      [1, 4, 4],
     ])
   })
 })
@@ -54,6 +64,6 @@ describe('matchEndReason / matchResults', () => {
     expect(matchResults([]).winner).toBe(0)
     const all = matchResults([out(4, 9, 0), out(5, 9, 3)])
     expect(all.reason).toBe('allDown')
-    expect(all.winner).toBe(5)
+    expect(all.winner).toBe(4) // 并列第 1 → 最小 id 站中间（RESOLUTIONS #11）
   })
 })

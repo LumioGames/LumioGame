@@ -14,13 +14,13 @@ export interface RankInput {
 
 /**
  * - 存活者在前：帽数多者在前，再按 id；名次 = 1 + 帽数比自己多的存活者数（同帽同名次）。
- * - 出局者在后：出局越晚越靠前，再按帽数、id；名次 = 存活数 + 1 + 比自己晚出局的人数（同 Tick 出局同名次）。
+ * - 出局者在后：出局越晚越靠前，再按 id（design §13「同名次按玩家 id 排版」，帽数不参与）；名次 = 存活数 + 1 + 比自己晚出局的人数（同 Tick 出局同名次）。
  *   全员倒下时最后一批因此并列第 1。
  * - place = 排序后的位置（1..n 唯一）。
  */
 export function rankMatch(ps: readonly RankInput[]): MatchRankRow[] {
   const alive = ps.filter((p) => !p.eliminated).sort((a, b) => b.hats - a.hats || a.id - b.id)
-  const out = ps.filter((p) => p.eliminated).sort((a, b) => b.eliminatedTick - a.eliminatedTick || b.hats - a.hats || a.id - b.id)
+  const out = ps.filter((p) => p.eliminated).sort((a, b) => b.eliminatedTick - a.eliminatedTick || a.id - b.id)
   const rows: MatchRankRow[] = []
   for (const p of alive)
     rows.push({

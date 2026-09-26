@@ -1,4 +1,4 @@
-import { MatchPhase, type U64 } from '../contract'
+import { MatchPhase, type CharacterId, type SkillId, type U64 } from '../contract'
 import type { ChainLedger } from './chain-ledger'
 import type { TickBatch } from './timeline'
 
@@ -20,6 +20,13 @@ export interface MatchStats {
   hatKingTicks: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：本人主动技能成功施放次数（SkillActivated）。 */
   skillCasts: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：本局角色（结算表「角色」）；未知为 null。 */
+  character: CharacterId | null
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0030）：本局拿到过的技能与进化出的组合技，按首次出现顺序、去重（结算表「本局技能与进化」）。
+   * 整局累计：决赛圈出局掉光技能也照样列出。
+   */
+  skills: SkillId[]
   /** 全场击杀数（结算表用）。 */
   killsById: Map<U64, number>
 }
@@ -36,6 +43,8 @@ function empty(matchIndex: number): MatchStats {
     maxHats: 0,
     hatKingTicks: 0,
     skillCasts: 0,
+    character: null,
+    skills: [],
     killsById: new Map(),
   }
 }
@@ -56,7 +65,7 @@ export class StatsTracker {
 
   /** 拷贝一份（结算页冻结用）。 */
   snapshot(): MatchStats {
-    return { ...this.s, killsById: new Map(this.s.killsById) }
+    return { ...this.s, skills: [...this.s.skills], killsById: new Map(this.s.killsById) }
   }
 
   reset(matchIndex: number): void {
@@ -91,6 +100,12 @@ export class StatsTracker {
         case 'SkillActivated':
           if (e.PlayerNetEntityIdRaw === me) this.s.skillCasts++
           break
+        case 'SkillGained':
+          if (e.PlayerNetEntityIdRaw === me) this.noteSkill(e.Skill)
+          break
+        case 'SkillEvolved':
+          if (e.PlayerNetEntityIdRaw === me) this.noteSkill(e.Combo)
+          break
         case 'BombExploded':
         case 'ChainResolved':
           touched.add(e.ChainId)
@@ -106,11 +121,20 @@ export class StatsTracker {
     }
   }
 
+  private noteSkill(id: SkillId): void {
+    if (!this.s.skills.includes(id)) this.s.skills.push(id)
+  }
+
   consumeSnapshot(batch: TickBatch): void {
     const snap = batch.snapshot
     if (!snap) return
     const me = snap.Players.find((p) => p.NetEntityIdRaw === this.localId)
     if (me) this.s.maxHats = Math.max(this.s.maxHats, me.BomberPlayerState.HatCount)
+    // 没有技能表现事件的数据源（及开局专属技能）：从快照的角色与技能槽补齐。
+    if (me?.skills) {
+      this.s.character ??= me.skills.character
+      for (const v of Object.values(me.skills.slots)) if (v) this.noteSkill(v.skill)
+    }
     const phase = snap.BomberMatchState.Phase
     const live = phase === MatchPhase.Running || phase === MatchPhase.Endgame
     if (live && this.lastSnapTick >= 0 && snap.BomberMatchState.HatKingNetEntityIdRaw === this.localId) {

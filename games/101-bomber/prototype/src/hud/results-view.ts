@@ -2,12 +2,12 @@ import { el, iconEl, setStyle, setText } from './dom'
 import { formatDuration } from './format'
 import type { SettlementResults } from './hud-brain'
 import { ANIMAL_COLOR, SLOT_COLOR } from './icons'
-import { resultsRuleLine } from './podium'
+import { resultsCharacterText, resultsRuleLine, resultsSkillText } from './podium'
 import { visibleRows } from './ranking'
 
 /**
  * 结算页（design §13，ADR 0031）：Top-10（存活者在前，名次 1 戴冠）、本人名次与「击败了 X%」、帽王时长、击杀、
- * 放弹、破坏方块、拾取、技能施放、最佳连锁、最高帽数；每行标「★ 存活」或「出局」；标题下是规则行与本局结束原因；
+ * 放弹、破坏方块、拾取、技能施放、最佳连锁、最高帽数、角色、本局技能与进化；每行标「★ 存活」或「出局」；标题下是规则行与本局结束原因；
  * 「换角色」按钮（下一局生效，打开时结算倒计时暂停）；底部自动下一局倒计时（match.phaseEndTick）。
  * 领奖台（design §13）之后才出现，倒计时条按结算表自己的时长走。
  */
@@ -92,8 +92,8 @@ export class ResultsView {
     }
     const s = r.stats
     this.stats.textContent = ''
-    const stat = (label: string, value: string, wide = false): void => {
-      const box = el('div', wide ? 'rs-stat is-wide' : 'rs-stat', this.stats)
+    const stat = (label: string, value: string, wide = false, extra = ''): void => {
+      const box = el('div', `${wide ? 'rs-stat is-wide' : 'rs-stat'}${extra ? ` ${extra}` : ''}`, this.stats)
       el('div', 'rs-v', box).textContent = value
       el('div', 'rs-l', box).textContent = label
     }
@@ -104,7 +104,9 @@ export class ResultsView {
     stat('放弹', String(s.bombsPlaced))
     stat('破坏方块', String(s.bricksDestroyed))
     stat('拾取糖果', String(s.pickups))
-    stat('技能', String(s.skillCasts))
+    stat('技能施放', String(s.skillCasts))
+    stat('角色', resultsCharacterText(s.character))
+    stat('本局技能与进化', resultsSkillText(s.skills), true, 'is-text')
     this.visible = true
     this.root.classList.add('is-on')
   }

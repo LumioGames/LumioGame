@@ -3,7 +3,7 @@ import { skillCss } from '../present/skill-style'
 import { el, iconEl, skillIconEl } from './dom'
 import { uiScale } from './format'
 import { ANIMAL_COLOR } from './icons'
-import { AI_LABEL, initialIndex, selectCards, selectKey, selectReduce, type SelectCard, type SelectMode, type SelectRules, type SelectState } from './select-model'
+import { AI_LABEL, initialIndex, selectCards, selectKey, selectKeysHint, selectReduce, type SelectCard, type SelectMode, type SelectRules, type SelectState } from './select-model'
 
 /**
  * 选角界面（ADR 0030 / D1）的 DOM：开局前一屏（'start'），以及暂停卡 / 结算页「换角色」里的同一套卡片（'switch'，
@@ -54,7 +54,7 @@ export class CharacterSelect {
     const foot = el('div', 'sel-foot', this.root)
     const info = el('div', 'sel-info', foot)
     if (o.aiLabel) el('span', 'sel-ai', info).textContent = `对手难度：${o.aiLabel}`
-    el('span', 'sel-keys', info).textContent = o.mode === 'start' ? '←→ 选择 · Enter 开始' : '←→ 选择 · Enter 确定 · Esc 返回'
+    el('span', 'sel-keys', info).textContent = selectKeysHint(o.mode)
     const actions = el('div', 'sel-actions', foot)
     if (o.mode === 'switch') {
       const cancel = el('button', 'md-btn', actions)
@@ -147,9 +147,8 @@ export class CharacterSelect {
 
   private key(e: KeyboardEvent): void {
     if (!this.open || e.ctrlKey || e.metaKey || e.altKey) return
-    // 换角色模式下 Esc 交给全局暂停键：恢复游戏时整张卡一起关掉。
-    if (e.code === 'Escape' && this.o.mode === 'switch') return
-    const a = selectKey(e.code, this.o.mode)
+    // Esc 不映射（selectKey 返回 null），不拦截：交给全局暂停键，换角色模式下恢复游戏时整张卡一起关掉。
+    const a = selectKey(e.code)
     if (!a) return
     // 捕获阶段拦下：方向键 / 空格不能漏给游戏输入。
     e.preventDefault()

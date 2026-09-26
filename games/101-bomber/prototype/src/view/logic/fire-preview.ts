@@ -112,6 +112,14 @@ export function forEachCrossCell(
 }
 
 /**
+ * 原型扩展（NON-CONTRACT，ADR 0030）：泡泡里 / 冻住时放不了弹——与规则层 sim/place-bomb.ts `applyPlace` 同口径
+ * （`t < bubbleUntilTick || t < frozenUntilTick`，区间右端不含）。skills 缺席 = 不受限。
+ */
+export function bombBlocked(sk: { bubbleUntilTick: number; frozenUntilTick: number } | undefined, tick: number): boolean {
+  return !!sk && (tick < sk.bubbleUntilTick || tick < sk.frozenUntilTick)
+}
+
+/**
  * 预览前置条件：活着、手上有炸弹、所在格没有炸弹、不站在水上（水上放弹即熄灭）；
  * 原型扩展（NON-CONTRACT，ADR 0030）：泡泡里 / 冻住时放不了弹（blocked）。
  */

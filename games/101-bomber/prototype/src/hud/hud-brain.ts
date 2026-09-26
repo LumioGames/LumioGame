@@ -23,7 +23,7 @@ import { heartDelta, lossPopupText } from './format'
 import { HatLossResolver, type ResolvedLoss } from './hat-loss'
 import { DEATH_AFTER_LAST_HIT_MS, hitHintText, lastHitDelayMs, staggerLocalHits, type StaggeredHit } from './hit-stagger'
 import { KillFeed } from './kill-feed'
-import { percentBeaten, rankFinal, type ElimRecord, type FinalRow } from './ranking'
+import { percentBeaten, rankFinal, rankPlayers, type ElimRecord, type FinalRow, type RankRow } from './ranking'
 import {
   blockedCandyText,
   burnSourceAt,
@@ -85,7 +85,7 @@ export interface SettlementResults {
   matchIndex: number
   /** 局终排名（`rankFinal`：D2 活到最后者赢——存活者在前、出局越晚越前；优先用规则层的 match.results）。 */
   rows: FinalRow[]
-  /** 原型扩展（NON-CONTRACT，ADR 0031）：结束原因（唯一存活 / 时间到 / 同归于尽）。 */
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：结束原因（唯一存活 / 时间到 / 同 Tick 全灭）。 */
   reason: MatchEndReason
   /** 领奖台中央（= rows[0]）。 */
   winnerId: U64
@@ -242,6 +242,19 @@ export class HudBrain {
     this.stats = new StatsTracker(opts.localId)
     this.killFeed = new KillFeed(opts.localId)
     this.rules = opts.rules ?? DEFAULT_RULES
+  }
+
+  /** 出局 Tick：PlayerEliminated 的 Tick，或快照兜底（第一次看到 eliminated 时的 eliminatedTick / 快照 Tick）。 */
+  eliminationTick(id: U64): U64 | undefined {
+    return this.eliminations.get(id)?.tick
+  }
+
+  /**
+   * 实时 Top-10 排名（design §4 / §9.3，ADR 0031）：快照缺 NON-CONTRACT `eliminatedTick` 的数据源（将来的引擎 Replica）
+   * 用本局出局记录兜底，「出局越晚名次越前」与领奖台 / 结算表同一口径。`snap` 应是已 consume 过的那份。
+   */
+  liveRanking(snap: WorldSnapshot): RankRow[] {
+    return rankPlayers(snap.Players, snap.BomberMatchState.HatKingNetEntityIdRaw, this.opts.localId, (id) => this.eliminationTick(id))
   }
 
   consume(batch: TickBatch): HudMoment[] {
@@ -652,7 +665,10 @@ export class HudBrain {
     const km = killer !== 0 && killer !== me ? this.meta.get(killer) : undefined
     // 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙烧倒的有主人（Killer = 火的主人）。
     const burnBy = cause === 'burn' && killer !== 0 && killer !== me
-    const burnSource = cause === 'burn' ? burnSourceAt(batch.before ?? batch.snapshot, killer, e.Cell) : null
+    // 本 tick 末快照里的火区正是 queueBurns 用的那份（施放当 tick 烧倒也在）；熊同 tick 倒下、火区已消失
+    // 或跳帧快照为空时，退回上一 tick 的快照。
+    const burnSource =
+      cause === 'burn' ? (burnSourceAt(batch.snapshot, killer, e.Cell) ?? burnSourceAt(batch.before, killer, e.Cell)) : null
     const headline =
       cause === 'drown'
         ? '在水里泡太久，溺水了'

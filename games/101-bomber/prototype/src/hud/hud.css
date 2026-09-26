@@ -925,6 +925,15 @@
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
+/* 「本局技能与进化」是一行文字，不是数字：去掉帽王金底、字号放小、允许换行。 */
+.rs-stat.is-text {
+  background: rgba(255, 255, 255, 0.07);
+}
+.rs-stat.is-text .rs-v {
+  font-size: calc(16px * var(--u));
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .rs-l {
   font-size: calc(12px * var(--u));
   color: var(--muted);

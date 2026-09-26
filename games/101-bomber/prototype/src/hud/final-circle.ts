@@ -3,7 +3,7 @@ import { cellOf } from '../shared/grid'
 
 /**
  * 决赛圈 HUD 状态推导（design §4.2 表现行，ADR 0025）：纯快照 → 计分板标签、存活数、缩圈倒计时、
- * 决赛圈前的资源计量条、本人是否在圈外 / 已出局。
+ * 决赛圈前的资源计量条、本人是否在圈外 / 已出局、当前毒速（design §4.2「HUD 显示存活人数、下次收缩倒计时与当前毒速」）。
  */
 export interface CircleHud {
   finalCircle: boolean
@@ -21,14 +21,20 @@ export interface CircleHud {
   localEliminated: boolean
   /** 圈外中毒提示（按当前段的毒强度，ADR 0031）；没给规则时为 null（沿用默认文案）。 */
   poisonText: string | null
+  /** 当前段圈外毒速（心/秒，一位小数），圈内也显示在计分板副标题；非决赛圈或没给规则时为 null。 */
+  poisonPerSec: number | null
 }
 
 export type CircleRules = Pick<ProtoRules, 'ringStages' | 'poisonPointsPerInterval' | 'poisonIntervalMs'>
 
+/** 圈外毒速：心/秒，保留一位小数。 */
+export function poisonPerSecOf(points: number, intervalMs: number, pointsPerHeart: number): number {
+  return Math.round((points / Math.max(1, pointsPerHeart)) * (1000 / Math.max(1, intervalMs)) * 10) / 10
+}
+
 /** 「圈外中毒 −0.5 心/秒！回到圈内」/「圈外中毒 −1 心/秒！回到圈内」。 */
 export function poisonWarnText(points: number, intervalMs: number, pointsPerHeart: number): string {
-  const perSec = (points / Math.max(1, pointsPerHeart)) * (1000 / Math.max(1, intervalMs))
-  return `圈外中毒 −${Math.round(perSec * 10) / 10} 心/秒！回到圈内`
+  return `圈外中毒 −${poisonPerSecOf(points, intervalMs, pointsPerHeart)} 心/秒！回到圈内`
 }
 
 /** 缩圈预告：「安全圈 10 秒后缩到 5×5 · 往中间走」；最后一段 1×1 为「10 秒后只剩正中 1 格 · 快进去！」。 */
@@ -78,10 +84,11 @@ export function circleHud(
     outside,
     localEliminated,
     poisonText: fc && rules ? poisonWarnText(poisonPointsAt(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
+    poisonPerSec: fc && rules ? poisonPerSecOf(poisonPointsAt(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
   }
 }
 
-/** 计分板副标题：「存活 5/8 · 缩圈 0:08」；决赛圈外返回 null（沿用默认副标题）。 */
+/** 计分板副标题：「存活 5/8 · 缩圈 0:08 · 毒 −1 心/秒」（毒速圈内圈外都显示）；决赛圈外返回 null（沿用默认副标题）。 */
 export function circleSubtitle(h: CircleHud): string | null {
   if (!h.finalCircle) return null
   const parts = [`存活 ${h.alive}/${h.total}`]
@@ -89,5 +96,6 @@ export function circleSubtitle(h: CircleHud): string | null {
     const s = Math.max(0, Math.ceil(h.shrinkInSec - 1e-9))
     parts.push(`缩圈 ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)
   }
+  if (h.poisonPerSec !== null) parts.push(`毒 −${h.poisonPerSec} 心/秒`)
   return parts.join(' · ')
 }

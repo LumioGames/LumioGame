@@ -118,15 +118,34 @@ describe('LocalHost input plumbing', () => {
   })
 
   it('autopilot drives slot 0 and ignores sendInput', () => {
-    const { h, frames } = host({ botCount: 3, localAutopilot: { profile: 'player' } })
-    const start = last(frames).Players.find((p) => p.NetEntityIdRaw === h.localPlayerId)!.LogicTransform.WorldPosition
-    h.sendInput({ ability: '放弹' })
-    h.stepTicks(60 + 100)
-    const moved = frames.some((f) => {
-      const p = f.snapshot.Players.find((q) => q.NetEntityIdRaw === h.localPlayerId)!.LogicTransform.WorldPosition
-      return p.x !== start.x || p.z !== start.z
-    })
-    expect(moved).toBe(true)
+    /** 同种子跑两遍：一遍开局后猛按放弹 / 技能 / 转向，一遍不按；送进规则替身的本机输入与终态哈希必须完全一致。 */
+    const run = (press: boolean) => {
+      const { h, frames } = host({ botCount: 3, localAutopilot: { profile: 'player' } })
+      const seen = captureLocal(h.localPlayerId)
+      const start = last(frames).Players.find((p) => p.NetEntityIdRaw === h.localPlayerId)!.LogicTransform.WorldPosition
+      h.stepTicks(70) // 过开局倒数，按键落在进行中
+      expect(last(frames).BomberMatchState.Phase).toBe(MatchPhase.Running)
+      for (let i = 0; i < 30; i++) {
+        if (press) {
+          h.sendInput({ ability: '放弹' })
+          h.sendInput({ ability: '技能' })
+          h.sendInput({ ability: '移动', 输入: { 方向: i % 2 ? 方向.左 : 方向.上, 按了转弯: true } })
+        }
+        h.stepTicks(3)
+      }
+      vi.restoreAllMocks() // captureLocal 包了 LocalSim.prototype.step，第二遍前先拆掉
+      const moved = frames.some((f) => {
+        const p = f.snapshot.Players.find((q) => q.NetEntityIdRaw === h.localPlayerId)!.LogicTransform.WorldPosition
+        return p.x !== start.x || p.z !== start.z
+      })
+      return { seen, moved, hash: h.stateHash() }
+    }
+    const quiet = run(false)
+    const pressed = run(true)
+    expect(quiet.moved).toBe(true)
+    expect(quiet.seen).toHaveLength(160)
+    expect(pressed.seen).toEqual(quiet.seen)
+    expect(pressed.hash).toBe(quiet.hash)
   })
 
   it('devSpawnSkillCandies drops one candy per running tick at your feet (hashed like any pickup)', () => {
@@ -140,5 +159,18 @@ describe('LocalHost input plumbing', () => {
       ['kick', 1, 'crate'],
       ['pierceBomb', 1, 'crate'],
     ])
+    // 脚下：糖在该 Tick 推进前放下，格子 = 上一帧本机玩家所在格。
+    const at = frames.flatMap((f, i) =>
+      f.events.flatMap((e) => (e.type === 'PickupSpawned' && e.Kind === PickupKind.SkillCandy ? [[i, e.Cell] as const] : [])),
+    )
+    expect(at).toHaveLength(2)
+    for (const [i, cell] of at) {
+      const pos = frames[i - 1].snapshot.Players.find((p) => p.NetEntityIdRaw === h.localPlayerId)!.LogicTransform.WorldPosition
+      expect(cell).toEqual({ X: Math.floor(pos.x), Y: Math.floor(pos.z) })
+    }
+    // 进哈希：同种子同步数、不放糖的对照局哈希不同。
+    const { h: control } = host({ botCount: 1 })
+    control.stepTicks(67)
+    expect(h.stateHash()).not.toBe(control.stateHash())
   })
 })

@@ -70,6 +70,9 @@ export function hashWorld(w: World): string {
       ? [1, fc.trigger === 'resource' ? 1 : 0, fc.startTick, fc.ring.min, fc.ring.max, fc.nextRing?.min ?? -1, fc.nextRing?.max ?? -1, fc.nextRingTick, fc.stageIndex, fc.announced]
       : [0],
   )
+  const departed = w.departed ?? []
+  h.n(departed.length)
+  for (const d of departed) h.list([d.match, d.id, d.eliminated ? 1 : 0, d.eliminatedTick, d.hats])
   h.bytes(w.ground)
   h.bytes(w.brick)
   h.n(w.players.length)

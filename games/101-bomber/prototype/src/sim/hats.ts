@@ -1,3 +1,4 @@
+import { MatchPhase } from '../contract'
 import { allPowerupKinds, deathEliminates, dropPowerups, hatCountOf } from './death-drops'
 import { allSkillDrops, dropSkills } from './skill-drops'
 import { aliveCount, emit, findPlayer, playerCell, resetAbilityFields, type PendingDeath, type SimPlayer, type World } from './world'
@@ -93,12 +94,28 @@ export function evaluateHatKing(w: World): void {
 }
 
 /**
+ * 决赛圈内退出 = 出局（design §4.2，ADR 0031）：记为在退出 Tick 出局（已出局者保留原出局 Tick）；
+ * 结算期退出按冻结的状态记，名次表不再变。其余阶段退出不进名次表。必须在掉落强化之前调用（帽数取退出前）。
+ */
+function recordDeparture(w: World, p: SimPlayer): void {
+  const phase = w.match.phase
+  if (phase !== MatchPhase.Endgame && phase !== MatchPhase.Settlement) return
+  const index = w.match.index
+  const keep = (w.departed ?? []).filter((d) => d.match === index)
+  const eliminated = phase === MatchPhase.Endgame || p.eliminated
+  const eliminatedTick = p.eliminated ? p.eliminatedTick : phase === MatchPhase.Endgame ? w.t : 0
+  keep.push({ match: index, id: p.id, eliminated, eliminatedTick, hats: hatCountOf(w, p) })
+  w.departed = keep
+}
+
+/**
  * 中途退出（design §4 中途进出）：身上强化全部掉落成道具（谁捡归谁），非专属技能也全部掉成技能糖
  * （原型扩展 NON-CONTRACT，ADR 0030 D8），然后移除玩家实体、重判帽王。
  */
 export function removePlayerFromWorld(w: World, id: number): boolean {
   const p = findPlayer(w, id)
   if (!p) return false
+  recordDeparture(w, p)
   const cell = playerCell(w, p)
   dropPowerups(w, p, cell, allPowerupKinds(w, p))
   dropSkills(w, p, cell, allSkillDrops(p))

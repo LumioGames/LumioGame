@@ -4,6 +4,7 @@ import { finalCircleTrigger, inRect, regenActive, ringRect, spawnChest } from '.
 import { survivorsAfterPending } from '../match-phase'
 import { addBomb, cell, evs, giveLevels, hats, makeWorld, player, put, run, setBrick, startCircle, step } from './helpers'
 import { newId, type SimChest, type World } from '../world'
+import { removePlayerFromWorld } from '../hats'
 
 /** design §4.2 / §12（ADR 0025 / 0031）：决赛圈触发、6 段安全圈、宝箱避让、清场、分段毒圈、出局、当 Tick 结束与名次。 */
 
@@ -241,7 +242,7 @@ describe('ring stages', () => {
     expect(w.rng.chest.clone().NextInt(0, 1000)).toBe(before)
   })
 
-  it('clearInside: the 5×5 take-effect writes bricks / crates inside straight to Air (chain 0, owner 0, no candy) and auto-opens chests inside; 7×7 clears nothing', () => {
+  it('clearInside: the 5×5 take-effect writes bricks / crates inside straight to Air (chain 0, owner 0, no candy) and leaves chests alone; 7×7 clears nothing', () => {
     const w = makeWorld({ players: 2 })
     put(w, 1, 9, 8)
     put(w, 2, 8, 9)
@@ -274,15 +275,18 @@ describe('ring stages', () => {
     for (const [x, y] of inside) expect(f5.snapshot.Terrain.brick[cell(w, x, y)]).toBe(BlockType.Air)
     for (const [x, y, b] of outside) expect(f5.snapshot.Terrain.brick[cell(w, x, y)]).toBe(b)
     expect(f5.snapshot.Terrain.rev).toBeGreaterThan(prev.snapshot.Terrain.rev)
-    // 宝箱：圈内的在同一帧由系统开启（Opener 0）并喷出战利品，圈外的不动。
-    const opened = evs(f5, 'ChestOpened')
-    expect(opened.map((e) => e.ChestNetEntityIdRaw)).toContain(inChest.id)
-    expect(opened.every((e) => e.OpenerNetEntityIdRaw === 0 && e.Tick === T5)).toBe(true)
-    expect(opened.map((e) => e.ChestNetEntityIdRaw)).not.toContain(outChest.id)
-    expect(w.chests.map((c) => c.id)).toContain(outChest.id)
+    // 宝箱：清场只清砖（ADR 0031 / design §4.2），圈内圈外的宝箱都不动、不开、不喷战利品——只有 3 次独立炸弹命中才开。
     const r5 = ringRect(w.size, 5)
-    expect(w.chests.some((c) => inRect(r5, c.cell % w.size, Math.floor(c.cell / w.size)))).toBe(false)
-    expect(evs(f5, 'PickupSpawned').some((e) => e.Source === 'chest' && e.FromCell.X === 11 && e.FromCell.Y === 11)).toBe(true)
+    expect(inRect(r5, 11, 11)).toBe(true)
+    for (const f of upTo5) expect(evs(f, 'ChestOpened')).toHaveLength(0)
+    for (const ch of [inChest, outChest]) {
+      const live = w.chests.find((c) => c.id === ch.id)
+      expect(live, `chest ${ch.id}`).toBeDefined()
+      expect(live!.hitsLeft).toBe(live!.hitsRequired)
+      expect(live!.opener).toBe(0)
+    }
+    expect(f5.snapshot.Terrain.brick[inChest.cell]).toBe(BlockType.Air)
+    for (const f of upTo5) expect(evs(f, 'PickupSpawned').filter((e) => e.Source === 'chest')).toHaveLength(0)
     // 清场不掉糖。
     const next = step(w)
     for (const f of [f5, next]) expect(evs(f, 'PickupSpawned').filter((e) => e.Source === 'brick' || e.Source === 'crate')).toHaveLength(0)
@@ -558,5 +562,17 @@ describe('elimination, respawn-once and early end', () => {
     startCircle(w)
     expect(evs(run(w, 100), 'MatchEnded')).toHaveLength(0)
     expect(w.match.phase).toBe(MatchPhase.Endgame)
+  })
+
+  it('a two-player final circle ends at once when the other player leaves: the stayer wins, the leaver is ranked as eliminated', () => {
+    const w = makeWorld({ players: 2, rules: QUIET })
+    put(w, 1, 9, 9)
+    put(w, 2, 9, 7)
+    startCircle(w)
+    expect(removePlayerFromWorld(w, 2)).toBe(true)
+    const ended = evs(run(w, 2), 'MatchEnded')
+    expect(ended).toHaveLength(1)
+    expect(ended[0].proto?.Reason).toBe('lastSurvivor')
+    expect(ended[0].proto?.WinnerNetEntityIdRaw).toBe(1)
   })
 })

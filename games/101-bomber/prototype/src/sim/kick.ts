@@ -1,7 +1,7 @@
 import { BlockType, 方向, type 移动技能输入 } from '../contract'
 import { DIR_VEC } from '../shared/grid'
 import { kickOutcome, slideStop } from '../shared/skill-geometry'
-import { passableCell } from './move'
+import { passableCell, sideDirection } from './move'
 import { kickRange } from './skills'
 import { CELL_MILLI, HALF_MILLI, cellOfIdx, emit, findPlayer, gridProbe, playerCell, type SimBomb, type SimPlayer, type World } from './world'
 
@@ -10,7 +10,8 @@ import { CELL_MILLI, HALF_MILLI, cellOfIdx, emit, findPlayer, gridProbe, playerC
  *
  * **踢（{@link tryKick}，step.ts 在 applyMove 之前调用，每人每 Tick 至多踢一次）**
  * 1. 可踢距离 r = kickRange（被动踢弹 3 / 5 / 99；弹射泡泡只在 t < bubbleUntilTick 时为 5；取大）；r = 0 或方向为停 → 不踢。
- * 2. 先试主方向；主方向没踢成、且副方向非停、不同于主方向、且主方向前方格不可通行（passableCell）时再试副方向。
+ * 2. 先试主方向；主方向没踢成、且副方向与主方向垂直（move.ts `sideDirection`，反向键不算）、且主方向前方格不可通行
+ *    （passableCell）时再试副方向。
  * 3. 朝 dir 踢要求：玩家在该方向的通道上（垂直坐标 % 1000 === 500）；已到或越过所在格格心（朝 dir）；
  *    相邻格 n 上有一颗**静止**（kickDir = 停）的未爆炸弹。
  * 4. 滑行终点 = shared `kickOutcome(gridProbe, n, dir, r)`：下一格界内、砖层为空、没有未爆弹 / 宝箱才前进，至多 r 格；
@@ -29,8 +30,8 @@ export function tryKick(w: World, p: SimPlayer, input: 移动技能输入): void
   const r = kickRange(w, p)
   if (r <= 0 || input.方向 === 方向.停) return
   if (kickToward(w, p, input.方向, r)) return
-  const alt = input.副方向
-  if (alt === undefined || alt === 方向.停 || alt === input.方向) return
+  const alt = sideDirection(input.方向, input.副方向)
+  if (alt === 方向.停) return
   const cell = playerCell(w, p)
   const { dx, dy } = DIR_VEC[input.方向]
   if (passableCell(w, (cell % w.size) + dx, Math.floor(cell / w.size) + dy)) return

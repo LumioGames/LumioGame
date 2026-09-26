@@ -84,8 +84,12 @@ const PICK_KEYS: Readonly<Record<string, number>> = {
   Numpad4: 3,
 }
 
-/** 键位：←→（及 ↑↓ / WASD）换卡、1–4 直选、Enter / 空格确认、Esc 取消（只在换角色模式）。 */
-export function selectKey(code: string, mode: SelectMode): SelectAction | null {
+/**
+ * 键位：←→（及 ↑↓ / WASD）换卡、1–4 直选、Enter / 空格确认。
+ * Esc 不在这里映射：它留给全局暂停键（换角色卡开着时 = 继续游戏，与帮助 / 设置卡一致），见 {@link selectKeysHint}。
+ * 换角色的「取消」只走卡上的「取消」按钮（回到暂停卡）。
+ */
+export function selectKey(code: string): SelectAction | null {
   switch (code) {
     case 'ArrowLeft':
     case 'KeyA':
@@ -101,11 +105,14 @@ export function selectKey(code: string, mode: SelectMode): SelectAction | null {
     case 'NumpadEnter':
     case 'Space':
       return { t: 'confirm' }
-    case 'Escape':
-      return mode === 'switch' ? { t: 'cancel' } : null
   }
   const i = PICK_KEYS[code]
   return i === undefined ? null : { t: 'pick', i }
+}
+
+/** 选角卡底部键位提示；须与实际按键行为一致（换角色模式 Esc = 全局暂停键 → 继续游戏）。 */
+export function selectKeysHint(mode: SelectMode): string {
+  return mode === 'start' ? '←→ 选择 · Enter 开始' : '←→ 选择 · Enter 确定 · Esc 继续游戏'
 }
 
 /** 上次选的角色（localStorage）→ 初始选中下标；没有 / 无效为 0。 */

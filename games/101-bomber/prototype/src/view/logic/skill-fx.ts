@@ -34,9 +34,21 @@ export const SKILL_FX = {
   fireFadeSec: 0.4,
   /** 火焰光环地圈直径（格）：3×3。 */
   auraRingDiameter: 3.0,
-  /** 组合技腰间光环半径、环绕小球数。 */
-  comboRingRadius: 0.42,
+  /**
+   * 组合技「项圈」：套在脖子（身体顶与头底之间）的一圈光环 + 沿项圈环绕的小球（模型单位，× 玩偶缩放）。
+   * 全部收在 0.7 格脚印里（外沿 ≤ 0.35 格，ADR 0032 / doll-fit）：原腰环半径 0.42、小球轨道 ×1.3 会穿进走廊两侧的墙。
+   * 守护见 `__tests__/skill-fx-layer.test.ts`（顶点采样）。
+   */
+  comboRingRadius: 0.25,
+  comboRingTube: 0.03,
+  /** 项圈高度（模型单位，脚底起）：身体顶 0.56（企鹅 0.64）与头底 ≈ 0.57 之间。 */
+  comboNeckY: 0.58,
+  /** 小球轨道半径（模型单位）与小球缩放（orbGeometry 半径 0.07 × 该值）。 */
+  comboOrbitRadius: 0.24,
+  comboOrbScale: 0.7,
   comboOrbs: 3,
+  /** 泡泡横向外沿上限（格）：停在最近的墙面（铁皮 0.52，geo/blocks.ts）之前；纵向照旧。 */
+  bubbleWallClear: 0.5,
   /** 冰块尺寸（宽、高、深，格）。 */
   iceBlock: [0.8, 1.35, 0.8] as const,
   /** 被踢炸弹滑行时的小跳高度（格）。 */
@@ -153,6 +165,43 @@ function combosIn(s: PlayerSkillsView | undefined, skills: ProtoRules['skills'])
 export function newCombos(prev: PlayerSkillsView | undefined, curr: PlayerSkillsView | undefined, skills: ProtoRules['skills']): SkillId[] {
   const before = combosIn(prev, skills)
   return combosIn(curr, skills).filter((c) => !before.includes(c))
+}
+
+/**
+ * 视图「上次处理过的」每位玩家的技能与逻辑位置。进化爆发与闪现拖尾起点都对它 diff，而不是对 feed 的上一张快照：
+ * 定帧（hitstop）或卡顿时 host 会连推几张，被跳过的那张从没当过 curr，拿 prev 比会把那次进化 / 闪现起点弄丢。
+ */
+export class SeenPlayers {
+  private readonly skills = new Map<number, PlayerSkillsView | undefined>()
+  private readonly pos = new Map<number, XZ>()
+
+  /** 相对上次看到的状态新长出的组合技；第一次见到这位玩家 → []（入场不算进化）。 */
+  combosSince(id: number, curr: PlayerSkillsView | undefined, skills: ProtoRules['skills']): SkillId[] {
+    if (!this.skills.has(id)) return []
+    return newCombos(this.skills.get(id), curr, skills)
+  }
+
+  /** 上次看到的逻辑位置（闪现拖尾起点）。 */
+  from(id: number): XZ | undefined {
+    return this.pos.get(id)
+  }
+
+  /** 这张快照处理完：记下来（静默帧也要记）。 */
+  record(p: PlayerView): void {
+    const id = p.NetEntityIdRaw
+    this.skills.set(id, p.skills)
+    this.pos.set(id, { x: p.LogicTransform.WorldPosition.x, z: p.LogicTransform.WorldPosition.z })
+  }
+
+  delete(id: number): void {
+    this.skills.delete(id)
+    this.pos.delete(id)
+  }
+
+  clear(): void {
+    this.skills.clear()
+    this.pos.clear()
+  }
 }
 
 /** 快照 → 技能几何探针（与规则层 gridProbe 同口径）：占格 = 未爆炸弹或宝箱。 */

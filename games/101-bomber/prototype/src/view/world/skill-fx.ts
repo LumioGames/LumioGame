@@ -13,7 +13,7 @@ import type { GroundMarks } from './ground-marks'
  * 原型扩展（NON-CONTRACT，ADR 0030）：玩偶身上的技能表现，**所有人都看得见**（D4 / B）：
  *   - 泡泡：半透明青色球，最后 0.6 s 闪；
  *   - 冻住：透明冰块罩住玩偶；
- *   - 组合技形态：腰间一圈技能色光环 + 环绕的小球（火焰冲刺用火苗、其余用辉光）；
+ *   - 组合技形态：脖子上一圈技能色项圈 + 沿项圈环绕的小球（火焰冲刺用火苗、其余用辉光），都收在 0.7 格脚印里；
  *   - 闪现拖尾：起点 → 落点一串渐隐的地面辉光；
  *   - 本机闪现落点预览：落点虚线圈 + 途经小光点（只给本人画）。
  * 立即模式：每帧 begin → player()… → end()。
@@ -98,22 +98,26 @@ export class SkillFxLayer {
     if (a > 0) {
       const k = a / SKILL_FX.bubbleAlpha
       const r = s * (0.94 + 0.06 * k) * (1 + 0.03 * Math.sin(t * 5 + doll.id))
-      const i = this.bubbles.push(trs(M, x, base + DOLL.height * s * 0.5, z, 0, t, 0, r, r * 1.08, r))
+      // 横向按最大半径等比收进墙前（仍随脉动呼吸），纵向不变：一个略高的蛋形泡泡。
+      const rxz = r * Math.min(1, SKILL_FX.bubbleWallClear / (SKILL_FX.bubbleRadius * s * 1.03))
+      const i = this.bubbles.push(trs(M, x, base + DOLL.height * s * 0.5, z, 0, t, 0, rxz, r * 1.08, rxz))
       this.bubbles.color(i, this.c.setHex(0x7fe3ff).multiplyScalar(0.55 + 0.45 * k))
     }
     if (renderTick < sk.frozenUntilTick) this.ice.push(trs(M, x, base, z, 0, doll.yaw, 0, s * 0.85, s * 0.85, s * 0.85))
     const combo = comboOf(sk, this.skills)
     const form = combo ? COMBO_FORM[combo] : undefined
     if (form) {
-      const waist = base + DOLL.bodyY * s
-      const ri = this.rings.push(trs(M, x, waist, z, 0.12 * Math.sin(t * 2), t * Math.PI * 2 * RING_SPIN_HZ, 0, s, s, s))
+      // 项圈与小球都收在 0.7 格脚印里（SKILL_FX.comboRingRadius 注释），走廊里不穿墙。
+      const neck = base + SKILL_FX.comboNeckY * s
+      const ri = this.rings.push(trs(M, x, neck, z, 0.12 * Math.sin(t * 2), t * Math.PI * 2 * RING_SPIN_HZ, 0, s, s, s))
       this.rings.color(ri, this.c.setHex(form.ring))
       const orbs = form.orbMat === 'flame' ? this.flameOrbs : this.glowOrbs
-      const rad = SKILL_FX.comboRingRadius * s * 1.3
+      const rad = SKILL_FX.comboOrbitRadius * s
+      const os = SKILL_FX.comboOrbScale * s
       for (let k = 0; k < SKILL_FX.comboOrbs; k++) {
         const ang = t * Math.PI * 2 * ORB_ORBIT_HZ + (k / SKILL_FX.comboOrbs) * Math.PI * 2
-        const oy = waist + 0.25 * s + 0.08 * Math.sin(t * 3 + k * 2)
-        const oi = orbs.push(trs(M, x + Math.cos(ang) * rad, oy, z + Math.sin(ang) * rad, 0, 0, 0, s, s, s))
+        const oy = neck + 0.03 * s * Math.sin(t * 3 + k * 2)
+        const oi = orbs.push(trs(M, x + Math.cos(ang) * rad, oy, z + Math.sin(ang) * rad, 0, 0, 0, os, os, os))
         orbs.color(oi, this.c.setHex(form.orb))
       }
     }

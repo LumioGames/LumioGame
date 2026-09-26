@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CONFIG, DEFAULT_RULES } from '../../contract'
-import { AI_LABEL, characterLine, initialIndex, selectCards, selectKey, selectReduce, type SelectState } from '../select-model'
+import { AI_LABEL, characterLine, initialIndex, selectCards, selectKey, selectKeysHint, selectReduce, type SelectState } from '../select-model'
 
 describe('select-model (选角界面)', () => {
   const cards = selectCards(DEFAULT_RULES, DEFAULT_CONFIG)
@@ -38,16 +38,22 @@ describe('select-model (选角界面)', () => {
     expect(selectReduce(done, { t: 'move', d: 1 }, 4, 'start')).toBe(done)
   })
 
-  it('key map: arrows / WASD / digits / Enter / Esc', () => {
-    expect(selectKey('ArrowLeft', 'start')).toEqual({ t: 'move', d: -1 })
-    expect(selectKey('KeyD', 'start')).toEqual({ t: 'move', d: 1 })
-    expect(selectKey('Digit3', 'start')).toEqual({ t: 'pick', i: 2 })
-    expect(selectKey('Numpad1', 'switch')).toEqual({ t: 'pick', i: 0 })
-    expect(selectKey('Enter', 'start')).toEqual({ t: 'confirm' })
-    expect(selectKey('Space', 'switch')).toEqual({ t: 'confirm' })
-    expect(selectKey('Escape', 'start')).toBeNull()
-    expect(selectKey('Escape', 'switch')).toEqual({ t: 'cancel' })
-    expect(selectKey('KeyQ', 'start')).toBeNull()
+  it('key map: arrows / WASD / digits / Enter; Esc is left to the global pause key', () => {
+    expect(selectKey('ArrowLeft')).toEqual({ t: 'move', d: -1 })
+    expect(selectKey('KeyD')).toEqual({ t: 'move', d: 1 })
+    expect(selectKey('Digit3')).toEqual({ t: 'pick', i: 2 })
+    expect(selectKey('Numpad1')).toEqual({ t: 'pick', i: 0 })
+    expect(selectKey('Enter')).toEqual({ t: 'confirm' })
+    expect(selectKey('Space')).toEqual({ t: 'confirm' })
+    // Esc 不被选角卡吃掉：全局暂停键把它当「继续游戏」（换角色卡随之关闭）。
+    expect(selectKey('Escape')).toBeNull()
+    expect(selectKey('KeyQ')).toBeNull()
+  })
+
+  it('footer key hint matches what Esc actually does (review #12)', () => {
+    expect(selectKeysHint('start')).toBe('←→ 选择 · Enter 开始')
+    expect(selectKeysHint('switch')).toBe('←→ 选择 · Enter 确定 · Esc 继续游戏')
+    expect(selectKeysHint('switch')).not.toMatch(/Esc 返回/)
   })
 
   it('initial index from the remembered pick', () => {

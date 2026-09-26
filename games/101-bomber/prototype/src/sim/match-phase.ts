@@ -190,7 +190,9 @@ export function advanceMatchPhase(w: World): void {
     if (trigger) startFinalCircle(w, trigger)
   }
   if (m.phase === MatchPhase.Endgame) {
-    if (w.players.length > 1 && survivorsAfterPending(w) <= 1) m.endTick = Math.min(m.endTick, w.t)
+    // 决赛圈里中途退出的人也算这局的参赛者（按出局记名次），所以两人局一人退出、另一人立即获胜。
+    const entrants = w.players.length + (w.departed?.filter((d) => d.match === m.index).length ?? 0)
+    if (entrants > 1 && survivorsAfterPending(w) <= 1) m.endTick = Math.min(m.endTick, w.t)
     if (w.t < m.endTick) advanceRing(w)
   }
   if (w.t >= m.endTick) enterSettlement(w)

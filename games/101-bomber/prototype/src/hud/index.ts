@@ -28,7 +28,6 @@ import { LeaderboardView } from './leaderboard'
 import { Overlays } from './overlays'
 import { podiumModel, settlementScene } from './podium'
 import { PodiumView } from './podium-view'
-import { rankPlayers } from './ranking'
 import { RecapView } from './recap-view'
 import { ResultsView } from './results-view'
 import { characterLine, selectCards } from './select-model'
@@ -493,7 +492,8 @@ export function createHud(opts: HudOptions): Hud {
         shownSnap = snap
         const out = new Set<U64>()
         for (const p of snap.Players) if (p.eliminated) out.add(p.NetEntityIdRaw)
-        leaderboard.update(rankPlayers(snap.Players, snap.BomberMatchState.HatKingNetEntityIdRaw, me), out)
+        // 缺 eliminatedTick 的数据源用 HudBrain 的出局记录兜底（review #13）。
+        leaderboard.update(brain.liveRanking(snap), out)
       }
       // 逐击扣心期间每帧都要刷新心；其余时候只在快照变化时刷新也一样便宜。
       updateStats(sample, snap, now)

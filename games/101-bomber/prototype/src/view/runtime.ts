@@ -27,7 +27,7 @@ import { chainHitstopMs, chainShakeAmplitude, CAMERA } from './logic/camera-math
 import { CELL_GROW_MS, computeChainDelays, type ChainBomb } from './logic/chain-stagger'
 import { effectiveDetonationTicks, type DetonationBomb } from './logic/detonation'
 import { DOLL_FIT, dollLayout, localRingPulse, type DollLayout } from './logic/doll-fit'
-import { canPreviewBomb } from './logic/fire-preview'
+import { bombBlocked, canPreviewBomb } from './logic/fire-preview'
 import {
   diffHatCounts,
   dropLandingOffset,
@@ -44,7 +44,7 @@ import { clamp01, easeInOutCubic, heartStage, interpolateXZ, type XZ } from './l
 import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
 import { hash01 } from './logic/rand'
 import { finalCellOf } from './logic/ring'
-import { blinkLanding, comboOf, newCombos, SKILL_FX, teleportKind } from './logic/skill-fx'
+import { blinkLanding, comboOf, SeenPlayers, SKILL_FX, teleportKind } from './logic/skill-fx'
 import { chooseSpectateTarget, type SpectateCandidate } from './logic/spectate'
 import { Timeline } from './logic/timeline'
 import { createSharedMaterials, type SharedMaterials } from './materials'
@@ -208,6 +208,8 @@ export class ViewRuntime {
   private readonly skillFx: SkillFxLayer
   /** 每位玩家上次看到的 skills.blinkTick（闪现判定）。 */
   private readonly lastBlink = new Map<number, number>()
+  /** 视图上次处理过的技能 / 逻辑位置（进化爆发与闪现起点对它 diff，被跳过的快照不丢）。 */
+  private readonly seen = new SeenPlayers()
   /** 这一帧快照里刚闪现过的玩家：位置不跨闪现插值。 */
   private readonly blinkSnap = new Set<number>()
   /** 本机闪现落点预览（每个快照算一次）。 */
@@ -562,13 +564,14 @@ export class ViewRuntime {
       const kind = teleportKind(tp, { teleportTick: p.teleportTick, blinkTick: bt, hp, eliminated: p.eliminated }, prevHp, this.lastBlink.get(id))
       if (teleported) this.lastTeleport.set(id, p.teleportTick)
       if (bt !== undefined) this.lastBlink.set(id, bt)
-      if (kind === 'blink' && !silent) this.onBlink(id, doll, this.prevMap.get(id), p, now)
+      if (kind === 'blink' && !silent) this.onBlink(id, doll, this.seen.from(id), p, now)
       // 决赛圈出局者不再复活：即使规则层把人挪回出生点，玩偶也不再上桌。
       else if (kind === 'first' || kind === 'respawn') {
         this.pendingRespawns.push({ id, tick: silent ? 0 : teleported ? p.teleportTick : curr.Tick })
       }
       // 进化：新长出的组合技给所有人看（彩纸 + 棉花 + 「进化！」）。
-      if (!silent) for (const c of newCombos(this.prevMap.get(id)?.skills, p.skills, this.opts.rules.skills)) this.timeline.add(now, () => this.evolveBurst(id, c))
+      if (!silent) for (const c of this.seen.combosSince(id, p.skills, this.opts.rules.skills)) this.timeline.add(now, () => this.evolveBurst(id, c))
+      this.seen.record(p)
     }
     const local = this.currMap.get(this.opts.localPlayerId)
     this.localLanding = local ? blinkLanding(curr, local, this.opts.rules) : null
@@ -581,6 +584,7 @@ export class ViewRuntime {
         this.lastHp.delete(id)
         this.lastTeleport.delete(id)
         this.lastBlink.delete(id)
+        this.seen.delete(id)
       }
     }
 
@@ -659,6 +663,7 @@ export class ViewRuntime {
     this.lastHp.clear()
     this.lastTeleport.clear()
     this.lastBlink.clear()
+    this.seen.clear()
     this.blinkSnap.clear()
     this.localLanding = null
     this.fire.clear()
@@ -1425,11 +1430,11 @@ export class ViewRuntime {
   private readonly dollFx: { frozen: boolean; glow: number; glowColor: number | undefined } = { frozen: false, glow: 0, glowColor: undefined }
 
   /** 闪现 / 冲刺：起点 → 落点拖尾 + 两头各一团棉花 + 原地「啵」；本机镜头短滑。不走重生的从天而降。 */
-  private onBlink(id: number, doll: Doll, prevP: PlayerView | undefined, p: PlayerView, now: number): void {
+  private onBlink(id: number, doll: Doll, from: XZ | undefined, p: PlayerView, now: number): void {
     const toX = p.LogicTransform.WorldPosition.x
     const toZ = p.LogicTransform.WorldPosition.z
-    const fromX = prevP ? prevP.LogicTransform.WorldPosition.x : doll.x
-    const fromZ = prevP ? prevP.LogicTransform.WorldPosition.z : doll.z
+    const fromX = from ? from.x : doll.x
+    const fromZ = from ? from.z : doll.z
     const skill: SkillId = p.skills?.slots.active?.skill ?? 'blink'
     const color = SKILL_COLOR[skill]
     this.blinkSnap.add(id)
@@ -1497,7 +1502,7 @@ export class ViewRuntime {
           cellHasBomb,
           groundBlock: curr.Terrain.ground[cy * curr.Terrain.size + cx] ?? BlockType.地面,
           // 泡泡里 / 冻住时放不了弹（原型扩展 NON-CONTRACT，ADR 0030）。
-          blocked: !!sk && (curr.Tick < sk.bubbleUntilTick || curr.Tick < sk.frozenUntilTick),
+          blocked: bombBlocked(sk, curr.Tick),
         })
     }
     this.preview.update(show, curr.Terrain, cx, cy, power, now, dt, this.chestCells, pierce)

@@ -258,6 +258,25 @@ describe('kick', () => {
     expect(p.facing).toBe(方向.下)
   })
 
+  it('two keys: an opposite 副方向 never kicks backwards (only a perpendicular 副方向 counts, same as movement)', () => {
+    const scene = (side?: 方向) => {
+      const w = makeWorld()
+      // (17,1) 右边 (18,1) 是边界铁皮；身后 (16,1) 是 2 号的静止弹。
+      const p = put(w, 1, 17, 1)
+      put(w, 2, 9, 17)
+      giveSkill(w, 1, 'kick', 1)
+      const b = addBomb(w, 2, 16, 1, 200)
+      const f = step(w, { 1: [mv(方向.右, false, side)] })
+      return { kicks: evs(f, 'BombKicked'), x: X(w, b.cell), mx: p.mx }
+    }
+    for (const side of [方向.左, undefined]) {
+      const r = scene(side)
+      expect(r.kicks, `side ${side}`).toHaveLength(0)
+      expect(r.x, `side ${side}`).toBe(16)
+      expect(r.mx, `side ${side}`).toBe(17500)
+    }
+  })
+
   it('the snapshot publishes the slide', () => {
     const { w, b } = kickSetup()
     const f = holdUntilKick(w)

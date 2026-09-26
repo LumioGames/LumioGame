@@ -213,6 +213,38 @@ describe('two held keys and the move chooser (ADR 0032)', () => {
     expect(scene(mv(方向.右)).maxCell).toBeGreaterThanOrEqual(2)
   })
 
+  it('already standing on a blast arm: the side fallback moves the player along the arm to escape (auto filter only protects safe players)', () => {
+    // (3,1) 火力 2 的弹已进危险窗：(1..5,1) 全是危险格。玩家在 (4,1)，上方 (4,0) 是边界铁皮。
+    const scene = (input: (i: number) => ReturnType<typeof mv>) => {
+      const w = makeWorld()
+      put(w, 1, 15, 15)
+      const p = put(w, 2, 4, 1)
+      addBomb(w, 1, 3, 1, 9, 2)
+      const frames = []
+      for (let i = 0; i < 16; i++) frames.push(step(w, { 2: [input(i)] }))
+      return { mx: p.mx, hits: evs(frames, 'DamageApplied').filter((d) => d.VictimNetEntityIdRaw === 2).length }
+    }
+    // 先按住右、再按上：上走不通，副方向右带着人沿臂逃出去，和只按右一样不挨炸。
+    const two = scene((i) => mv(方向.上, i === 0, 方向.右))
+    expect(two.hits).toBe(0)
+    expect(two.mx).toBeGreaterThan(6000)
+    const one = scene(() => mv(方向.右))
+    expect(one.hits).toBe(0)
+  })
+
+  it('already standing on a blast arm: the carry after a blocked turn may cross into the next danger cell', () => {
+    // 接续：正往右走、按上转弯（上被挡），缓冲期内沿原方向走过格边进 (5,1)（也是危险格）不被拦。
+    const w = makeWorld()
+    put(w, 1, 15, 15)
+    const p = put(w, 2, 4, 1)
+    p.mx = 4900
+    p.lastDir = 方向.右
+    addBomb(w, 1, 3, 1, 9, 2)
+    step(w, { 2: [mv(方向.上, true)] })
+    expect(p.mx).toBeGreaterThan(5000)
+    expect(p.my).toBe(1500)
+  })
+
   it('a blocked reverse press never carries the player on in the old direction', () => {
     const w = makeWorld()
     put(w, 1, 15, 15)

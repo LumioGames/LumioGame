@@ -126,7 +126,8 @@ const NO_CHOICE: MoveChoice = { dir: 方向.停, r: NO_MOVE, source: null }
 
 /**
  * 本 Tick 按序试走（ADR 0032）：缓冲转向 → 主方向（最新的键）→ 副方向（更早按住的垂直键）→ 缓冲接续；
- * 第一个真能走动的胜出。auto（副方向 / 接续）是规则层替玩家选的，同转角修正一样不进危险格（design §6.1 规则 1）。
+ * 第一个真能走动的胜出。auto（副方向 / 接续）是规则层替玩家选的，同转角修正一样不把站在安全格的玩家带进危险格（design §6.1 规则 1）；
+ * 已在危险格时不受此限（{@link entersDanger}）。
  * 接续只沿与缓冲转向垂直的上一方向走（反向不接续）。
  */
 function chooseMove(w: World, p: SimPlayer, primary: 方向, side: 方向, buffered: 方向, budget: number, danger: Uint8Array): MoveChoice {
@@ -185,9 +186,14 @@ export function applyMove(w: World, p: SimPlayer, input: 移动技能输入, dan
   p.lastDir = c.dir
 }
 
+/**
+ * 自动选择（副方向 / 接续）的危险过滤只保护**站在安全格**的玩家：已经站在危险格（炸弹臂上）时不受此限，
+ * 否则按住第二个键反而会把人钉在臂上等炸（两个都走不通才停，ADR 0032 / design §6.1 规则 2）。
+ */
 function entersDanger(w: World, p: SimPlayer, r: Advance, danger: Uint8Array): boolean {
   const to = Math.floor(r.my / CELL_MILLI) * w.size + Math.floor(r.mx / CELL_MILLI)
-  return to !== playerCell(w, p) && danger[to] === 1
+  const here = playerCell(w, p)
+  return to !== here && danger[to] === 1 && danger[here] === 0
 }
 
 /** 冻结 / 闪现等「本 Tick 不走」：清掉在途移动（缓冲转向、接续），下一 Tick 从静止起步（ADR 0030 / 0032）。 */

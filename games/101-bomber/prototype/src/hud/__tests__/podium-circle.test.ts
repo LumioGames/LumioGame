@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { MatchPhase, type BomberEvent, type PlayerDied } from '../../contract'
+import { DEFAULT_RULES, MatchPhase, type BomberEvent, type PlayerDied } from '../../contract'
 import { circleHud, circleSubtitle, outsideRing } from '../final-circle'
 import { FEED_MAX, feedBase, feedLossText, feedText, KillFeed } from '../kill-feed'
-import { podiumEndTick, podiumHeadline, podiumModel, plateTitle, resultsRuleLine, settlementScene } from '../podium'
+import { podiumEndTick, podiumHeadline, podiumModel, plateTitle, resultsCharacterText, resultsRuleLine, resultsSkillText, settlementScene } from '../podium'
 import { rankFinal, type ElimRecord } from '../ranking'
 import { ME, player, snap } from './fixtures'
 
@@ -43,7 +43,8 @@ describe('rankFinal (领奖台 / 结算表排名，D2 活到最后者赢)', () =
   it('same-tick eliminations share a rank; snapshot eliminatedTick wins over the record', () => {
     const rows = rankFinal(
       [player({ id: 2 }), player({ id: 3, hats: 2, eliminated: true, eliminatedTick: 50 }), player({ id: 4, eliminated: true, eliminatedTick: 50 })],
-      new Map(),
+      // 记录里 3 号的 Tick（10）与快照（50）冲突：若记录优先，3 号会掉到第 3 名。
+      elimMap([[3, 9, 10]]),
       true,
       0,
       ME,
@@ -143,10 +144,21 @@ describe('podiumModel', () => {
 
   it('headline and results rule line by end reason', () => {
     expect(podiumHeadline('timeUp').sub).toBe('时间到 · 存活者里帽子最多')
-    expect(podiumHeadline('allDown').sub).toBe('同归于尽 · 最后倒下的并列第一')
+    // design §4.1 / §13 原文：「同 Tick 全灭」。
+    expect(podiumHeadline('allDown').sub).toBe('同 Tick 全灭 · 最后倒下的并列第一')
+    expect(resultsRuleLine('allDown')).toMatch(/本局：同 Tick 全灭$/)
     expect(podiumHeadline(null)).toEqual({ title: '本局冠军', sub: '活到最后者赢' })
     expect(resultsRuleLine('lastSurvivor')).toBe('活到最后者赢 · 时间到时存活者比帽子，并列同名次 · 本局：唯一存活')
     expect(resultsRuleLine(null)).not.toMatch(/帽子最多者赢/)
+  })
+
+  it('results table 角色 and 本局技能与进化 text (design §13)', () => {
+    expect(resultsCharacterText('bear')).toBe('火焰熊')
+    expect(resultsCharacterText(null)).toBe('—')
+    expect(resultsSkillText([])).toBe('—')
+    expect(resultsSkillText(['blink', 'pierceBomb'])).toBe('闪现 · 穿透弹')
+    expect(resultsSkillText(['blink', 'fireAura', 'fireDash'])).toBe('闪现 · 火焰光环 → 进化 火焰冲刺')
+    expect(resultsSkillText(['fireDash', 'glacierBomb'])).toBe('进化 火焰冲刺、冰川弹')
   })
 
   it('shows the podium for rules.podiumMs after MatchEnded, then the results table', () => {
@@ -198,6 +210,27 @@ describe('circleHud (决赛圈 HUD 状态)', () => {
     expect(h.shrinkInSec).toBeCloseTo(7.975)
     expect(circleSubtitle(h)).toBe('存活 5/8 · 缩圈 0:08')
     expect(h.outside).toBe(false)
+  })
+
+  it('shows the current poison speed in the subtitle even inside the ring; doubles at the 5×5 stage (design §4.2)', () => {
+    const players = [{ id: ME, x: 9.5, z: 9.5 }, { id: 2 }]
+    const early = circleHud(snap({ tick: 200, phase: MatchPhase.Endgame, players, finalCircle: fc({ stageIndex: 0, aliveCount: 2 }) }), ME, 200, 200, DEFAULT_RULES, 2)
+    expect(early.outside).toBe(false)
+    expect(early.poisonPerSec).toBe(0.5)
+    expect(circleSubtitle(early)).toBe('存活 2/2 · 毒 −0.5 心/秒')
+    const five = DEFAULT_RULES.ringStages.findIndex((st) => st.size === 5)
+    const late = circleHud(
+      snap({ tick: 200, phase: MatchPhase.Endgame, players, finalCircle: fc({ stageIndex: five, aliveCount: 2, ring: { Min: 7, Max: 11 }, nextRing: { Min: 8, Max: 10 }, nextRingTick: 360 }) }),
+      ME,
+      200,
+      200,
+      DEFAULT_RULES,
+      2,
+    )
+    expect(late.outside).toBe(false)
+    expect(circleSubtitle(late)).toBe('存活 2/2 · 缩圈 0:08 · 毒 −1 心/秒')
+    // 决赛圈外没有毒速。
+    expect(circleHud(snap({ tick: 10 }), ME, 10, 200, DEFAULT_RULES, 2).poisonPerSec).toBeNull()
   })
 
   it('flags the local player outside the ring, but not when dead or eliminated', () => {

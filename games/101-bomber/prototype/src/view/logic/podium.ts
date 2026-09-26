@@ -87,8 +87,19 @@ export interface PodiumSpot {
 }
 
 /**
- * 名次 → 站位：前三上台阶（1 中、2 左、3 右），其余在台前一排；台下的出局者垂头。
- * 第 2、3 名即使已出局也挥手 / 鼓掌（名次是挣来的）；并列第 1 的站位按 place，皇冠看 rank。
+ * 名次 → 动作，按**真实名次 rank**（design §13）：第 1 名（含全部并列第 1）跳跃欢呼、第 2 名挥手、第 3 名拍手——
+ * 即使已出局（名次是挣来的）；第 3 名之后：出局者垂头，其余鼓掌。
+ */
+export function podiumPose(rank: number, eliminated: boolean): PodiumPose {
+  if (rank === 1) return 'cheer'
+  if (rank === 2) return 'wave'
+  if (rank === 3) return 'clap'
+  return eliminated ? 'droop' : 'clap'
+}
+
+/**
+ * 名次 → 站位：前三行上台阶（1 中、2 左、3 右），其余在台前一排；同名次按 id 排版（站位看 place）。
+ * 动作与皇冠看 rank（{@link podiumPose}）：并列第 1 的人不管站哪都欢呼、戴冠，不会在台下垂头。
  */
 export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
   const out: PodiumSpot[] = []
@@ -105,7 +116,7 @@ export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
         x: s.dx,
         y: PODIUM.stageTop + s.h,
         z: PODIUM.stepZ + 0.05,
-        pose: r.place === 1 ? 'cheer' : r.place === 2 ? 'wave' : 'clap',
+        pose: podiumPose(r.rank, r.eliminated),
         dropSec: PODIUM.dropSec[r.place - 1],
       })
     } else {
@@ -117,7 +128,7 @@ export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
         x: (i - (n - 1) / 2) * spacing,
         y: PODIUM.stageTop,
         z: PODIUM.rowZ,
-        pose: r.eliminated ? 'droop' : 'clap',
+        pose: podiumPose(r.rank, r.eliminated),
         dropSec: PODIUM.rowDropSec + i * PODIUM.rowDropStepSec,
       })
     }

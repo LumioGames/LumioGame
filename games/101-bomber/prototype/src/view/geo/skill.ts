@@ -20,7 +20,7 @@ import { BOMB_CENTER_Y, BOMB_R } from './bomb'
 import { GeoBuilder, mat } from './merge'
 
 /**
- * 原型扩展（NON-CONTRACT，ADR 0030）：技能表现的几何——泡泡球、冰块、组合技腰环与环绕小球、
+ * 原型扩展（NON-CONTRACT，ADR 0030）：技能表现的几何——泡泡球、冰块、组合技项圈与环绕小球、
  * 冰冻弹霜壳、穿透弹钻刺，以及每种技能糖（约 0.3 的彩色糖球 + 正面浮雕剪影，靠形状区分、不只靠颜色）。
  */
 
@@ -39,9 +39,9 @@ export function iceBlockGeometry(): BufferGeometry {
   return g
 }
 
-/** 组合技腰环（平躺，原点在环心）。 */
+/** 组合技项圈（平躺，原点在环心）。 */
 export function comboRingGeometry(): BufferGeometry {
-  const g = new TorusGeometry(SKILL_FX.comboRingRadius, 0.035, 8, 40)
+  const g = new TorusGeometry(SKILL_FX.comboRingRadius, SKILL_FX.comboRingTube, 8, 40)
   g.rotateX(Math.PI / 2)
   return g
 }

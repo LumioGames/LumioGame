@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BlockType, MatchPhase, type BomberEvent } from '../../contract'
+import { BlockType, MatchPhase, type BomberEvent, type PlayerSkillsView } from '../../contract'
 import { HudBrain, multiKillLabel, type HudMoment } from '../hud-brain'
 import { feedText } from '../kill-feed'
 import type { DerivedBrick } from '../timeline'
@@ -227,6 +227,72 @@ describe('HudBrain stats + match lifecycle', () => {
     expect(b.stats.stats.maxHats).toBe(0)
   })
 
+  it('records the local character and every skill / evolution of the match, even after they were dropped (results table)', () => {
+    const b = newBrain()
+    const cat = (slots: PlayerSkillsView['slots']) => skillsView({ character: 'cat', slots })
+    const s0 = cat({ bomb: null, active: held('blink', 1, true), passive: null })
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME, skills: s0 }, { id: 2 }] }) }))
+    const gain = (skill: 'fireAura' | 'pierceBomb', tick: number): BomberEvent => ({
+      type: 'SkillGained',
+      presentationOnly: true,
+      PlayerNetEntityIdRaw: ME,
+      Skill: skill,
+      Slot: skill === 'fireAura' ? 'active' : 'bomb',
+      Level: 1,
+      How: 'equip',
+      Tick: tick,
+    })
+    const other: BomberEvent = { ...(gain('pierceBomb', 3) as Extract<BomberEvent, { type: 'SkillGained' }>), PlayerNetEntityIdRaw: 2 }
+    b.consume(batch(3, [other, gain('pierceBomb', 3)]))
+    const evo: BomberEvent = {
+      type: 'SkillEvolved',
+      presentationOnly: true,
+      PlayerNetEntityIdRaw: ME,
+      From: ['blink', 'fireAura'],
+      Combo: 'fireDash',
+      Slot: 'active',
+      FreedSlot: null,
+      Tick: 5,
+    }
+    b.consume(batch(5, [gain('fireAura', 5), evo]))
+    // 决赛圈出局掉光技能：快照只剩空槽，记录不丢。
+    b.consume(batch(9, [], { snapshot: snap({ tick: 9, players: [{ id: ME, skills: cat({ bomb: null, active: null, passive: null }) }, { id: 2 }] }) }))
+    const s = b.stats.snapshot()
+    expect(s.character).toBe('cat')
+    expect(s.skills).toEqual(['blink', 'pierceBomb', 'fireAura', 'fireDash'])
+  })
+
+  it('without skill events the character and skills come from snapshot slots', () => {
+    const b = newBrain()
+    const sk = skillsView({ character: 'duck', slots: { bomb: held('freezeBomb'), active: held('bubble', 1, true), passive: null } })
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME, skills: sk }] }) }))
+    expect(b.stats.stats.character).toBe('duck')
+    expect([...b.stats.stats.skills].sort()).toEqual(['bubble', 'freezeBomb'])
+    b.consume(batch(30, [], { snapshot: snap({ tick: 30, matchIndex: 2, phase: MatchPhase.Warmup }) }))
+    expect(b.stats.stats.character).toBeNull()
+    expect(b.stats.stats.skills).toEqual([])
+  })
+
+  it('live ranking falls back to recorded elimination ticks when snapshots lack eliminatedTick (review #13)', () => {
+    const b = newBrain()
+    const at = (tick: number, out: number[]) =>
+      snap({ tick, phase: MatchPhase.Endgame, players: [1, 2, 3, 4].map((id) => ({ id, eliminated: out.includes(id) })) })
+    b.consume(batch(100, [], { snapshot: at(100, []) }))
+    b.consume(batch(110, [], { snapshot: at(110, [3]) }))
+    b.consume(batch(120, [], { snapshot: at(120, [3, 4]) }))
+    const s = at(130, [3, 4, 2])
+    b.consume(batch(130, [], { snapshot: s }))
+    expect(s.Players.every((p) => p.eliminatedTick === undefined)).toBe(true)
+    expect([b.eliminationTick(3), b.eliminationTick(4), b.eliminationTick(2)]).toEqual([110, 120, 130])
+    // 出局越晚名次越前：2（130）> 4（120）> 3（110），不再全部并列、按 id 排。
+    expect(b.liveRanking(s).map((r) => [r.id, r.rank])).toEqual([
+      [1, 1],
+      [2, 2],
+      [4, 3],
+      [3, 4],
+    ])
+  })
+
   it('emits settlement results once with rank and percent beaten', () => {
     const b = newBrain()
     b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
@@ -324,6 +390,38 @@ describe('HudBrain round 4 (skills, burn, survivor ranking)', () => {
     expect(d.recap.burnSource).toBe('aura')
     expect(d.recap.sources[0].label).toBe('豆豆熊的火')
     expect(feedText(b.killFeed.entries()[0])).toBe('豆豆熊 烧倒了 你')
+  })
+
+  it('burn death on the cast tick: the zone only exists in the end-of-tick snapshot, recap still names the skill', () => {
+    const b = newBrain()
+    const before = snap({ tick: 9, players: [{ id: ME, hp: 2 }, { id: 3 }] })
+    b.consume(batch(9, [], { snapshot: before }))
+    const after = snap({
+      tick: 10,
+      players: [{ id: ME, hp: 0 }, { id: 3 }],
+      fireZones: [{ owner: 3, source: 'firewall', cells: [{ X: 1, Y: 1 }], untilTick: 50 }],
+    })
+    const dead: BomberEvent = { ...(died(10, ME, 3, 0) as Extract<BomberEvent, { type: 'PlayerDied' }>), Cause: 2 }
+    const d = b.consume(batch(10, [dead], { snapshot: after, before })).find((x) => x.kind === 'death')
+    if (d?.kind !== 'death') throw new Error('no recap')
+    expect(d.recap.headline).toBe('被 豆豆熊 的火墙烧倒了')
+    expect(d.recap.burnSource).toBe('firewall')
+  })
+
+  it('burn death where the bear died the same tick: falls back to the previous snapshot zone', () => {
+    const b = newBrain()
+    const before = snap({
+      tick: 9,
+      players: [{ id: ME, hp: 2 }, { id: 3 }],
+      fireZones: [{ owner: 3, source: 'aura', cells: [{ X: 1, Y: 1 }], untilTick: 80 }],
+    })
+    b.consume(batch(9, [], { snapshot: before }))
+    const dead: BomberEvent = { ...(died(10, ME, 3, 0) as Extract<BomberEvent, { type: 'PlayerDied' }>), Cause: 2 }
+    const after = snap({ tick: 10, players: [{ id: ME, hp: 0 }, { id: 3, hp: 0 }] })
+    const d = b.consume(batch(10, [dead], { snapshot: after, before })).find((x) => x.kind === 'death')
+    if (d?.kind !== 'death') throw new Error('no recap')
+    expect(d.recap.headline).toBe('被 豆豆熊 的火焰光环烧倒了')
+    expect(d.recap.burnSource).toBe('aura')
   })
 
   it('burn hit while alive shows the owner hint', () => {

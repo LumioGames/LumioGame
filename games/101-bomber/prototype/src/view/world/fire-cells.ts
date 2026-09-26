@@ -65,24 +65,27 @@ export class FireCellLayer {
       if (z.source === 'aura') {
         const o = ownerOf(z.owner)
         if (!o) continue
-        for (const off of auraFlameOffsets(z.cells, { X: o.cellX, Y: o.cellY })) this.cell(o.x + off.dx, o.z + off.dy, t, fade, z.owner, marks)
+        // 随机量按「相对熊的格偏移」取种子（-1..1 → 0..8），熊走动时每团火苗的抖动 / 大小 / 相位不变，只平移。
+        for (const off of auraFlameOffsets(z.cells, { X: o.cellX, Y: o.cellY })) {
+          this.cell(o.x + off.dx, o.z + off.dy, (off.dx + 1) * 3 + (off.dy + 1), t, fade, z.owner, marks)
+        }
         marks.ring(o.x, o.z, SKILL_FX.auraRingDiameter * (0.97 + 0.03 * Math.sin(t * 6)), AURA_RING, 0.75 * fade)
       } else {
-        for (const c of z.cells) this.cell(c.X + 0.5, c.Y + 0.5, t, fade, z.owner, marks)
+        for (const c of z.cells) this.cell(c.X + 0.5, c.Y + 0.5, c.X * 7 + c.Y * 13, t, fade, z.owner, marks)
       }
     }
     this.flames.end()
   }
 
-  /** 一格火：两团上下跳动的火苗 + 地面辉光。 */
-  private cell(x: number, z: number, t: number, fade: number, seed: number, marks: GroundMarks): void {
+  /** 一格火：两团上下跳动的火苗 + 地面辉光。key 是稳定的整数种子（不随世界坐标变），x / z 只管摆放。 */
+  private cell(x: number, z: number, key: number, t: number, fade: number, seed: number, marks: GroundMarks): void {
     for (let i = 0; i < FLAMES_PER_CELL; i++) {
-      const h = hash01(Math.floor(x * 7 + z * 13) + i * 31, seed)
+      const h = hash01(key + i * 31, seed)
       const ph = t * (5 + h * 3) + h * 6.28
       const lick = 0.5 + 0.5 * Math.sin(ph)
       const s = (i === 0 ? 0.3 + 0.1 * lick : 0.42 + 0.08 * lick) * fade
       const jx = (h - 0.5) * 0.25
-      const jz = (hash01(i + 7, seed + Math.floor(x * 3)) - 0.5) * 0.25
+      const jz = (hash01(i + 7, seed + key) - 0.5) * 0.25
       const k = this.flames.push(trs(M, x + jx, (i === 0 ? 0.28 : 0.2) + 0.14 * lick, z + jz, 0, ph, 0, s, s * 1.6, s))
       this.flames.color(k, i === 0 ? this.core : this.rim)
     }

@@ -234,6 +234,19 @@ export interface PendingDeath {
   readonly dropSkills: readonly SimSkillDrop[]
 }
 
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0031 / design §4.2「掉线在决赛圈内等于出局」）：决赛圈或结算期中途退出的玩家，
+ * 名次表仍要有他一行。match = 退出时的局序号（只算本局的）；Endgame 退出记为「退出 Tick 出局」（已出局者保留原出局 Tick），
+ * Settlement 退出按退出前冻结的状态记。帽数取掉落之前的值。
+ */
+export interface SimDeparture {
+  readonly match: number
+  readonly id: number
+  readonly eliminated: boolean
+  readonly eliminatedTick: number
+  readonly hats: number
+}
+
 export interface SimMatch {
   index: number
   startTick: number
@@ -267,6 +280,8 @@ export interface World {
   /** 本局开局时的可破坏砖数量（积木 + 木箱），资源触发决赛圈的分母。 */
   resourceInitial: number
   finalCircle: SimFinalCircle | null
+  /** 本局决赛圈 / 结算期中途退出者（见 {@link SimDeparture}）；缺省 = 空，按需创建，只保留当前局的条目。 */
+  departed?: SimDeparture[]
   /** ChainId → (玩家 id → 本链已结算伤害)，链的最后一颗弹销毁时清掉。 */
   chainDmg: Map<number, Map<number, number>>
   pendingDeaths: PendingDeath[]

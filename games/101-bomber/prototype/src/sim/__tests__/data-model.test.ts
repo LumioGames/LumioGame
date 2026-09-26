@@ -3,10 +3,12 @@ import { BlockType, BombKind, CHARACTER_ORDER, DEFAULT_CONFIG, DEFAULT_RULES, Ma
 import { PIERCE_BOMB, PIERCE_CASES, parsePierceBoard } from '../../../tests/support/pierce-cases'
 import { hatCountOf } from '../death-drops'
 import { hashWorld } from '../hash'
+import { removePlayerFromWorld } from '../hats'
+import { rankInputsOf, simMatchResults } from '../results'
 import { LocalSim } from '../local-sim'
 import { startMatch } from '../match-phase'
 import { gridProbe, makeBomb, makePickup, newId, type SimFireWall, type SimSkillSlot, type World } from '../world'
-import { addBomb, BOMB, cell, evs, makeWorld, mv, player, put, SKILL, specs, startCircle, step } from './helpers'
+import { addBomb, BOMB, cell, evs, giveLevels, makeWorld, mv, player, put, run, SKILL, specs, startCircle, step } from './helpers'
 
 /**
  * 第 4 轮数据模型（原型扩展 NON-CONTRACT，ADR 0030 / 0031）：新状态全部进哈希、角色分配、快照发布、step 分派。
@@ -222,6 +224,73 @@ describe('snapshot publishing', () => {
       [2, 2, false, deathTick],
     ])
     expect(f.snapshot.Players[1].eliminatedTick).toBe(deathTick)
+  })
+
+  it('leaving during the final circle = eliminated at the leave tick: the leaver keeps a hashed row in the results (design §4.2)', () => {
+    const w = makeWorld({ players: 4 })
+    put(w, 1, 9, 9)
+    put(w, 2, 9, 11)
+    put(w, 3, 11, 9)
+    put(w, 4, 7, 9)
+    giveLevels(w, 4, 1, 1, 1)
+    // 常规阶段退出不进名次表。
+    const runner = makeWorld({ players: 3 })
+    removePlayerFromWorld(runner, 3)
+    expect(runner.departed ?? []).toEqual([])
+    expect(rankInputsOf(runner).map((r) => r.id)).toEqual([1, 2])
+
+    startCircle(w)
+    step(w)
+    const deathTick = w.t
+    player(w, 3).health = 0
+    w.pendingDeaths.push({ victim: 3, killer: 1, tick: deathTick, dropKinds: [], dropSkills: [] })
+    step(w)
+    expect(player(w, 3).eliminated).toBe(true)
+    run(w, 5)
+    const leaveTick = w.t
+    expect(leaveTick).toBeGreaterThan(deathTick)
+    const h0 = hashWorld(w)
+    expect(removePlayerFromWorld(w, 4)).toBe(true)
+    // 已出局的旁观者退出也保留原来的出局 Tick。
+    expect(removePlayerFromWorld(w, 3)).toBe(true)
+    expect(w.players.map((p) => p.id)).toEqual([1, 2])
+    expect(w.departed).toEqual([
+      { match: w.match.index, id: 4, eliminated: true, eliminatedTick: leaveTick, hats: 3 },
+      { match: w.match.index, id: 3, eliminated: true, eliminatedTick: deathTick, hats: 0 },
+    ])
+    // 退出记录进哈希：逐字段改一下哈希都变。
+    const h1 = hashWorld(w)
+    expect(h1).not.toBe(h0)
+    const d = w.departed![0] as unknown as Record<string, unknown>
+    for (const k of Object.keys(d)) {
+      const was = d[k]
+      d[k] = typeof was === 'boolean' ? !was : (was as number) + 1
+      expect(hashWorld(w), k).not.toBe(h1)
+      d[k] = was
+    }
+    expect(hashWorld(w)).toBe(h1)
+
+    w.match.endTick = w.t + 1
+    const f = step(w)
+    expect(w.match.phase).toBe(MatchPhase.Settlement)
+    const r = f.snapshot.match.results!
+    expect(r.reason).toBe('timeUp')
+    expect(r.rows.map((x) => [x.id, x.survived, x.eliminatedTick, x.place])).toEqual([
+      [1, true, 0, 1],
+      [2, true, 0, 2],
+      [4, false, leaveTick, 3],
+      [3, false, deathTick, 4],
+    ])
+    expect(r.rows.find((x) => x.id === 4)!.hats).toBe(3)
+    expect(simMatchResults(w)).toEqual(r)
+
+    // 结算期退出：名次表冻结，存活者仍是存活者。
+    expect(removePlayerFromWorld(w, 2)).toBe(true)
+    expect(simMatchResults(w)).toEqual(r)
+
+    // 下一局不再带上一局的退出者。
+    startMatch(w, w.match.index + 1)
+    expect(rankInputsOf(w).map((x) => x.id)).toEqual([1])
   })
 })
 

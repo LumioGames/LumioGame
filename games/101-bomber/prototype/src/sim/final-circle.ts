@@ -1,5 +1,4 @@
 import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, type RingRect } from '../contract'
-import { openChests } from './chest'
 import { promoteEliminations } from './hats'
 import {
   cellOfIdx,
@@ -17,7 +16,7 @@ import {
 /**
  * 决赛圈（design §4.2 / §12，ADR 0025 / 0031）：资源或时间先到先触发，固定时长、局终同步提前；
  * 安全圈以棋盘中心为心分 6 段收缩到 1×1，每段生效前预告、按段标志在下一圈内落一个强力宝箱；
- * 最后三段生效时清空圈内可破坏砖并开启圈内宝箱（保证 1×1 可进入）；圈外中毒按段取强度，走伤害单队列。
+ * 最后三段生效时清空圈内可破坏砖（宝箱不动，靠落箱避让保证 1×1 可进入）；圈外中毒按段取强度，走伤害单队列。
  */
 
 /** 以棋盘中心为心、边长 s 的正方形安全圈（闭区间，夹在内场 [1, size−2]）。 */
@@ -113,7 +112,7 @@ export function advanceRing(w: World): void {
 /**
  * 清场段生效（原型扩展 NON-CONTRACT，ADR 0031）：新圈内的可破坏砖（积木 / 木箱等）直接写成 Air——不走 w.batch，
  * 否则掉落系统会把它当爆炸碎块掉糖；不掉糖、无归属（BrickDestroyed 的 ChainId / Owner = 0，同重生清场）。
- * 圈内还没开的宝箱由系统开启（Opener 0）并当场喷出战利品。铁皮、炸弹、糖果不动（炸弹是暂时的）。
+ * 铁皮、宝箱、炸弹、糖果不动（宝箱只能 3 次独立炸弹命中开启，design §4.2；炸弹是暂时的）。
  * 阶段机在 Tick 末（地形提交之后）调用：本帧快照即可见，下一 Tick 的爆炸看到的是 Air。返回清掉的格数。
  */
 export function clearRing(w: World, r: Rect): number {
@@ -129,14 +128,6 @@ export function clearRing(w: World, r: Rect): number {
       emit(w, { type: 'BrickDestroyed', presentationOnly: true, Cell: cellOfIdx(w, c), Block: b, ChainId: 0, OwnerNetEntityIdRaw: 0, Tick: w.t })
     }
   if (cleared > 0) w.rev++
-  let opened = false
-  for (const ch of w.chests) {
-    if (ch.hitsLeft <= 0 || !inRect(r, ch.cell % size, Math.floor(ch.cell / size))) continue
-    ch.hitsLeft = 0
-    ch.opener = 0
-    opened = true
-  }
-  if (opened) openChests(w)
   return cleared
 }
 
@@ -173,7 +164,7 @@ export function queuePoison(w: World): void {
 
 /**
  * 宝箱避让（原型扩展 NON-CONTRACT，ADR 0031）：中心格永不落箱；比最小落箱段（3×3）大的圈还要避开
- * 第一个清场圈（5×5）内的中心十字。于是 1×1 生效时至多只有 3×3 那一箱压在一条臂上（且已被 3×3 清场开启），
+ * 第一个清场圈（5×5）内的中心十字。于是 1×1 生效时至多只有 3×3 那一箱压在一条臂上，
  * 中心至少留 3 个入口。全部由 ringStages 派生，没有新调参数。
  */
 function chestKeepOut(w: World, ringSide: number, x: number, y: number): boolean {

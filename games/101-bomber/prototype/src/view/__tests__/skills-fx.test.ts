@@ -8,12 +8,14 @@ import {
   type ChestView,
   type PlayerSkillsView,
   type PlayerView,
+  type SkillId,
   type SkillSlotView,
   type WorldSnapshot,
 } from '../../contract'
+import { PresentationFeed } from '../../present/feed'
 import { auraCells } from '../../shared/skill-geometry'
 import { PIERCE_BOMB, PIERCE_CASES, parsePierceBoard } from '../../../tests/support/pierce-cases'
-import { canPreviewBomb, computeFireCross } from '../logic/fire-preview'
+import { bombBlocked, canPreviewBomb, computeFireCross } from '../logic/fire-preview'
 import { effectiveDetonationTicks } from '../logic/detonation'
 import { finalCellOf, fogCells, forEachRingDash } from '../logic/ring'
 import {
@@ -26,6 +28,7 @@ import {
   kickedPos,
   lerpKicked,
   newCombos,
+  SeenPlayers,
   SKILL_FX,
   snapshotProbe,
   teleportKind,
@@ -198,6 +201,44 @@ describe('combo form', () => {
     expect(newCombos(after, after, skills)).toEqual([])
     expect(newCombos(undefined, undefined, skills)).toEqual([])
   })
+  it('evolve burst and blink origin survive a snapshot skipped during a hitstop (diff against what the view processed)', () => {
+    const feed = new PresentationFeed(50)
+    const seen = new SeenPlayers()
+    const blink = sk({ slots: { bomb: null, active: slot('blink', 1, true), passive: null } })
+    const dash = sk({ slots: { bomb: null, active: slot('fireDash', 1, true), passive: null } })
+    const s11 = snap({ tick: 11, players: [player(2, 2, blink)] })
+    const s12 = snap({ tick: 12, players: [player(5, 2, dash)] })
+    const s13 = snap({ tick: 13, players: [player(5, 2, dash)] })
+    let processed: WorldSnapshot | null = null
+    const view = (now: number): { combos: SkillId[]; from: { x: number; z: number } | undefined; prev: WorldSnapshot } | null => {
+      const smp = feed.sample(now)
+      if (!smp || smp.curr === processed) return null
+      processed = smp.curr
+      const p = smp.curr.Players[0]
+      const out = { combos: seen.combosSince(1, p.skills, skills), from: seen.from(1), prev: smp.prev }
+      seen.record(p)
+      return out
+    }
+    feed.push({ snapshot: s11, events: [] }, 0)
+    expect(view(0)?.combos).toEqual([]) // 第一次见到：入场不算进化
+    feed.freeze(80, 10)
+    feed.push({ snapshot: s12, events: [] }, 50) // 定帧中：S12 从没当过 curr
+    expect(view(55)).toBeNull()
+    feed.push({ snapshot: s13, events: [] }, 100)
+    const r = view(100)
+    expect(r).not.toBeNull()
+    // feed 的 prev 已是 S12（已进化），拿它比会把这次进化弄丢——这正是原实现的问题。
+    expect(r?.prev.Tick).toBe(12)
+    expect(newCombos(r?.prev.Players[0].skills, s13.Players[0].skills, skills)).toEqual([])
+    // 对视图上次处理的 S11 比：进化照常演；闪现起点是 S11 的格，不是落点。
+    expect(r?.combos).toEqual(['fireDash'])
+    expect(r?.from).toEqual({ x: 2.5, z: 2.5 })
+    // 之后不再重复。
+    feed.push({ snapshot: snap({ tick: 14, players: [player(5, 2, dash)] }), events: [] }, 150)
+    expect(view(150)?.combos).toEqual([])
+    seen.delete(1)
+    expect(seen.combosSince(1, dash, skills)).toEqual([])
+  })
 })
 
 describe('blink landing preview', () => {
@@ -293,9 +334,23 @@ describe('fire preview with pierce (canonical rule, shared fixture)', () => {
     )
     expect(t.get(2)).toBe(100)
   })
-  it('no preview while bubbled or frozen', () => {
+  it('no preview while bubbled or frozen (same gate as sim applyPlace, end tick exclusive)', () => {
     const base = { alive: true, bombsInHand: 1, cellHasBomb: false, groundBlock: BlockType.地面 }
     expect(canPreviewBomb(base)).toBe(true)
     expect(canPreviewBomb({ ...base, blocked: true })).toBe(false)
+    // 泡泡：到 bubbleUntilTick 前都挡，当 Tick 起放开。
+    expect(bombBlocked(sk({ bubbleUntilTick: 101 }), 100)).toBe(true)
+    expect(bombBlocked(sk({ bubbleUntilTick: 101 }), 101)).toBe(false)
+    // 冻住：同理。
+    expect(bombBlocked(sk({ frozenUntilTick: 101 }), 100)).toBe(true)
+    expect(bombBlocked(sk({ frozenUntilTick: 101 }), 101)).toBe(false)
+    // 火焰光环、冷却都不挡放弹；没有 skills 不挡。
+    expect(bombBlocked(sk({ auraUntilTick: 500, cdUntilTick: 500 }), 100)).toBe(false)
+    expect(bombBlocked(sk(), 100)).toBe(false)
+    expect(bombBlocked(undefined, 100)).toBe(false)
+    // 接到预览上：泡泡中 / 冻住时不画，结束那一 Tick 起重新画。
+    expect(canPreviewBomb({ ...base, blocked: bombBlocked(sk({ bubbleUntilTick: 101 }), 100) })).toBe(false)
+    expect(canPreviewBomb({ ...base, blocked: bombBlocked(sk({ frozenUntilTick: 101 }), 100) })).toBe(false)
+    expect(canPreviewBomb({ ...base, blocked: bombBlocked(sk({ frozenUntilTick: 101 }), 101) })).toBe(true)
   })
 })

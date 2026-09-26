@@ -107,7 +107,8 @@ describe('rankPlayers', () => {
       ],
       2,
       ME,
-      (id) => (id === 5 ? 120 : undefined),
+      // 5 号快照缺 eliminatedTick → 用 tickOf；2 号的 tickOf（200）与快照（90）冲突 → 快照优先。
+      (id) => (id === 5 ? 120 : id === 2 ? 200 : undefined),
     )
     expect(rows.map((r) => [r.id, r.rank])).toEqual([
       [3, 1],

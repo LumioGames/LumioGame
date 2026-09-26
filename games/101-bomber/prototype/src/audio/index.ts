@@ -253,11 +253,14 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       crownSnap = snap
       const king = crown.check(snap)
       if (king !== 0) sfx.fanfare(s, here(king === me ? 0.9 : 0.5, 0.1))
+      // 快照兜底看 sample.prev：curr 比到期事件领先一帧（事件要等 renderTick ≥ e.Tick），看 curr 会在真事件
+      // 到来前一帧就判「没见过事件」而先响一声兜底，下一帧真事件再响一遍。prev.Tick ≤ renderTick，
+      // 其事件已在上面的 dueEvents 里处理过（noteEvent 已记上）。
       // 没有 PickupTaken 的数据源：本人帽数上涨也「啵」。
-      const gained = hatGain.check(snap, me)
+      const gained = hatGain.check(sample.prev, me)
       if (gained > 0) hatPop(gained)
       // 没有技能表现事件的数据源：本人冷却终点变大 / 新出现组合技也响。
-      const sc = skillCue.check(snap, me, rules.skills)
+      const sc = skillCue.check(sample.prev, me, rules.skills)
       if (sc.cast) sfx.skillBlink(s, here(0.6))
       if (sc.evolved) sfx.evolve(s, here(0.9))
     }

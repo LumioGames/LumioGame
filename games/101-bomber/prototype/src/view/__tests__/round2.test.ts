@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BlockType } from '../../contract'
 import { effectiveDetonationTicks, type DetonationBomb } from '../logic/detonation'
 import { computeFireCross } from '../logic/fire-preview'
-import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type PodiumEntry } from '../logic/podium'
+import { PODIUM, podiumCameraPose, podiumOrder, podiumPose, podiumSpots, rowsFromResults, type PodiumEntry } from '../logic/podium'
 import { matchResults } from '../../shared/ranking'
 import { fogCells, forEachRingDash, insideRing } from '../logic/ring'
 import { chooseSpectateTarget, type SpectateCandidate } from '../logic/spectate'
@@ -31,20 +31,20 @@ describe('podium ranking', () => {
     expect(rows.map((r) => r.id)).toEqual([9, 2, 3, 4])
     expect(rows.map((r) => r.rank)).toEqual([1, 2, 3, 4])
   })
-  it('a same-tick elimination shares a rank (hats then id only order the display)', () => {
+  it('a same-tick elimination shares a rank (id only orders the display, hats do not — design §13, RESOLUTIONS #11)', () => {
     const rows = podiumOrder([e(1, 0, true, { elimTick: 200 }), e(2, 3, true, { elimTick: 200 }), e(3, 1)])
     expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
       [3, 1, 1],
-      [2, 2, 2],
-      [1, 2, 3],
+      [1, 2, 2],
+      [2, 2, 3],
     ])
   })
-  it('everyone down: the last batch shares rank 1', () => {
+  it('everyone down: the last batch shares rank 1, laid out by id (podium centre = lowest id)', () => {
     const rows = podiumOrder([e(1, 0, true, { elimTick: 500 }), e(2, 4, true, { elimTick: 500 }), e(3, 7, true, { elimTick: 420 })])
-    expect(rows.map((r) => [r.id, r.rank])).toEqual([
-      [2, 1],
-      [1, 1],
-      [3, 3],
+    expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
+      [1, 1, 1],
+      [2, 1, 2],
+      [3, 3, 3],
     ])
   })
   it('breaks remaining ties by id so the order is stable', () => {
@@ -59,14 +59,43 @@ describe('podium ranking', () => {
     const shuffled = { ...results, rows: [...results.rows].reverse() }
     expect(rowsFromResults(shuffled)).toEqual(rows)
   })
-  it('crown goes to every rank-1 row; eliminated 2nd / 3rd still wave and clap', () => {
+  it('crown and cheer go to every rank-1 row; eliminated 3rd still claps (pose follows rank, design §13)', () => {
     const rows = podiumOrder([e(1, 0, true, { elimTick: 500 }), e(2, 0, true, { elimTick: 500 }), e(3, 0, true, { elimTick: 300 }), e(4, 0, true, { elimTick: 100 })])
     const spots = podiumSpots(rows)
     expect(spots.filter((s) => s.rank === 1).map((s) => s.id)).toEqual([1, 2])
     const by = new Map(spots.map((s) => [s.id, s]))
-    expect(by.get(2)!.pose).toBe('wave')
+    expect(by.get(1)!.pose).toBe('cheer')
+    // 并列第 1 站在 place 2 的台阶上，也跳跃欢呼（不是挥手）。
+    expect(by.get(2)!.place).toBe(2)
+    expect(by.get(2)!.pose).toBe('cheer')
+    expect(by.get(3)!.rank).toBe(3)
     expect(by.get(3)!.pose).toBe('clap')
     expect(by.get(4)!.pose).toBe('droop')
+  })
+  it('four players out on the same tick with no survivor: all four rank 1, the one below the steps cheers, never droops', () => {
+    const rows = podiumOrder([
+      e(1, 0, true, { elimTick: 900 }),
+      e(2, 0, true, { elimTick: 900 }),
+      e(3, 0, true, { elimTick: 900 }),
+      e(4, 0, true, { elimTick: 900 }),
+      e(5, 0, true, { elimTick: 400 }),
+      e(6, 0, true, { elimTick: 200 }),
+    ])
+    const spots = podiumSpots(rows)
+    const firsts = spots.filter((s) => s.rank === 1)
+    expect(firsts.map((s) => s.place)).toEqual([1, 2, 3, 4])
+    for (const s of firsts) expect(s.pose, `id ${s.id} place ${s.place}`).toBe('cheer')
+    const by = new Map(spots.map((s) => [s.id, s]))
+    expect(by.get(5)!.rank).toBe(5)
+    expect(by.get(5)!.pose).toBe('droop')
+    expect(by.get(6)!.pose).toBe('droop')
+  })
+  it('podiumPose: tied 2nd both wave, a surviving row claps, an eliminated row droops', () => {
+    expect(podiumPose(1, true)).toBe('cheer')
+    expect(podiumPose(2, true)).toBe('wave')
+    expect(podiumPose(3, false)).toBe('clap')
+    expect(podiumPose(4, false)).toBe('clap')
+    expect(podiumPose(4, true)).toBe('droop')
   })
   it('places 1st center/tallest, 2nd left, 3rd right, the rest in a row; eliminated droop', () => {
     const rows = podiumOrder([e(1, 9), e(2, 6), e(3, 4), e(4, 1), e(5, 0, true, { elimTick: 3 }), e(6, 0)])
