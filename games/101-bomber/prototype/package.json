@@ -1,0 +1,29 @@
+{
+  "name": "lumio-101-bomber-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "description": "101 体素炸弹人 · 网页原型（抛弃型参考；TS 规则为替身，表现层依赖 src/contract）",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "accept": "BOMBER_ACCEPT=1 vitest run tests/acceptance-endgame --silent=false",
+    "stats": "BOMBER_STATS=1 vitest run tests/stats- --silent=false"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

@@ -130,6 +130,7 @@ flowchart TB
 | `modules/config` | 源配表、Schema、默认值和 typed table 输入 | 骨架 |
 | `modules/scenario` | 初始状态、输入、Bot、断言、Capability 要求 | 骨架 |
 | `integration/` | 端到端集成验收工具（`hello`） | 已建 |
+| `games/101-bomber/prototype` | 101 炸弹人网页原型：Three.js 表现层 + TS 规则替身，抛弃型参考，不进 sln / Release / CI（ADR 0024） | 原型 |
 
 尚未建立的子模块不在本表中；需要时按 [`docs/specs/engineering/module-scaffolding-design.md`](docs/specs/engineering/module-scaffolding-design.md) 逐个立卡新建。
 
