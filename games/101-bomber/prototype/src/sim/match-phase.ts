@@ -70,6 +70,12 @@ export function createWorld(opts: LocalSimOptions): World {
       regenNextTick: 0,
       blinkTick: 0,
       eliminatedTick: 0,
+      toxinUntilTick: 0,
+      toxinOwner: 0,
+      toxinBomb: 0,
+      toxinNextTick: 0,
+      shockUntilTick: 0,
+      shockSlowPermille: 0,
     }
     resetAttributes(p, cfg)
     return p

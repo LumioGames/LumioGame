@@ -9,6 +9,7 @@ import {
   type SkillId,
   type SkillSlot,
 } from '../contract'
+import { bombStatus, type BombStatus } from './bomb-status'
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030）：HUD 技能条、回春环与触屏技能按钮的纯模型（无 DOM，可单测）。
@@ -51,6 +52,8 @@ export interface SkillHudModel {
   bubbled: boolean
   /** 活着且未出局（技能按钮可按的前提）。 */
   alive: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹 / 麻痹弹的中招状态（心变绿、「麻痹中」小标签）。 */
+  status: BombStatus
 }
 
 /** 触屏技能按钮的显示状态；主动槽为空（棉花兔）时为 null → 按钮隐藏。 */
@@ -65,7 +68,11 @@ export interface SkillButtonView {
   disabled: boolean
 }
 
-export type SkillHudRules = Pick<ProtoRules, 'skills' | 'skillMaxLevel' | 'burnPointsPerInterval' | 'burnIntervalMs'>
+/** 带上中毒节拍（ADR 0033），技能条悬停的中毒弹说明才有准确的「每 N 秒 −M 心」。 */
+export type SkillHudRules = Pick<
+  ProtoRules,
+  'skills' | 'skillMaxLevel' | 'burnPointsPerInterval' | 'burnIntervalMs' | 'toxinIntervalMs' | 'toxinPointsPerInterval'
+>
 export type SkillHudConfig = Pick<BomberConfig, 'maxHealthPoints' | 'healthPointsPerHeart'>
 
 const clamp01 = (v: number): number => (v <= 0 ? 0 : v >= 1 ? 1 : v)
@@ -118,6 +125,7 @@ export function skillHudModel(
       frozen: false,
       bubbled: false,
       alive: !!p && p.玩家属性.血量当前 > 0 && !p.eliminated,
+      status: bombStatus(p, renderTick, rate),
     }
   }
   const hp = p.玩家属性.血量当前
@@ -162,6 +170,7 @@ export function skillHudModel(
     frozen,
     bubbled: renderTick < sk.bubbleUntilTick,
     alive,
+    status: bombStatus(p, renderTick, rate),
   }
 }
 

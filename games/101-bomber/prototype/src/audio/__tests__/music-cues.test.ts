@@ -54,7 +54,7 @@ describe('CrownWatch (review: no fanfare when the current king crosses N)', () =
 })
 
 describe('hitCues (hurt / death sounds follow the chain rhythm)', () => {
-  const dmg = (bomb: number, chain: number, cause?: 0 | 1 | 2 | 3): BomberEvent => ({
+  const dmg = (bomb: number, chain: number, cause?: 0 | 1 | 2 | 3 | 4): BomberEvent => ({
     type: 'DamageApplied',
     VictimNetEntityIdRaw: 1,
     SourceBombNetEntityIdRaw: bomb,
@@ -82,12 +82,21 @@ describe('hitCues (hurt / death sounds follow the chain rhythm)', () => {
   })
 
   it('marks poison ticks (for the buzz) and plays them without delay', () => {
-    expect(hitCues([dmg(0, 0, 3)], 1)).toEqual([{ delay: 0, poison: true, burn: false }])
-    expect(hitCues([dmg(0, 0, 1)], 1)).toEqual([{ delay: 0, poison: false, burn: false }])
+    expect(hitCues([dmg(0, 0, 3)], 1)).toEqual([{ delay: 0, poison: true, burn: false, toxin: false }])
+    expect(hitCues([dmg(0, 0, 1)], 1)).toEqual([{ delay: 0, poison: false, burn: false, toxin: false }])
+  })
+
+  it('flags toxin ticks (ADR 0033, Cause 4) — their SourceBomb is the old toxin bomb, still no chain delay', () => {
+    expect(hitCues([dmg(44, 0, 4)], 1)).toEqual([{ delay: 0, poison: false, burn: false, toxin: true }])
+    expect(hitCues([dmg(1, 4), dmg(44, 0, 4), dmg(2, 4)], 1).map((c) => [c.delay, c.toxin])).toEqual([
+      [0, false],
+      [0, true],
+      [0.04, false],
+    ])
   })
 
   it('flags burns (aura / fire wall, Cause 2) for the sizzle, without chain delay', () => {
-    expect(hitCues([dmg(0, 0, 2)], 1)).toEqual([{ delay: 0, poison: false, burn: true }])
+    expect(hitCues([dmg(0, 0, 2)], 1)).toEqual([{ delay: 0, poison: false, burn: true, toxin: false }])
   })
 })
 

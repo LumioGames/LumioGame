@@ -61,6 +61,18 @@ export const SKILL_ICON: Readonly<Record<SkillId, string>> = {
       '<path fill="currentColor" d="m14.5 9.5 7.8-7.3-2.6 10.2-2.2-.6z"/>' +
       '<path d="M9.5 11v7M6.5 12.8l6 3.4M12.5 12.8l-6 3.4" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".8"/>',
   ),
+  // 中毒弹（原型扩展 NON-CONTRACT，ADR 0033）：弹 + 滴下的毒液 + 身上两颗毒泡
+  toxinBomb: svg(
+    '<circle cx="10" cy="14" r="6.8" fill="currentColor"/>' +
+      '<path fill="currentColor" d="M18.6 1.6c1.9 2.7 3.4 4.5 3.4 6.3a3.4 3.4 0 0 1-6.8 0c0-1.8 1.5-3.6 3.4-6.3z"/>' +
+      '<circle cx="7.8" cy="12.4" r="1.6" fill="#fff" opacity=".8"/><circle cx="11.9" cy="16.4" r="1.1" fill="#fff" opacity=".65"/>',
+  ),
+  // 麻痹弹（原型扩展 NON-CONTRACT，ADR 0033）：弹 + 头顶电火花 + 身上一道电弧
+  shockBomb: svg(
+    '<circle cx="10" cy="14" r="6.8" fill="currentColor"/>' +
+      '<path fill="currentColor" d="M20.4 1.4 14.6 8.6h3.2l-1.7 5.2 6.1-7.6h-3.3z"/>' +
+      '<path d="m6.4 11.6 3 2.1-2 1.6 3.9 2.6" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>',
+  ),
 }
 
 /** 技能主色（0xRRGGBB）：技能糖外壳、技能条光环、组合技光环、闪现拖尾。表现取值（推断待验证）。 */
@@ -75,6 +87,9 @@ export const SKILL_COLOR: Readonly<Record<SkillId, number>> = {
   fireDash: 0xff5a2a,
   bounceBubble: 0x3db8da,
   glacierBomb: 0xbfefff,
+  // 原型扩展（NON-CONTRACT，ADR 0033）：毒绿 / 电黄（电黄偏柠檬，与闪现的金黄分开；推断待验证）。
+  toxinBomb: 0x8ee04a,
+  shockBomb: 0xf0ff7a,
 }
 
 /** SKILL_COLOR → CSS 颜色串（'#rrggbb'）。 */

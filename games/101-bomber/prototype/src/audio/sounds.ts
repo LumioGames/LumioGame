@@ -284,3 +284,33 @@ export function uiConfirm(s: Synth, at: number): void {
   const v = s.voice(at, 0.4, 0.7, 0)
   ;[659.25, 987.77].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: at + i * 0.08, dur: 0.14, peak: 0.26 }))
 }
+
+// ---- 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹 / 麻痹弹 ----
+
+/** 中毒：咕嘟冒泡 + 一口毒气的「嘶」（PlayerPoisoned）。 */
+export function poisonHiss(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.6, p.gain, p.pan)
+  s.noiseBurst(v, { filter: 'bandpass', f0: 1400, f1: 700, at: p.at, dur: 0.45, peak: 0.2, q: 2, attack: 0.02 })
+  ;[440, 560, 380].forEach((f, i) => s.tone(v, { type: 'sine', f0: f, f1: f * 0.6, at: p.at + 0.04 + i * 0.09, dur: 0.07, peak: 0.16 }))
+}
+
+/** 毒发掉血：一颗小毒泡「啵」（DamageApplied，Cause = Toxin），比受击吱声轻。 */
+export function toxinTick(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.2, p.gain, p.pan)
+  s.tone(v, { type: 'sine', f0: 520, f1: 280, at: p.at, dur: 0.08, peak: 0.2 })
+  s.tone(v, { type: 'sine', f0: 380, f1: 220, at: p.at + 0.06, dur: 0.07, peak: 0.14 })
+}
+
+/** 麻痹：电击「滋啦」——高频方波下扫 + 低频嗡 + 噼啪（PlayerShocked）。 */
+export function zap(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.45, p.gain, p.pan)
+  s.tone(v, { type: 'square', f0: 1900, f1: 520, at: p.at, dur: 0.12, peak: 0.13 })
+  s.tone(v, { type: 'sawtooth', f0: 96, f1: 88, at: p.at + 0.02, dur: 0.3, peak: 0.12, attack: 0.01 })
+  s.noiseBurst(v, { filter: 'highpass', f0: 5000, f1: 2500, at: p.at, dur: 0.16, peak: 0.2 })
+}
+
+/** 解毒：干净的上行三音（PlayerCured），与回春的两音区分。 */
+export function cureChime(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.6, p.gain, p.pan)
+  ;[523.25, 783.99, 1046.5].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: p.at + i * 0.07, dur: 0.22, peak: 0.2, attack: 0.01 }))
+}

@@ -1,4 +1,4 @@
-import { candyPool, type SkillId } from '../contract'
+import { bombCandyPool, candyPool, type SkillId } from '../contract'
 import { resolveSkillPickup } from '../shared/skill-rules'
 import { emit, type SimPickup, type SimPlayer, type World } from './world'
 
@@ -7,13 +7,14 @@ import { emit, type SimPickup, type SimPlayer, type World } from './world'
  * 随机全部走 rng.skill（drop / spawn / chest / regen 流序列不变）：
  * - 木箱（{@link rollCrateSkill}）：spawnDrops 先照旧在 rng.drop 上掷强化种类，再在 rng.skill 上掷 crateSkillCandyPermille，
  *   中了再掷糖的种类；积木从不掉技能糖。
- * - 决赛圈宝箱：每个额外喷 chestSkillCandies 颗（chest.ts），只掷种类。
+ * - 决赛圈宝箱：每个额外喷 chestSkillCandies 颗（chest.ts），只掷种类；原型扩展（NON-CONTRACT，ADR 0033）：
+ *   chestSkillCandyPool = 'bomb'（默认）时从炸弹类池（{@link chestCandyPool}）抽 = 保底炸弹糖。
+ * 池内权重见 contract/skills.ts（ADR 0033：炸弹类 2、其余 1）。
  * 吃糖一律经 shared `resolveSkillPickup`（升级 / 装上 / 进化 / 拒收），与 Bot、HUD 同一口径。
  */
 
-/** 按 candyWeight 在 candyPool 序上掷（rng.skill）；池空 → null（不消耗随机数）。 */
-export function rollSkillCandy(w: World): SkillId | null {
-  const pool = candyPool(w.rules.skills)
+/** 按 candyWeight 在 pool（缺省 = 整个 candyPool）序上掷（rng.skill）；池空 → null（不消耗随机数）。 */
+export function rollSkillCandy(w: World, pool: readonly SkillId[] = candyPool(w.rules.skills)): SkillId | null {
   let total = 0
   for (const id of pool) total += w.rules.skills[id].candyWeight
   if (total <= 0) return null
@@ -23,6 +24,11 @@ export function rollSkillCandy(w: World): SkillId | null {
     if (r < 0) return id
   }
   return pool[pool.length - 1]
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0033）：决赛圈宝箱技能糖的池——'bomb' = 炸弹类保底，'all' = 整个糖池。 */
+export function chestCandyPool(w: World): readonly SkillId[] {
+  return w.rules.chestSkillCandyPool === 'bomb' ? bombCandyPool(w.rules.skills) : candyPool(w.rules.skills)
 }
 
 /** 木箱：先掷 crateSkillCandyPermille（rng.skill），中了再掷种类；没中 / 池空 → null（掉强化）。 */

@@ -116,6 +116,13 @@ export function hashWorld(w: World): string {
       p.regenNextTick,
       p.blinkTick,
       p.eliminatedTick,
+      // 原型扩展（ADR 0033）：中毒 / 麻痹。
+      p.toxinUntilTick,
+      p.toxinOwner,
+      p.toxinBomb,
+      p.toxinNextTick,
+      p.shockUntilTick,
+      p.shockSlowPermille,
     ])
     for (const slot of SKILL_SLOTS) h.list(slotNums(p.slots[slot]))
   }
@@ -140,6 +147,9 @@ export function hashWorld(w: World): string {
       b.kind,
       b.pierceLayers,
       b.freezeTicks,
+      b.toxinTicks,
+      b.shockTicks,
+      b.slowPermille,
       b.kickDir,
       b.kickCellsLeft,
       b.kickAcc,

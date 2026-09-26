@@ -15,6 +15,7 @@ import {
   type U64,
   type WorldSnapshot,
 } from '../contract'
+import { BombStatusWatch, type StatusCue } from '../present/bomb-status'
 import { resultsOf } from '../present/ranking'
 import { cellOf } from '../shared/grid'
 import { ChainLedger } from './chain-ledger'
@@ -28,12 +29,16 @@ import {
   blockedCandyText,
   burnSourceAt,
   burnSourceName,
+  curedText,
   diffSkills,
   evolveBanner,
+  poisonedText,
+  shockedText,
   skillFailText,
   skillGainText,
   skillsDroppedText,
   type BurnSource,
+  type StatusSource,
 } from './skill-moments'
 import { StatsTracker, type MatchStats } from './stats-tracker'
 import type { TickBatch } from './timeline'
@@ -58,7 +63,8 @@ export interface RecapSource {
 }
 
 export interface DeathRecap {
-  cause: 'bomb' | 'self' | 'drown' | 'burn' | 'poison'
+  /** 'toxin' = 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹毒倒（击杀者 = 投弹者；投弹者是自己时也是 'toxin'）。 */
+  cause: 'bomb' | 'self' | 'drown' | 'burn' | 'poison' | 'toxin'
   headline: string
   killerName: string | null
   killerAnimal: AnimalId | null
@@ -147,6 +153,9 @@ const BOMB_KIND_NAME: Readonly<Record<BombKind, string>> = {
   [BombKind.Fire]: '火焰炸弹',
   [BombKind.Pierce]: '穿透炸弹',
   [BombKind.Split]: '分裂炸弹',
+  // 原型扩展（NON-CONTRACT，ADR 0033）：与技能表同名（击杀播报 / 死亡回顾 / 受击提示）。
+  [BombKind.Toxin]: '中毒弹',
+  [BombKind.Shock]: '麻痹弹',
 }
 
 const PICKUP_TEXT: Readonly<Record<PickupKind, string>> = {
@@ -191,8 +200,8 @@ interface DamageRecord {
   chainId: U64
   bomb: U64
   points: number
-  /** 非炸弹伤害：溺水 / 毒圈 / 燃烧；炸弹伤害为 null。 */
-  env: 'drown' | 'poison' | 'burn' | null
+  /** 非炸弹伤害：溺水 / 毒圈 / 燃烧 / 中毒弹的毒（ADR 0033）；炸弹伤害为 null。 */
+  env: 'drown' | 'poison' | 'burn' | 'toxin' | null
   tick: U64
 }
 
@@ -235,6 +244,8 @@ export class HudBrain {
   /** 本人脚下那颗技能糖（连续两份快照都站在上面且捡不起来才提示）。 */
   private standingOn: U64 = 0
   private readonly blockedShown = new Set<U64>()
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：没有中毒 / 麻痹 / 解毒事件的数据源用快照推本人中招。 */
+  private readonly statusWatch = new BombStatusWatch()
   private readonly rules: HudBrainRules
   readonly killFeed: KillFeed
 
@@ -312,7 +323,9 @@ export class HudBrain {
           const victim = e.VictimNetEntityIdRaw
           const killer = e.KillerNetEntityIdRaw
           const hatsBefore = findPlayer(before, victim)?.BomberPlayerState.HatCount ?? 0
-          this.killFeed.onDied(e, (id) => this.nameOf(id))
+          // 炸死的那颗弹：优先 proto，缺席时取本批对死者的最后一张伤害单（ADR 0033 击杀播报写弹种）。
+          const killBomb = e.proto?.SourceBombNetEntityIdRaw ?? lastBombOn(batch, victim)
+          this.killFeed.onDied(e, (id) => this.nameOf(id), e.Cause === DeathCause.Bomb ? specialBombName(batch, killBomb) : null)
           if (victim === me) {
             localDied = true
             out.push({ kind: 'death', recap: this.buildRecap(e, batch, e.proto?.HatsLost ?? null), delayMs: deathDelay })
@@ -375,7 +388,9 @@ export class HudBrain {
           if (e.PlayerNetEntityIdRaw === me && (e.Skill === 'bubble' || e.Skill === 'bounceBubble')) {
             const ms =
               e.UntilTick > e.Tick ? ((e.UntilTick - e.Tick) * 1000) / this.opts.tickRateHz : skillParams(this.rules.skills, e.Skill, e.Level).durationMs
-            out.push({ kind: 'notice', text: `泡泡护体 ${Math.round(ms / 100) / 10} 秒 · 期间不能放弹` })
+            // 施放泡泡顺手解了中毒弹的毒（ADR 0033）：并进同一条提示（提示条只显示最新一条）。
+            const cured = batch.events.some((x) => x.type === 'PlayerCured' && x.NetEntityIdRaw === me && x.Reason === 'bubble')
+            out.push({ kind: 'notice', text: `泡泡护体 ${Math.round(ms / 100) / 10} 秒${cured ? ' · 解毒了' : ''} · 期间不能放弹` })
           }
           break
         case 'SkillsDropped':
@@ -389,6 +404,27 @@ export class HudBrain {
           break
         case 'PlayerFrozen':
           if (e.VictimNetEntityIdRaw === me) out.push({ kind: 'notice', text: '被冻住了！' })
+          break
+        // ---- 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹 / 麻痹弹 ----
+        case 'PlayerPoisoned':
+          this.statusWatch.noteEvent(e.type)
+          if (e.VictimNetEntityIdRaw === me) {
+            const src = this.statusSource(e.SourceBombOwnerNetEntityIdRaw)
+            out.push({ kind: 'notice', text: poisonedText(src, this.statusSec(e.UntilTick, e.Tick)) })
+          }
+          break
+        case 'PlayerShocked':
+          this.statusWatch.noteEvent(e.type)
+          if (e.VictimNetEntityIdRaw === me) {
+            const src = this.statusSource(e.SourceBombOwnerNetEntityIdRaw)
+            out.push({ kind: 'notice', text: shockedText(src, this.statusSec(e.UntilTick, e.Tick)) })
+          }
+          break
+        case 'PlayerCured':
+          this.statusWatch.noteEvent(e.type)
+          if (e.NetEntityIdRaw === me && !(e.Reason === 'bubble' && batch.events.some((x) => x.type === 'SkillActivated' && x.PlayerNetEntityIdRaw === me))) {
+            out.push({ kind: 'notice', text: curedText(e.Reason) })
+          }
           break
         case 'PowerupsDropped': {
           if (e.VictimNetEntityIdRaw === me) out.push({ kind: 'drops', text: dropsText(e.Kinds) })
@@ -425,7 +461,9 @@ export class HudBrain {
     }
 
     if (hits.length) {
-      const hint = localDied ? null : hitHintText(hits, (c) => this.ledger.bombs(c), (id) => this.nameOf(id), me, this.opts.pointsPerHeart)
+      const hint = localDied
+        ? null
+        : hitHintText(hits, (c) => this.ledger.bombs(c), (id) => this.nameOf(id), me, this.opts.pointsPerHeart, (id) => specialBombName(batch, id))
       out.push({ kind: 'hits', hits, hpBefore: hpBefore ?? hits[0].hpAfter + hits[0].points, hint })
     }
 
@@ -453,6 +491,7 @@ export class HudBrain {
       for (const r of this.losses.onSnapshot(snap)) this.onLossResolved(r, out)
       this.checkMyHats(snap, out)
       this.checkMySkills(snap, out)
+      for (const c of this.statusWatch.check(snap, me)) out.push({ kind: 'notice', text: statusFallbackText(c) })
       this.localHp = findPlayer(snap, me)?.玩家属性.血量当前 ?? this.localHp
       this.checkCrown(snap, out)
       if (snap.BomberMatchState.Phase === MatchPhase.Endgame && !this.finalCircle) this.startFinalCircle(out)
@@ -659,12 +698,16 @@ export class HudBrain {
           ? 'burn'
           : e.Cause === DeathCause.Poison
             ? 'poison'
-            : killer === me || killer === 0
-              ? 'self'
-              : 'bomb'
+            : e.Cause === DeathCause.Toxin
+              ? 'toxin'
+              : killer === me || killer === 0
+                ? 'self'
+                : 'bomb'
     const km = killer !== 0 && killer !== me ? this.meta.get(killer) : undefined
     // 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙烧倒的有主人（Killer = 火的主人）。
     const burnBy = cause === 'burn' && killer !== 0 && killer !== me
+    // 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹毒倒的击杀者 = 投弹者。
+    const toxinBy = cause === 'toxin' && killer !== 0 && killer !== me
     // 本 tick 末快照里的火区正是 queueBurns 用的那份（施放当 tick 烧倒也在）；熊同 tick 倒下、火区已消失
     // 或跳帧快照为空时，退回上一 tick 的快照。
     const burnSource =
@@ -678,6 +721,12 @@ export class HudBrain {
             : '被火烧倒了'
           : cause === 'poison'
             ? '在圈外中毒倒下了'
+            : cause === 'toxin'
+              ? toxinBy
+                ? `被 ${this.nameOf(killer)} 的中毒弹毒倒了`
+                : killer === me
+                  ? '被自己的中毒弹毒倒了'
+                  : '被中毒弹毒倒了'
             : cause === 'self'
               ? '被自己的炸弹炸飞了'
               : `被 ${this.nameOf(killer)} 炸飞了`
@@ -687,22 +736,30 @@ export class HudBrain {
     if (cause === 'bomb' || cause === 'self') {
       const bomb = [batch.snapshot, batch.before].flatMap((s) => s?.Bombs ?? []).find((b) => b.NetEntityIdRaw === bombId)
       bombKindName = BOMB_KIND_NAME[bomb?.BomberBombState.BombKind ?? BombKind.Standard]
-    }
-    const ownerId = fatal && fatal.env === null ? fatal.owner : cause === 'bomb' ? killer : 0
-    const ENV_LABEL = { drown: '溺水', poison: '毒圈', burn: '燃烧' } as const
+    } else if (cause === 'toxin') bombKindName = BOMB_KIND_NAME[BombKind.Toxin]
+    const ownerId = fatal && fatal.env === null ? fatal.owner : cause === 'bomb' || cause === 'toxin' ? killer : 0
+    const ENV_LABEL = { drown: '溺水', poison: '毒圈', burn: '燃烧', toxin: '中毒弹' } as const
     const sources = [...this.damage].reverse().map((d): RecapSource => {
-      // 有主人的烧伤读成「X的火」，带主人的颜色。
-      const ownedBurn = d.env === 'burn' && d.owner !== 0 && d.owner !== me
-      const om = d.env && !ownedBurn ? undefined : this.meta.get(d.owner)
+      // 有主人的烧伤读成「X的火」、中毒弹的毒读成「X的中毒弹」，带主人的颜色。
+      const owned = (d.env === 'burn' || d.env === 'toxin') && d.owner !== 0 && d.owner !== me
+      const om = d.env && !owned ? undefined : this.meta.get(d.owner)
       const n = d.chainId !== 0 ? this.ledger.bombs(d.chainId) : 0
-      const label = ownedBurn ? `${this.nameOf(d.owner)}的火` : d.env ? ENV_LABEL[d.env] : d.owner === me ? '你自己的炸弹' : `${this.nameOf(d.owner)}的炸弹`
-      const detail = [heartDelta(d.points, this.opts.pointsPerHeart), n >= 2 ? `×${n} 连锁` : ''].filter(Boolean).join(' · ')
+      const label = owned
+        ? `${this.nameOf(d.owner)}的${d.env === 'burn' ? '火' : '中毒弹'}`
+        : d.env === 'toxin' && d.owner === me
+          ? '你自己的中毒弹'
+          : d.env
+            ? ENV_LABEL[d.env]
+            : d.owner === me
+              ? '你自己的炸弹'
+              : `${this.nameOf(d.owner)}的炸弹`
+      const detail = [heartDelta(d.points, this.opts.pointsPerHeart), n >= 2 ? `×${n} 连锁` : '', d.env === 'toxin' ? '中毒' : ''].filter(Boolean).join(' · ')
       return { label, detail, animal: om?.animal ?? null, slot: om?.slot ?? null }
     })
     return {
       cause,
       headline,
-      killerName: cause === 'bomb' || burnBy ? this.nameOf(killer) : null,
+      killerName: cause === 'bomb' || burnBy || toxinBy ? this.nameOf(killer) : null,
       killerAnimal: km?.animal ?? null,
       killerSlot: km?.slot ?? null,
       bombOwnerName: ownerId === 0 ? null : ownerId === me ? '你自己' : this.nameOf(ownerId),
@@ -749,6 +806,37 @@ export class HudBrain {
   private nameOf(id: U64): string {
     return this.meta.get(id)?.name ?? `玩家 ${id}`
   }
+
+  /** 中招提示的来源：投弹者是自己 → 'self'，没有投弹者 → null。 */
+  private statusSource(owner: U64): StatusSource {
+    if (owner === 0) return null
+    return owner === this.opts.localId ? 'self' : { name: this.nameOf(owner) }
+  }
+
+  /** 事件的持续秒数：UntilTick 不含、从命中的下一 Tick 起算（规则层 until = T + 1 + ticks）。 */
+  private statusSec(until: U64, tick: U64): number {
+    return Math.max(0, until - tick - 1) / this.opts.tickRateHz
+  }
+}
+
+/** 快照兜底推出的本人中招 / 解毒（不知道投弹者与秒数）。 */
+function statusFallbackText(c: StatusCue): string {
+  return c === 'poisoned' ? poisonedText(null, null) : c === 'shocked' ? shockedText(null, null) : curedText(null)
+}
+
+/** 本批里打到 victim 的最后一张伤害单的炸弹（没有为 0）。 */
+function lastBombOn(batch: TickBatch, victim: U64): U64 {
+  let bomb: U64 = 0
+  for (const x of batch.events) if (x.type === 'DamageApplied' && x.VictimNetEntityIdRaw === victim) bomb = x.SourceBombNetEntityIdRaw
+  return bomb
+}
+
+/** 受击提示里单颗特殊炸弹的名字（原型扩展 NON-CONTRACT，ADR 0033）：在本批前后快照里找那颗弹；标准弹 / 找不到为 null。 */
+function specialBombName(batch: TickBatch, bombId: U64): string | null {
+  if (bombId === 0) return null
+  const b = [batch.snapshot, batch.before].flatMap((s) => s?.Bombs ?? []).find((x) => x.NetEntityIdRaw === bombId)
+  const kind = b?.BomberBombState.BombKind ?? BombKind.Standard
+  return kind === BombKind.Standard ? null : (BOMB_KIND_NAME[kind] ?? null)
 }
 
 /** 旧入口保留：扣血文案已移到 format.ts。 */

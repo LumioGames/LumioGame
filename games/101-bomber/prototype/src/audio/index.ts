@@ -9,6 +9,7 @@ import {
   type U64,
   type WorldSnapshot,
 } from '../contract'
+import { BombStatusWatch } from '../present/bomb-status'
 import type { FeedSample } from '../present/feed'
 import { cellCenter } from '../shared/grid'
 import { CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localIsWinner, SkillCueWatch } from './cues'
@@ -56,6 +57,8 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
   const crown = new CrownWatch(rules.hatKingPillarMinHats)
   const hatGain = new HatGainWatch()
   const skillCue = new SkillCueWatch()
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：没有中毒 / 麻痹 / 解毒事件的数据源用快照推本人中招。 */
+  const statusCue = new BombStatusWatch()
   const seq = new MusicSequencer()
   let crownSnap: WorldSnapshot | null = null
   let stallTick = -1
@@ -128,8 +131,11 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       for (const c of cues) {
         if (v === me) {
           if (c.poison) sfx.poisonBuzz(s, here(0.9, c.delay))
+          else if (c.toxin) sfx.toxinTick(s, here(0.9, c.delay))
           else sfx.hurt(s, here(1, c.delay))
           if (c.burn) sfx.sizzle(s, here(0.8, c.delay))
+        } else if (p && c.toxin) {
+          sfx.toxinTick(s, at(p.x, p.z, 0.35, c.delay))
         } else if (p && !c.poison) {
           sfx.hurt(s, at(p.x, p.z, 0.45, c.delay))
           if (c.burn) sfx.sizzle(s, at(p.x, p.z, 0.4, c.delay))
@@ -238,6 +244,23 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           sfx.freeze(s, e.VictimNetEntityIdRaw === me ? here(0.9) : p ? at(p.x, p.z, 0.6) : here(0.3))
           break
         }
+        // ---- 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹 / 麻痹弹 ----
+        case 'PlayerPoisoned':
+        case 'PlayerShocked': {
+          statusCue.noteEvent(e.type)
+          const mine = e.VictimNetEntityIdRaw === me
+          const p = mine ? null : posOf(snap, e.VictimNetEntityIdRaw)
+          const place = mine ? here(0.9, 0.05) : p ? at(p.x, p.z, 0.55, 0.05) : here(0.25, 0.05)
+          if (e.type === 'PlayerPoisoned') sfx.poisonHiss(s, place)
+          else sfx.zap(s, place)
+          break
+        }
+        case 'PlayerCured': {
+          statusCue.noteEvent(e.type)
+          const p = e.NetEntityIdRaw === me ? null : posOf(snap, e.NetEntityIdRaw)
+          sfx.cureChime(s, e.NetEntityIdRaw === me ? here(0.8, 0.1) : p ? at(p.x, p.z, 0.35, 0.1) : here(0.2, 0.1))
+          break
+        }
         case 'MatchEnded':
           // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
           matchEndedTick = e.Tick
@@ -263,6 +286,12 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       const sc = skillCue.check(sample.prev, me, rules.skills)
       if (sc.cast) sfx.skillBlink(s, here(0.6))
       if (sc.evolved) sfx.evolve(s, here(0.9))
+      // 没有中毒 / 麻痹 / 解毒事件的数据源：本人的中毒 / 麻痹终点变大、中毒提前清零也响（同样看 prev，不会与事件各响一遍）。
+      for (const c of statusCue.check(sample.prev, me)) {
+        if (c === 'poisoned') sfx.poisonHiss(s, here(0.9))
+        else if (c === 'shocked') sfx.zap(s, here(0.9))
+        else sfx.cureChime(s, here(0.8))
+      }
     }
     for (const list of chains.values()) {
       list.sort((a, b) => (a.proto?.IndexInChain ?? 0) - (b.proto?.IndexInChain ?? 0))

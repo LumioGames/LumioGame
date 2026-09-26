@@ -214,3 +214,24 @@
   width: 17px;
   height: 16px;
 }
+
+/* 原型扩展（NON-CONTRACT，ADR 0033）：中毒「中毒」毒绿、麻痹「麻痹」电黄。 */
+.bv-float-toxin {
+  color: #7ed957;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-shock {
+  color: #ffe23c;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-toxin svg,
+.bv-float-shock svg {
+  width: 17px;
+  height: 17px;
+}

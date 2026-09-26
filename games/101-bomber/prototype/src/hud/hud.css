@@ -2130,3 +2130,32 @@
     transition: none !important;
   }
 }
+
+/* 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹心变绿、「麻痹中」/「中毒中」小标签（--toxin / --shock 由 index.ts 取技能色） */
+.hud-stats.is-poisoned .heart-fill {
+  color: var(--toxin, #8ee04a);
+  filter: drop-shadow(0 0 calc(3px * var(--u)) var(--toxin, #8ee04a));
+}
+.hud-stats.is-poisoned .st-hearts {
+  animation: hud-pulse 1s ease-in-out infinite;
+}
+.st-status {
+  display: none;
+  padding: calc(2px * var(--u)) calc(8px * var(--u));
+  border-radius: 999px;
+  font-size: calc(12px * var(--u));
+  font-weight: 900;
+  color: var(--ink);
+  background: var(--toxin, #8ee04a);
+}
+.st-status.is-on {
+  display: inline-block;
+}
+.st-status[data-kind='shock'],
+.st-status[data-kind='both'] {
+  background: var(--shock, #f0ff7a);
+  animation: hud-pulse 0.5s ease-in-out infinite;
+}
+.st-status[data-kind='both'] {
+  background: linear-gradient(90deg, var(--toxin, #8ee04a), var(--shock, #f0ff7a));
+}

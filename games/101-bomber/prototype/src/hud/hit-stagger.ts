@@ -15,7 +15,8 @@ export function chainDelayMs(index: number): number {
   return Math.min(Math.max(0, index) * CHAIN_STEP_MS, CHAIN_CAP_MS)
 }
 
-export type HitCause = 'bomb' | 'drown' | 'poison' | 'burn'
+/** 'toxin' = 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹的持续掉血（DeathCause.Toxin），owner = 投弹者。 */
+export type HitCause = 'bomb' | 'drown' | 'poison' | 'burn' | 'toxin'
 
 export interface StaggeredHit {
   delayMs: number
@@ -33,6 +34,7 @@ function causeOf(e: Extract<BomberEvent, { type: 'DamageApplied' }>): HitCause {
   if (c === DeathCause.Poison) return 'poison'
   if (c === DeathCause.Drown) return 'drown'
   if (c === DeathCause.Burn) return 'burn'
+  if (c === DeathCause.Toxin) return 'toxin'
   if (c === undefined && e.SourceBombNetEntityIdRaw === 0) return 'drown'
   return 'bomb'
 }
@@ -124,7 +126,8 @@ export class HeartTrack {
 /**
  * 活着挨炸时的实时来源提示（design §9.6「伤害来源与连锁归属实时提示」）：
  * 「被 豆豆熊 的连锁 ×3 命中 −1 心」/「被 豆豆熊 的炸弹命中 −1 心」/「被你自己的炸弹命中 −1 心」。
- * 取本批扣血最多的一条链；溺水 / 毒圈有各自的常驻提示，这里不重复。
+ * 取本批扣血最多的一条链；溺水 / 毒圈有各自的常驻提示，这里不重复。没有炸弹命中时依次退回烧伤、中毒弹的提示。
+ * @param bombName 原型扩展（NON-CONTRACT，ADR 0033）：单颗特殊炸弹的名字（「中毒弹」/「麻痹弹」…）；标准弹 / 查不到为 null。
  */
 export function hitHintText(
   hits: readonly StaggeredHit[],
@@ -132,6 +135,7 @@ export function hitHintText(
   nameOf: (id: U64) => string,
   localId: U64,
   pointsPerHeart: number,
+  bombName?: (bomb: U64) => string | null,
 ): string | null {
   const groups = new Map<string, StaggeredHit[]>()
   for (const h of hits) {
@@ -150,13 +154,35 @@ export function hitHintText(
       bestPts = pts
     }
   }
-  if (!best) return burnHintText(hits, nameOf, localId, pointsPerHeart)
+  if (!best) return burnHintText(hits, nameOf, localId, pointsPerHeart) ?? toxinHintText(hits, nameOf, localId, pointsPerHeart)
   const owners = [...new Set(best.map((h) => h.owner))]
   const other = owners.find((o) => o !== localId)
   const src = other === undefined ? '你自己' : ` ${nameOf(other)}${owners.length > 1 ? ' 等人' : ''} `
   const n = best[0].chainId !== 0 ? Math.max(chainBombs(best[0].chainId), best.length) : 1
   const dmg = heartDelta(bestPts, pointsPerHeart)
-  return n >= 2 ? `被${src}的连锁 ×${n} 命中 ${dmg}` : `被${src}的炸弹命中 ${dmg}`
+  if (n >= 2) return `被${src}的连锁 ×${n} 命中 ${dmg}`
+  return `被${src}的${bombName?.(best[0].bomb) ?? '炸弹'}命中 ${dmg}`
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：本批只有中毒弹的毒伤——「被 豆豆熊 的中毒弹毒到 −半心」/「被你自己的中毒弹毒到 −半心」。
+ * 同一时刻只中一份毒（再中刷新、改记最新投弹者），取扣得最多的那位。
+ */
+function toxinHintText(hits: readonly StaggeredHit[], nameOf: (id: U64) => string, localId: U64, pointsPerHeart: number): string | null {
+  const byOwner = new Map<U64, number>()
+  for (const h of hits) if (h.cause === 'toxin') byOwner.set(h.owner, (byOwner.get(h.owner) ?? 0) + h.points)
+  let owner: U64 | null = null
+  let pts = -1
+  for (const [o, p] of byOwner) {
+    if (p > pts) {
+      owner = o
+      pts = p
+    }
+  }
+  if (owner === null) return null
+  const dmg = heartDelta(pts, pointsPerHeart)
+  if (owner === 0) return `中毒弹的毒 ${dmg}`
+  return `被${owner === localId ? '你自己' : ` ${nameOf(owner)} `}的中毒弹毒到 ${dmg}`
 }
 
 /**

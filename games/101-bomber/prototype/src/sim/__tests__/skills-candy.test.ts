@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { BlockType, candyPool, PickupKind } from '../../contract'
+import { BlockType, bombCandyPool, candyPool, PickupKind, type SkillId } from '../../contract'
 import { hatCountOf } from '../death-drops'
-import { rollSkillCandy } from '../skill-candy'
+import type { Sfc32 } from '../rng'
+import { chestCandyPool, rollSkillCandy } from '../skill-candy'
 import { addBomb, evs, makeWorld, player, put, setBrick, step } from './helpers'
 import { giveSkill, putCandy, putChest } from './skill-helpers'
 
-/** 技能糖（原型扩展 NON-CONTRACT，ADR 0030）：来源（D14）、吃糖规则（D6 / D16）、三种进化；技能不算帽子（D5）。 */
+/**
+ * 技能糖（原型扩展 NON-CONTRACT，ADR 0030）：来源（D14）、吃糖规则（D6 / D16）、三种进化；技能不算帽子（D5）。
+ * ADR 0033：池内权重炸弹类 2、其余 1；决赛圈宝箱的技能糖保底炸弹类。
+ */
+
+/** 参考实现：按 candyWeight 在 pool 序上掷一次（与 skill-candy.ts rollSkillCandy 同口径）。 */
+function refRoll(rng: Sfc32, skills: Parameters<typeof candyPool>[0], pool: readonly SkillId[]): SkillId {
+  let total = 0
+  for (const id of pool) total += skills[id].candyWeight
+  let r = rng.NextInt(0, total)
+  for (const id of pool) {
+    r -= skills[id].candyWeight
+    if (r < 0) return id
+  }
+  return pool[pool.length - 1]
+}
 
 function crateBlast(permille: number, block: BlockType = BlockType.木箱, seed = 1) {
   const w = makeWorld({ seed, rules: { crateSkillCandyPermille: permille } })
@@ -43,8 +59,62 @@ describe('candy sources', () => {
     const replay = w.rng.skill.clone()
     const f = step(w)
     replay.NextInt(0, 1000)
+    expect(evs(f, 'PickupSpawned')[0].Skill).toBe(refRoll(replay, w.rules.skills, candyPool(w.rules.skills)))
+  })
+
+  it('pool weights (ADR 0033): bomb-type 2 each, the other four 1 each; ~2/3 of crate candies are bomb-type', () => {
+    const w = makeWorld()
     const pool = candyPool(w.rules.skills)
-    expect(evs(f, 'PickupSpawned')[0].Skill).toBe(pool[replay.NextInt(0, pool.length)])
+    expect(pool.map((id) => [id, w.rules.skills[id].candyWeight])).toEqual([
+      ['bubble', 1],
+      ['blink', 1],
+      ['fireAura', 1],
+      ['kick', 1],
+      ['freezeBomb', 2],
+      ['pierceBomb', 2],
+      ['toxinBomb', 2],
+      ['shockBomb', 2],
+    ])
+    const counts = new Map<SkillId, number>()
+    const n = 12000
+    for (let i = 0; i < n; i++) {
+      const id = rollSkillCandy(w)!
+      counts.set(id, (counts.get(id) ?? 0) + 1)
+    }
+    const bomb = bombCandyPool(w.rules.skills).reduce((a, id) => a + (counts.get(id) ?? 0), 0)
+    expect(bomb / n).toBeGreaterThan(0.63)
+    expect(bomb / n).toBeLessThan(0.70)
+    for (const id of pool) expect(counts.get(id) ?? 0, id).toBeGreaterThan(0)
+  })
+
+  it('a final chest candy is always bomb-type by default (chestSkillCandyPool = bomb); rng.drop is untouched either way', () => {
+    const open = (seed: number, chestSkillCandyPool: 'bomb' | 'all') => {
+      const w = makeWorld({ seed, rules: { chestSkillCandyPool } })
+      put(w, 1, 1, 17)
+      put(w, 2, 17, 17)
+      const c = putChest(w, 9, 5)
+      c.hitsLeft = 0
+      const replay = w.rng.skill.clone()
+      const drop = w.rng.drop.state()
+      const f = step(w)
+      const candy = evs(f, 'PickupSpawned').filter((e) => e.Source === 'chest' && e.Kind === PickupKind.SkillCandy)
+      expect(candy).toHaveLength(1)
+      expect(w.rng.drop.state()).toEqual(drop)
+      expect(candy[0].Skill).toBe(refRoll(replay, w.rules.skills, chestCandyPool(w)))
+      return candy[0].Skill!
+    }
+    const bombPool = bombCandyPool(makeWorld().rules.skills)
+    expect(bombPool).toEqual(['freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
+    const got = new Set<SkillId>()
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = open(seed, 'bomb')
+      expect(bombPool).toContain(s)
+      got.add(s)
+    }
+    expect(got.size).toBeGreaterThan(1)
+    const all = new Set<SkillId>()
+    for (let seed = 1; seed <= 40; seed++) all.add(open(seed, 'all'))
+    expect([...all].some((id) => !bombPool.includes(id))).toBe(true)
   })
 
   it('a soft brick (积木) never drops skill candy, even at 1000‰', () => {

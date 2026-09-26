@@ -28,7 +28,7 @@ export interface SelectCard {
   tagline: string
 }
 
-export type SelectRules = Pick<ProtoRules, 'characters' | 'skills' | 'burnPointsPerInterval' | 'burnIntervalMs'>
+export type SelectRules = Pick<ProtoRules, 'characters' | 'skills' | 'burnPointsPerInterval' | 'burnIntervalMs' | 'toxinIntervalMs' | 'toxinPointsPerInterval'>
 
 export function selectCards(rules: SelectRules, cfg: Pick<BomberConfig, 'healthPointsPerHeart'>): SelectCard[] {
   return CHARACTER_ORDER.map((id) => {

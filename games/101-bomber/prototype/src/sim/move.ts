@@ -1,6 +1,6 @@
 import { BlockType, 方向, type 移动技能输入 } from '../contract'
 import { DIR_VEC } from '../shared/grid'
-import { CELL_MILLI, HALF_MILLI, chestAt, playerCell, unexplodedBombAt, type SimPlayer, type World } from './world'
+import { CELL_MILLI, HALF_MILLI, chestAt, currentSpeed, playerCell, unexplodedBombAt, type SimPlayer, type World } from './world'
 
 /**
  * 移动技能（契约 §2.1 四向 + 停；design §6.1 手感规则）。位置是整数千分格，恒在某条通道上：
@@ -86,9 +86,13 @@ function tryAdvance(w: World, p: SimPlayer, dir: 方向, budget: number, danger:
   return moved ? { mx, my, moved, slid } : NO_MOVE
 }
 
+/**
+ * 本 Tick 的有效移速：当前账移速（麻痹中已乘 shockSlowPermille，原型扩展 NON-CONTRACT，ADR 0033）× 水中减速（相乘）。
+ */
 function effectiveSpeed(w: World, p: SimPlayer): number {
+  const speed = currentSpeed(p, w.t)
   const onWater = w.ground[playerCell(w, p)] === BlockType.水
-  return onWater ? Math.floor((p.speed * w.rules.waterSpeedPermille) / 1000) : p.speed
+  return onWater ? Math.floor((speed * w.rules.waterSpeedPermille) / 1000) : speed
 }
 
 function isHorizontal(d: 方向): boolean {

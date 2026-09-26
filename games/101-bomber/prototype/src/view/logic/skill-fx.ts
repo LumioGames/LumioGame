@@ -1,6 +1,5 @@
 import {
   BlockType,
-  BombKind,
   skillParams,
   type BombView,
   type BomberCell,
@@ -12,6 +11,7 @@ import {
 } from '../../contract'
 import { DIR_VEC } from '../../shared/grid'
 import { blinkScan, type GridProbe } from '../../shared/skill-geometry'
+import { bombDrill, bombTone } from './bomb-look'
 import type { XZ } from './interp'
 
 /**
@@ -61,16 +61,18 @@ export const SKILL_FX = {
   blinkGlide: 0.35,
 } as const
 
-export type BombStyle = 'standard' | 'frost' | 'pierce' | 'glacier'
+export type BombStyle = 'standard' | 'frost' | 'pierce' | 'glacier' | 'toxin' | 'shock'
 
-/** 炸弹外观：冰冻 + 穿透 = 冰川弹；冰冻 = 霜壳；穿透 = 钻头。 */
+/**
+ * 炸弹外观的名字：冰冻 + 穿透 = 冰川弹；冰冻 = 霜壳；穿透 = 钻头；
+ * 原型扩展（NON-CONTRACT，ADR 0033）：中毒 = 毒绿壳、麻痹 = 电黄壳（色调见 logic/bomb-look，钻刺与色调正交）。
+ */
 export function bombStyle(kind: number, pierce: number): BombStyle {
-  const frost = kind === BombKind.Freeze
-  const drill = kind === BombKind.Pierce || pierce > 0
-  if (frost && drill) return 'glacier'
-  if (frost) return 'frost'
-  if (drill) return 'pierce'
-  return 'standard'
+  const tone = bombTone(kind)
+  const drill = bombDrill(kind, pierce)
+  if (tone === 'toxin' || tone === 'shock') return tone
+  if (tone === 'frost') return drill ? 'glacier' : 'frost'
+  return drill ? 'pierce' : 'standard'
 }
 
 /** 被踢炸弹的表现位置：逻辑格心 + 朝滑行方向已走过的千分格。 */

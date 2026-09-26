@@ -57,6 +57,7 @@
 | [0027](0027-bomber-powerup-pickup-mints-hat.md) | 炸弹人吃一个强化铸一顶帽,帽子塔同时表示「谁最富」 | 被 0028 取代 |
 | [0028](0028-bomber-hats-are-powerup-count.md) | 炸弹人取消独立的帽子资源,帽子只表示身上的强化数 | 生效（局终帽子最多者胜被 0031 取代） |
 | [0029](0029-bomber-death-drops-blast-protection.md) | 死者掉出的强化落地后 3 秒内不会被爆炸摧毁 | 生效 |
-| [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效 |
+| [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效（技能糖池权重与宝箱技能糖被 0033 修订） |
 | [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效 |
 | [0032](0032-bomber-movement-dual-direction-and-doll-footprint.md) | 炸弹人手感补充:同按两个方向走得通的那个、转角吸附 0.5 格、玩偶视觉占地不超过 0.7 格 | 生效 |
+| [0033](0033-bomber-toxin-and-shock-bombs-from-chests.md) | 炸弹人新增中毒弹与麻痹弹两种炸弹技能,技能糖池偏向炸弹类,决赛圈宝箱保底开出炸弹糖 | 生效 |

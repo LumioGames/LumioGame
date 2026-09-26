@@ -16,16 +16,18 @@ import { regenBricks } from './regen'
 import { applySkill } from './skills'
 import { buildFrame } from './snapshot'
 import { commitTerrain } from './terrain-commit'
+import { queueToxin } from './toxin'
 import { emit, isAlive, type World } from './world'
 
 /**
  * 固定 20 Hz Tick 管线，镜像引擎 13 相中与玩法相关的顺序（契约 §2.2）：
- * ApplyInputs（技能）→ ProcessorPlan（死亡 → 踢出的炸弹滑行 → 爆炸 / 连锁 / 危险窗 → 溺水 / 毒圈 / 烧伤 → 掉落 →
+ * ApplyInputs（技能）→ ProcessorPlan（死亡 → 踢出的炸弹滑行 → 爆炸 / 连锁 / 危险窗 → 溺水 / 毒圈 / 烧伤 / 中毒 → 掉落 →
  * 拾取 → 重生 → 帽王）→ VoxelCommit（帧末一批写 + 软砖再生 + 宝箱开启）→ CommandBufferCommit（伤害单结算）→
  * 回春 → 阶段机 → 发布帧。
  * 系统开关取 Tick 开始时的阶段：Warmup / Settlement 不收输入，Settlement 冻结全部玩法系统（名次定格）；
  * 走到 EndTick 的那个 Tick 照常结算，阶段机在进入结算前把本 Tick 的死亡结清。
- * 第 4 轮（原型扩展 NON-CONTRACT，ADR 0030）新增的踢弹 / 烧伤 / 回春 / 技能在这里排定唯一顺序（critic §2.3）。
+ * 第 4 轮（原型扩展 NON-CONTRACT，ADR 0030）新增的踢弹 / 烧伤 / 回春 / 技能在这里排定唯一顺序（critic §2.3）；
+ * 中毒弹的毒伤（ADR 0033）紧跟烧伤。
  */
 export function stepWorld(w: World, inputs: ReadonlyMap<U64, readonly AbilityActivation[]>): TickFrame {
   w.t++
@@ -38,6 +40,7 @@ export function stepWorld(w: World, inputs: ReadonlyMap<U64, readonly AbilityAct
     queueDrowning(w)
     queuePoison(w)
     queueBurns(w)
+    queueToxin(w)
     spawnDrops(w)
     processPickups(w)
     processRespawns(w)

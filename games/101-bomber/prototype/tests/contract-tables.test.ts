@@ -10,9 +10,11 @@ import {
   COMBOS,
   DEFAULT_CONFIG,
   DEFAULT_RULES,
+  DeathCause,
   PickupKind,
   SKILL_IDS,
   SKILLS,
+  bombCandyPool,
   candyPool,
   characterCode,
   comboFor,
@@ -64,12 +66,55 @@ describe('skills table', () => {
     expect(SKILLS.freezeBomb.bombKind).toBe(BombKind.Freeze)
     expect(SKILLS.glacierBomb.bombKind).toBe(BombKind.Freeze)
     expect(SKILLS.pierceBomb.bombKind).toBe(BombKind.Pierce)
+    expect(SKILLS.toxinBomb.bombKind).toBe(BombKind.Toxin)
+    expect(SKILLS.shockBomb.bombKind).toBe(BombKind.Shock)
   })
 
-  it('candy pool is exactly the six base skills, equal weights (D14, RESOLUTIONS #2)', () => {
-    expect(candyPool(SKILLS)).toEqual(['bubble', 'blink', 'fireAura', 'kick', 'freezeBomb', 'pierceBomb'])
-    for (const id of candyPool(SKILLS)) expect(SKILLS[id].candyWeight).toBe(1)
+  it('stable codes: round-4 codes unchanged, toxin / shock appended at the end (ADR 0033)', () => {
+    expect(SKILL_IDS).toEqual([
+      'regen',
+      'bubble',
+      'blink',
+      'fireAura',
+      'kick',
+      'freezeBomb',
+      'pierceBomb',
+      'fireDash',
+      'bounceBubble',
+      'glacierBomb',
+      'toxinBomb',
+      'shockBomb',
+    ])
+    expect(skillCode('glacierBomb')).toBe(10)
+    expect(skillCode('toxinBomb')).toBe(11)
+    expect(skillCode('shockBomb')).toBe(12)
+    // BombKind：契约 0–4 不动，5 / 6 为原型扩值。
+    expect(BombKind).toEqual({ Standard: 0, Freeze: 1, Fire: 2, Pierce: 3, Split: 4, Toxin: 5, Shock: 6 })
+    expect(DeathCause).toEqual({ Bomb: 0, Drown: 1, Burn: 2, Poison: 3, Toxin: 4 })
+  })
+
+  it('candy pool = the eight base skills; bomb-type weight 2, the rest 1 (ADR 0033, replaces RESOLUTIONS #2)', () => {
+    expect(candyPool(SKILLS)).toEqual(['bubble', 'blink', 'fireAura', 'kick', 'freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
+    expect(candyPool(SKILLS).map((id) => SKILLS[id].candyWeight)).toEqual([1, 1, 1, 1, 2, 2, 2, 2])
+    expect(bombCandyPool(SKILLS)).toEqual(['freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
+    for (const id of bombCandyPool(SKILLS)) expect(SKILLS[id].slot).toBe('bomb')
     expect(SKILLS.regen.candyWeight).toBe(0)
+    expect(SKILLS.glacierBomb.candyWeight).toBe(0)
+  })
+
+  it('toxin / shock rows (ADR 0033)', () => {
+    const col = (id: SkillId, k: keyof ReturnType<typeof skillParams>): number[] => [1, 2, 3].map((l) => skillParams(SKILLS, id, l)[k])
+    expect(col('toxinBomb', 'durationMs')).toEqual([3000, 4000, 5000])
+    expect(col('shockBomb', 'durationMs')).toEqual([2000, 2500, 3000])
+    expect(col('shockBomb', 'slowPermille')).toEqual([300, 300, 300])
+    expect(col('toxinBomb', 'slowPermille')).toEqual([0, 0, 0])
+    expect(col('freezeBomb', 'slowPermille')).toEqual([0, 0, 0])
+    for (const id of ['toxinBomb', 'shockBomb'] as const) {
+      expect(SKILLS[id]).toMatchObject({ slot: 'bomb', combo: false, candyWeight: 2, endsProtection: false })
+      expect(SKILLS[id].src).toMatch(/^推断待验证/)
+    }
+    expect(SKILLS.toxinBomb.name).toBe('中毒弹')
+    expect(SKILLS.shockBomb.name).toBe('麻痹弹')
   })
 
   it('L1 values match the user brief', () => {
@@ -124,6 +169,11 @@ describe('skills table', () => {
     expect(describeSkill(r, cfg, 'fireAura', 1)).toContain('−1 心')
     expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('1')
     for (const id of SKILL_IDS) for (let l = 1; l <= 3; l++) expect(describeSkill(r, cfg, id, l)).not.toMatch(/\{\w+\}/)
+    // ADR 0033：中毒节拍来自 rules（没给则退化为「持续掉血」）；麻痹写百分比。
+    const rt = { ...r, toxinIntervalMs: 1000, toxinPointsPerInterval: 1 }
+    expect(describeSkill(rt, cfg, 'toxinBomb', 2)).toBe('炸到的对手还会中毒 4 秒，每 1 秒 −0.5 心，可致死')
+    expect(describeSkill(r, cfg, 'toxinBomb', 1)).toContain('持续掉血')
+    expect(describeSkill(r, cfg, 'shockBomb', 3)).toBe('炸到的对手还会麻痹 3 秒，移速降到 30%')
   })
 })
 
@@ -223,6 +273,10 @@ describe('skill rules data (ADR 0030)', () => {
     expect(DEFAULT_RULES.burnPointsPerInterval).toBe(2)
     expect(DEFAULT_RULES.freezeCapMs).toBe(1200)
     expect(DEFAULT_RULES.freezeBombDamages).toBe(true)
+    // ADR 0033：宝箱技能糖保底炸弹类；中毒每 1000 ms −1 点。
+    expect(DEFAULT_RULES.chestSkillCandyPool).toBe('bomb')
+    expect(DEFAULT_RULES.toxinIntervalMs).toBe(1000)
+    expect(DEFAULT_RULES.toxinPointsPerInterval).toBe(1)
     expect(DEFAULT_RULES.skills).toBe(SKILLS)
     expect(DEFAULT_RULES.combos).toBe(COMBOS)
     expect(DEFAULT_RULES.characters).toBe(CHARACTERS)
@@ -362,6 +416,9 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
       'assistRepeatWindowTicks',
       'dollFootprintMilli',
       'dollReachMilli',
+      'chestSkillCandyPool',
+      'toxinIntervalMs',
+      'toxinPointsPerInterval',
     ].map((n): [string, string | null, string] => ['config.ts', 'ProtoRules', n]),
     ['config.ts', null, 'RingStage'],
     ['config.ts', null, 'protoConfig'],
@@ -369,9 +426,26 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
     // components.ts / input.ts
     ['components.ts', null, 'PickupKind'],
     ['components.ts', null, 'isPowerupKind'],
+    ['components.ts', null, 'BombKind'],
+    ['skills.ts', 'SkillParams', 'slowPermille'],
+    ['skills.ts', null, 'bombCandyPool'],
     ['input.ts', '移动技能输入', '副方向'],
     // events.ts
-    ...['SkillActivated', 'SkillFailed', 'SkillGained', 'SkillEvolved', 'SkillsDropped', 'PlayerHealed', 'BombKicked', 'PlayerFrozen', 'MatchEndReason'].map(
+    ...[
+      'SkillActivated',
+      'SkillFailed',
+      'SkillGained',
+      'SkillEvolved',
+      'SkillsDropped',
+      'PlayerHealed',
+      'BombKicked',
+      'PlayerFrozen',
+      'MatchEndReason',
+      'DeathCause',
+      'PlayerPoisoned',
+      'PlayerShocked',
+      'PlayerCured',
+    ].map(
       (n): [string, string | null, string] => ['events.ts', null, n],
     ),
     ['events.ts', 'MatchEnded', 'proto'],
@@ -381,6 +455,8 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
     ['events.ts', 'PickupTaken', 'SkillLevel'],
     // snapshot.ts
     ['snapshot.ts', 'PlayerView', 'skills'],
+    ['snapshot.ts', 'PlayerSkillsView', 'toxinUntilTick'],
+    ['snapshot.ts', 'PlayerSkillsView', 'shockUntilTick'],
     ['snapshot.ts', 'PlayerView', 'eliminatedTick'],
     ['snapshot.ts', 'BombView', 'kick'],
     ['snapshot.ts', 'PickupView', 'skill'],

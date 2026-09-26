@@ -2,7 +2,6 @@ import { BoxGeometry, Color, Group, IcosahedronGeometry, Mesh, Quaternion, Vecto
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import {
   BlockType,
-  BombKind,
   MatchPhase,
   msToTicks,
   skillParams,
@@ -42,10 +41,12 @@ import {
 import { HAT } from './logic/hat-layout'
 import { clamp01, easeInOutCubic, heartStage, interpolateXZ, type XZ } from './logic/interp'
 import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
+import { bombTone, type BombTone } from './logic/bomb-look'
 import { hash01 } from './logic/rand'
 import { finalCellOf } from './logic/ring'
 import { blinkLanding, comboOf, SeenPlayers, SKILL_FX, teleportKind } from './logic/skill-fx'
 import { chooseSpectateTarget, type SpectateCandidate } from './logic/spectate'
+import { dollStatus, gaitRate, shockTremble, statusTint, STATUS_FX } from './logic/status-fx'
 import { Timeline } from './logic/timeline'
 import { createSharedMaterials, type SharedMaterials } from './materials'
 import { ANIMAL_COLORS, LEAF, SKY, SOFT_BLOCK_COLORS, SUNSHINE, TANGERINE, slotColor } from './palette'
@@ -54,7 +55,7 @@ import { createSceneRig, type SceneRig } from './scene'
 import { dashedRingTexture, dashTexture, previewTexture, radialTexture, ringTexture, starTexture } from './textures'
 import { BombLayer } from './world/bombs'
 import { ChestLayer, type ChestDiff } from './world/chests'
-import { Doll, DollFactory } from './world/dolls'
+import { Doll, DollFactory, type DollFx } from './world/dolls'
 import { FireCellLayer, type FireOwner } from './world/fire-cells'
 import { GroundMarks } from './world/ground-marks'
 import { HatRenderer } from './world/hat-stack'
@@ -91,8 +92,8 @@ interface PendingBlast {
   right: number
   fuseEnd: number
   dangerUntil: number
-  /** 冰冻弹 / 冰川弹：冰霜配色。 */
-  frost: boolean
+  /** 爆炸调色（ADR 0030 / 0033）：橙火 / 冰霜 / 毒绿 / 电黄。 */
+  tone: BombTone
 }
 
 interface PendingHit {
@@ -125,6 +126,9 @@ const CINE_OUT_SEC = 0.8
 const FINAL_CELL_GLOW = new Color(SUNSHINE)
 /** 回血飘字（原型扩展 NON-CONTRACT，ADR 0030）。 */
 const HEAL_TEXT = (hearts: number): string => `+${hearts} 心`
+/** 中招飘字（原型扩展 NON-CONTRACT，ADR 0033）。 */
+const TOXIN_TEXT = '中毒'
+const SHOCK_TEXT = '麻痹'
 
 interface PodiumActor extends PodiumSpot {
   doll: Doll
@@ -508,7 +512,7 @@ export class ViewRuntime {
         right: st.ReachRight,
         fuseEnd: st.FuseEndTick,
         dangerUntil: st.DangerUntilTick,
-        frost: st.BombKind === BombKind.Freeze,
+        tone: bombTone(st.BombKind),
       })
     }
 
@@ -701,6 +705,22 @@ export class ViewRuntime {
         case 'SkillActivated':
           if (e.Skill === 'fireAura' || e.Skill === 'fireDash') this.puffCotton(e.Cell.X + 0.5, 0.3, e.Cell.Y + 0.5, 8, 2.0, SKILL_COLOR[e.Skill], 0.2)
           break
+        case 'PlayerPoisoned':
+        case 'PlayerShocked': {
+          // 中招（ADR 0033）：头顶「中毒」/「麻痹」+ 身上一小团毒绿 / 电黄烟（刷新时也演）。
+          const toxin = e.type === 'PlayerPoisoned'
+          const id = e.VictimNetEntityIdRaw
+          this.addFloat(id, toxin ? 'toxin' : 'shock', toxin ? TOXIN_TEXT : SHOCK_TEXT)
+          const d = this.dolls.get(id)
+          if (d?.shown) this.puffCotton(d.x, 0.5, d.z, 6, 1.4, toxin ? SKILL_COLOR.toxinBomb : SKILL_COLOR.shockBomb, 0.16)
+          break
+        }
+        case 'PlayerCured': {
+          // 解毒（泡泡 / 血包）：身上散一圈白绿小团，绿泡随快照 toxinUntilTick 归零自然停。
+          const d = this.dolls.get(e.NetEntityIdRaw)
+          if (d?.shown) this.puffCotton(d.x, 0.6, d.z, 6, 1.6, STATUS_FX.toxinTint, 0.16)
+          break
+        }
         case 'BombExtinguished': {
           // 水上放弹即熄灭：一小团水汽
           for (let i = 0; i < 6; i++) {
@@ -762,7 +782,7 @@ export class ViewRuntime {
           this.bombDelay.set(b.id, delay)
           this.bombs.scheduleHide(b.id, at)
           const durMs = Math.max(this.tickMs, (b.dangerUntil - b.tick) * this.tickMs)
-          this.blasts.start(b.cx, b.cy, b.up, b.down, b.left, b.right, at, durMs, (b.id * 0.618) % 6.28, b.frost)
+          this.blasts.start(b.cx, b.cy, b.up, b.down, b.left, b.right, at, durMs, (b.id * 0.618) % 6.28, b.tone)
           this.markBrick(b.cx, b.cy - b.up - 1, at + (b.up + 1) * CELL_GROW_MS)
           this.markBrick(b.cx, b.cy + b.down + 1, at + (b.down + 1) * CELL_GROW_MS)
           this.markBrick(b.cx - b.left - 1, b.cy, at + (b.left + 1) * CELL_GROW_MS)
@@ -1098,7 +1118,11 @@ export class ViewRuntime {
       const sk = p.skills
       const combo = comboOf(sk, this.opts.rules.skills)
       const form = combo ? COMBO_FORM[combo] : undefined
-      this.dollFx.frozen = renderTick < (sk?.frozenUntilTick ?? 0)
+      const st = dollStatus(sk, renderTick)
+      this.dollFx.frozen = st.frozen
+      this.dollFx.tint = statusTint(st)
+      this.dollFx.gait = gaitRate(st)
+      this.dollFx.tremble = st.shocked && !st.frozen ? shockTremble(now / 1000, p.NetEntityIdRaw) : 0
       this.dollFx.glow = form ? form.glow * (0.75 + 0.25 * Math.sin((now / 1000) * Math.PI * 2)) : 0
       this.dollFx.glowColor = form?.ring
       doll.update(this.pos.x, this.pos.z, now, dt, stage, prot, this.dollFx)
@@ -1427,7 +1451,14 @@ export class ViewRuntime {
     return { x: doll.x, z: doll.z, cellX: Math.floor(p.LogicTransform.WorldPosition.x), cellY: Math.floor(p.LogicTransform.WorldPosition.z) }
   }
 
-  private readonly dollFx: { frozen: boolean; glow: number; glowColor: number | undefined } = { frozen: false, glow: 0, glowColor: undefined }
+  private readonly dollFx: Required<Omit<DollFx, 'glowColor'>> & Pick<DollFx, 'glowColor'> = {
+    frozen: false,
+    glow: 0,
+    glowColor: undefined,
+    tint: 0xffffff,
+    gait: 1,
+    tremble: 0,
+  }
 
   /** 闪现 / 冲刺：起点 → 落点拖尾 + 两头各一团棉花 + 原地「啵」；本机镜头短滑。不走重生的从天而降。 */
   private onBlink(id: number, doll: Doll, from: XZ | undefined, p: PlayerView, now: number): void {

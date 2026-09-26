@@ -56,6 +56,14 @@ describe('rule card (ADR 0028 / 0031)', () => {
     for (const s of ['棉花兔', '泡泡鸭', '闪电猫', '火焰熊', '火焰冲刺', '弹射泡泡', '冰川弹', '正中 1 格', '115 秒', '活到最后者赢']) expect(lines).toContain(s)
     expect(lines).not.toMatch(/90 秒|帽子最多者赢/)
   })
+
+  it('help explains the ADR 0033 bomb candies (from the pool) and the chest bomb-candy guarantee', () => {
+    const lines = helpRuleLines(DEFAULT_RULES)
+    const bombs = lines.find((l) => l.includes('中毒弹'))
+    expect(bombs).toBe('炸弹糖让炸弹带效果：冰冻弹冻住、穿透弹多穿砖、中毒弹持续掉血（吃血包或放泡泡能解毒）、麻痹弹让人走得极慢——木箱开出的技能糖大多是它们。')
+    expect(lines.join('\n')).toContain('里面有强化、血包和一颗炸弹糖')
+    expect(helpRuleLines({ ...DEFAULT_RULES, chestSkillCandyPool: 'all' }).join('\n')).toContain('里面有强化、血包和技能糖')
+  })
 })
 
 describe('edgeArrowPlacement', () => {

@@ -90,6 +90,19 @@ export interface SimPlayer {
   blinkTick: number
   /** 出局 Tick = 使其出局的死亡的 Tick（d.tick，RESOLUTIONS #4）；0 = 未出局。 */
   eliminatedTick: number
+  // ---- 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹 / 麻痹弹的状态。死亡、重生、开局清零（同冻结）；全部进哈希。----
+  /** 中毒到此 Tick（不含）；0 = 没中毒。到期由 toxin.ts 清掉四个中毒字段。 */
+  toxinUntilTick: number
+  /** 中毒的击杀归属 = 最近一次命中的投弹者。 */
+  toxinOwner: number
+  /** 最近一次命中的中毒弹 id（DamageApplied / PlayerDied 的 SourceBomb；弹可能已销毁）。 */
+  toxinBomb: number
+  /** 下一次毒伤的 Tick；刷新持续时间不重置它（不叠加速率）。 */
+  toxinNextTick: number
+  /** 麻痹到此 Tick（不含）；0 = 没麻痹。 */
+  shockUntilTick: number
+  /** 麻痹期间的移速千分比（来自命中的麻痹弹）；没麻痹为 0。 */
+  shockSlowPermille: number
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：技能槽里的一个技能（或组合技的一半）。 */
@@ -145,12 +158,18 @@ export interface SimBomb {
   /** 爆炸先后序号，危险窗判定按它遍历。 */
   seq: number
   // ---- 原型扩展（NON-CONTRACT，ADR 0030）：炸弹槽技能与踢弹。----
-  /** 契约 BombKind（冰冻弹 / 冰川弹 = Freeze，穿透弹 = Pierce）。 */
+  /** 契约 BombKind（冰冻弹 / 冰川弹 = Freeze，穿透弹 = Pierce；中毒弹 = Toxin、麻痹弹 = Shock 为 ADR 0033 扩值）。 */
   kind: BombKind
   /** 每臂多穿的砖层数（穿透规则见 contract/skills.ts 文件头）。 */
   pierceLayers: number
   /** 冻结 Tick 数（已夹到 freezeCap）；非冰冻弹为 0。 */
   freezeTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒持续 Tick 数；非中毒弹为 0。 */
+  toxinTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：麻痹持续 Tick 数；非麻痹弹为 0。 */
+  shockTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：麻痹移速千分比；非麻痹弹为 0。 */
+  slowPermille: number
   /** 滑行方向；停 = 静止。 */
   kickDir: 方向
   /** 还要滑的格数。 */
@@ -371,7 +390,7 @@ export function aliveCount(w: World): number {
 }
 
 /**
- * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时随之结束；
+ * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时 / 中毒 / 麻痹（ADR 0033）随之结束；
  * 冷却不清（CD 跨死亡保留，开局由 {@link resetSkillsForMatch} 清）。闪现不得调用它。
  */
 export function resetAbilityFields(p: SimPlayer): void {
@@ -392,6 +411,17 @@ export function resetAbilityFields(p: SimPlayer): void {
   p.burnReadyTick = 0
   p.regenFromTick = 0
   p.regenNextTick = 0
+  clearToxin(p)
+  p.shockUntilTick = 0
+  p.shockSlowPermille = 0
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0033）：解毒 / 到期——四个中毒字段归零。 */
+export function clearToxin(p: SimPlayer): void {
+  p.toxinUntilTick = 0
+  p.toxinOwner = 0
+  p.toxinBomb = 0
+  p.toxinNextTick = 0
 }
 
 export function resetAttributes(p: SimPlayer, cfg: BomberConfig): void {
@@ -409,7 +439,7 @@ export function pickupProtectedUntil(w: World, it: SimPickup): number {
 /** 炸弹构造（原型扩展字段缺省：标准弹、不穿透、不冻结、静止）。放弹与测试夹具都走它。 */
 export function makeBomb(
   init: Pick<SimBomb, 'id' | 'owner' | 'cell' | 'bornTick' | 'fuseEndTick' | 'power'> &
-    Partial<Pick<SimBomb, 'kind' | 'pierceLayers' | 'freezeTicks'>>,
+    Partial<Pick<SimBomb, 'kind' | 'pierceLayers' | 'freezeTicks' | 'toxinTicks' | 'shockTicks' | 'slowPermille'>>,
 ): SimBomb {
   return {
     id: init.id,
@@ -432,6 +462,9 @@ export function makeBomb(
     kind: init.kind ?? BombKind.Standard,
     pierceLayers: init.pierceLayers ?? 0,
     freezeTicks: init.freezeTicks ?? 0,
+    toxinTicks: init.toxinTicks ?? 0,
+    shockTicks: init.shockTicks ?? 0,
+    slowPermille: init.slowPermille ?? 0,
     kickDir: 方向.停,
     kickCellsLeft: 0,
     kickAcc: 0,
@@ -490,4 +523,17 @@ export function isBubbled(p: SimPlayer, t: number): boolean {
 
 export function isFrozen(p: SimPlayer, t: number): boolean {
   return t < p.frozenUntilTick
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0033）：中毒中（t < toxinUntilTick）。 */
+export function isPoisoned(p: SimPlayer, t: number): boolean {
+  return t < p.toxinUntilTick
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：当前账移速 = 基础移速，麻痹中再乘 shockSlowPermille（向下取整）。
+ * 快照 `玩家属性.移速当前` 发布它；水中减速不算在内（move.ts 移动时另乘，两者相乘）。
+ */
+export function currentSpeed(p: SimPlayer, t: number): number {
+  return t < p.shockUntilTick ? Math.floor((p.speed * p.shockSlowPermille) / 1000) : p.speed
 }

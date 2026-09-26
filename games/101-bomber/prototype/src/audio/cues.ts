@@ -39,6 +39,8 @@ export interface LocalHitCue {
   poison: boolean
   /** 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙的烧伤（嘶的一声 + 受击）。 */
   burn: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹的毒发掉血（小毒泡「啵」，不用受击吱声）。 */
+  toxin: boolean
 }
 
 /**
@@ -54,14 +56,16 @@ export function hitCues(events: readonly BomberEvent[], victimId: U64): LocalHit
     if (e.type !== 'DamageApplied' || e.VictimNetEntityIdRaw !== victimId) continue
     const poison = e.proto?.Cause === DeathCause.Poison
     const burn = e.proto?.Cause === DeathCause.Burn
-    const bomb = e.SourceBombNetEntityIdRaw !== 0 && !poison && !burn && e.proto?.Cause !== DeathCause.Drown
+    const toxin = e.proto?.Cause === DeathCause.Toxin
+    // 毒伤的 SourceBomb 是当初那颗中毒弹（非 0），但它不是这一刻的爆炸：不排连锁节奏。
+    const bomb = e.SourceBombNetEntityIdRaw !== 0 && !poison && !burn && !toxin && e.proto?.Cause !== DeathCause.Drown
     let index = 0
     if (bomb && e.ChainId !== 0) {
       const k = perChain.get(e.ChainId) ?? 0
       perChain.set(e.ChainId, k + 1)
       index = hints.get(e.SourceBombNetEntityIdRaw) ?? k
     }
-    out.push({ delay: bomb ? chainDelaySec(index) : 0, poison, burn })
+    out.push({ delay: bomb ? chainDelaySec(index) : 0, poison, burn, toxin })
   }
   return out.sort((a, b) => a.delay - b.delay)
 }

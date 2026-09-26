@@ -159,6 +159,15 @@ export interface ProtoRules {
   crateSkillCandyPermille: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：每个决赛圈宝箱额外喷出的技能糖数（D14）。 */
   chestSkillCandies: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0033）：决赛圈宝箱喷出的技能糖从哪个池抽——'bomb' = 保底炸弹类（contract/skills.ts
+   * bombCandyPool，冰冻 / 穿透 / 中毒 / 麻痹按权重）；'all' = 整个技能糖池（ADR 0030 原口径）。推断待验证。
+   */
+  chestSkillCandyPool: 'bomb' | 'all'
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹的中毒掉血间隔（推断待验证）。 */
+  toxinIntervalMs: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：每次中毒掉的半心点（每秒 −0.5 心，可致死，Cause = Toxin；推断待验证）。 */
+  toxinPointsPerInterval: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：常规阶段死亡时每个可掉技能单位的掉落千分比（D8，同 §8.2）。 */
   skillDeathDropPermille: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙的烧伤间隔（design §12 留火 1 秒）。 */
@@ -248,6 +257,9 @@ export const DEFAULT_RULES: ProtoRules = {
   skillCandyLevel: 1,
   crateSkillCandyPermille: 500,
   chestSkillCandies: 1,
+  chestSkillCandyPool: 'bomb',
+  toxinIntervalMs: 1000,
+  toxinPointsPerInterval: 1,
   skillDeathDropPermille: 500,
   burnIntervalMs: 1000,
   burnPointsPerInterval: 2,

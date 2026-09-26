@@ -35,6 +35,8 @@ export type SkillId =
   | 'fireDash'
   | 'bounceBubble'
   | 'glacierBomb'
+  | 'toxinBomb'
+  | 'shockBomb'
 
 /** 稳定顺序：code = 下标 + 1（哈希用）；也是技能糖池的掷骰顺序。 */
 export const SKILL_IDS: readonly SkillId[] = [
@@ -48,6 +50,9 @@ export const SKILL_IDS: readonly SkillId[] = [
   'fireDash',
   'bounceBubble',
   'glacierBomb',
+  // 原型扩展（NON-CONTRACT，ADR 0033）：追加在末尾，已有技能码不变。
+  'toxinBomb',
+  'shockBomb',
 ]
 
 /** 踢弹「直到被挡」/ 穿透「整条线」的哨兵值（格 / 层）。 */
@@ -57,7 +62,7 @@ export const UNTIL_BLOCKED = 99
 export interface SkillParams {
   /** 主动技能冷却。 */
   cdMs: number
-  /** 泡泡 / 光环持续、火焰冲刺的火墙存续。 */
+  /** 泡泡 / 光环持续、火焰冲刺的火墙存续；中毒弹的中毒 / 麻痹弹的麻痹持续（ADR 0033）。 */
   durationMs: number
   /** 闪现 / 冲刺距离、踢弹滑行距离。 */
   rangeCells: number
@@ -69,6 +74,8 @@ export interface SkillParams {
   freezeMs: number
   /** 穿透弹每臂多穿的砖层数。 */
   pierceLayers: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：麻痹弹命中后的移速千分比（300 = 降到 30%）；0 = 不用。 */
+  slowPermille: number
 }
 
 export interface SkillDef {
@@ -85,7 +92,7 @@ export interface SkillDef {
   endsProtection: boolean
   /** 基础技能 3 级，组合技 1 级。下标 = 等级 − 1。 */
   levels: readonly SkillParams[]
-  /** 说明模板：{cd}{dur}{range}{interval}{heal}{freeze}{layers}{burn}，由 {@link describeSkill} 填值。 */
+  /** 说明模板：{cd}{dur}{range}{interval}{heal}{freeze}{layers}{burn}{toxin}{slow}，由 {@link describeSkill} 填值。 */
   desc: string
   src: SourceNote
 }
@@ -116,12 +123,13 @@ export interface CharacterDef {
   src: SourceNote
 }
 
-const ZERO: SkillParams = { cdMs: 0, durationMs: 0, rangeCells: 0, intervalMs: 0, points: 0, freezeMs: 0, pierceLayers: 0 }
+const ZERO: SkillParams = { cdMs: 0, durationMs: 0, rangeCells: 0, intervalMs: 0, points: 0, freezeMs: 0, pierceLayers: 0, slowPermille: 0 }
 const lv = (p: Partial<SkillParams>): SkillParams => ({ ...ZERO, ...p })
 
 /**
  * 技能表（ADR 0030，design §8.4 / §12）。L1 取自用户第 4 轮口述；L2 / L3 为推断待验证（CD 逐级缩短、效果逐级增强）。
- * 糖池 6 种等权（RESOLUTIONS #2）；回春只随棉花兔出生、不进池也不掉落，L2 / L3 因此实际不可达。
+ * 糖池权重（ADR 0033 修订 RESOLUTIONS #2 的等权）：炸弹类（冰冻 / 穿透 / 中毒 / 麻痹）各 2，泡泡 / 闪现 / 火焰光环 / 踢弹各 1；
+ * 回春只随棉花兔出生、不进池也不掉落，L2 / L3 因此实际不可达。
  */
 export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   regen: {
@@ -185,11 +193,11 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Freeze,
-    candyWeight: 1,
+    candyWeight: 2,
     endsProtection: false,
     levels: [lv({ freezeMs: 800 }), lv({ freezeMs: 1000 }), lv({ freezeMs: 1200 })],
     desc: '炸到的对手还会被冻住 {freeze} 秒',
-    src: '引用 design §8.4 冰冻弹（0.8 / 1.0 / 1.2 秒）；照常伤害 = 第 4 轮 Q1 裁定（freezeBombDamages，推断待验证）',
+    src: '引用 design §8.4 冰冻弹（0.8 / 1.0 / 1.2 秒）；照常伤害 = 第 4 轮 Q1 裁定（freezeBombDamages，推断待验证）；糖池权重 2 = ADR 0033（推断待验证）',
   },
   pierceBomb: {
     id: 'pierceBomb',
@@ -197,11 +205,11 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Pierce,
-    candyWeight: 1,
+    candyWeight: 2,
     endsProtection: false,
     levels: [lv({ pierceLayers: 1 }), lv({ pierceLayers: 2 }), lv({ pierceLayers: UNTIL_BLOCKED })],
     desc: '火焰多穿透 {layers}',
-    src: '引用 design §8.4 穿透弹（1 / 2 / 整条线；原型提前实现）',
+    src: '引用 design §8.4 穿透弹（1 / 2 / 整条线；原型提前实现）；糖池权重 2 = ADR 0033（推断待验证）',
   },
   fireDash: {
     id: 'fireDash',
@@ -236,6 +244,31 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     levels: [lv({ freezeMs: 1000, pierceLayers: 1 })],
     desc: '火焰多穿透 {layers}，炸到的对手还会被冻住 {freeze} 秒',
     src: '推断待验证：用户第 4 轮（冰冻弹 + 穿透弹）',
+  },
+  // ---- 原型扩展（NON-CONTRACT，ADR 0033）：宝箱开出的两种炸弹 ----
+  toxinBomb: {
+    id: 'toxinBomb',
+    name: '中毒弹',
+    slot: 'bomb',
+    combo: false,
+    bombKind: BombKind.Toxin,
+    candyWeight: 2,
+    endsProtection: false,
+    levels: [lv({ durationMs: 3000 }), lv({ durationMs: 4000 }), lv({ durationMs: 5000 })],
+    desc: '炸到的对手还会中毒 {dur} 秒，{toxin}，可致死',
+    src: '推断待验证：用户 2026-09-26 追加（「中毒弹则会持续掉血」）；3 / 4 / 5 秒、每秒 −0.5 心 = ADR 0033',
+  },
+  shockBomb: {
+    id: 'shockBomb',
+    name: '麻痹弹',
+    slot: 'bomb',
+    combo: false,
+    bombKind: BombKind.Shock,
+    candyWeight: 2,
+    endsProtection: false,
+    levels: [lv({ durationMs: 2000, slowPermille: 300 }), lv({ durationMs: 2500, slowPermille: 300 }), lv({ durationMs: 3000, slowPermille: 300 })],
+    desc: '炸到的对手还会麻痹 {dur} 秒，移速降到 {slow}',
+    src: '推断待验证：用户 2026-09-26 追加（「麻痹弹会让行速极其缓慢」）；2 / 2.5 / 3 秒、降到 30% = ADR 0033',
   },
 }
 
@@ -321,13 +354,25 @@ export function candyPool(skills: ProtoRules['skills']): readonly SkillId[] {
   return SKILL_IDS.filter((id) => !skills[id].combo && skills[id].candyWeight > 0)
 }
 
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：炸弹类技能糖池 = {@link candyPool} 里炸弹槽的那些（冰冻 / 穿透 / 中毒 / 麻痹），
+ * 按 SKILL_IDS 序、权重同 candyWeight。决赛圈强力宝箱的保底炸弹糖从这里抽（ProtoRules.chestSkillCandyPool = 'bomb'）。
+ */
+export function bombCandyPool(skills: ProtoRules['skills']): readonly SkillId[] {
+  return candyPool(skills).filter((id) => skills[id].slot === 'bomb')
+}
+
 function secText(ms: number): string {
   return String(Math.round(ms / 100) / 10)
 }
 
-/** 按等级把说明模板填上数值（选角界面、技能条悬停、HUD 提示共用）。 */
+/**
+ * 按等级把说明模板填上数值（选角界面、技能条悬停、HUD 提示共用）。
+ * 中毒节拍（ADR 0033）取 rules.toxinIntervalMs / toxinPointsPerInterval；调用方没给时 {toxin} 退化为「持续掉血」。
+ */
 export function describeSkill(
-  rules: Pick<ProtoRules, 'skills' | 'burnPointsPerInterval' | 'burnIntervalMs'>,
+  rules: Pick<ProtoRules, 'skills' | 'burnPointsPerInterval' | 'burnIntervalMs'> &
+    Partial<Pick<ProtoRules, 'toxinIntervalMs' | 'toxinPointsPerInterval'>>,
   cfg: Pick<BomberConfig, 'healthPointsPerHeart'>,
   id: SkillId,
   level: number,
@@ -343,6 +388,11 @@ export function describeSkill(
     freeze: secText(p.freezeMs),
     layers: p.pierceLayers >= UNTIL_BLOCKED ? '整条线的砖' : `${p.pierceLayers} 层砖`,
     burn: `每 ${secText(rules.burnIntervalMs)} 秒 −${hearts(rules.burnPointsPerInterval)} 心`,
+    toxin:
+      rules.toxinIntervalMs !== undefined && rules.toxinPointsPerInterval !== undefined
+        ? `每 ${secText(rules.toxinIntervalMs)} 秒 −${hearts(rules.toxinPointsPerInterval)} 心`
+        : '持续掉血',
+    slow: `${Math.round(p.slowPermille / 10)}%`,
   }
   return rules.skills[id].desc.replace(/\{(\w+)\}/g, (m, k: string) => vals[k] ?? m)
 }

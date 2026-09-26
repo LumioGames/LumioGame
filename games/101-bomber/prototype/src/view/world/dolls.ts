@@ -4,6 +4,7 @@ import { DOLL, dollGeometries, patchGeometry, tuftGeometry } from '../geo/doll'
 import { DOLL_SCALE_MAX, PODIUM_DOLL_SCALE } from '../logic/doll-fit'
 import { approachAngle, clamp01 } from '../logic/interp'
 import { hash01 } from '../logic/rand'
+import { STATUS_FX } from '../logic/status-fx'
 import type { SharedMaterials } from '../materials'
 
 /**
@@ -26,8 +27,8 @@ const BURST_HIDE_MS = 1200
 const GRAVITY = -18
 /** 闪现落地的「啵」：0.7 → 1.08 → 1（表现取值，推断待验证）。 */
 const BLINK_IN_MS = 180
-/** 冻住时的冰蓝色调（乘在顶点色上）。 */
-const FROZEN_TINT = 0xcfefff
+/** 冻住时的冰蓝色调（乘在顶点色上；与 logic/status-fx 同一份）。 */
+const FROZEN_TINT = STATUS_FX.frozenTint
 const WHITE = 0xffffff
 
 /** 技能状态给玩偶的外观（ADR 0030，NON-CONTRACT 字段缺席时不传）。 */
@@ -38,6 +39,15 @@ export interface DollFx {
   glow: number
   /** 自发光颜色（缺省白）。 */
   glowColor?: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0033）：整体色调（乘在顶点色上；缺省 = 冻住冰蓝 / 否则白）。
+   * 中毒时略微偏绿（logic/status-fx.statusTint）。
+   */
+  tint?: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：每走一格的迈步相位倍率（缺省 1；麻痹 < 1 = 步子放慢）。 */
+  gait?: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：额外的身体打颤角（绕 Z，弧度；麻痹时的电颤）。 */
+  tremble?: number
 }
 
 const _v = new Vector3()
@@ -99,7 +109,7 @@ export class Doll {
   private burstAt = -1e9
   private blinkAt: number
   private blinkInAt = -1e9
-  private tinted = false
+  private tintHex = WHITE
   /** 名牌上小血条显示到何时（viewNow 毫秒）。 */
   hitBarUntil = -1e9
   hp = 6
@@ -318,7 +328,7 @@ export class Doll {
       this.swayZ = Math.max(-0.3, Math.min(0.3, this.swayZ + this.swayVZ * dt))
     }
     const frozen = fx?.frozen === true
-    if (!frozen) this.walkPhase += TAU * d
+    if (!frozen) this.walkPhase += TAU * d * (fx?.gait ?? 1)
     const w = clamp01(this.speed / 1.2)
     const t = now / 1000
     const phi = this.walkPhase
@@ -370,7 +380,7 @@ export class Doll {
     const base = Math.max(flash, this.protectedPulse * 0.55)
     this.mat.emissiveIntensity = Math.max(base, glow)
     this.mat.emissive.setHex(glow > base && fx?.glowColor !== undefined ? fx.glowColor : WHITE)
-    this.setTint(frozen)
+    this.setTint(fx?.tint ?? (frozen ? FROZEN_TINT : WHITE))
 
     // 重生下落 + 落地压扁
     let y = this.groundY
@@ -396,7 +406,7 @@ export class Doll {
       rsY *= k
     }
     this.root.position.set(x, y, z)
-    this.root.rotation.set(0, this.yaw, wobble)
+    this.root.rotation.set(0, this.yaw, wobble + (fx?.tremble ?? 0))
     this.root.scale.set(rsXZ * this.scale, rsY * this.scale, rsXZ * this.scale)
 
     this.root.updateMatrixWorld(true)
@@ -506,7 +516,7 @@ export class Doll {
     this.eyes.scale.y = kind === 'cheer' ? 0.45 : kind === 'droop' ? 0.6 : 1
     this.mat.emissiveIntensity = glow
     this.mat.emissive.setHex(WHITE)
-    this.setTint(false)
+    this.setTint(WHITE)
     this.root.position.set(x, y, z)
     this.root.rotation.set(0, yaw + spin, 0)
     this.root.scale.set(sxz * PODIUM_DOLL_SCALE, sy * PODIUM_DOLL_SCALE, sxz * PODIUM_DOLL_SCALE)
@@ -516,10 +526,10 @@ export class Doll {
     this.headPivot.getWorldQuaternion(this.headQuat)
   }
 
-  private setTint(frozen: boolean): void {
-    if (frozen === this.tinted) return
-    this.tinted = frozen
-    this.mat.color.setHex(frozen ? FROZEN_TINT : WHITE)
+  private setTint(hex: number): void {
+    if (hex === this.tintHex) return
+    this.tintHex = hex
+    this.mat.color.setHex(hex)
   }
 
   private updateBurst(now: number, dt: number): void {

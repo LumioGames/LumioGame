@@ -16,10 +16,16 @@ const SPARK_SVG =
 const HEART_SVG =
   '<svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 20.5S3 14.9 1.8 9.2C1 5.3 3.6 2 7 2c2.1 0 3.8 1.2 5 3 1.2-1.8 2.9-3 5-3 3.4 0 6 3.3 5.2 7.2C21 14.9 12 20.5 12 20.5z" fill="#FF5A6E" stroke="#2B2320" stroke-width="1.6" stroke-linejoin="round"/></svg>'
 
-/** 飘字种类：吃强化落帽「+1」/ 进化「进化！」/ 回春「+1 心」。 */
-export type FloatKind = 'hat' | 'evolve' | 'heal'
+/** 原型扩展（NON-CONTRACT，ADR 0033）：中毒飘字的毒泡、麻痹飘字的闪电。 */
+const TOXIN_SVG =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="14" r="7" fill="#7ED957" stroke="#2B2320" stroke-width="1.6"/><circle cx="18" cy="6" r="3.2" fill="#B8F07A" stroke="#2B2320" stroke-width="1.4"/><circle cx="7.6" cy="11.6" r="1.8" fill="#fff" opacity=".8"/></svg>'
+const SHOCK_SVG =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.2 1.8 4.6 13.9h6.3L9.4 22.2l10-12.6h-6.4z" fill="#FFE23C" stroke="#2B2320" stroke-width="1.5" stroke-linejoin="round"/></svg>'
 
-const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: SPARK_SVG, heal: HEART_SVG }
+/** 飘字种类：吃强化落帽「+1」/ 进化「进化！」/ 回春「+1 心」/ 中毒弹「中毒」/ 麻痹弹「麻痹」。 */
+export type FloatKind = 'hat' | 'evolve' | 'heal' | 'toxin' | 'shock'
+
+const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: SPARK_SVG, heal: HEART_SVG, toxin: TOXIN_SVG, shock: SHOCK_SVG }
 
 export interface PlayerTagState {
   name: string

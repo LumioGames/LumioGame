@@ -336,7 +336,7 @@ describe('step dispatch', () => {
   it('makeBomb / makePickup defaults; gridProbe sees bombs and chests', () => {
     const w = makeWorld()
     const b = makeBomb({ id: 99, owner: 1, cell: 20, bornTick: 0, fuseEndTick: 42, power: 2 })
-    expect(b).toMatchObject({ kind: BombKind.Standard, pierceLayers: 0, freezeTicks: 0, kickDir: 方向.停, kickCellsLeft: 0, kickAcc: 0, kickedBy: 0, covered: [], hit: [] })
+    expect(b).toMatchObject({ kind: BombKind.Standard, pierceLayers: 0, freezeTicks: 0, toxinTicks: 0, shockTicks: 0, slowPermille: 0, kickDir: 方向.停, kickCellsLeft: 0, kickAcc: 0, kickedBy: 0, covered: [], hit: [] })
     expect(makePickup({ id: 1, cell: 2, kind: PickupKind.FirePlus, bornTick: 0, droppedBy: 0 })).toMatchObject({ skill: null, level: 0 })
     expect(makePickup({ id: 1, cell: 2, kind: PickupKind.SkillCandy, bornTick: 0, droppedBy: 0, skill: 'kick' })).toMatchObject({ skill: 'kick', level: 1 })
     addBomb(w, 1, 5, 5, 40)

@@ -4,8 +4,10 @@ import {
   CELL_MILLI,
   HALF_MILLI,
   cellOfIdx,
+  clearToxin,
   emit,
   isAlive,
+  isPoisoned,
   makePickup,
   newId,
   playerCell,
@@ -107,7 +109,8 @@ function canTake(w: World, p: SimPlayer, it: SimPickup): boolean {
     case PickupKind.SpeedPlus:
       return p.speed < w.rules.speedCapMilli
     case PickupKind.HealthPack:
-      return p.health < w.cfg.maxHealthPoints
+      // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时满血也能吃（为了解毒）。
+      return p.health < w.cfg.maxHealthPoints || isPoisoned(p, w.t)
     case PickupKind.SkillCandy:
       return canTakeSkill(w, p, it)
   }
@@ -126,6 +129,11 @@ function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
       break
     case PickupKind.HealthPack:
       p.health = Math.min(w.cfg.maxHealthPoints, p.health + w.rules.healthPackPoints)
+      // 原型扩展（NON-CONTRACT，ADR 0033）：血包解中毒弹的毒（PickupTaken 之后发 PlayerCured）。
+      if (isPoisoned(p, w.t)) {
+        clearToxin(p)
+        emit(w, { type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: p.id, Reason: 'healthPack', Tick: w.t })
+      }
       break
     case PickupKind.SkillCandy:
       takeSkillCandy(w, p, it)

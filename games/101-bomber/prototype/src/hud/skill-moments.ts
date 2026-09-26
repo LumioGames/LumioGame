@@ -154,3 +154,29 @@ export function burnSourceAt(snap: WorldSnapshot | null, owner: U64, cell: Bombe
 export function burnSourceName(src: BurnSource | null): string {
   return src === 'aura' ? '火焰光环' : src === 'firewall' ? '火墙' : '火'
 }
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：中招提示里的「谁的弹」——别人（名字）、自己，或数据源没说（快照兜底）。
+ */
+export type StatusSource = { name: string } | 'self' | null
+
+const sourceSeg = (src: { name: string } | 'self'): string => (src === 'self' ? '自己' : ` ${src.name} `)
+const secSeg = (sec: number): string => String(Math.round(sec * 10) / 10)
+
+/** 本人中毒：「中了 豆豆熊 的中毒弹！掉血 3 秒 · 吃血包或放泡泡能解毒」（秒数缺席 = 快照兜底，只说持续掉血）。 */
+export function poisonedText(src: StatusSource, sec: number | null): string {
+  const head = src ? `中了${sourceSeg(src)}的中毒弹！` : '中毒了！'
+  const body = sec !== null && src ? `掉血 ${secSeg(sec)} 秒` : '持续掉血'
+  return `${head}${body} · 吃血包或放泡泡能解毒`
+}
+
+/** 本人麻痹：「中了 灰灰猫 的麻痹弹！走得很慢 2 秒」。 */
+export function shockedText(src: StatusSource, sec: number | null): string {
+  const head = src ? `中了${sourceSeg(src)}的麻痹弹！` : '被麻痹了！'
+  return sec !== null && src ? `${head}走得很慢 ${secSeg(sec)} 秒` : `${head}走得很慢`
+}
+
+/** 本人解毒：「泡泡解毒了」/「血包解毒了」/「解毒了」（快照兜底不知道怎么解的）。 */
+export function curedText(reason: 'bubble' | 'healthPack' | null): string {
+  return reason === 'bubble' ? '泡泡解毒了' : reason === 'healthPack' ? '血包解毒了' : '解毒了'
+}

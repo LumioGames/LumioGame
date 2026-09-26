@@ -14,6 +14,16 @@ describe('skill-style (技能表现数据)', () => {
     expect(skillCss('blink')).toBe('#ffd84d')
   })
 
+  it('ADR 0033 bomb types: own icons (no placeholder) and colours distinct from every other skill', () => {
+    const rgb = (c: number): number[] => [(c >> 16) & 255, (c >> 8) & 255, c & 255]
+    const dist = (a: number, b: number): number => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]))
+    for (const id of ['toxinBomb', 'shockBomb'] as const) {
+      expect(SKILL_ICON[id]).not.toBe(SKILL_ICON.freezeBomb)
+      for (const other of SKILL_IDS) if (other !== id) expect(dist(SKILL_COLOR[id], SKILL_COLOR[other])).toBeGreaterThan(40)
+    }
+    expect(new Set(SKILL_IDS.map((id) => SKILL_ICON[id])).size).toBe(SKILL_IDS.length)
+  })
+
   it('COMBO_FORM keys are exactly the combo results', () => {
     expect(Object.keys(COMBO_FORM).sort()).toEqual(COMBOS.map((c) => c.result).sort())
   })

@@ -31,6 +31,8 @@ export interface TickTable {
   deathDropProtect: number
   // ---- 原型扩展（NON-CONTRACT，ADR 0030）----
   burnInterval: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒掉血间隔（≥ 1）。 */
+  toxinInterval: number
   freezeCap: number
   freezeImmune: number
   /** 被踢炸弹每 Tick 前进的千分格（floor(kickSpeedMilli / tickRateHz)）。 */
@@ -65,6 +67,7 @@ export function tickTable(cfg: BomberConfig, rules: ProtoRules): TickTable {
     regenStopBeforeFinal: msToTicks(rules.regenStopBeforeFinalMs, hz),
     deathDropProtect: msToTicks(rules.deathDropProtectMs, hz),
     burnInterval: Math.max(1, msToTicks(rules.burnIntervalMs, hz)),
+    toxinInterval: Math.max(1, msToTicks(rules.toxinIntervalMs, hz)),
     freezeCap: msToTicks(rules.freezeCapMs, hz),
     freezeImmune: msToTicks(rules.freezeImmuneMs, hz),
     kickMilliPerTick: Math.floor(rules.kickSpeedMilli / hz),

@@ -166,3 +166,67 @@ describe('skill sound snapshot fallback vs the event (review #9: no double play)
     expect(calls.filter((c) => c === 'hatPickup')).toEqual(['hatPickup'])
   })
 })
+
+describe('ADR 0033 status sounds (原型扩展 NON-CONTRACT): events vs snapshot fallback, no double play', () => {
+  beforeEach(() => {
+    calls.length = 0
+  })
+  const status = (c: string): boolean => c === 'poisonHiss' || c === 'zap' || c === 'cureChime' || c === 'toxinTick'
+  const poisoned: BomberEvent = {
+    type: 'PlayerPoisoned',
+    presentationOnly: true,
+    VictimNetEntityIdRaw: ME,
+    SourceBombNetEntityIdRaw: 44,
+    SourceBombOwnerNetEntityIdRaw: 2,
+    UntilTick: 71,
+    Tick: 10,
+  }
+  const shocked: BomberEvent = { ...poisoned, type: 'PlayerShocked', UntilTick: 51 }
+  const cured: BomberEvent = { type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: ME, Reason: 'healthPack', Tick: 12 }
+
+  it('PlayerPoisoned / PlayerShocked / PlayerCured events: hiss, zap and chime once each', () => {
+    drive([
+      { snapshot: snap(8, {}), events: [] },
+      { snapshot: snap(9, {}), events: [] },
+      { snapshot: snap(10, { toxinUntilTick: 71, shockUntilTick: 51 }), events: [poisoned, shocked] },
+      { snapshot: snap(11, { toxinUntilTick: 71, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(12, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [cured] },
+      { snapshot: snap(13, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(14, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [] },
+    ])
+    expect(calls.filter(status)).toEqual(['poisonHiss', 'zap', 'cureChime'])
+  })
+
+  it('without status events the snapshot fallback plays each exactly once', () => {
+    drive([
+      { snapshot: snap(8, {}), events: [] },
+      { snapshot: snap(9, {}), events: [] },
+      { snapshot: snap(10, { toxinUntilTick: 71, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(11, { toxinUntilTick: 71, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(12, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(13, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [] },
+      { snapshot: snap(14, { toxinUntilTick: 0, shockUntilTick: 51 }), events: [] },
+    ])
+    expect(calls.filter(status)).toEqual(['poisonHiss', 'zap', 'cureChime'])
+  })
+
+  it('a toxin tick on the local player is a soft bubble, not the hurt squeak', () => {
+    const tick: BomberEvent = {
+      type: 'DamageApplied',
+      VictimNetEntityIdRaw: ME,
+      SourceBombNetEntityIdRaw: 44,
+      SourceBombOwnerNetEntityIdRaw: 2,
+      ChainId: 0,
+      HealthPointsLeft: 5,
+      Tick: 10,
+      proto: { Cause: 4, Points: 1 },
+    }
+    drive([
+      { snapshot: snap(8, {}), events: [] },
+      { snapshot: snap(9, {}), events: [] },
+      { snapshot: snap(10, {}), events: [tick] },
+      { snapshot: snap(11, {}), events: [] },
+    ])
+    expect(calls.filter((c) => c === 'hurt' || c === 'toxinTick')).toEqual(['toxinTick'])
+  })
+})

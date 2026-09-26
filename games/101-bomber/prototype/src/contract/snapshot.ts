@@ -64,6 +64,16 @@ export interface PlayerSkillsView {
   regenNextTick: U64
   /** 最近一次闪现 / 冲刺的 Tick；= teleportTick 时那次瞬移是闪现，不是重生。 */
   blinkTick: U64
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹的中毒到此 Tick（不含）；缺省 / 0 = 没中毒。
+   * 可选只为兼容旧夹具——规则替身总会填。
+   */
+  toxinUntilTick?: U64
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0033）：麻痹弹的麻痹到此 Tick（不含），期间 `玩家属性.移速当前` 已乘减速；缺省 / 0 = 没麻痹。
+   * 可选只为兼容旧夹具——规则替身总会填。
+   */
+  shockUntilTick?: U64
 }
 
 export interface PlayerView extends EntityView {

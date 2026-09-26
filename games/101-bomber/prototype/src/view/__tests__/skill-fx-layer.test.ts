@@ -158,3 +158,51 @@ describe('fire aura flames follow the bear smoothly', () => {
     expect(jitters.size).toBeGreaterThan(4)
   })
 })
+
+describe('toxin bubbles and shock arcs stay clear of the walls (ADR 0033)', () => {
+  const X = 4.5
+  const Z = 6.5
+
+  /** 一整个绿泡周期 / 多个电弧时间桶逐帧采样：墙顶以下的最大横向外沿、实例数。 */
+  function sample(skills: PlayerSkillsView): { reach: number; drawn: number; maxY: number } {
+    const root = new Group()
+    const fx = new SkillFxLayer(root, mats, DEFAULT_RULES.skills)
+    const doll = factory.create(2, 'rabbit', 1)
+    let reach = 0
+    let drawn = 0
+    let maxY = 0
+    for (let f = 0; f < 180; f++) {
+      const now = 2000 + f * 11
+      doll.update(X, Z, now, 1 / 60, 3, false)
+      fx.begin()
+      fx.player(doll, skills, 100, RATE, now)
+      fx.end(now, noMarks)
+      eachInstanceVertex(root, (v) => {
+        drawn++
+        maxY = Math.max(maxY, v.y)
+        if (v.y >= WALL_TOP) return
+        reach = Math.max(reach, Math.abs(v.x - X), Math.abs(v.z - Z))
+      })
+    }
+    doll.dispose()
+    return { reach, drawn, maxY }
+  }
+
+  it('poisoned: green bubbles are drawn, rise above the head and stay within the 0.7 footprint', () => {
+    const r = sample(sk({ toxinUntilTick: 200 }))
+    expect(r.drawn).toBeGreaterThan(0)
+    expect(r.reach).toBeLessThanOrEqual(FOOT_HALF + 1e-6)
+    expect(r.maxY).toBeGreaterThan(WALL_TOP)
+  })
+
+  it('shocked: arcs are drawn and stay within the 0.7 footprint', () => {
+    const r = sample(sk({ shockUntilTick: 200 }))
+    expect(r.drawn).toBeGreaterThan(0)
+    expect(r.reach).toBeLessThanOrEqual(FOOT_HALF + 1e-6)
+  })
+
+  it('expired or missing status draws nothing', () => {
+    expect(sample(sk({ toxinUntilTick: 100, shockUntilTick: 50 })).drawn).toBe(0)
+    expect(sample(sk()).drawn).toBe(0)
+  })
+})

@@ -24,6 +24,7 @@ import {
   cellOfIdx,
   centerMilli,
   countResource,
+  currentSpeed,
   pickupProtectedUntil,
   type SimPlayer,
   type SimSkillSlot,
@@ -56,6 +57,8 @@ function skillsView(p: SimPlayer): PlayerSkillsView {
     regenFromTick: p.regenFromTick,
     regenNextTick: p.regenNextTick,
     blinkTick: p.blinkTick,
+    toxinUntilTick: p.toxinUntilTick,
+    shockUntilTick: p.shockUntilTick,
   }
 }
 
@@ -67,7 +70,8 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
     LogicTransform: { WorldPosition: { x: p.mx / CELL_MILLI, y: 1, z: p.my / CELL_MILLI } },
     teleportTick: p.teleportTick,
     BomberPlayerState: { HatCount: hatCountOf(w, p), RespawnAtTick: p.respawnAtTick, ProtectedUntilTick: p.protectedUntilTick },
-    玩家属性: { 血量当前: p.health, 火力当前: p.power, 移速当前: p.speed, 手上炸弹数当前: p.capacity },
+    // 当前账移速含麻痹修饰（ADR 0033）；基础账不变；水中减速不发布。
+    玩家属性: { 血量当前: p.health, 火力当前: p.power, 移速当前: currentSpeed(p, w.t), 手上炸弹数当前: p.capacity },
     玩家属性基础: { 血量基础: p.health, 火力基础: p.power, 移速基础: p.speed, 手上炸弹数基础: p.capacity },
     meta: { name: p.name, isBot: p.spec.isBot, animal: p.animal, slot: p.spec.slot },
     eliminated: p.eliminated,

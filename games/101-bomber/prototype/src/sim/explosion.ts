@@ -250,6 +250,8 @@ function removeBurnedOut(w: World): void {
  * 冰冻弹 / 冰川弹（BombKind.Freeze，ADR 0030 + 第 4 轮 Q1）：rules.freezeBombDamages 时照常扣血（照样进同链封顶账），
  * 然后再下一张冻结单（points = 0，见 effects.ts settleEffects）——伤害全部结算完才冻住**幸存者**，
  * 所以同一颗弹（及同一 Tick 的其他伤害）不会解冻；之后的伤害才解冻。
+ * 中毒弹 / 麻痹弹（BombKind.Toxin / Shock，原型扩展 NON-CONTRACT，ADR 0033）同一处、同一口径：照常扣血，再下一张
+ * points = 0 的状态单，结算时按弹的 kind 让幸存者中毒 / 麻痹。泡泡 / 重生保护挡下的不扣血，也不中状态。
  */
 function dangerPass(w: World): void {
   const t = w.t
@@ -260,6 +262,7 @@ function dangerPass(w: World): void {
   const cap = w.cfg.maxHealthPoints
   for (const b of active) {
     const freeze = b.kind === BombKind.Freeze
+    const status = freeze || b.kind === BombKind.Toxin || b.kind === BombKind.Shock
     const damages = !freeze || w.rules.freezeBombDamages
     for (const c of b.covered)
       for (const { p, cell } of alive) {
@@ -279,7 +282,7 @@ function dangerPass(w: World): void {
             w.effects.push({ target: p.id, points: pts, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
           }
         }
-        if (freeze) w.effects.push({ target: p.id, points: 0, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
+        if (status) w.effects.push({ target: p.id, points: 0, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
       }
   }
 }

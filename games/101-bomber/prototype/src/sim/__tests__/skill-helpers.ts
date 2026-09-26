@@ -24,6 +24,10 @@ export interface SkillBombOpts {
   kind?: BombKind
   pierceLayers?: number
   freezeTicks?: number
+  /** ADR 0033：中毒弹 / 麻痹弹参数。 */
+  toxinTicks?: number
+  shockTicks?: number
+  slowPermille?: number
 }
 
 /** 绕过放弹摆一颗技能弹（经 makeBomb）；fuseIn 个 Tick 后到期。主人手上有弹就扣一颗（同 helpers.addBomb）。 */

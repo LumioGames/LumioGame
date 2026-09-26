@@ -1,12 +1,12 @@
 import { BombKind, skillParams, 方向, type SkillId } from '../contract'
 import { blinkScan } from '../shared/skill-geometry'
 import type { SkillTickRow } from './ticks'
-import { cellOfIdx, centerMilli, emit, gridProbe, newId, playerCell, type SimPlayer, type World } from './world'
+import { cellOfIdx, centerMilli, clearToxin, emit, gridProbe, isPoisoned, newId, playerCell, type SimPlayer, type World } from './world'
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030）：技能槽的规则层（design §8.1 / §8.4，D11–D13）。
  * - 主动槽（Shift / 副按钮）：泡泡 / 弹射泡泡、闪现 / 火焰冲刺、火焰光环；冷却从施放 Tick 起算，CD 跨死亡保留、开局清。
- * - 炸弹槽：放弹时决定炸弹种类 / 穿透层数 / 冻结时长（{@link bombLoadout}）。
+ * - 炸弹槽：放弹时决定炸弹种类 / 穿透层数 / 冻结时长 / 中毒与麻痹参数（{@link bombLoadout}；后两者 ADR 0033）。
  * - 被动槽：踢弹距离（{@link kickRange}，kick.ts 用）；回春在 recovery.ts。
  * 冻结门在 step.ts（冻结中按技能键发 SkillFailed 'frozen'，不会走到 {@link applySkill}）。
  */
@@ -22,18 +22,36 @@ export interface BombLoadout {
   kind: BombKind
   pierceLayers: number
   freezeTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒持续 Tick（中毒弹）。 */
+  toxinTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：麻痹持续 Tick 与移速千分比（麻痹弹）。 */
+  shockTicks: number
+  slowPermille: number
 }
 
-const STANDARD_LOADOUT: BombLoadout = { kind: BombKind.Standard, pierceLayers: 0, freezeTicks: 0 }
+const STANDARD_LOADOUT: BombLoadout = { kind: BombKind.Standard, pierceLayers: 0, freezeTicks: 0, toxinTicks: 0, shockTicks: 0, slowPermille: 0 }
 
-/** design §8.1 炸弹槽：放弹时生效。空槽 = 标准弹。冻结时长夹到 freezeCap（冰冻弹 / 冰川弹 = BombKind.Freeze）。 */
+/**
+ * design §8.1 炸弹槽：放弹时生效。空槽 = 标准弹。冻结时长夹到 freezeCap（冰冻弹 / 冰川弹 = BombKind.Freeze）。
+ * 中毒弹（Toxin）/ 麻痹弹（Shock）的持续取该等级 durationMs（ADR 0033）。
+ */
 export function bombLoadout(w: World, p: SimPlayer): BombLoadout {
   const s = p.slots.bomb
   if (!s) return STANDARD_LOADOUT
   const kind = w.rules.skills[s.skill].bombKind ?? BombKind.Standard
-  const pierceLayers = skillParams(w.rules.skills, s.skill, s.level).pierceLayers
-  const freezeTicks = kind === BombKind.Freeze ? Math.min(skillTicks(w, s.skill, s.level).freeze, w.ticks.freezeCap) : 0
-  return { kind, pierceLayers, freezeTicks }
+  const params = skillParams(w.rules.skills, s.skill, s.level)
+  const tk = skillTicks(w, s.skill, s.level)
+  const freezeTicks = kind === BombKind.Freeze ? Math.min(tk.freeze, w.ticks.freezeCap) : 0
+  const toxinTicks = kind === BombKind.Toxin ? tk.duration : 0
+  const shock = kind === BombKind.Shock
+  return {
+    kind,
+    pierceLayers: params.pierceLayers,
+    freezeTicks,
+    toxinTicks,
+    shockTicks: shock ? tk.duration : 0,
+    slowPermille: shock ? params.slowPermille : 0,
+  }
 }
 
 /**
@@ -67,7 +85,8 @@ function blinkTo(w: World, p: SimPlayer, landing: number): void {
 /**
  * 主动槽（Shift / 副按钮）。按序：空槽 → SkillFailed('noSkill')；冷却中 → SkillFailed('cooldown')；
  * 闪现 / 冲刺没有落点 → SkillFailed('noLanding')（不耗 CD、不动）。成功则：
- * - 泡泡 / 弹射泡泡：bubbleUntilTick = t + duration（[t, t+duration) 内不受炸弹 / 烧伤 / 冻结 / 溺水伤害、不能放弹；毒照扣）；
+ * - 泡泡 / 弹射泡泡：bubbleUntilTick = t + duration（[t, t+duration) 内不受炸弹 / 烧伤 / 冻结 / 溺水伤害、不能放弹；毒圈照扣）；
+ *   施放即解中毒弹的毒（ADR 0033，先发 PlayerCured 再发 SkillActivated）；麻痹不解；
  * - 火焰光环：auraUntilTick = t + duration（零写入：不改地形、不引爆、不毁糖果；烧伤见 burn.ts）；
  * - 闪现：朝 facing 落到 blinkScan 的最远落点；
  * - 火焰冲刺：同闪现，另把 blinkScan.path（起点 + 途经的空格，不含落点）留成火墙，存续 [t, t+duration)。
@@ -94,6 +113,10 @@ export function applySkill(w: World, p: SimPlayer, pressed: boolean): void {
     case 'bounceBubble':
       until = t + tk.duration
       p.bubbleUntilTick = until
+      if (isPoisoned(p, t)) {
+        clearToxin(p)
+        emit(w, { type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: p.id, Reason: 'bubble', Tick: t })
+      }
       break
     case 'fireAura':
       until = t + tk.duration

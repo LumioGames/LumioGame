@@ -104,6 +104,39 @@ describe('live damage-source hint (review: no hint of who hit you)', () => {
   })
 })
 
+describe('ADR 0033 中毒弹 / 麻痹弹 hits (原型扩展 NON-CONTRACT)', () => {
+  const nameOf = (id: number): string => ({ 2: '小黄鸭', 3: '豆豆熊' })[id] ?? `玩家 ${id}`
+  const toxinTick = (owner: number, left: number): BomberEvent => dmg(44, owner, 0, left, { proto: { Cause: 4, Points: 1 } })
+
+  it('toxin ticks (Cause 4) are their own cause: no chain delay, owner / bomb kept for the recap', () => {
+    const hits = staggerLocalHits([toxinTick(3, 5)], ME, 6, 2)
+    expect(hits).toEqual([{ delayMs: 0, points: 1, hpAfter: 5, owner: 3, chainId: 0, bomb: 44, cause: 'toxin' }])
+  })
+
+  it('toxin hint names the thrower (or yourself); a bomb hit in the same batch wins', () => {
+    expect(hitHintText(staggerLocalHits([toxinTick(3, 5)], ME, 6, 2), () => 0, nameOf, ME, 2)).toBe('被 豆豆熊 的中毒弹毒到 −半心')
+    expect(hitHintText(staggerLocalHits([toxinTick(ME, 5)], ME, 6, 2), () => 0, nameOf, ME, 2)).toBe('被你自己的中毒弹毒到 −半心')
+    expect(hitHintText(staggerLocalHits([toxinTick(3, 5), dmg(1, 2, 7, 3)], ME, 6, 2), () => 1, nameOf, ME, 2)).toBe('被 小黄鸭 的炸弹命中 −1 心')
+  })
+
+  it('a single special bomb is named by kind (中毒弹 / 麻痹弹); chains keep 连锁', () => {
+    const kind = (b: number): string | null => (b === 1 ? '麻痹弹' : null)
+    expect(hitHintText(staggerLocalHits([dmg(1, 2, 7, 4)], ME, 6, 2), () => 1, nameOf, ME, 2, kind)).toBe('被 小黄鸭 的麻痹弹命中 −1 心')
+    expect(hitHintText(staggerLocalHits([dmg(2, 2, 7, 4)], ME, 6, 2), () => 1, nameOf, ME, 2, kind)).toBe('被 小黄鸭 的炸弹命中 −1 心')
+    expect(hitHintText(staggerLocalHits([dmg(1, 2, 7, 4), dmg(2, 2, 7, 2)], ME, 6, 2), () => 2, nameOf, ME, 2, kind)).toBe('被 小黄鸭 的连锁 ×2 命中 −2 心')
+  })
+
+  it('HudBrain resolves the bomb kind from the snapshots for the live hint', () => {
+    const b = new HudBrain({ localId: ME, pillarMinHats: 3, tickRateHz: 20, pointsPerHeart: 2 })
+    const before = snap({ tick: 9, players: [{ id: ME, hp: 6 }, { id: 2 }], bombs: [{ id: 1, owner: 2, X: 1, Y: 2 }] })
+    before.Bombs[0].BomberBombState.BombKind = 5
+    b.consume(batch(9, [], { snapshot: before }))
+    const m = b.consume(batch(10, [dmg(1, 2, 7, 4)], { before }))
+    const hits = m.find((x): x is Extract<HudMoment, { kind: 'hits' }> => x.kind === 'hits')
+    expect(hits?.hint).toBe('被 小黄鸭 的中毒弹命中 −1 心')
+  })
+})
+
 describe('HudBrain hat readability + final circle moments', () => {
   const newBrain = (): HudBrain => new HudBrain({ localId: ME, pillarMinHats: 3, tickRateHz: 20, pointsPerHeart: 2 })
   const hatTexts = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'popup' && (m.tone === 'hat' || m.tone === 'hatloss') ? [m.text] : []))

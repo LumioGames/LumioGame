@@ -21,9 +21,10 @@ export interface BomberCell {
 
 /**
  * PlayerDied.Cause：0 = 爆炸、1 = 溺水、2 = 燃烧（契约值；原型第 4 轮由火焰光环 / 火墙产生，ADR 0030）；
- * 3 = 毒圈是**原型扩展**（design §12 / ADR 0025，契约 v2 只到 2，扩值待契约修订）。
+ * 3 = 毒圈是**原型扩展**（design §12 / ADR 0025，契约 v2 只到 2，扩值待契约修订）；
+ * 4 = 中毒弹的中毒是**原型扩展（NON-CONTRACT，ADR 0033）**：击杀者 = 投弹者（「被 X 毒倒了」），与毒圈（3）区分。
  */
-export const DeathCause = { Bomb: 0, Drown: 1, Burn: 2, Poison: 3 } as const
+export const DeathCause = { Bomb: 0, Drown: 1, Burn: 2, Poison: 3, Toxin: 4 } as const
 export type DeathCause = (typeof DeathCause)[keyof typeof DeathCause]
 
 export interface BombPlaced {
@@ -409,6 +410,43 @@ export interface PlayerFrozen {
   Tick: U64
 }
 
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：被中毒弹炸到且活下来（未被泡泡 / 重生保护挡下）→ 中毒到 UntilTick（不含），
+ * 每 toxinIntervalMs −toxinPointsPerInterval 点，可致死（Cause = Toxin，击杀者 = SourceBombOwner）。再次命中刷新（也发本事件）。
+ */
+export interface PlayerPoisoned {
+  type: 'PlayerPoisoned'
+  presentationOnly: true
+  VictimNetEntityIdRaw: U64
+  SourceBombNetEntityIdRaw: U64
+  SourceBombOwnerNetEntityIdRaw: U64
+  UntilTick: U64
+  Tick: U64
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：被麻痹弹炸到且活下来 → UntilTick（不含）前移速乘 slowPermille
+ * （快照 `玩家属性.移速当前` 同步变慢，基础账不变）。再次命中刷新（也发本事件）。
+ */
+export interface PlayerShocked {
+  type: 'PlayerShocked'
+  presentationOnly: true
+  VictimNetEntityIdRaw: U64
+  SourceBombNetEntityIdRaw: U64
+  SourceBombOwnerNetEntityIdRaw: U64
+  UntilTick: U64
+  Tick: U64
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0033）：解毒——施放泡泡 / 弹射泡泡，或吃血包（死亡清除不发）。 */
+export interface PlayerCured {
+  type: 'PlayerCured'
+  presentationOnly: true
+  NetEntityIdRaw: U64
+  Reason: 'bubble' | 'healthPack'
+  Tick: U64
+}
+
 export type ContractEvent =
   | BombPlaced
   | BombExploded
@@ -447,6 +485,9 @@ export type PresentationEvent =
   | PlayerHealed
   | BombKicked
   | PlayerFrozen
+  | PlayerPoisoned
+  | PlayerShocked
+  | PlayerCured
 
 export type BomberEvent = ContractEvent | PresentationEvent
 export type BomberEventType = BomberEvent['type']

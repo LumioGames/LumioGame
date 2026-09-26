@@ -10,6 +10,7 @@ import {
   type U64,
   type WorldSnapshot,
 } from '../contract'
+import { statusChip } from '../present/bomb-status'
 import type { FeedSample } from '../present/feed'
 import type { PresentationSettings } from '../present/settings'
 import { skillButtonView, skillHudModel, type SkillButtonView } from '../present/skill-hud'
@@ -187,6 +188,11 @@ export function createHud(opts: HudOptions): Hud {
     iconEl('heart', '', fill)
     heartEls.push(fill)
   }
+  // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时心变绿（毒绿取技能色）；心旁「麻痹中」/「中毒中」小标签。
+  setStyle(stats, '--toxin', skillCss('toxinBomb'))
+  setStyle(stats, '--shock', skillCss('shockBomb'))
+  const statusEl = el('span', 'st-status')
+  hearts.after(statusEl)
   const regenRing = new RegenRing(stats, hearts)
   const statItem = (icon: 'flame' | 'bomb' | 'speed' | 'hat', label: string, cls: string): HTMLSpanElement => {
     el('span', 'st-sep', stats)
@@ -413,6 +419,14 @@ export function createHud(opts: HudOptions): Hud {
     skillBar.update(m)
     regenRing.update(m.regen)
     lastButton = skillButtonView(m)
+    stats.classList.toggle('is-poisoned', m.status.poisoned)
+    stats.classList.toggle('is-shocked', m.status.shocked)
+    const chip = statusChip(m.status)
+    setText(statusEl, chip?.text ?? '')
+    statusEl.classList.toggle('is-on', chip !== null)
+    if ((statusEl.dataset.kind ?? '') !== (chip?.kind ?? '')) statusEl.dataset.kind = chip?.kind ?? ''
+    const chipTitle = chip?.title ?? ''
+    if (statusEl.title !== chipTitle) statusEl.title = chipTitle
     if (!p) return
     const a = p.玩家属性
     const hp = Math.max(0, heartTrack.displayed(now, a.血量当前))
@@ -427,8 +441,10 @@ export function createHud(opts: HudOptions): Hud {
     for (const b of snap.Bombs) if (b.BomberBombState.OwnerNetEntityIdRaw === me && b.BomberBombState.ExplodedAtTick === 0) live++
     setText(bombVal, `${a.手上炸弹数当前}/${a.手上炸弹数当前 + live}`)
     const base = config.speedTierToCellsPerSecond[0] ?? 3500
-    setText(speedVal, String(speedLevel(a.移速当前, base, rules.speedStepMilli)))
-    speedVal.parentElement?.classList.toggle('is-slow', a.移速当前 < base)
+    // 麻痹中（ADR 0033）当前账移速被乘了减速：档位按基础账算（速度糖没丢），变慢另用 is-slow 样式提示。
+    const tierSpeed = m.status.shocked ? (p.玩家属性基础?.移速基础 ?? a.移速当前) : a.移速当前
+    setText(speedVal, String(speedLevel(tierSpeed, base, rules.speedStepMilli)))
+    speedVal.parentElement?.classList.toggle('is-slow', a.移速当前 < base || m.status.shocked)
     setText(hatVal, String(p.BomberPlayerState.HatCount))
   }
 

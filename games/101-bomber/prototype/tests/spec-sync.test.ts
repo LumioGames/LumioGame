@@ -11,6 +11,7 @@ import {
   SKILL_IDS,
   SKILLS,
   UNTIL_BLOCKED,
+  bombCandyPool,
   candyPool,
   isPowerupKind,
   msToTicks,
@@ -25,7 +26,7 @@ import { cell, makeWorld } from '../src/sim/__tests__/helpers'
 
 /**
  * 策划案 ↔ 原型数值同步（第 4 轮，docs 设计 §3.8 + RESOLUTIONS）。这里钉住的每一个数都写在
- * docs/specs/bomber/design.md 与 ADR 0030 / 0031 / 0032 里；**改数值必须同一改动里同步 design.md §4 / §4.2 / §6.1 / §8 / §15**，
+ * docs/specs/bomber/design.md 与 ADR 0030 / 0031 / 0032 / 0033 里；**改数值必须同一改动里同步 design.md §4 / §4.2 / §6.1 / §8 / §12 / §15**，
  * 否则这里红。注释逐条注明出处。
  */
 const R = DEFAULT_RULES
@@ -72,8 +73,9 @@ describe('ADR 0031 · 7-min cap, 115 s final circle (design §4 / §4.1 / §4.2)
     expect(msToTicks(R.finalCircleMs, hz)).toBe(2300)
   })
 
-  it('strong chest: 3 independent hits; loot = the three power-ups + a health pack + exactly one Lv1 skill candy', () => {
-    // design §4.2 强力宝箱：3 次独立炸弹命中；喷出火力+ / 炸弹+ / 速度+ 各 1 + 血包 1 + 技能糖 1（Lv1，§8.2）。
+  it('strong chest: 3 independent hits; loot = the three power-ups + a health pack + exactly one Lv1 bomb-type skill candy', () => {
+    // design §4.2 强力宝箱：3 次独立炸弹命中；喷出火力+ / 炸弹+ / 速度+ 各 1 + 血包 1 + 技能糖 1（Lv1，§8.2；ADR 0033 保底炸弹类）。
+    expect(R.chestSkillCandyPool).toBe('bomb')
     expect(R.chestHitsRequired).toBe(3)
     expect(R.chestLoot).toEqual(['FirePlus', 'BombPlus', 'SpeedPlus', 'HealthPack'])
     expect(R.chestSkillCandies).toBe(1)
@@ -87,6 +89,7 @@ describe('ADR 0031 · 7-min cap, 115 s final circle (design §4 / §4.1 / §4.2)
     expect(kinds.filter((k) => isPowerupKind(k))).toHaveLength(3)
     expect(kinds.filter((k) => k === PickupKind.HealthPack)).toHaveLength(1)
     expect(w.pickups.find((p) => p.kind === PickupKind.SkillCandy)?.level).toBe(1)
+    expect(bombCandyPool(SKILLS)).toContain(w.pickups.find((p) => p.kind === PickupKind.SkillCandy)?.skill)
   })
 })
 
@@ -125,6 +128,8 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
       fireDash: 'active',
       bounceBubble: 'active',
       glacierBomb: 'bomb',
+      toxinBomb: 'bomb',
+      shockBomb: 'bomb',
     })
   })
 
@@ -156,6 +161,15 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     // 穿透弹：多穿 1 层 / 2 层 / 全线（design §8.4 ★ 穿透弹）。
     expect(col('pierceBomb', 'pierceLayers')).toEqual([1, 2, UNTIL_BLOCKED])
     expect(SKILLS.pierceBomb.bombKind).toBe(BombKind.Pierce)
+    // 中毒弹：直击照常 −1 心，中毒 3 / 4 / 5 s，每 1000 ms −1 点（每秒 −0.5 心），可致死（design §8.4 ★ 中毒弹 / §12，ADR 0033）。
+    expect(col('toxinBomb', 'durationMs')).toEqual([3000, 4000, 5000])
+    expect(SKILLS.toxinBomb.bombKind).toBe(BombKind.Toxin)
+    expect(R.toxinIntervalMs).toBe(1000)
+    expect(R.toxinPointsPerInterval).toBe(1)
+    // 麻痹弹：直击照常 −1 心，移速降到 30%，持续 2 / 2.5 / 3 s（design §8.4 ★ 麻痹弹，ADR 0033）。
+    expect(col('shockBomb', 'durationMs')).toEqual([2000, 2500, 3000])
+    expect(col('shockBomb', 'slowPermille')).toEqual([300, 300, 300])
+    expect(SKILLS.shockBomb.bombKind).toBe(BombKind.Shock)
     // 主动技能 CD 逐级不增（design §8.4「L1 → L3」）。
     for (const id of SKILL_IDS) {
       const cds = SKILLS[id].levels.map((l) => l.cdMs)
@@ -185,12 +199,24 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     expect(SKILLS.glacierBomb.bombKind).toBe(BombKind.Freeze)
   })
 
-  it('skill candy: six-skill pool with equal weights, no regen; crates half skill candy; death drops 50 %', () => {
-    // design §8.2 技能糖池：闪现、火焰光环、泡泡、踢弹、冰冻弹、穿透弹，池内等权；回春不进池（RESOLUTIONS #2）。
+  it('skill candy: eight-skill pool, bomb-type weight 2 / others 1, no regen; crates half skill candy; death drops 50 %', () => {
+    // design §8.2 技能糖池：闪现、火焰光环、泡泡、踢弹各 1，冰冻弹、穿透弹、中毒弹、麻痹弹各 2（ADR 0033 修订 0030 的等权）；回春不进池。
     const pool = candyPool(SKILLS)
-    expect([...pool].sort()).toEqual(['blink', 'bubble', 'fireAura', 'freezeBomb', 'kick', 'pierceBomb'])
+    expect([...pool].sort()).toEqual(['blink', 'bubble', 'fireAura', 'freezeBomb', 'kick', 'pierceBomb', 'shockBomb', 'toxinBomb'])
     expect(pool).not.toContain('regen')
-    expect(new Set(pool.map((id) => SKILLS[id].candyWeight))).toEqual(new Set([1]))
+    expect(Object.fromEntries(pool.map((id) => [id, SKILLS[id].candyWeight]))).toEqual({
+      bubble: 1,
+      blink: 1,
+      fireAura: 1,
+      kick: 1,
+      freezeBomb: 2,
+      pierceBomb: 2,
+      toxinBomb: 2,
+      shockBomb: 2,
+    })
+    // design §8.2：炸弹类约 2/3（8 / 12）。
+    const total = pool.reduce((a, id) => a + SKILLS[id].candyWeight, 0)
+    expect(bombCandyPool(SKILLS).reduce((a, id) => a + SKILLS[id].candyWeight, 0) / total).toBeCloseTo(2 / 3)
     // design §8.2 木箱：必掉 1 个，50% 技能糖（Lv1）（RESOLUTIONS #1）。
     expect(R.crateSkillCandyPermille).toBe(500)
     // design §8.2 死亡掉落：拾取的技能每个 50% 落地。

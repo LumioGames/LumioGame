@@ -28,7 +28,11 @@ export interface BomberPlayerState {
   ProtectedUntilTick: U64
 }
 
-export const BombKind = { Standard: 0, Freeze: 1, Fire: 2, Pierce: 3, Split: 4 } as const
+/**
+ * 0–4 为契约值。5 Toxin（中毒弹）/ 6 Shock（麻痹弹）是**原型扩展（NON-CONTRACT，ADR 0033）**：
+ * 契约 BombKind 只到 4，扩值待契约修订；规则层按它在命中后下中毒 / 麻痹单。
+ */
+export const BombKind = { Standard: 0, Freeze: 1, Fire: 2, Pierce: 3, Split: 4, Toxin: 5, Shock: 6 } as const
 export type BombKind = (typeof BombKind)[keyof typeof BombKind]
 
 export interface BomberBombState {
@@ -82,7 +86,10 @@ export interface 玩家属性当前账 {
   血量当前: number
   /** 十字每臂格数。 */
   火力当前: number
-  /** 千分格/秒。 */
+  /**
+   * 千分格/秒。原型扩展（NON-CONTRACT，ADR 0033）：麻痹中 = 移速基础 × 麻痹弹 slowPermille（修饰只进当前账）；
+   * 水中减速不进这里（规则层移动时另乘）。
+   */
   移速当前: number
   /** 同时在场上限中尚未放出的数量。 */
   手上炸弹数当前: number

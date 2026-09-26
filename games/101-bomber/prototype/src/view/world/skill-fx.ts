@@ -1,10 +1,11 @@
-import { Color, MeshStandardMaterial, type Object3D } from 'three'
+import { Color, MeshBasicMaterial, MeshStandardMaterial, type Object3D } from 'three'
 import type { BomberCell, PlayerSkillsView, ProtoRules } from '../../contract'
 import { COMBO_FORM } from '../../present/skill-style'
 import { Batch, M, trs } from '../batch'
 import { DOLL } from '../geo/doll'
-import { bubbleGeometry, comboRingGeometry, iceBlockGeometry, orbGeometry } from '../geo/skill'
+import { arcGeometry, bubbleGeometry, comboRingGeometry, iceBlockGeometry, orbGeometry, toxinBubbleGeometry } from '../geo/skill'
 import { bubbleAlpha, comboOf, SKILL_FX } from '../logic/skill-fx'
+import { dollStatus, shockArcs, STATUS_FX, toxinBubbles } from '../logic/status-fx'
 import type { SharedMaterials } from '../materials'
 import type { Doll } from './dolls'
 import type { GroundMarks } from './ground-marks'
@@ -16,6 +17,8 @@ import type { GroundMarks } from './ground-marks'
  *   - 组合技形态：脖子上一圈技能色项圈 + 沿项圈环绕的小球（火焰冲刺用火苗、其余用辉光），都收在 0.7 格脚印里；
  *   - 闪现拖尾：起点 → 落点一串渐隐的地面辉光；
  *   - 本机闪现落点预览：落点虚线圈 + 途经小光点（只给本人画）。
+ * 原型扩展（NON-CONTRACT，ADR 0033）：中毒（skills.toxinUntilTick）身上冒绿泡；麻痹（skills.shockUntilTick）身上跳电黄电弧
+ * （位置与节奏见 logic/status-fx；玩偶偏绿 / 步频放慢 / 打颤由 DollFx 驱动）。都收在 0.7 格脚印里。
  * 立即模式：每帧 begin → player()… → end()。
  */
 
@@ -33,6 +36,11 @@ const ORB_CAP = 48
 const TRAIL_CAP = 16
 const ORB_ORBIT_HZ = 0.5
 const RING_SPIN_HZ = 0.25
+/** 中毒绿泡 / 麻痹电弧的实例容量（CAP 名玩家 × 每人个数）。 */
+const TOXIN_CAP = CAP * STATUS_FX.toxinBubbles
+const ARC_CAP = CAP * STATUS_FX.shockArcs
+const TOXIN_BUBBLE = [0x7ed957, 0xb8f07a] as const
+const SHOCK_ARC = 0xffe23c
 
 export class SkillFxLayer {
   private readonly bubbles: Batch
@@ -40,6 +48,8 @@ export class SkillFxLayer {
   private readonly rings: Batch
   private readonly flameOrbs: Batch
   private readonly glowOrbs: Batch
+  private readonly toxin: Batch
+  private readonly arcs: Batch
   private readonly trails: Trail[] = []
   private readonly c = new Color()
 
@@ -63,7 +73,15 @@ export class SkillFxLayer {
     this.rings = new Batch(comboRingGeometry(), mats.solid, CAP, { color: true })
     this.flameOrbs = new Batch(orbGeometry(), mats.flame, ORB_CAP, { color: true })
     this.glowOrbs = new Batch(orbGeometry(), mats.glowAdd, ORB_CAP, { color: true, renderOrder: 5 })
-    parent.add(this.bubbles.mesh, this.ice.mesh, this.rings.mesh, this.flameOrbs.mesh, this.glowOrbs.mesh)
+    this.toxin = new Batch(
+      toxinBubbleGeometry(),
+      new MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0, transparent: true, opacity: 0.82, depthWrite: false, emissive: 0x2a6a1a, emissiveIntensity: 0.4 }),
+      TOXIN_CAP,
+      { color: true, renderOrder: 5 },
+    )
+    // 电弧用不受光的实色（不是叠加辉光）：叠加在白兔 / 米色地面上会糊成白色，看不出「电黄」。
+    this.arcs = new Batch(arcGeometry(), new MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), ARC_CAP, { color: true, renderOrder: 5 })
+    parent.add(this.bubbles.mesh, this.ice.mesh, this.rings.mesh, this.flameOrbs.mesh, this.glowOrbs.mesh, this.toxin.mesh, this.arcs.mesh)
   }
 
   clear(): void {
@@ -71,7 +89,7 @@ export class SkillFxLayer {
   }
 
   warmup(on: boolean): void {
-    for (const b of [this.bubbles, this.ice, this.rings, this.flameOrbs, this.glowOrbs]) {
+    for (const b of [this.bubbles, this.ice, this.rings, this.flameOrbs, this.glowOrbs, this.toxin, this.arcs]) {
       b.begin()
       if (on) b.push(trs(M, 0, -10, 0, 0, 0, 0, 0.01, 0.01, 0.01))
       b.end()
@@ -84,6 +102,8 @@ export class SkillFxLayer {
     this.rings.begin()
     this.flameOrbs.begin()
     this.glowOrbs.begin()
+    this.toxin.begin()
+    this.arcs.begin()
   }
 
   /** 一名玩家的技能外观（玩偶已按本帧位置更新过）。 */
@@ -103,7 +123,24 @@ export class SkillFxLayer {
       const i = this.bubbles.push(trs(M, x, base + DOLL.height * s * 0.5, z, 0, t, 0, rxz, r * 1.08, rxz))
       this.bubbles.color(i, this.c.setHex(0x7fe3ff).multiplyScalar(0.55 + 0.45 * k))
     }
-    if (renderTick < sk.frozenUntilTick) this.ice.push(trs(M, x, base, z, 0, doll.yaw, 0, s * 0.85, s * 0.85, s * 0.85))
+    const st = dollStatus(sk, renderTick)
+    if (st.frozen) this.ice.push(trs(M, x, base, z, 0, doll.yaw, 0, s * 0.85, s * 0.85, s * 0.85))
+    if (st.poisoned) {
+      for (const b of toxinBubbles(t, doll.id)) {
+        if (b.r <= 1e-4) continue
+        const r = b.r * s
+        const i = this.toxin.push(trs(M, x + b.dx * s, base + b.y * s, z + b.dz * s, 0, 0, 0, r, r, r))
+        this.toxin.color(i, this.c.setHex(b.y > STATUS_FX.toxinBubbleStartY + STATUS_FX.toxinBubbleRise * 0.5 ? TOXIN_BUBBLE[1] : TOXIN_BUBBLE[0]))
+      }
+    }
+    if (st.shocked) {
+      for (const a of shockArcs(t, doll.id)) {
+        // 弧段中心在半径 R 的圆上，局部 +X 沿切向（绕 Y 转 ang），再在切面内倾斜 tilt。
+        const R = STATUS_FX.shockArcRadius * s
+        const i = this.arcs.push(trs(M, x + Math.sin(a.ang) * R, base + a.y * s, z + Math.cos(a.ang) * R, 0, a.ang, a.tilt, a.len * s, s, s))
+        this.arcs.color(i, this.c.setHex(SHOCK_ARC))
+      }
+    }
     const combo = comboOf(sk, this.skills)
     const form = combo ? COMBO_FORM[combo] : undefined
     if (form) {
@@ -163,5 +200,7 @@ export class SkillFxLayer {
     this.rings.end()
     this.flameOrbs.end()
     this.glowOrbs.end()
+    this.toxin.end()
+    this.arcs.end()
   }
 }

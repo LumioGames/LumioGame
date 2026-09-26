@@ -22,6 +22,7 @@ import { GeoBuilder, mat } from './merge'
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030）：技能表现的几何——泡泡球、冰块、组合技项圈与环绕小球、
  * 冰冻弹霜壳、穿透弹钻刺，以及每种技能糖（约 0.3 的彩色糖球 + 正面浮雕剪影，靠形状区分、不只靠颜色）。
+ * ADR 0033：中毒弹 / 麻痹弹的糖（迷你弹 + 毒泡 / 迷你弹 + 闪电）、电弧与中毒绿泡。
  */
 
 const WHITE = 0xffffff
@@ -69,6 +70,35 @@ export function drillSpikeGeometry(): BufferGeometry {
     b.add(new ConeGeometry(0.055, 0.16, 10), 0xffc93c, mat(x, BOMB_CENTER_Y, z, Math.cos(a) * (Math.PI / 2), 0, -Math.sin(a) * (Math.PI / 2)))
   }
   return b.build()
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：一段电弧——沿 +X 的折线（单位长度，原点居中），
+ * 按实例 X 缩放成弧长；折的幅度（Y）与粗细不随弧长变。麻痹弹弹体、麻痹玩偶身上、麻痹弹爆炸电火花共用。
+ */
+export function arcGeometry(): BufferGeometry {
+  const b = new GeoBuilder()
+  const pts: [number, number][] = [
+    [-0.5, 0],
+    [-0.28, 0.035],
+    [-0.08, -0.03],
+    [0.14, 0.03],
+    [0.32, -0.022],
+    [0.5, 0.008],
+  ]
+  const t = 0.024
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1]
+    const [x1, y1] = pts[i]
+    const len = Math.hypot(x1 - x0, y1 - y0)
+    b.add(new BoxGeometry(len + t * 0.6, t, t), WHITE, mat((x0 + x1) / 2, (y0 + y1) / 2, 0, 0, 0, Math.atan2(y1 - y0, x1 - x0)))
+  }
+  return b.build()
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0033）：中毒绿泡（单位半径的小球；实例缩放 = 半径）。 */
+export function toxinBubbleGeometry(): BufferGeometry {
+  return new IcosahedronGeometry(1, 1)
 }
 
 // ---- 技能糖（原点在糖心，约 0.3）----
@@ -130,6 +160,21 @@ function bootShape(b: GeoBuilder, x: number, y: number, s: number, color: number
   b.add(new BoxGeometry(0.11, 0.045, 0.045), color, mat(x + 0.01 * s, y - 0.04 * s, FACE_Z + 0.005, 0, 0, 0, s, s, s))
 }
 
+/** 中毒弹：糖球右上两颗毒泡（大 + 小）+ 弹身一滴绿。 */
+function toxinShape(b: GeoBuilder, x: number, y: number, s: number): void {
+  b.add(new SphereGeometry(0.034, 10, 8), 0xeaffd0, mat(x + 0.06 * s, y + 0.055 * s, FACE_Z + 0.02, 0, 0, 0, s, s, s))
+  b.add(new SphereGeometry(0.02, 8, 6), 0xeaffd0, mat(x + 0.095 * s, y + 0.105 * s, FACE_Z + 0.005, 0, 0, 0, s, s, s))
+  // 弹身前一滴绿（毒液从弹上淌下来）。
+  b.add(new SphereGeometry(0.02, 8, 6), 0xb8f07a, mat(x - 0.015 * s, y - 0.02 * s, FACE_Z + 0.07, 0, 0, 0, s, s * 1.3, s * 0.6))
+}
+
+/** 麻痹弹：糖球右上一道小闪电（白芯），弹身前一道电弧。 */
+function shockShape(b: GeoBuilder, x: number, y: number, s: number): void {
+  boltShape(b, x + 0.06 * s, y + 0.06 * s, 0.55 * s, WHITE)
+  b.add(new BoxGeometry(0.1, 0.014, 0.014), 0xfff27a, mat(x - 0.005 * s, y + 0.01 * s, FACE_Z + 0.075, 0, 0, 0.35, s, s, s))
+  b.add(new BoxGeometry(0.06, 0.014, 0.014), 0xfff27a, mat(x - 0.01 * s, y - 0.03 * s, FACE_Z + 0.075, 0, 0, -0.5, s, s, s))
+}
+
 function bubbleShape(b: GeoBuilder, x: number, y: number, s: number): void {
   b.add(new TorusGeometry(0.07, 0.014, 6, 24), WHITE, mat(x, y, FACE_Z + 0.02, 0, 0, 0, s, s, s))
   b.add(new SphereGeometry(0.022, 8, 6), WHITE, mat(x - 0.03 * s, y + 0.03 * s, FACE_Z + 0.03, 0, 0, 0, s, s, s))
@@ -162,6 +207,14 @@ function emblem(b: GeoBuilder, id: SkillId, x: number, y: number, s: number): vo
     case 'pierceBomb':
       miniBombShape(b, x, y, s)
       drillShape(b, x, y, s)
+      break
+    case 'toxinBomb':
+      miniBombShape(b, x, y, s)
+      toxinShape(b, x, y, s)
+      break
+    case 'shockBomb':
+      miniBombShape(b, x, y, s)
+      shockShape(b, x, y, s)
       break
     default:
       break

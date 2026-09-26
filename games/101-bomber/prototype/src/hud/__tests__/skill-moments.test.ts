@@ -4,8 +4,11 @@ import {
   blockedCandyText,
   burnSourceAt,
   burnSourceName,
+  curedText,
   diffSkills,
   evolveBanner,
+  poisonedText,
+  shockedText,
   skillFailText,
   skillGainText,
   skillsDroppedText,
@@ -98,5 +101,28 @@ describe('skill texts', () => {
     expect(burnSourceAt(s, 3, { X: 5, Y: 5 })).toBeNull()
     expect(burnSourceAt(null, 4, { X: 5, Y: 5 })).toBeNull()
     expect([burnSourceName('aura'), burnSourceName('firewall'), burnSourceName(null)]).toEqual(['火焰光环', '火墙', '火'])
+  })
+})
+
+describe('ADR 0033 中毒弹 / 麻痹弹 texts (原型扩展 NON-CONTRACT)', () => {
+  it('candy pickup / level-up / blocked texts use the table names 中毒弹 / 麻痹弹', () => {
+    expect(skillGainText({ kind: 'equip', skill: 'toxinBomb', level: 1 }, R)).toBe('获得 中毒弹 Lv1')
+    expect(skillGainText({ kind: 'levelUp', skill: 'shockBomb', level: 2 }, R)).toBe('麻痹弹 升到 Lv2')
+    const slots = { bomb: held('freezeBomb'), active: null, passive: null }
+    expect(blockedCandyText(slots, { skill: 'toxinBomb', level: 1 }, R)).toBe('炸弹槽已有 冰冻弹，捡不了 中毒弹')
+    expect(skillsDroppedText([{ Skill: 'shockBomb', Level: 3 }], null, R)).toBe('麻痹弹 Lv3')
+  })
+
+  it('poisoned notice: thrower (or yourself), seconds, how to cure; generic without a source', () => {
+    expect(poisonedText({ name: '豆豆熊' }, 3)).toBe('中了 豆豆熊 的中毒弹！掉血 3 秒 · 吃血包或放泡泡能解毒')
+    expect(poisonedText('self', 4.5)).toBe('中了自己的中毒弹！掉血 4.5 秒 · 吃血包或放泡泡能解毒')
+    expect(poisonedText(null, null)).toBe('中毒了！持续掉血 · 吃血包或放泡泡能解毒')
+  })
+
+  it('shocked notice and cure notices', () => {
+    expect(shockedText({ name: '灰灰猫' }, 2)).toBe('中了 灰灰猫 的麻痹弹！走得很慢 2 秒')
+    expect(shockedText('self', 2.5)).toBe('中了自己的麻痹弹！走得很慢 2.5 秒')
+    expect(shockedText(null, null)).toBe('被麻痹了！走得很慢')
+    expect([curedText('bubble'), curedText('healthPack'), curedText(null)]).toEqual(['泡泡解毒了', '血包解毒了', '解毒了'])
   })
 })

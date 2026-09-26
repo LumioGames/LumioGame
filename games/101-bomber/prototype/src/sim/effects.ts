@@ -1,4 +1,4 @@
-import { BlockType, DeathCause, 方向, type PlayerDied } from '../contract'
+import { BlockType, BombKind, DeathCause, 方向, type PlayerDied } from '../contract'
 import { rollPowerupDrops } from './death-drops'
 import { rollSkillDrops } from './skill-drops'
 import { cellOfIdx, emit, findPlayer, isAlive, playerCell, type DamageEffect, type SimPlayer, type World } from './world'
@@ -43,17 +43,18 @@ export function queueDrowning(w: World): void {
  * - points > 0 的单：扣血；目标若在冻结中（冻结始于更早的 Tick）立即解冻并给 freezeImmune 的控制免疫；
  *   回春计时清零（recovery.ts 本 Tick 重新起算）。死亡时另在同一时刻掷技能掉落（D8）。
  * - points = 0 的单是冰冻弹的**冻结单**（explosion.ts dangerPass 下）：全部伤害结算完之后才处理，只冻住幸存者，
- *   所以同一 Tick（含同一颗弹）的伤害不会解冻它。
+ *   所以同一 Tick（含同一颗弹）的伤害不会解冻它。中毒弹 / 麻痹弹（ADR 0033）的状态单同样是 points = 0、同样只对幸存者生效，
+ *   按炸弹的 kind 分派（{@link applyToxin} / {@link applyShock}）。
  */
 export function settleEffects(w: World): void {
   if (w.effects.length === 0) return
   const t = w.t
   const queue = w.effects
   w.effects = []
-  const freezes: DamageEffect[] = []
+  const statuses: DamageEffect[] = []
   for (const e of queue) {
     if (e.points === 0) {
-      freezes.push(e)
+      statuses.push(e)
       continue
     }
     const p = findPlayer(w, e.target)
@@ -91,11 +92,41 @@ export function settleEffects(w: World): void {
     emit(w, ev)
     w.pendingDeaths.push({ victim: p.id, killer: e.killer, tick: t, dropKinds, dropSkills: rollSkillDrops(w, p) })
   }
-  for (const e of freezes) {
+  for (const e of statuses) {
     const p = findPlayer(w, e.target)
     const b = w.bombs.find((o) => o.id === e.bomb)
-    if (p && b && p.health > 0 && !p.eliminated) applyFreeze(w, p, b.id, b.owner, b.freezeTicks)
+    if (!p || !b || p.health <= 0 || p.eliminated) continue
+    if (b.kind === BombKind.Toxin) applyToxin(w, p, b.id, b.owner, b.toxinTicks)
+    else if (b.kind === BombKind.Shock) applyShock(w, p, b.id, b.owner, b.shockTicks, b.slowPermille)
+    else if (b.kind === BombKind.Freeze) applyFreeze(w, p, b.id, b.owner, b.freezeTicks)
   }
+}
+
+/**
+ * 中毒（原型扩展 NON-CONTRACT，ADR 0033）：T 时命中 → toxinUntilTick = max(原值, T + 1 + toxinTicks)（正好覆盖 T+1 .. T+toxinTicks），
+ * 击杀归属改记这颗弹的主人。没在中毒的从 T + toxinInterval 起掉血；已在中毒的只刷新持续、不动节拍（不叠加速率）。
+ * 掉血本身在 toxin.ts queueToxin。
+ */
+function applyToxin(w: World, p: SimPlayer, bomb: number, owner: number, toxinTicks: number): void {
+  if (toxinTicks <= 0) return
+  const t = w.t
+  if (t >= p.toxinUntilTick) p.toxinNextTick = t + w.ticks.toxinInterval
+  p.toxinUntilTick = Math.max(p.toxinUntilTick, t + 1 + toxinTicks)
+  p.toxinOwner = owner
+  p.toxinBomb = bomb
+  emit(w, { type: 'PlayerPoisoned', presentationOnly: true, VictimNetEntityIdRaw: p.id, SourceBombNetEntityIdRaw: bomb, SourceBombOwnerNetEntityIdRaw: owner, UntilTick: p.toxinUntilTick, Tick: t })
+}
+
+/**
+ * 麻痹（原型扩展 NON-CONTRACT，ADR 0033）：T 时命中 → shockUntilTick = max(原值, T + 1 + shockTicks)，期间移速乘 slowPermille
+ * （world.ts currentSpeed；move.ts 与快照都读它）。再次命中刷新持续，减速取这颗弹的千分比，不叠乘。
+ */
+function applyShock(w: World, p: SimPlayer, bomb: number, owner: number, shockTicks: number, slowPermille: number): void {
+  if (shockTicks <= 0) return
+  const t = w.t
+  p.shockUntilTick = Math.max(p.shockUntilTick, t + 1 + shockTicks)
+  p.shockSlowPermille = slowPermille
+  emit(w, { type: 'PlayerShocked', presentationOnly: true, VictimNetEntityIdRaw: p.id, SourceBombNetEntityIdRaw: bomb, SourceBombOwnerNetEntityIdRaw: owner, UntilTick: p.shockUntilTick, Tick: t })
 }
 
 /**

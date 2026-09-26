@@ -5,7 +5,8 @@ import { DeathCause, type PlayerDied, type U64 } from '../contract'
  * 只留最近 4 条；死者掉了几个强化（= 几顶帽子，ADR 0028）定下来后补上「· B 掉了 N 个强化」；
  * 决赛圈出局的条目追加「出局」标签（PlayerEliminated 在死亡的下一 Tick 到达）。
  */
-export type FeedKind = 'kill' | 'self' | 'drown' | 'poison' | 'burn'
+/** 'toxin' = 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹毒倒（击杀者 = 投弹者）。 */
+export type FeedKind = 'kill' | 'self' | 'drown' | 'poison' | 'burn' | 'toxin'
 
 export interface FeedEntry {
   key: string
@@ -16,6 +17,8 @@ export interface FeedEntry {
   victimName: string
   /** 死者掉了几个强化；还没定下来为 null（见 hat-loss.ts）。 */
   lost: number | null
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：炸死时那颗特殊炸弹的名字（「中毒弹」/「麻痹弹」…）；标准弹 / 查不到为 null。 */
+  bombName: string | null
   eliminated: boolean
   involvesLocal: boolean
   tick: U64
@@ -27,9 +30,9 @@ export const FEED_MAX = 4
 export function feedBase(e: FeedEntry): string {
   switch (e.kind) {
     case 'kill':
-      return `${e.killerName} 炸飞了 ${e.victimName}`
+      return e.bombName ? `${e.killerName} 用${e.bombName}炸飞了 ${e.victimName}` : `${e.killerName} 炸飞了 ${e.victimName}`
     case 'self':
-      return `${e.victimName} 被自己炸飞了`
+      return e.bombName ? `${e.victimName} 被自己的${e.bombName}炸飞了` : `${e.victimName} 被自己炸飞了`
     case 'drown':
       return `${e.victimName} 溺水了`
     case 'poison':
@@ -37,6 +40,10 @@ export function feedBase(e: FeedEntry): string {
     case 'burn':
       // 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙烧倒的有主人，读成击杀。
       return burnHasKiller(e) ? `${e.killerName} 烧倒了 ${e.victimName}` : `${e.victimName} 被烧倒了`
+    case 'toxin':
+      // 原型扩展（NON-CONTRACT，ADR 0033）：「A 用中毒弹毒倒了 B」/「B 被自己的中毒弹毒倒了」。
+      if (feedHasKiller(e)) return `${e.killerName} 用中毒弹毒倒了 ${e.victimName}`
+      return e.killerId === e.victimId ? `${e.victimName} 被自己的中毒弹毒倒了` : `${e.victimName} 被中毒弹毒倒了`
   }
 }
 
@@ -45,15 +52,20 @@ export function burnHasKiller(e: FeedEntry): boolean {
   return e.kind === 'burn' && e.killerId !== 0 && e.killerId !== e.victimId
 }
 
-/** 这条的色点跟谁：击杀（含有主人的烧倒）跟击杀者，其余跟死者。 */
+/** 这条读成「A 对 B」：炸飞别人、有别人当主人的烧倒 / 毒倒（ADR 0030 / 0033）。 */
+export function feedHasKiller(e: FeedEntry): boolean {
+  return e.kind === 'kill' || ((e.kind === 'burn' || e.kind === 'toxin') && e.killerId !== 0 && e.killerId !== e.victimId)
+}
+
+/** 这条的色点跟谁：击杀（含有主人的烧倒 / 毒倒）跟击杀者，其余跟死者。 */
 export function feedColorId(e: FeedEntry): U64 {
-  return e.kind === 'kill' || burnHasKiller(e) ? e.killerId : e.victimId
+  return feedHasKiller(e) ? e.killerId : e.victimId
 }
 
 /** 后半句：「B 掉了 N 个强化」；没掉 / 还不知道时为空串。 */
 export function feedLossText(e: FeedEntry): string {
   if (!e.lost) return ''
-  return e.kind === 'kill' || burnHasKiller(e) ? `${e.victimName} 掉了 ${e.lost} 个强化` : `掉了 ${e.lost} 个强化`
+  return feedHasKiller(e) ? `${e.victimName} 掉了 ${e.lost} 个强化` : `掉了 ${e.lost} 个强化`
 }
 
 /** 整句：「A 炸飞了 B · B 掉了 N 个强化」。 */
@@ -69,7 +81,8 @@ export class KillFeed {
 
   constructor(private readonly localId: U64) {}
 
-  onDied(e: PlayerDied, nameOf: (id: U64) => string): void {
+  /** @param bombName 炸死（Cause = Bomb）时那颗特殊炸弹的名字（ADR 0033）；缺省 / null = 不写弹种。 */
+  onDied(e: PlayerDied, nameOf: (id: U64) => string, bombName: string | null = null): void {
     const victim = e.VictimNetEntityIdRaw
     const killer = e.KillerNetEntityIdRaw
     const kind: FeedKind =
@@ -79,7 +92,9 @@ export class KillFeed {
           ? 'poison'
           : e.Cause === DeathCause.Burn
             ? 'burn'
-            : killer === victim || killer === 0
+            : e.Cause === DeathCause.Toxin
+              ? 'toxin'
+              : killer === victim || killer === 0
               ? 'self'
               : 'kill'
     const me = this.localId
@@ -91,6 +106,7 @@ export class KillFeed {
       killerName: killer === me ? '你' : nameOf(killer),
       victimName: victim === me ? '你' : nameOf(victim),
       lost: null,
+      bombName: kind === 'kill' || kind === 'self' ? bombName : null,
       eliminated: false,
       involvesLocal: killer === me || victim === me,
       tick: e.Tick,

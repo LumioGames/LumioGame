@@ -157,6 +157,7 @@ describe('podiumModel', () => {
     expect(resultsCharacterText(null)).toBe('—')
     expect(resultsSkillText([])).toBe('—')
     expect(resultsSkillText(['blink', 'pierceBomb'])).toBe('闪现 · 穿透弹')
+    expect(resultsSkillText(['toxinBomb', 'shockBomb', 'fireDash'])).toBe('中毒弹 · 麻痹弹 → 进化 火焰冲刺')
     expect(resultsSkillText(['blink', 'fireAura', 'fireDash'])).toBe('闪现 · 火焰光环 → 进化 火焰冲刺')
     expect(resultsSkillText(['fireDash', 'glacierBomb'])).toBe('进化 火焰冲刺、冰川弹')
   })

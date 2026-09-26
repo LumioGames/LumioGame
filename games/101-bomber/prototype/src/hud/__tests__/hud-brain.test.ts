@@ -490,3 +490,135 @@ describe('HudBrain round 4 (skills, burn, survivor ranking)', () => {
     expect(texts(m, 'notice')).toEqual(['被冻住了！'])
   })
 })
+
+describe('HudBrain ADR 0033 中毒弹 / 麻痹弹 (原型扩展 NON-CONTRACT)', () => {
+  const notices = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'notice' ? [m.text] : []))
+  const poisoned = (victim: number, owner: number, tick: number, until: number): BomberEvent => ({
+    type: 'PlayerPoisoned',
+    presentationOnly: true,
+    VictimNetEntityIdRaw: victim,
+    SourceBombNetEntityIdRaw: 44,
+    SourceBombOwnerNetEntityIdRaw: owner,
+    UntilTick: until,
+    Tick: tick,
+  })
+  const toxinTick = (tick: number, owner: number, left: number): BomberEvent => ({
+    type: 'DamageApplied',
+    VictimNetEntityIdRaw: ME,
+    SourceBombNetEntityIdRaw: 44,
+    SourceBombOwnerNetEntityIdRaw: owner,
+    ChainId: 0,
+    HealthPointsLeft: left,
+    Tick: tick,
+    proto: { Cause: 4, Points: 1 },
+  })
+  const toxinDeath = (tick: number, killer: number): BomberEvent => ({
+    ...(died(tick, ME, killer, 0) as Extract<BomberEvent, { type: 'PlayerDied' }>),
+    Cause: 4,
+    proto: { HatsLost: 0, SourceBombNetEntityIdRaw: 44 },
+  })
+
+  it('poisoned / shocked / cured notices only for the local player, with the thrower and seconds', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME }, { id: 3 }] }) }))
+    const m = b.consume(
+      batch(5, [
+        poisoned(ME, 3, 5, 66),
+        poisoned(3, ME, 5, 66),
+        { type: 'PlayerShocked', presentationOnly: true, VictimNetEntityIdRaw: ME, SourceBombNetEntityIdRaw: 45, SourceBombOwnerNetEntityIdRaw: ME, UntilTick: 46, Tick: 5 },
+      ]),
+    )
+    expect(notices(m)).toEqual(['中了 豆豆熊 的中毒弹！掉血 3 秒 · 吃血包或放泡泡能解毒', '中了自己的麻痹弹！走得很慢 2 秒'])
+    const c = b.consume(batch(9, [{ type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: ME, Reason: 'healthPack', Tick: 9 }]))
+    expect(notices(c)).toEqual(['血包解毒了'])
+    expect(notices(b.consume(batch(9, [{ type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: 3, Reason: 'bubble', Tick: 9 }])))).toEqual([])
+  })
+
+  it('casting bubble while poisoned folds the cure into the bubble notice (one notice, not two)', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const m = b.consume(
+      batch(8, [
+        { type: 'PlayerCured', presentationOnly: true, NetEntityIdRaw: ME, Reason: 'bubble', Tick: 8 },
+        { type: 'SkillActivated', presentationOnly: true, PlayerNetEntityIdRaw: ME, Skill: 'bubble', Level: 1, Cell: { X: 1, Y: 1 }, ToCell: { X: 1, Y: 1 }, UntilTick: 68, CdUntilTick: 368, Tick: 8 },
+      ]),
+    )
+    expect(notices(m)).toEqual(['泡泡护体 3 秒 · 解毒了 · 期间不能放弹'])
+  })
+
+  it('without status events: snapshot until-ticks give generic notices; once events exist no double notice', () => {
+    const b = newBrain()
+    const s = (t: number, over: Partial<PlayerSkillsView>) => snap({ tick: t, players: [{ id: ME, skills: skillsView(over) }] })
+    b.consume(batch(0, [], { snapshot: s(0, {}) }))
+    expect(notices(b.consume(batch(1, [], { snapshot: s(1, { toxinUntilTick: 62, shockUntilTick: 41 }) })))).toEqual([
+      '中毒了！持续掉血 · 吃血包或放泡泡能解毒',
+      '被麻痹了！走得很慢',
+    ])
+    expect(notices(b.consume(batch(2, [], { snapshot: s(2, { toxinUntilTick: 0, shockUntilTick: 41 }) })))).toEqual(['解毒了'])
+    const withEvent = b.consume(batch(3, [poisoned(ME, ME, 3, 64)], { snapshot: s(3, { toxinUntilTick: 64, shockUntilTick: 41 }) }))
+    expect(notices(withEvent)).toEqual(['中了自己的中毒弹！掉血 3 秒 · 吃血包或放泡泡能解毒'])
+  })
+
+  it('toxin tick hint while alive names the thrower', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME }, { id: 3 }] }) }))
+    const h = b.consume(batch(25, [toxinTick(25, 3, 5)])).find((x) => x.kind === 'hits')
+    expect(h?.kind === 'hits' && h.hint).toBe('被 豆豆熊 的中毒弹毒到 −半心')
+    expect(h?.kind === 'hits' && h.hits[0].delayMs).toBe(0)
+  })
+
+  it('toxin death (Cause 4): recap headline 「被 X 的中毒弹毒倒了」, killer, bomb kind, sources; kill feed and kill credit', () => {
+    const b = newBrain()
+    const before = snap({ tick: 0, players: [{ id: ME, hp: 3 }, { id: 3 }] })
+    b.consume(batch(0, [], { snapshot: before }))
+    b.consume(batch(25, [toxinTick(25, 3, 2)]))
+    b.consume(batch(45, [toxinTick(45, 3, 1)]))
+    const m = b.consume(batch(65, [toxinTick(65, 3, 0), toxinDeath(65, 3)]))
+    const d = m.find((x) => x.kind === 'death')
+    if (d?.kind !== 'death') throw new Error('no recap')
+    expect(d.recap).toMatchObject({ cause: 'toxin', headline: '被 豆豆熊 的中毒弹毒倒了', killerName: '豆豆熊', bombOwnerName: '豆豆熊', bombKindName: '中毒弹' })
+    expect(d.recap.sources.map((x) => [x.label, x.detail])).toEqual([
+      ['豆豆熊的中毒弹', '−半心 · 中毒'],
+      ['豆豆熊的中毒弹', '−半心 · 中毒'],
+    ])
+    expect(d.recap.sources[0].animal).toBe('bear')
+    expect(feedText(b.killFeed.entries()[0])).toBe('豆豆熊 用中毒弹毒倒了 你')
+    expect(b.stats.stats.killsById.get(3)).toBe(1)
+  })
+
+  it('poisoned by your own bomb: 「被自己的中毒弹毒倒了」, no killer; others dying to your toxin credit you', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME, hp: 1 }, { id: 2 }] }) }))
+    const d = b.consume(batch(5, [toxinTick(5, ME, 0), toxinDeath(5, ME)])).find((x) => x.kind === 'death')
+    if (d?.kind !== 'death') throw new Error('no recap')
+    expect([d.recap.headline, d.recap.killerName, d.recap.bombOwnerName, d.recap.sources[0].label]).toEqual(['被自己的中毒弹毒倒了', null, '你自己', '你自己的中毒弹'])
+    expect(feedText(b.killFeed.entries()[0])).toBe('你 被自己的中毒弹毒倒了')
+    b.consume(batch(9, [{ ...(died(9, 2, ME, 0) as Extract<BomberEvent, { type: 'PlayerDied' }>), Cause: 4 }]))
+    expect(feedText(b.killFeed.entries()[0])).toBe('你 用中毒弹毒倒了 小黄鸭')
+    expect(b.stats.stats.kills).toBe(1)
+  })
+
+  it('a direct 麻痹弹 kill names the bomb kind in the recap', () => {
+    const b = newBrain()
+    const before = snap({ tick: 9, players: [{ id: ME, hp: 2 }, { id: 2 }], bombs: [{ id: 7, owner: 2, X: 1, Y: 2, chain: 3 }] })
+    before.Bombs[0].BomberBombState.BombKind = 6
+    b.consume(batch(9, [], { snapshot: before }))
+    const hit: BomberEvent = { type: 'DamageApplied', VictimNetEntityIdRaw: ME, SourceBombNetEntityIdRaw: 7, SourceBombOwnerNetEntityIdRaw: 2, ChainId: 3, HealthPointsLeft: 0, Tick: 10, proto: { Cause: 0, Points: 2 } }
+    const d = b.consume(batch(10, [hit, died(10, ME, 2, 3)], { before })).find((x) => x.kind === 'death')
+    expect(d?.kind === 'death' && d.recap.bombKindName).toBe('麻痹弹')
+    expect(feedText(b.killFeed.entries()[0])).toBe('小黄鸭 用麻痹弹炸飞了 你')
+  })
+
+  it('kill feed names special bombs for others too (proto.SourceBomb), plain bombs stay 「炸飞了」', () => {
+    const b = newBrain()
+    const s = snap({ tick: 9, players: [{ id: ME }, { id: 2 }, { id: 3 }], bombs: [{ id: 7, owner: 2, X: 1, Y: 2 }, { id: 8, owner: 3, X: 3, Y: 2 }] })
+    s.Bombs[0].BomberBombState.BombKind = 5
+    b.consume(batch(9, [], { snapshot: s }))
+    const kill = (victim: number, killer: number, bomb: number): BomberEvent => ({
+      ...(died(10, victim, killer, 3) as Extract<BomberEvent, { type: 'PlayerDied' }>),
+      proto: { HatsLost: 0, SourceBombNetEntityIdRaw: bomb },
+    })
+    b.consume(batch(10, [kill(3, 2, 7), kill(2, 2, 7), kill(ME, 3, 8)], { before: s }))
+    expect(b.killFeed.entries().map((e) => feedText(e))).toEqual(['豆豆熊 炸飞了 你', '小黄鸭 被自己的中毒弹炸飞了', '小黄鸭 用中毒弹炸飞了 豆豆熊'])
+  })
+})
