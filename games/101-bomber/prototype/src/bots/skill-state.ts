@@ -21,6 +21,8 @@ export interface SkillSnapshot {
   auraUntil: number
   frozenUntil: number
   blinkTick: number
+  /** 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹的中毒到此 Tick（不含）；0 = 没中毒。 */
+  toxinUntil: number
 }
 
 const NONE: SkillSnapshot = {
@@ -34,6 +36,7 @@ const NONE: SkillSnapshot = {
   auraUntil: 0,
   frozenUntil: 0,
   blinkTick: 0,
+  toxinUntil: 0,
 }
 
 export function readSkills(p: PlayerView): SkillSnapshot {
@@ -51,6 +54,7 @@ export function readSkills(p: PlayerView): SkillSnapshot {
     auraUntil: s.auraUntilTick,
     frozenUntil: s.frozenUntilTick,
     blinkTick: s.blinkTick,
+    toxinUntil: s.toxinUntilTick ?? 0,
   }
 }
 
@@ -98,4 +102,14 @@ export function hasKick(rules: Pick<ProtoRules, 'skills'>, s: SkillSnapshot, now
 /** 泡泡护体到的 Tick（不含）；不在泡泡里 = −1。 */
 export function immuneUntilOf(s: SkillSnapshot, now: number): number {
   return s.bubbleUntil > now ? s.bubbleUntil : -1
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0033）：中毒还会掉的半心点（按剩余 Tick ÷ 间隔向上取整估，偏保守）；没中毒 = 0。
+ * 泡泡与血包都能解毒——Bot 用它决定「开泡泡解毒 / 满血也去吃血包」。
+ */
+export function toxinPointsLeft(rules: Pick<ProtoRules, 'toxinIntervalMs' | 'toxinPointsPerInterval'>, s: SkillSnapshot, now: number, hz: number): number {
+  if (s.toxinUntil <= now) return 0
+  const interval = Math.max(1, msToTicks(rules.toxinIntervalMs, hz))
+  return Math.ceil((s.toxinUntil - now) / interval) * rules.toxinPointsPerInterval
 }

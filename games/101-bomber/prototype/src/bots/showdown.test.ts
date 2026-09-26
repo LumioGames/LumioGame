@@ -14,10 +14,15 @@ const bombs = (out: AbilityActivation[]): number => out.filter((a) => a.ability 
 const casts = (out: AbilityActivation[]): number => out.filter((a) => a.ability === '技能').length
 
 describe('showdown helpers', () => {
-  it('isShowdown: only once the current ring side is ≤ 5', () => {
+  // 圈边长都是奇数：showdownRingSide 这一段起算摊牌，再大一段（+2）不算。
+  const SIDE = BOT_TACTICS.showdownRingSide
+
+  it('isShowdown: only once the current ring side is ≤ showdownRingSide', () => {
     expect(isShowdown(null, BOT_TACTICS)).toBe(false)
-    expect(isShowdown(finalCircle({ ring: 7 }), BOT_TACTICS)).toBe(false)
-    expect(isShowdown(finalCircle({ ring: 5 }), BOT_TACTICS)).toBe(true)
+    expect(isShowdown(finalCircle({ ring: SIDE + 2 }), BOT_TACTICS)).toBe(false)
+    expect(isShowdown(finalCircle({ ring: SIDE }), BOT_TACTICS)).toBe(true)
+    expect(isShowdown(finalCircle({ ring: 5 }), { ...BOT_TACTICS, showdownRingSide: 5 })).toBe(true)
+    expect(isShowdown(finalCircle({ ring: 7 }), { ...BOT_TACTICS, showdownRingSide: 5 })).toBe(false)
     expect(isShowdown(finalCircle({ ring: 1 }), BOT_TACTICS)).toBe(true)
     expect(isShowdown(finalCircle({}), BOT_TACTICS)).toBe(false)
   })
@@ -35,7 +40,7 @@ describe('showdown helpers', () => {
   it('lateEntryHorizon: now + lateEntryTicks in the showdown with a next ring, otherwise null', () => {
     expect(lateEntryHorizon(finalCircle({ ring: 3, next: 1 }), BOT_TACTICS, 500)).toBe(500 + BOT_TACTICS.lateEntryTicks)
     expect(lateEntryHorizon(finalCircle({ ring: 3 }), BOT_TACTICS, 500)).toBeNull()
-    expect(lateEntryHorizon(finalCircle({ ring: 7, next: 5 }), BOT_TACTICS, 500)).toBeNull()
+    expect(lateEntryHorizon(finalCircle({ ring: SIDE + 2, next: SIDE }), BOT_TACTICS, 500)).toBeNull()
   })
 
   it('hitPoints counts every bomb whose cover holds the cell', () => {

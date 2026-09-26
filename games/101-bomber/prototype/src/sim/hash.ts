@@ -111,7 +111,7 @@ export function hashWorld(w: World): string {
       p.auraUntilTick,
       p.frozenUntilTick,
       p.freezeImmuneUntilTick,
-      p.burnReadyTick,
+      p.burnTicks,
       p.regenFromTick,
       p.regenNextTick,
       p.blinkTick,

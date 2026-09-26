@@ -12,7 +12,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "accept": "BOMBER_ACCEPT=1 vitest run tests/acceptance-endgame --silent=false",
+    "stats": "BOMBER_STATS=1 vitest run tests/stats- --silent=false"
   },
   "dependencies": {
     "three": "^0.186.1"

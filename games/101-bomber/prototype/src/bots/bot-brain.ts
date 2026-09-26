@@ -52,6 +52,7 @@ import {
   ownPierce,
   paramsOf,
   readSkills,
+  toxinPointsLeft,
   type SkillSnapshot,
 } from './skill-state'
 import { auraChaseGoal, pickBlinkChase, pickBlinkEscape, pickDashThrough, pickKickClear, pickKickShot, shouldCastAura } from './skills'
@@ -310,7 +311,8 @@ export class BotBrain {
       if (phase !== MatchPhase.Running && phase !== MatchPhase.Endgame) this.behaviourUntil = 0
       return [this.move(方向.停)]
     }
-    const board = buildBoard(snapshot, { self: this.self, burnPad: this.tactics.burnPadCells })
+    const zoneVisible = this.perception?.zones(snapshot, this.self)
+    const board = buildBoard(snapshot, { self: this.self, burnPad: this.tactics.burnPadCells, ...(zoneVisible ? { zoneVisible } : {}) })
     this.hiddenBombs = this.perception ? this.perception.observe(board, this.self) : 0
     this.size = board.size
     this.observeMatch(snapshot, board)
@@ -685,6 +687,7 @@ export class BotBrain {
     this.bombIntent = -1
 
     this.updateBehaviour(snap, board, me, skills)
+    if (!inDanger && this.toxinCure(ctx)) return false
     if (this.offensiveSkill(ctx, inDanger)) return false
     if (canBomb && this.shouldAttack(ctx, evaluate)) {
       this.mode = 'bomb'
@@ -856,6 +859,22 @@ export class BotBrain {
       }
     }
     return false
+  }
+
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0033）：中毒时开泡泡解毒——剩下的毒伤 ≥ 2 点，且毒完再挨一颗弹就死（或毒伤 ≥ 3 点）。
+   * 危险里不走这里（防御技能照常由 escape 决定）。
+   */
+  private toxinCure(ctx: ThinkContext): boolean {
+    const a = ctx.skills.active
+    const now = ctx.board.now
+    if (!a || !isBubbleSkill(a.id) || !activeReady(ctx.skills, now) || ctx.skills.bubbleUntil > now) return false
+    const left = toxinPointsLeft(this.rules, ctx.skills, now, this.hz)
+    const hp = ctx.me.玩家属性.血量当前
+    if (left < 2 || (hp - left > this.rules.bombDamagePoints && left < 3)) return false
+    if (!this.rollSkill(now)) return false
+    this.castNow = { dir: 方向.停, skill: a.id }
+    return true
   }
 
   /**

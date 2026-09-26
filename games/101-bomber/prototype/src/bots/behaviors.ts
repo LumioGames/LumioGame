@@ -19,7 +19,7 @@ import type { BotRng } from './bot-rng'
 import { gridProbe, isOpen, isWater, ticksPerCell, type Board } from './board'
 import { conflicts, isSafe, poisonFreeAfter, restsAt, traceBlast, NEVER, type DangerMap } from './danger-map'
 import { exitTicks, searchPaths, type PathField } from './path-search'
-import { activeReady, durationTicks, isBlinkSkill, isBubbleSkill, ownBombKind, paramsOf, readSkills, slotsOf, type SkillSnapshot } from './skill-state'
+import { activeReady, durationTicks, isBlinkSkill, isBubbleSkill, ownBombKind, paramsOf, readSkills, slotsOf, toxinPointsLeft, type SkillSnapshot } from './skill-state'
 
 /** 一次思考的只读上下文。 */
 export interface ThinkContext {
@@ -203,6 +203,9 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
       case PickupKind.SpeedPlus:
         return a.移速当前 < ctx.rules.speedCapMilli ? [POWERUP_BONUS, 1] : null
       case PickupKind.HealthPack: {
+        // 原型扩展（NON-CONTRACT，ADR 0033）：血包解毒——中毒时满血也值得吃，且按残血口径多追。
+        const toxin = toxinPointsLeft(ctx.rules, ctx.skills, ctx.board.now, ctx.config.tickRateHz)
+        if (toxin > 0) return [Math.max(HEAL_BONUS, inCircle ? ctx.tactics.healReachSteps : 0), 0]
         if (a.血量当前 >= ctx.config.maxHealthPoints) return null
         if (inCircle) return [ctx.tactics.healReachSteps, 0]
         return [a.血量当前 <= ctx.rules.bombDamagePoints ? HEAL_BONUS : 0, 0]

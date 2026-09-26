@@ -36,6 +36,44 @@ describe('hard = round 3', () => {
   })
 })
 
+describe('per-zone reaction delay (normal): a fresh enemy aura enters the burn map only after 4–7 ticks', () => {
+  const aura = (tick: number, owner: U64 = 2): SnapSpec => ({
+    map: standardMap(),
+    tick,
+    players: [
+      { id: 1, X: 5, Y: 5 },
+      { id: 2, X: 6, Y: 5 },
+    ],
+    fireZones: [{ owner, source: 'aura', untilTick: 180, cells: [{ X: 5, Y: 5 }, { X: 6, Y: 5 }, { X: 7, Y: 5 }] }],
+  })
+  const burnsAt = (per: BombPerception, t: number, owner: U64 = 2): boolean => {
+    const snap = makeSnapshot(aura(t, owner))
+    return buildBoard(snap, { self: 1, zoneVisible: per.zones(snap, 1) }).burnUntil[cellIdx(5, 5)] > 0
+  }
+
+  it('hidden for [min, max] ticks after first sight, then visible; the delay varies by seed', () => {
+    const delays = new Set<number>()
+    for (let seed = 1; seed <= 20; seed++) {
+      const per = new BombPerception(new BotRng(seed), 4, 7)
+      let first = -1
+      for (let t = 100; t < 112 && first < 0; t++) if (burnsAt(per, t)) first = t
+      expect(first - 100).toBeGreaterThanOrEqual(4)
+      expect(first - 100).toBeLessThanOrEqual(7)
+      delays.add(first - 100)
+    }
+    expect(delays.size).toBeGreaterThan(1)
+  })
+
+  it('own zones are skipped (never burn yourself) and hard (no perception) sees enemy zones at once', () => {
+    const per = new BombPerception(new BotRng(1), 4, 7)
+    expect(burnsAt(per, 100, 1)).toBe(false)
+    expect(buildBoard(makeSnapshot(aura(100)), { self: 1 }).burnUntil[cellIdx(5, 5)]).toBe(180)
+    const hard = brain(BOT_PROFILES.hard, 'farmer', 1, 3)
+    hard.decide(makeSnapshot(aura(100)))
+    expect(hard.debugState().rng2Draws).toBe(0)
+  })
+})
+
 describe('per-bomb reaction delay (normal)', () => {
   const spec = (tick: number): SnapSpec => ({
     map: standardMap(),

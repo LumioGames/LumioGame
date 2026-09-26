@@ -1,4 +1,4 @@
-import { BombKind, MATERIALS, 方向, type FinalCircleView, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import { BombKind, MATERIALS, 方向, type FinalCircleView, type FireZoneView, type RingRect, type U64, type WorldSnapshot } from '../contract'
 import { cellOf, idx, inBounds } from '../shared/grid'
 import { kickOutcome, type GridProbe } from '../shared/skill-geometry'
 
@@ -71,6 +71,11 @@ export interface BoardOptions {
   self?: U64
   /** 别人光环外扩的格数（熊会动；火墙不外扩）。缺省 0。 */
   burnPad?: number
+  /**
+   * 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：别人的火区此刻「看见」没有（逐区反应延迟，
+   * reactMode 'perBomb'）；看不见的不进 burnUntil。缺省全看见。
+   */
+  zoneVisible?: (z: FireZoneView) => boolean
 }
 
 /** 与 Reach* 字段一一对应的臂方向（上 = 游戏 −Y）。 */
@@ -187,6 +192,7 @@ export function buildBoard(snap: WorldSnapshot, opts: BoardOptions = {}): Board 
   const pad = Math.max(0, opts.burnPad ?? 0)
   for (const z of snap.FireZones ?? []) {
     if (opts.self !== undefined && opts.self !== 0 && z.owner === opts.self) continue
+    if (opts.zoneVisible && !opts.zoneVisible(z)) continue
     const r = z.source === 'aura' ? pad : 0
     for (const zc of z.cells) {
       for (let y = zc.Y - r; y <= zc.Y + r; y++)

@@ -4,7 +4,7 @@ import { startMatch } from '../match-phase'
 import { addBomb, cell, evs, makeWorld, mv, player, put, run, setBrick, SKILL, step } from './helpers'
 import { face, giveSkill } from './skill-helpers'
 
-/** 火焰光环与火焰冲刺火墙（原型扩展 NON-CONTRACT，ADR 0030，D13）：接触即烧，每受害者每秒至多一次，−1 心，Cause = Burn。 */
+/** 火焰光环与火焰冲刺火墙（原型扩展 NON-CONTRACT，ADR 0030，D13）：按暴露时长烧——连续站满 1 秒烧 −1 心，之后每秒一次；离开即清零；Cause = Burn。 */
 
 const burns = (frames: Parameters<typeof evs>[0], victim: number) =>
   evs(frames, 'DamageApplied').filter((e) => e.VictimNetEntityIdRaw === victim && e.proto?.Cause === DeathCause.Burn)
@@ -47,20 +47,20 @@ describe('fire aura', () => {
     expect(step(w).snapshot.FireZones).toEqual([])
   })
 
-  it('an enemy inside is hit at T, T+20, T+40 and dies on the third hit (killer = bear, Cause = Burn)', () => {
+  it('an enemy inside is hit only after a full second of exposure: T+19, T+39, T+59, dying on the third (killer = bear, Cause = Burn)', () => {
     const { w } = bearWorld()
     const enemy = put(w, 2, 6, 5)
     const frames = [step(w, { 1: [SKILL] })]
     const T = w.t
-    frames.push(...run(w, 45))
+    frames.push(...run(w, 65))
     const hits = burns(frames, 2)
-    expect(hits.map((h) => h.Tick)).toEqual([T, T + 20, T + 40])
+    expect(hits.map((h) => h.Tick)).toEqual([T + 19, T + 39, T + 59])
     for (const h of hits) expect(h).toMatchObject({ SourceBombNetEntityIdRaw: 0, SourceBombOwnerNetEntityIdRaw: 1, ChainId: 0, proto: { Cause: 2, Points: 2 } })
-    expect(evs(frames, 'PlayerDied')).toMatchObject([{ VictimNetEntityIdRaw: 2, KillerNetEntityIdRaw: 1, Cause: DeathCause.Burn, Tick: T + 40 }])
+    expect(evs(frames, 'PlayerDied')).toMatchObject([{ VictimNetEntityIdRaw: 2, KillerNetEntityIdRaw: 1, Cause: DeathCause.Burn, Tick: T + 59 }])
     expect(enemy.health).toBe(0)
   })
 
-  it('stepping out and back in within the interval does not re-hit early', () => {
+  it('stepping out resets the exposure: back in at T+6 is first hit at T+25, a quick pass-through is never hit', () => {
     const { w } = bearWorld()
     const enemy = put(w, 2, 6, 5)
     step(w, { 1: [SKILL] })
@@ -69,8 +69,13 @@ describe('fire aura', () => {
     run(w, 5)
     put(w, 2, 6, 5)
     const frames = run(w, 20)
-    expect(burns(frames, 2).map((h) => h.Tick)).toEqual([T + 20])
-    expect(enemy.health).toBe(w.cfg.maxHealthPoints - 4)
+    expect(burns(frames, 2).map((h) => h.Tick)).toEqual([T + 25])
+    expect(enemy.health).toBe(w.cfg.maxHealthPoints - 2)
+    expect(enemy.burnTicks).toBe(20)
+    // 进火 10 Tick 就出来：不烧、清零。
+    put(w, 2, 8, 5)
+    step(w)
+    expect(enemy.burnTicks).toBe(0)
   })
 
   it('the bear himself, a protected player and a bubbled player take no burn', () => {
@@ -83,7 +88,7 @@ describe('fire aura', () => {
     const frames = [step(w, { 1: [SKILL] }), ...run(w, 30)]
     expect(evs(frames, 'DamageApplied')).toHaveLength(0)
     expect(bear.health).toBe(w.cfg.maxHealthPoints)
-    expect(player(w, 3).burnReadyTick).toBe(0)
+    expect(player(w, 3).burnTicks).toBe(0)
   })
 
   it('writes nothing: bricks, rev and bombs untouched', () => {
@@ -120,7 +125,7 @@ describe('fire aura', () => {
     put(w, 1, 5, 5)
     put(w, 2, 7, 5)
     const v = put(w, 3, 6, 5)
-    const frames = [step(w, { 1: [SKILL], 2: [SKILL] }), ...run(w, 45)]
+    const frames = [step(w, { 1: [SKILL], 2: [SKILL] }), ...run(w, 65)]
     const hits = burns(frames, 3)
     expect(hits).toHaveLength(3)
     expect(hits.every((h) => h.SourceBombOwnerNetEntityIdRaw === 1)).toBe(true)
@@ -134,9 +139,9 @@ describe('fire aura', () => {
     const w = makeWorld({ players: 2, picks: ['bear', 'bear'] })
     put(w, 1, 5, 5)
     put(w, 2, 6, 5)
-    const f = step(w, { 1: [SKILL], 2: [SKILL] })
-    expect(burns(f, 1)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 2 }])
-    expect(burns(f, 2)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 1 }])
+    const frames = [step(w, { 1: [SKILL], 2: [SKILL] }), ...run(w, 19)]
+    expect(burns(frames, 1)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 2 }])
+    expect(burns(frames, 2)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 1 }])
   })
 })
 
@@ -169,7 +174,7 @@ describe('fire dash wall', () => {
     put(w, 1, 5, 5)
     put(w, 2, 7, 5)
     const frames = run(w, 45)
-    expect(burns(frames, 2).map((h) => h.Tick)).toEqual([T + 1, T + 21])
+    expect(burns(frames, 2).map((h) => h.Tick)).toEqual([T + 20])
     expect(burns(frames, 1)).toHaveLength(0)
     expect(burns(frames, 2)[0].SourceBombOwnerNetEntityIdRaw).toBe(1)
     expect(w.fireWalls).toHaveLength(0)
@@ -183,9 +188,9 @@ describe('fire dash wall', () => {
     step(w)
     expect(cat.health).toBe(0)
     put(w, 2, 6, 5)
-    const f = step(w)
-    expect(burns(f, 2)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 1 }])
-    expect(f.snapshot.FireZones).toHaveLength(1)
+    const frames = run(w, 20)
+    expect(burns(frames, 2)).toMatchObject([{ SourceBombOwnerNetEntityIdRaw: 1 }])
+    expect(frames[frames.length - 1].snapshot.FireZones).toHaveLength(1)
     startMatch(w, 1)
     expect(w.fireWalls).toEqual([])
   })

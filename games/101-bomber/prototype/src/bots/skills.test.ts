@@ -319,6 +319,39 @@ describe('skill candy', () => {
   })
 })
 
+describe('toxin (ADR 0033)', () => {
+  const poisoned = (skills: PlayerSpec['skills'], hp = 6, pickups: SnapSpec['pickups'] = []) => (t: number): SnapSpec => ({
+    map: standardMap(),
+    tick: t,
+    players: [
+      { id: 1, X: 1, Y: 1, hp, skills },
+      { id: 2, X: 17, Y: 17 },
+    ],
+    pickups,
+  })
+
+  it('a poisoned duck bubbles to cure itself when the poison would still cost ≥ 3 points', () => {
+    const out = drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 180 }), 100, 4)
+    expect(out.some((o) => casts(o) === 1)).toBe(true)
+  })
+
+  it('no cure bubble for a poison tail that barely hurts, nor while on cooldown', () => {
+    expect(drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 118 }), 100, 4).every((o) => casts(o) === 0)).toBe(true)
+    expect(drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 180, cdUntilTick: 500 }), 100, 4).every((o) => casts(o) === 0)).toBe(true)
+  })
+
+  it('a health pack cures poison: sought at full HP only while poisoned', () => {
+    const pack = [{ id: 60, X: 5, Y: 1, kind: PickupKind.HealthPack }]
+    const b1 = brain('farmer')
+    b1.decide(makeSnapshot(poisoned({ toxinUntilTick: 180 }, 6, pack)(100)))
+    expect(b1.debugState().mode).toBe('pickup')
+    expect(b1.debugState().goal).toEqual({ X: 5, Y: 1 })
+    const b2 = brain('farmer')
+    b2.decide(makeSnapshot(poisoned({}, 6, pack)(100)))
+    expect(b2.debugState().goal).not.toEqual({ X: 5, Y: 1 })
+  })
+})
+
 describe('rabbit', () => {
   it('a hurt rabbit picks the hunt behaviour less often than a healthy one', () => {
     const hunts = (hp: number): number => {

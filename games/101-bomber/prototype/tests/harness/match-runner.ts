@@ -57,6 +57,15 @@ export interface PlayerResult {
   deaths: number
 }
 
+export interface DeathRecord {
+  tick: number
+  victim: U64
+  killer: U64
+  cause: number
+  /** 这次死亡让该玩家出局（决赛圈内不再重生）。 */
+  eliminated: boolean
+}
+
 export interface MatchStats {
   seed: number
   ai: BotDifficulty
@@ -84,7 +93,15 @@ export interface MatchStats {
   /** 1×1 生效后中心格有砖 / 宝箱的帧数。 */
   centreViolations: number
   skillCasts: Partial<Record<SkillId, number>>
+  /** Bot（非本机）施放技能的次数。 */
+  botSkillCasts: number
   evolutions: number
+  /** 本机放下的炸弹数（BombPlaced）。 */
+  localBombs: number
+  /** 本机位置变过的 Tick 数（自动驾驶真的在动）。 */
+  localMovedTicks: number
+  /** 每次死亡（失败分析用；约 20–30 条 / 局）。 */
+  deathLog: DeathRecord[]
   players: PlayerResult[]
   localRank: number
   localPlace: number
@@ -147,6 +164,11 @@ class Collector {
   private centreViolations = 0
   private readonly casts: Partial<Record<SkillId, number>> = {}
   private evolutions = 0
+  private botCasts = 0
+  private localBombs = 0
+  private localMoved = 0
+  private localPos = ''
+  private readonly deathLog: DeathRecord[] = []
   private readonly killsBy = new Map<U64, number>()
   private readonly deathsOf = new Map<U64, number>()
   private last: WorldSnapshot | null = null
@@ -172,6 +194,14 @@ class Collector {
           if (e.Cause === 0 && e.KillerNetEntityIdRaw === e.VictimNetEntityIdRaw) this.selfKills++
           if (e.Cause === 3) this.poisonDeaths++
           if (e.Cause === 2) this.burnDeaths++
+          this.deathLog.push({ tick: e.Tick, victim: e.VictimNetEntityIdRaw, killer: e.KillerNetEntityIdRaw, cause: e.Cause, eliminated: false })
+          break
+        case 'PlayerEliminated':
+          for (let i = this.deathLog.length - 1; i >= 0; i--)
+            if (this.deathLog[i].victim === e.NetEntityIdRaw) {
+              this.deathLog[i].eliminated = true
+              break
+            }
           break
         case 'HatKingChanged':
           if (!starting) this.hatKingChanges++
@@ -194,6 +224,10 @@ class Collector {
           break
         case 'SkillActivated':
           this.casts[e.Skill] = (this.casts[e.Skill] ?? 0) + 1
+          if (e.PlayerNetEntityIdRaw !== this.localId) this.botCasts++
+          break
+        case 'BombPlaced':
+          if (e.OwnerNetEntityIdRaw === this.localId) this.localBombs++
           break
         case 'SkillEvolved':
           this.evolutions++
@@ -206,6 +240,12 @@ class Collector {
         default:
           break
       }
+    }
+    const me = s.Players.find((p) => p.NetEntityIdRaw === this.localId)
+    if (me) {
+      const k = `${me.LogicTransform.WorldPosition.x},${me.LogicTransform.WorldPosition.z}`
+      if (this.localPos !== '' && k !== this.localPos) this.localMoved++
+      this.localPos = k
     }
     if (this.reached1x1) {
       const centre = ((size - 1) / 2) * size + (size - 1) / 2
@@ -261,7 +301,11 @@ class Collector {
       chestFor1x1: this.chestFor1x1,
       centreViolations: this.centreViolations,
       skillCasts: { ...this.casts },
+      botSkillCasts: this.botCasts,
       evolutions: this.evolutions,
+      localBombs: this.localBombs,
+      localMovedTicks: this.localMoved,
+      deathLog: this.deathLog,
       players,
       localRank: me.rank,
       localPlace: me.place,

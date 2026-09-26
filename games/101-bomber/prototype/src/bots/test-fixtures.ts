@@ -212,6 +212,7 @@ function skillsView(k: NonNullable<PlayerSpec['skills']>): PlayerSkillsView {
     regenFromTick: k.regenFromTick ?? 0,
     regenNextTick: k.regenNextTick ?? 0,
     blinkTick: k.blinkTick ?? 0,
+    ...(k.toxinUntilTick ? { toxinUntilTick: k.toxinUntilTick } : {}),
   }
 }
 

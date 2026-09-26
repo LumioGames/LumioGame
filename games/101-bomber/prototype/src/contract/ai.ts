@@ -153,8 +153,8 @@ export interface BotTactics {
 }
 
 export const BOT_TACTICS: BotTactics = {
-  showdownRingSide: 5,
-  lateEntryTicks: 40,
+  showdownRingSide: 7,
+  lateEntryTicks: 20,
   tradeMinHpLeft: 2,
   tieTradeMinHp: 99,
   showdownHuntScale: 10,
@@ -169,5 +169,5 @@ export const BOT_TACTICS: BotTactics = {
   candyBonusSteps: { evolve: 8, levelUp: 4, equip: 3 },
   rabbitHurtHuntPermille: 500,
   healReachSteps: 8,
-  src: '推断待验证：第 4 轮 Bot 设计 §3.1（摊牌、技能施放、技能糖价值）',
+  src: '推断待验证：第 4 轮 Bot 设计 §3.1（摊牌、技能施放、技能糖价值）；lateEntryTicks 40→20、showdownRingSide 5→7 = 验收 E 调参阶梯第 3–4 级（20 种子 19/20 → 40 种子 40/40 唯一存活）',
 }

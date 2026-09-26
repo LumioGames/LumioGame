@@ -81,8 +81,8 @@ export interface SimPlayer {
   auraUntilTick: number
   frozenUntilTick: number
   freezeImmuneUntilTick: number
-  /** 烧伤节拍：t < burnReadyTick 时不再被烧（同一受害者每 burnInterval 至多一次）。 */
-  burnReadyTick: number
+  /** 连续站在别人火区里的 Tick 数；每满 burnInterval 烧一次（「每秒 −1 心」按暴露时长计），离开火区 / 受保护 / 泡泡中清零。 */
+  burnTicks: number
   /** 回春计时 [regenFromTick, regenNextTick)；regenNextTick = 0 表示不在计时。 */
   regenFromTick: number
   regenNextTick: number
@@ -408,7 +408,7 @@ export function resetAbilityFields(p: SimPlayer): void {
   p.auraUntilTick = 0
   p.frozenUntilTick = 0
   p.freezeImmuneUntilTick = 0
-  p.burnReadyTick = 0
+  p.burnTicks = 0
   p.regenFromTick = 0
   p.regenNextTick = 0
   clearToxin(p)

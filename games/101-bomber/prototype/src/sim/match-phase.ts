@@ -65,7 +65,7 @@ export function createWorld(opts: LocalSimOptions): World {
       auraUntilTick: 0,
       frozenUntilTick: 0,
       freezeImmuneUntilTick: 0,
-      burnReadyTick: 0,
+      burnTicks: 0,
       regenFromTick: 0,
       regenNextTick: 0,
       blinkTick: 0,
