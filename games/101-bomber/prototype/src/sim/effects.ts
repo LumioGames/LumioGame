@@ -1,6 +1,7 @@
-import { BlockType, DeathCause, type PlayerDied } from '../contract'
+import { BlockType, DeathCause, 方向, type PlayerDied } from '../contract'
 import { rollPowerupDrops } from './death-drops'
-import { cellOfIdx, emit, findPlayer, isAlive, playerCell, type World } from './world'
+import { rollSkillDrops } from './skill-drops'
+import { cellOfIdx, emit, findPlayer, isAlive, playerCell, type DamageEffect, type SimPlayer, type World } from './world'
 
 /**
  * 伤害（契约 §2.3 瞬时 EffectType）：业务相只下单，提交相按单序在「结算中的基础账」上结算。
@@ -8,7 +9,10 @@ import { cellOfIdx, emit, findPlayer, isAlive, playerCell, type World } from './
  * 死亡系统下一帧才读到（晚一帧），所以这里只记 pendingDeaths。
  */
 
-/** 溺水（design §12）：站在水格里每 drown 个 Tick 扣 drownPointsPerInterval 点；离水清零；保护期不扣但照样计时。 */
+/**
+ * 溺水（design §12）：站在水格里每 drown 个 Tick 扣 drownPointsPerInterval 点；离水清零；
+ * 保护期与泡泡期（原型扩展 NON-CONTRACT，ADR 0030：泡泡同重生保护，挡溺水不挡毒）不扣但照样计时。
+ */
 export function queueDrowning(w: World): void {
   const t = w.t
   for (const p of w.players) {
@@ -21,7 +25,7 @@ export function queueDrowning(w: World): void {
       continue
     }
     p.waterTicks++
-    if (p.waterTicks % w.ticks.drown !== 0 || t < p.protectedUntilTick) continue
+    if (p.waterTicks % w.ticks.drown !== 0 || t < p.protectedUntilTick || t < p.bubbleUntilTick) continue
     w.effects.push({
       target: p.id,
       points: w.cfg.drownPointsPerInterval,
@@ -34,16 +38,33 @@ export function queueDrowning(w: World): void {
   }
 }
 
+/**
+ * 按单序结算。**原型扩展（NON-CONTRACT，ADR 0030）**：
+ * - points > 0 的单：扣血；目标若在冻结中（冻结始于更早的 Tick）立即解冻并给 freezeImmune 的控制免疫；
+ *   回春计时清零（recovery.ts 本 Tick 重新起算）。死亡时另在同一时刻掷技能掉落（D8）。
+ * - points = 0 的单是冰冻弹的**冻结单**（explosion.ts dangerPass 下）：全部伤害结算完之后才处理，只冻住幸存者，
+ *   所以同一 Tick（含同一颗弹）的伤害不会解冻它。
+ */
 export function settleEffects(w: World): void {
   if (w.effects.length === 0) return
   const t = w.t
   const queue = w.effects
   w.effects = []
+  const freezes: DamageEffect[] = []
   for (const e of queue) {
+    if (e.points === 0) {
+      freezes.push(e)
+      continue
+    }
     const p = findPlayer(w, e.target)
     if (!p || p.health <= 0 || p.eliminated) continue
     const before = p.health
     p.health = Math.max(0, before - e.points)
+    if (t < p.frozenUntilTick) {
+      p.frozenUntilTick = t
+      p.freezeImmuneUntilTick = t + w.ticks.freezeImmune
+    }
+    p.regenNextTick = 0
     emit(w, {
       type: 'DamageApplied',
       VictimNetEntityIdRaw: p.id,
@@ -55,7 +76,7 @@ export function settleEffects(w: World): void {
       proto: { Cause: e.cause, Points: e.points },
     })
     if (p.health > 0) continue
-    // 帽数 = 强化数（ADR 0028）：掉几级强化就掉几顶帽；出局者全部掉落。
+    // 帽数 = 强化数（ADR 0028）：掉几级强化就掉几顶帽；出局者全部掉落。技能掉落另算（D8），不算帽子（D5）。
     const dropKinds = rollPowerupDrops(w, p)
     const ev: PlayerDied = {
       type: 'PlayerDied',
@@ -68,7 +89,30 @@ export function settleEffects(w: World): void {
       proto: { HatsLost: dropKinds.length, SourceBombNetEntityIdRaw: e.bomb },
     }
     emit(w, ev)
-    // dropSkills：W0 桩为空，技能切片在这里掷技能掉落（D8）。
-    w.pendingDeaths.push({ victim: p.id, killer: e.killer, tick: t, dropKinds, dropSkills: [] })
+    w.pendingDeaths.push({ victim: p.id, killer: e.killer, tick: t, dropKinds, dropSkills: rollSkillDrops(w, p) })
   }
+  for (const e of freezes) {
+    const p = findPlayer(w, e.target)
+    const b = w.bombs.find((o) => o.id === e.bomb)
+    if (p && b && p.health > 0 && !p.eliminated) applyFreeze(w, p, b.id, b.owner, b.freezeTicks)
+  }
+}
+
+/**
+ * 冻结（design §8.4 冰冻弹，ADR 0030）：不叠加、不刷新（冻结中再中无效）；每次冻结结束后 freezeImmune 内免疫（防连锁控死）。
+ * 冻住 T 时 frozenUntilTick = T + 1 + min(freezeTicks, freezeCap)：正好吞掉 T+1 .. T+freezeTicks 这些 Tick 的输入；
+ * 在途移动 / 转角缓冲 / 放弹缓冲一并清掉，冻住的人不会被缓冲带着走。
+ */
+function applyFreeze(w: World, p: SimPlayer, bomb: number, owner: number, freezeTicks: number): void {
+  const t = w.t
+  if (t < p.frozenUntilTick || t < p.freezeImmuneUntilTick) return
+  const until = t + 1 + Math.min(freezeTicks, w.ticks.freezeCap)
+  p.frozenUntilTick = until
+  p.freezeImmuneUntilTick = until + w.ticks.freezeImmune
+  p.turnBuf = 0
+  p.pendingDir = 方向.停
+  p.moveAcc = 0
+  p.lastDir = 方向.停
+  p.bombBufUntil = 0
+  emit(w, { type: 'PlayerFrozen', presentationOnly: true, VictimNetEntityIdRaw: p.id, SourceBombNetEntityIdRaw: bomb, SourceBombOwnerNetEntityIdRaw: owner, UntilTick: until, Tick: t })
 }

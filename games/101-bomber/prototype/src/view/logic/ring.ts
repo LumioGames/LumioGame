@@ -50,3 +50,13 @@ export function forEachRingDash(
     visit(lo, hi - d, Math.PI / 2)
   }
 }
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0031）：决赛圈缩到 1×1（D7）时正中那一格——当前圈或已预告的下一圈是 1×1 就返回它，
+ * 给表现层画金色脉动辉光「往这里跑」；否则 null。
+ */
+export function finalCellOf(fc: { ring: RingRect; nextRing: RingRect | null } | null | undefined): { X: number; Y: number } | null {
+  if (!fc) return null
+  const r = fc.ring.Min === fc.ring.Max ? fc.ring : fc.nextRing && fc.nextRing.Min === fc.nextRing.Max ? fc.nextRing : null
+  return r ? { X: r.Min, Y: r.Min } : null
+}

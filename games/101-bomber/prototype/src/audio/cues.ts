@@ -1,4 +1,5 @@
-import { DeathCause, PickupKind, type BomberEvent, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import { DeathCause, isPowerupKind, type BomberEvent, type PickupKind, type ProtoRules, type RingRect, type SkillId, type U64, type WorldSnapshot } from '../contract'
+import { resultsOf } from '../present/ranking'
 import { chainDelaySec } from './mixing'
 
 /**
@@ -36,6 +37,8 @@ export interface LocalHitCue {
   /** 相对本批 t0 的延迟（秒）：与 view 的爆炸节奏一致（链内第 i 颗 40 ms，封顶 320 ms）。 */
   delay: number
   poison: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙的烧伤（嘶的一声 + 受击）。 */
+  burn: boolean
 }
 
 /**
@@ -50,14 +53,15 @@ export function hitCues(events: readonly BomberEvent[], victimId: U64): LocalHit
   for (const e of events) {
     if (e.type !== 'DamageApplied' || e.VictimNetEntityIdRaw !== victimId) continue
     const poison = e.proto?.Cause === DeathCause.Poison
-    const bomb = e.SourceBombNetEntityIdRaw !== 0 && !poison && e.proto?.Cause !== DeathCause.Drown
+    const burn = e.proto?.Cause === DeathCause.Burn
+    const bomb = e.SourceBombNetEntityIdRaw !== 0 && !poison && !burn && e.proto?.Cause !== DeathCause.Drown
     let index = 0
     if (bomb && e.ChainId !== 0) {
       const k = perChain.get(e.ChainId) ?? 0
       perChain.set(e.ChainId, k + 1)
       index = hints.get(e.SourceBombNetEntityIdRaw) ?? k
     }
-    out.push({ delay: bomb ? chainDelaySec(index) : 0, poison })
+    out.push({ delay: bomb ? chainDelaySec(index) : 0, poison, burn })
   }
   return out.sort((a, b) => a.delay - b.delay)
 }
@@ -69,17 +73,54 @@ export function outsideRing(X: number, Y: number, ring: RingRect): boolean {
   return X < ring.Min || X > ring.Max || Y < ring.Min || Y > ring.Max
 }
 
-/** 本人是否并列第一（领奖台号角更亮的判定）；没人有帽子时不算。 */
+/**
+ * 本人是不是冠军（领奖台号角更亮的判定，D2「活到最后者赢」，ADR 0031）：名次 1（并列第 1 也算），
+ * 与帽数无关——0 帽的唯一幸存者也是冠军。优先读规则层的 match.results。
+ */
 export function localIsWinner(snap: WorldSnapshot, localId: U64): boolean {
-  let best = 0
-  for (const p of snap.Players) best = Math.max(best, p.BomberPlayerState.HatCount)
-  const me = snap.Players.find((p) => p.NetEntityIdRaw === localId)
-  return !!me && best > 0 && me.BomberPlayerState.HatCount === best
+  return resultsOf(snap).rows.some((r) => r.id === localId && r.rank === 1)
 }
 
-/** 是不是强化（吃到就多一顶帽子，ADR 0028）；血包不算。 */
+/** 是不是强化（吃到就多一顶帽子，ADR 0028）；血包与技能糖都不算（D5）。 */
 export function isPowerup(kind: PickupKind): boolean {
-  return kind !== PickupKind.HealthPack
+  return isPowerupKind(kind)
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0030）：本人技能音的快照兜底。数据源从没发过 SkillActivated / SkillEvolved 时，
+ * 冷却终点变大 = 刚放了技能，主动槽 / 任一槽新出现组合技 = 刚进化；见过事件（{@link noteEvent}）后恒返回空。
+ */
+export class SkillCueWatch {
+  private lastCd: number | null = null
+  private lastCombos = new Set<SkillId>()
+  private matchIndex = -1
+  private sawEvents = false
+
+  noteEvent(): void {
+    this.sawEvents = true
+  }
+
+  check(snap: WorldSnapshot, localId: U64, skills: ProtoRules['skills']): { cast: boolean; evolved: SkillId | null } {
+    const none = { cast: false, evolved: null }
+    const me = snap.Players.find((p) => p.NetEntityIdRaw === localId)
+    const sk = me?.skills
+    if (snap.match.matchIndex !== this.matchIndex) {
+      this.matchIndex = snap.match.matchIndex
+      this.lastCd = null
+      this.lastCombos = new Set()
+    }
+    if (!sk) return none
+    const combos = new Set<SkillId>()
+    for (const v of Object.values(sk.slots)) if (v && skills[v.skill].combo) combos.add(v.skill)
+    const wasCd = this.lastCd
+    const wasCombos = this.lastCombos
+    this.lastCd = sk.cdUntilTick
+    this.lastCombos = combos
+    if (this.sawEvents || wasCd === null) return none
+    let evolved: SkillId | null = null
+    for (const c of combos) if (!wasCombos.has(c)) evolved = c
+    return { cast: sk.cdUntilTick > wasCd, evolved }
+  }
 }
 
 /**

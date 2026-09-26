@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { BlockType } from '../../contract'
 import { effectiveDetonationTicks, type DetonationBomb } from '../logic/detonation'
 import { computeFireCross } from '../logic/fire-preview'
-import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, type PodiumEntry } from '../logic/podium'
+import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type PodiumEntry } from '../logic/podium'
+import { matchResults } from '../../shared/ranking'
 import { fogCells, forEachRingDash, insideRing } from '../logic/ring'
 import { chooseSpectateTarget, type SpectateCandidate } from '../logic/spectate'
 
 describe('podium ranking', () => {
   const e = (id: number, hats: number, eliminated = false, extra: Partial<PodiumEntry> = {}): PodiumEntry => ({ id, hats, eliminated, ...extra })
 
-  it('orders by hats desc and shares ranks on ties (1, 1, 3)', () => {
+  it('orders survivors by hats desc and shares ranks on ties (1, 1, 3)', () => {
     const rows = podiumOrder([e(1, 2), e(2, 5), e(3, 5), e(4, 0)])
     expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
       [2, 1, 1],
@@ -18,26 +19,57 @@ describe('podium ranking', () => {
       [4, 4, 4],
     ])
   })
-  it('puts final-circle survivors before eliminated players with the same hats', () => {
-    const rows = podiumOrder([e(1, 3, true, { elimRank: 2 }), e(5, 3), e(2, 3, true, { elimRank: 3 })])
-    expect(rows.map((r) => r.id)).toEqual([5, 1, 2])
-    // 同帽数时存活与出局先后也决定名次（design §4 平局），不再并列。
-    expect(rows.map((r) => r.rank)).toEqual([1, 2, 3])
+  it('an eliminated player with more hats ranks below a 0-hat survivor (D2: last one standing wins)', () => {
+    const rows = podiumOrder([e(1, 9, true, { elimTick: 300 }), e(2, 0)])
+    expect(rows.map((r) => [r.id, r.rank, r.eliminated])).toEqual([
+      [2, 1, false],
+      [1, 2, true],
+    ])
   })
-  it('among eliminated ties, the later elimination (smaller Rank) is shown first', () => {
-    const rows = podiumOrder([e(1, 0, true, { elimRank: 7 }), e(2, 0, true, { elimRank: 3 }), e(3, 0, true, { elimRank: 5 })])
-    expect(rows.map((r) => r.id)).toEqual([2, 3, 1])
+  it('eliminated players rank by elimination tick, the later one first', () => {
+    const rows = podiumOrder([e(4, 0, true, { elimTick: 100 }), e(2, 0, true, { elimTick: 340 }), e(3, 0, true, { elimTick: 200 }), e(9, 0)])
+    expect(rows.map((r) => r.id)).toEqual([9, 2, 3, 4])
+    expect(rows.map((r) => r.rank)).toEqual([1, 2, 3, 4])
   })
-  it('falls back to the elimination tick when the PlayerEliminated event was missed', () => {
-    const rows = podiumOrder([e(4, 0, true, { elimTick: 100 }), e(2, 0, true, { elimTick: 340 }), e(3, 0, true, { elimTick: 200 })])
-    expect(rows.map((r) => r.id)).toEqual([2, 3, 4])
+  it('a same-tick elimination shares a rank (hats then id only order the display)', () => {
+    const rows = podiumOrder([e(1, 0, true, { elimTick: 200 }), e(2, 3, true, { elimTick: 200 }), e(3, 1)])
+    expect(rows.map((r) => [r.id, r.rank, r.place])).toEqual([
+      [3, 1, 1],
+      [2, 2, 2],
+      [1, 2, 3],
+    ])
+  })
+  it('everyone down: the last batch shares rank 1', () => {
+    const rows = podiumOrder([e(1, 0, true, { elimTick: 500 }), e(2, 4, true, { elimTick: 500 }), e(3, 7, true, { elimTick: 420 })])
+    expect(rows.map((r) => [r.id, r.rank])).toEqual([
+      [2, 1],
+      [1, 1],
+      [3, 3],
+    ])
   })
   it('breaks remaining ties by id so the order is stable', () => {
-    const rows = podiumOrder([e(7, 1), e(3, 1), e(5, 1, true), e(1, 1, true)])
+    const rows = podiumOrder([e(7, 1), e(3, 1), e(5, 1, true, { elimTick: 10 }), e(1, 1, true, { elimTick: 10 })])
     expect(rows.map((r) => r.id)).toEqual([3, 7, 1, 5])
   })
+  it('rowsFromResults (sim match.results) gives the same order as podiumOrder', () => {
+    const entries = [e(1, 9, true, { elimTick: 300 }), e(2, 0), e(3, 4), e(4, 2, true, { elimTick: 120 })]
+    const rows = podiumOrder(entries)
+    const results = matchResults(entries.map((x) => ({ id: x.id, hats: x.hats, eliminated: x.eliminated, eliminatedTick: x.elimTick ?? 0 })))
+    // 故意打乱行序：rowsFromResults 按 place 排。
+    const shuffled = { ...results, rows: [...results.rows].reverse() }
+    expect(rowsFromResults(shuffled)).toEqual(rows)
+  })
+  it('crown goes to every rank-1 row; eliminated 2nd / 3rd still wave and clap', () => {
+    const rows = podiumOrder([e(1, 0, true, { elimTick: 500 }), e(2, 0, true, { elimTick: 500 }), e(3, 0, true, { elimTick: 300 }), e(4, 0, true, { elimTick: 100 })])
+    const spots = podiumSpots(rows)
+    expect(spots.filter((s) => s.rank === 1).map((s) => s.id)).toEqual([1, 2])
+    const by = new Map(spots.map((s) => [s.id, s]))
+    expect(by.get(2)!.pose).toBe('wave')
+    expect(by.get(3)!.pose).toBe('clap')
+    expect(by.get(4)!.pose).toBe('droop')
+  })
   it('places 1st center/tallest, 2nd left, 3rd right, the rest in a row; eliminated droop', () => {
-    const rows = podiumOrder([e(1, 9), e(2, 6), e(3, 4), e(4, 1), e(5, 0, true, { elimRank: 3 }), e(6, 0)])
+    const rows = podiumOrder([e(1, 9), e(2, 6), e(3, 4), e(4, 1), e(5, 0, true, { elimTick: 3 }), e(6, 0)])
     const spots = podiumSpots(rows)
     const by = new Map(spots.map((s) => [s.id, s]))
     expect(by.get(1)!.x).toBe(0)

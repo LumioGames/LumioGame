@@ -1,3 +1,5 @@
+import { CHARACTER_ORDER, type ProtoRules } from '../contract'
+
 /**
  * 首次游玩提示（design §13）：只有三条，按序显示，完成对应动作后永久消失。
  * 第 3 条「追光柱，抢最多的帽子」在本人帽数（= 强化数，ADR 0028）第一次达到 {@link TIP_HATS_GOAL} 时完成：
@@ -68,11 +70,39 @@ export class TipProgress {
   }
 }
 
-/** 开局倒数期间的一句话规则卡（design §1 / §9.6，ADR 0025 / 0028）：三短句，Running 开始时淡出。 */
-export function ruleCardLines(finalCircleSeconds = 90): readonly string[] {
+/**
+ * 开局倒数期间的一句话规则卡（design §1 / §9.6，ADR 0025 / 0028 / 0031）：三短句，Running 开始时淡出。
+ * 第 4 轮：技能不算帽子（D5）；决赛圈里活到最后者赢（D2）。
+ */
+export function ruleCardLines(finalCircleSeconds = 115): readonly string[] {
   return [
-    '吃一个强化糖，头顶多一顶帽子（帽子 = 强化数）',
+    '吃一个强化糖，头顶多一顶帽子（帽子 = 强化数，技能不算）',
     '被炸死会掉一半强化，谁捡归谁',
-    `最后 ${Math.round(finalCircleSeconds)} 秒决赛圈：不能复活，圈外有毒`,
+    `决赛圈 ${Math.round(finalCircleSeconds)} 秒：不能复活、圈外有毒，活到最后者赢`,
+  ]
+}
+
+export type HelpRules = Pick<ProtoRules, 'characters' | 'skills' | 'combos' | 'finalCircleMs' | 'ringStages' | 'chestHitsRequired'>
+
+/** 帮助卡的规则列表（design §8 / §12 / §4.2，ADR 0030 / 0031）：数值全部从规则表读，不写死。 */
+export function helpRuleLines(rules: HelpRules): string[] {
+  const chars = CHARACTER_ORDER.map((id) => {
+    const c = rules.characters[id]
+    const s = rules.skills[c.skill]
+    return `${c.name}（${s.slot === 'active' ? 'Shift ' : '被动 '}${s.name}）`
+  })
+  const combos = rules.combos.map((c) => `${rules.skills[c.a].name} + ${rules.skills[c.b].name} = ${rules.skills[c.result].name}`)
+  const last = rules.ringStages.length ? rules.ringStages[rules.ringStages.length - 1].size : 1
+  return [
+    '3 颗心；每颗炸弹 −1 心，连锁能一口气秒杀。',
+    `四个角色各带一个专属技能：${chars.join('、')}。`,
+    '木箱和宝箱会掉技能糖：3 个技能槽（炸弹 / 主动 / 被动），同技能再吃升级，最高 Lv3。',
+    `两个不同技能在身上会自动进化：${combos.join('；')}。`,
+    '炸开积木会掉糖：火力、炸弹、速度、血包。头顶的帽子 = 强化数，血包和技能都不算。',
+    '被炸死时强化每级一半概率掉出（决赛圈里全掉），掉在地上的谁捡归谁。',
+    '水里会减速、放不了炸弹，泡久了会溺水。',
+    `最后 ${Math.round(rules.finalCircleMs / 1000)} 秒（或积木快被炸光时）进入决赛圈：死了不再复活，圈外中毒，安全圈一路缩到正中 ${last} 格。`,
+    `决赛圈里的金色宝箱要被炸 ${rules.chestHitsRequired} 次才开，里面有强化、血包和技能糖。`,
+    '活到最后者赢：只剩一人时立刻结束；时间到时存活者比帽子，并列同名次。',
   ]
 }

@@ -1,22 +1,23 @@
+import type { MatchResultsView } from '../../contract'
+import { rankMatch } from '../../shared/ranking'
 import { clamp01, easeInOutCubic } from './interp'
 
 /**
  * 领奖台（design §13）的纯逻辑：名次与站位顺序、台子布局、电影镜头轨迹。无 three 依赖。
+ * 名次口径 = D2「活到最后者赢」（ADR 0031）：唯一实现在 shared/ranking.rankMatch，这里只做适配。
  */
 
 export interface PodiumEntry {
   id: number
   hats: number
   eliminated: boolean
-  /** PlayerEliminated.Rank（出局时名次，越小 = 出局越晚）；事件缺席时为 undefined。 */
-  elimRank?: number
-  /** 在快照里第一次看到 eliminated 的 Tick；越大 = 出局越晚。 */
+  /** 出局 Tick（快照 eliminatedTick，缺席时用首见 eliminated 的 Tick）；越大 = 出局越晚。 */
   elimTick?: number
 }
 
 export interface PodiumRow {
   id: number
-  /** 竞赛排名（1, 1, 3）：帽数优先，再看决赛圈存活 / 出局先后；都相同才并列。 */
+  /** 竞赛名次（1, 1, 3）：存活者在前比帽数，出局者按出局先后；同 Tick 出局并列。 */
   rank: number
   /** 展示位（1 起，逐个不重复）：1–3 上台阶，其余站台下。 */
   place: number
@@ -24,34 +25,22 @@ export interface PodiumRow {
   eliminated: boolean
 }
 
-/** 出局者之间谁更晚出局：有 Rank 用 Rank，否则用首见 Tick；> 0 表示 a 排在 b 后面。 */
-function elimCompare(a: PodiumEntry, b: PodiumEntry): number {
-  if (a.elimRank !== undefined && b.elimRank !== undefined && a.elimRank !== b.elimRank) return a.elimRank - b.elimRank
-  if (a.elimTick !== undefined && b.elimTick !== undefined && a.elimTick !== b.elimTick) return b.elimTick - a.elimTick
-  return 0
+/** 名次（与 HUD 结算表、规则层 match.results 同一实现）：rankMatch 的结果换成领奖台行。 */
+export function podiumOrder(entries: readonly PodiumEntry[]): PodiumRow[] {
+  return rankMatch(entries.map((e) => ({ id: e.id, eliminated: e.eliminated, eliminatedTick: e.elimTick ?? 0, hats: e.hats }))).map((r) => ({
+    id: r.id,
+    rank: r.rank,
+    place: r.place,
+    hats: r.hats,
+    eliminated: !r.survived,
+  }))
 }
 
-/**
- * 排名（design §4 平局，与 hud/ranking.ts 同口径）：帽数降序 → 决赛圈存活优先 → 出局越晚越靠前；
- * 三者都相同才并列同名次；展示顺序最后按 id 升序。
- */
-export function podiumOrder(entries: readonly PodiumEntry[]): PodiumRow[] {
-  const sorted = [...entries].sort(
-    (a, b) =>
-      b.hats - a.hats ||
-      Number(a.eliminated) - Number(b.eliminated) ||
-      (a.eliminated && b.eliminated ? elimCompare(a, b) : 0) ||
-      a.id - b.id,
-  )
-  const rows: PodiumRow[] = []
-  for (let i = 0; i < sorted.length; i++) {
-    const e = sorted[i]
-    const p = sorted[i - 1]
-    const tie = i > 0 && e.hats === p.hats && e.eliminated === p.eliminated && (!e.eliminated || elimCompare(e, p) === 0)
-    const rank = tie ? rows[i - 1].rank : i + 1
-    rows.push({ id: e.id, rank, place: i + 1, hats: e.hats, eliminated: e.eliminated })
-  }
-  return rows
+/** 规则层给了结果（snapshot.match.results）就直接用它，不再自己排。 */
+export function rowsFromResults(r: MatchResultsView): PodiumRow[] {
+  return [...r.rows]
+    .sort((a, b) => a.place - b.place)
+    .map((x) => ({ id: x.id, rank: x.rank, place: x.place, hats: x.hats, eliminated: !x.survived }))
 }
 
 // ---- 台子布局（相对舞台中心，米；+z 朝镜头） ----
@@ -85,6 +74,8 @@ export type PodiumPose = 'cheer' | 'wave' | 'clap' | 'droop'
 export interface PodiumSpot {
   id: number
   place: number
+  /** 竞赛名次：rank === 1 都戴皇冠（并列第 1 都戴，ADR 0031）。 */
+  rank: number
   /** 相对舞台中心。 */
   x: number
   /** 站立面高度（世界 y）。 */
@@ -95,7 +86,10 @@ export interface PodiumSpot {
   dropSec: number
 }
 
-/** 名次 → 站位：前三上台阶（1 中、2 左、3 右），其余在台前一排；出局者垂头。 */
+/**
+ * 名次 → 站位：前三上台阶（1 中、2 左、3 右），其余在台前一排；台下的出局者垂头。
+ * 第 2、3 名即使已出局也挥手 / 鼓掌（名次是挣来的）；并列第 1 的站位按 place，皇冠看 rank。
+ */
 export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
   const out: PodiumSpot[] = []
   const rest = rows.filter((r) => r.place > 3)
@@ -107,6 +101,7 @@ export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
       out.push({
         id: r.id,
         place: r.place,
+        rank: r.rank,
         x: s.dx,
         y: PODIUM.stageTop + s.h,
         z: PODIUM.stepZ + 0.05,
@@ -118,6 +113,7 @@ export function podiumSpots(rows: readonly PodiumRow[]): PodiumSpot[] {
       out.push({
         id: r.id,
         place: r.place,
+        rank: r.rank,
         x: (i - (n - 1) / 2) * spacing,
         y: PODIUM.stageTop,
         z: PODIUM.rowZ,

@@ -5,10 +5,14 @@ import {
   DEFAULT_RULES,
   MatchPhase,
   PickupKind,
+  方向,
   type AbilityActivation,
   type BombView,
   type ChestView,
   type FinalCircleView,
+  type FireZoneView,
+  type PlayerSkillsView,
+  type SkillId,
   type PickupView,
   type PlayerView,
   type U64,
@@ -58,6 +62,8 @@ export interface PlayerSpec {
   hats?: number
   protectedUntil?: number
   eliminated?: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：技能状态（缺省 = 快照不带 skills，第 3 轮形状）。 */
+  skills?: Partial<Omit<PlayerSkillsView, 'slots'>> & { active?: [SkillId, number]; passive?: [SkillId, number]; bomb?: [SkillId, number] }
 }
 
 export interface BombSpec {
@@ -69,6 +75,10 @@ export interface BombSpec {
   power?: number
   /** 已爆炸：给出起爆 Tick 与四臂 Reach（上、下、左、右）。 */
   exploded?: { at: number; reach: [number, number, number, number] }
+  /** 原型扩展（NON-CONTRACT，ADR 0030）。 */
+  kind?: BombKind
+  pierce?: number
+  kick?: { dir: 方向; progressMilli: number; cellsLeft: number; speedMilli?: number }
 }
 
 export interface SnapSpec {
@@ -76,12 +86,14 @@ export interface SnapSpec {
   tick?: number
   players: PlayerSpec[]
   bombs?: BombSpec[]
-  pickups?: { id: U64; X: number; Y: number; kind: PickupKind; droppedBy?: U64; protectedUntilTick?: U64 }[]
+  pickups?: { id: U64; X: number; Y: number; kind: PickupKind; droppedBy?: U64; protectedUntilTick?: U64; skill?: [SkillId, number] }[]
   chests?: { id: U64; X: number; Y: number; hitsLeft?: number }[]
   king?: U64
   phase?: MatchPhase
   finalCircle?: FinalCircleView | null
   resource?: { initial: number; remaining: number }
+  /** 原型扩展（NON-CONTRACT，ADR 0030）。 */
+  fireZones?: FireZoneView[]
 }
 
 const center = (X: number, Y: number, ox = 0, oy = 0): { x: number; y: number; z: number } => ({
@@ -119,6 +131,7 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
     },
     meta: { name: `p${p.id}`, isBot: true, animal: 'duck', slot: k },
     eliminated: p.eliminated ?? false,
+    ...(p.skills ? { skills: skillsView(p.skills) } : {}),
   }))
   const bombs: BombView[] = (s.bombs ?? []).map((b) => ({
     NetEntityIdRaw: b.id,
@@ -129,8 +142,8 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
       FuseEndTick: b.fuseEndTick,
       Power: b.power ?? 2,
       ChainId: 0,
-      BombKind: BombKind.Standard,
-      PierceLayers: 0,
+      BombKind: b.kind ?? BombKind.Standard,
+      PierceLayers: b.pierce ?? 0,
       ExplodedAtTick: b.exploded?.at ?? 0,
       DangerUntilTick: b.exploded ? b.exploded.at + 8 : 0,
       BurnUntilTick: b.exploded ? b.exploded.at + 8 : 0,
@@ -139,6 +152,7 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
       ReachLeft: b.exploded?.reach[2] ?? 0,
       ReachRight: b.exploded?.reach[3] ?? 0,
     },
+    kick: b.kick ? { ...b.kick, speedMilli: b.kick.speedMilli ?? rules.kickSpeedMilli } : null,
   }))
   const pickups: PickupView[] = (s.pickups ?? []).map((p) => ({
     NetEntityIdRaw: p.id,
@@ -147,6 +161,7 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
     BomberPickupItem: { Kind: p.kind },
     droppedBy: p.droppedBy ?? 0,
     protectedUntilTick: p.protectedUntilTick ?? 0,
+    ...(p.skill ? { skill: { id: p.skill[0], level: p.skill[1] } } : {}),
   }))
   const chests: ChestView[] = (s.chests ?? []).map((c) => ({
     NetEntityIdRaw: c.id,
@@ -178,6 +193,25 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
       resourceRemaining: s.resource?.remaining ?? 0,
       finalCircle: s.finalCircle ?? null,
     },
+    ...(s.fireZones ? { FireZones: s.fireZones } : {}),
+  }
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：手搭技能视图；槽给 [技能, 等级]。 */
+function skillsView(k: NonNullable<PlayerSpec['skills']>): PlayerSkillsView {
+  const slot = (v?: [SkillId, number]) => (v ? { skill: v[0], level: v[1], bound: false } : null)
+  return {
+    character: k.character ?? null,
+    facing: k.facing ?? 方向.停,
+    slots: { active: slot(k.active), passive: slot(k.passive), bomb: slot(k.bomb) },
+    cdFromTick: k.cdFromTick ?? 0,
+    cdUntilTick: k.cdUntilTick ?? 0,
+    bubbleUntilTick: k.bubbleUntilTick ?? 0,
+    auraUntilTick: k.auraUntilTick ?? 0,
+    frozenUntilTick: k.frozenUntilTick ?? 0,
+    regenFromTick: k.regenFromTick ?? 0,
+    regenNextTick: k.regenNextTick ?? 0,
+    blinkTick: k.blinkTick ?? 0,
   }
 }
 
@@ -207,6 +241,8 @@ export function finalCircle(opts: { tick?: number; ring?: number; next?: number;
  */
 export interface MiniRun {
   placed: { id: U64; X: number; Y: number; tick: number }[]
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：按过技能键的 [Bot, Tick]（替身不结算技能效果）。 */
+  casts: { id: U64; tick: number }[]
   /** 每个 Tick 结束时各 Bot 所在格（"X,Y"）。 */
   cells: Map<U64, string[]>
 }
@@ -222,7 +258,7 @@ export function runMini(
   for (const p of spec.players) pos.set(p.id, { mx: p.X * 1000 + 500 + (p.offX ?? 0), mz: p.Y * 1000 + 500 + (p.offY ?? 0) })
   const hand = new Map<U64, number>(spec.players.map((p) => [p.id, p.bombs ?? config.initialBombCapacity]))
   const bombs: BombSpec[] = (spec.bombs ?? []).slice()
-  const out: MiniRun = { placed: [], cells: new Map() }
+  const out: MiniRun = { placed: [], casts: [], cells: new Map() }
   const fuse = Math.floor((config.fuseMs * config.tickRateHz + 999) / 1000)
   const blocked = (X: number, Y: number, selfCell: string): boolean => {
     if (X < 0 || Y < 0 || X >= size || Y >= size) return true
@@ -261,6 +297,7 @@ export function runMini(
           q.mz = nz
         }
       }
+      if (acts.some((a) => a.ability === '技能')) out.casts.push({ id, tick: tick + 1 })
       if (acts.some((a) => a.ability === '放弹') && (hand.get(id) ?? 0) > 0) {
         const X = Math.floor(q.mx / 1000)
         const Y = Math.floor(q.mz / 1000)
@@ -278,4 +315,62 @@ export function runMini(
     if (stopAtFirstBomb && out.placed.length > 0) break
   }
   return out
+}
+
+/** 一个挤满积木、炸弹、玩家的 19×19（同 bot-brain.test.ts 的 busySnapshot；给难度档 / 技能测试共用）。 */
+export function busySnapshot(tick: number, extra: Partial<SnapSpec> = {}): WorldSnapshot {
+  let map = standardMap()
+  for (let y = 1; y < 18; y++) {
+    for (let x = 1; x < 18; x++) {
+      if (map[y][x] !== '.') continue
+      const h = (x * 73856093) ^ (y * 19349663)
+      const r = ((h >>> 0) % 100) / 100
+      if (r < 0.45) map = setCell(map, x, y, 'b')
+      else if (r < 0.48) map = setCell(map, x, y, 'c')
+      else if (r < 0.5) map = setCell(map, x, y, '~')
+    }
+  }
+  const spots: [number, number][] = [
+    [1, 1],
+    [17, 1],
+    [1, 17],
+    [17, 17],
+    [9, 1],
+    [1, 9],
+    [17, 9],
+    [9, 17],
+  ]
+  for (const [x, y] of spots) {
+    map = setCell(map, x, y, '.')
+    map = setCell(map, x + (x < 9 ? 1 : x > 9 ? -1 : 1), y, '.')
+    map = setCell(map, x, y + (y < 9 ? 1 : -1), '.')
+  }
+  const players: PlayerSpec[] = spots.map(([X, Y], k) => ({ id: k + 1, X, Y, bombs: 2, power: 3 }))
+  const bombsList: BombSpec[] = []
+  let id = 100
+  for (let y = 1; y < 18; y += 2) {
+    for (let x = 3; x < 17; x += 4) {
+      if (map[y][x] === '.') bombsList.push({ id: id++, X: x, Y: y, owner: 1 + (id % 8), fuseEndTick: tick + 5 + (id % 40), power: 3 })
+    }
+  }
+  return makeSnapshot({
+    map,
+    tick,
+    players,
+    bombs: bombsList,
+    pickups: [
+      { id: 200, X: 9, Y: 9, kind: PickupKind.FirePlus, droppedBy: 4 },
+      { id: 201, X: 5, Y: 5, kind: PickupKind.BombPlus },
+    ],
+    king: 3,
+    ...extra,
+  })
+}
+
+/** 一个全铁皮的 size×size，按坐标挖空（extra 再改成指定字符）。 */
+export function carved(open: readonly (readonly [number, number])[], extra: readonly (readonly [number, number, string])[] = [], size = 19): string[] {
+  let map = Array.from({ length: size }, () => '#'.repeat(size))
+  for (const [x, y] of open) map = setCell(map, x, y, '.')
+  for (const [x, y, ch] of extra) map = setCell(map, x, y, ch)
+  return map
 }

@@ -1,4 +1,5 @@
-import { BlockType, DeathCause, MatchPhase, type RingRect } from '../contract'
+import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, type RingRect } from '../contract'
+import { openChests } from './chest'
 import { promoteEliminations } from './hats'
 import {
   cellOfIdx,
@@ -14,8 +15,9 @@ import {
 } from './world'
 
 /**
- * 决赛圈（design §4.2 / §12，ADR 0025）：资源或时间先到先触发，固定时长、局终同步提前；
- * 安全圈以棋盘中心为心分段收缩，每段生效前预告并在下一圈内落一个强力宝箱；圈外中毒走伤害单队列。
+ * 决赛圈（design §4.2 / §12，ADR 0025 / 0031）：资源或时间先到先触发，固定时长、局终同步提前；
+ * 安全圈以棋盘中心为心分 6 段收缩到 1×1，每段生效前预告、按段标志在下一圈内落一个强力宝箱；
+ * 最后三段生效时清空圈内可破坏砖并开启圈内宝箱（保证 1×1 可进入）；圈外中毒按段取强度，走伤害单队列。
  */
 
 /** 以棋盘中心为心、边长 s 的正方形安全圈（闭区间，夹在内场 [1, size−2]）。 */
@@ -87,6 +89,7 @@ export function advanceRing(w: World): void {
       fc.nextRing = null
       fc.nextRingTick = 0
       emit(w, { type: 'RingShrunk', presentationOnly: true, StageIndex: fc.stageIndex, Ring: rectView(fc.ring), Tick: t })
+      if (stages[fc.stageIndex].clearInside) clearRing(w, fc.ring)
       continue
     }
     if (fc.announced >= stages.length) return
@@ -103,13 +106,47 @@ export function advanceRing(w: World): void {
     fc.nextRing = next
     fc.nextRingTick = Math.max(at, t)
     emit(w, { type: 'RingShrinkAnnounced', presentationOnly: true, StageIndex: index, Next: rectView(next), AtTick: fc.nextRingTick, Tick: t })
-    spawnChest(w, next, index)
+    if (s.chest) spawnChest(w, next, index)
   }
 }
 
-/** 圈外中毒（design §12）：离开安全圈起每 poison 个 Tick 扣一次；重生保护不免疫；Killer = 受害者。 */
+/**
+ * 清场段生效（原型扩展 NON-CONTRACT，ADR 0031）：新圈内的可破坏砖（积木 / 木箱等）直接写成 Air——不走 w.batch，
+ * 否则掉落系统会把它当爆炸碎块掉糖；不掉糖、无归属（BrickDestroyed 的 ChainId / Owner = 0，同重生清场）。
+ * 圈内还没开的宝箱由系统开启（Opener 0）并当场喷出战利品。铁皮、炸弹、糖果不动（炸弹是暂时的）。
+ * 阶段机在 Tick 末（地形提交之后）调用：本帧快照即可见，下一 Tick 的爆炸看到的是 Air。返回清掉的格数。
+ */
+export function clearRing(w: World, r: Rect): number {
+  const size = w.size
+  let cleared = 0
+  for (let y = r.min; y <= r.max; y++)
+    for (let x = r.min; x <= r.max; x++) {
+      const c = y * size + x
+      const b = w.brick[c] as BlockType
+      if (!MATERIALS[b].destructible) continue
+      w.brick[c] = BlockType.Air
+      cleared++
+      emit(w, { type: 'BrickDestroyed', presentationOnly: true, Cell: cellOfIdx(w, c), Block: b, ChainId: 0, OwnerNetEntityIdRaw: 0, Tick: w.t })
+    }
+  if (cleared > 0) w.rev++
+  let opened = false
+  for (const ch of w.chests) {
+    if (ch.hitsLeft <= 0 || !inRect(r, ch.cell % size, Math.floor(ch.cell / size))) continue
+    ch.hitsLeft = 0
+    ch.opener = 0
+    opened = true
+  }
+  if (opened) openChests(w)
+  return cleared
+}
+
+/**
+ * 圈外中毒（design §12）：离开安全圈起每 poison 个 Tick 扣一次；重生保护不免疫；Killer = 受害者。
+ * 每次扣的点数按当前已生效的段取（原型扩展 NON-CONTRACT，ADR 0031：5×5 生效起加重）。
+ */
 export function queuePoison(w: World): void {
   const fc = w.finalCircle
+  const points = fc ? poisonPointsAt(w.rules, fc.stageIndex) : 0
   for (const p of w.players) {
     if (!fc || !isAlive(p)) {
       p.poisonTicks = 0
@@ -124,7 +161,7 @@ export function queuePoison(w: World): void {
     if (p.poisonTicks % w.ticks.poison !== 0) continue
     w.effects.push({
       target: p.id,
-      points: w.rules.poisonPointsPerInterval,
+      points,
       bomb: 0,
       owner: 0,
       chainId: 0,
@@ -135,11 +172,31 @@ export function queuePoison(w: World): void {
 }
 
 /**
- * 预告时在下一圈内随机空地落 1 个宝箱：砖层空、非水、无人 / 弹 / 糖果 / 宝箱；
- * 优先离所有活人 ≥ 2 格（曼哈顿），没有就放宽。一个空格都没有则本段不落。
+ * 宝箱避让（原型扩展 NON-CONTRACT，ADR 0031）：中心格永不落箱；比最小落箱段（3×3）大的圈还要避开
+ * 第一个清场圈（5×5）内的中心十字。于是 1×1 生效时至多只有 3×3 那一箱压在一条臂上（且已被 3×3 清场开启），
+ * 中心至少留 3 个入口。全部由 ringStages 派生，没有新调参数。
+ */
+function chestKeepOut(w: World, ringSide: number, x: number, y: number): boolean {
+  const mid = (w.size - 1) / 2
+  if (x === mid && y === mid) return true
+  let smallestChest = Infinity
+  let clearSide = 0
+  for (const s of w.ticks.ringStages) {
+    if (s.chest) smallestChest = Math.min(smallestChest, s.size)
+    if (s.clearInside && clearSide === 0) clearSide = s.size
+  }
+  if (ringSide <= smallestChest || clearSide === 0) return false
+  const reach = (clearSide - 1) / 2
+  return (x === mid || y === mid) && Math.abs(x - mid) <= reach && Math.abs(y - mid) <= reach
+}
+
+/**
+ * 预告时在下一圈内随机空地落 1 个宝箱：砖层空、非水、无人 / 弹 / 糖果 / 宝箱、不在避让格（{@link chestKeepOut}）；
+ * 优先离所有活人 ≥ 2 格（曼哈顿），没有就放宽。一个空格都没有则本段不落（不耗随机数）。
  */
 export function spawnChest(w: World, r: Rect, stageIndex: number): void {
   const size = w.size
+  const side = r.max - r.min + 1
   const people: number[] = []
   for (const p of w.players) if (!p.eliminated) people.push(playerCell(w, p))
   const near: number[] = []
@@ -148,6 +205,7 @@ export function spawnChest(w: World, r: Rect, stageIndex: number): void {
     for (let x = r.min; x <= r.max; x++) {
       const c = y * size + x
       if (w.brick[c] !== BlockType.Air || w.ground[c] === BlockType.水 || cellOccupied(w, c) || people.includes(c)) continue
+      if (chestKeepOut(w, side, x, y)) continue
       let d = Infinity
       for (const pc of people) d = Math.min(d, Math.abs((pc % size) - x) + Math.abs(Math.floor(pc / size) - y))
       ;(d >= 2 ? far : near).push(c)

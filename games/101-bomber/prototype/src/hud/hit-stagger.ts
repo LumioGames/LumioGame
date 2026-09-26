@@ -150,11 +150,32 @@ export function hitHintText(
       bestPts = pts
     }
   }
-  if (!best) return null
+  if (!best) return burnHintText(hits, nameOf, localId, pointsPerHeart)
   const owners = [...new Set(best.map((h) => h.owner))]
   const other = owners.find((o) => o !== localId)
   const src = other === undefined ? '你自己' : ` ${nameOf(other)}${owners.length > 1 ? ' 等人' : ''} `
   const n = best[0].chainId !== 0 ? Math.max(chainBombs(best[0].chainId), best.length) : 1
   const dmg = heartDelta(bestPts, pointsPerHeart)
   return n >= 2 ? `被${src}的连锁 ×${n} 命中 ${dmg}` : `被${src}的炸弹命中 ${dmg}`
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0030）：本批没有炸弹命中、但被别人的火焰光环 / 火墙烧到——「被 火焰熊 的火烧到 −1 心」。
+ * 取烧得最多的主人；没有主人的烧伤不提示。
+ */
+function burnHintText(hits: readonly StaggeredHit[], nameOf: (id: U64) => string, localId: U64, pointsPerHeart: number): string | null {
+  const byOwner = new Map<U64, number>()
+  for (const h of hits) {
+    if (h.cause !== 'burn' || h.owner === 0 || h.owner === localId) continue
+    byOwner.set(h.owner, (byOwner.get(h.owner) ?? 0) + h.points)
+  }
+  let owner: U64 | null = null
+  let pts = -1
+  for (const [o, p] of byOwner) {
+    if (p > pts) {
+      owner = o
+      pts = p
+    }
+  }
+  return owner === null ? null : `被 ${nameOf(owner)} 的火烧到 ${heartDelta(pts, pointsPerHeart)}`
 }

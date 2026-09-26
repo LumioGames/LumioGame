@@ -18,6 +18,8 @@ export interface MatchStats {
   maxHats: number
   /** 本人身为帽王的累计 Tick（只算 Running / Endgame）。 */
   hatKingTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：本人主动技能成功施放次数（SkillActivated）。 */
+  skillCasts: number
   /** 全场击杀数（结算表用）。 */
   killsById: Map<U64, number>
 }
@@ -33,6 +35,7 @@ function empty(matchIndex: number): MatchStats {
     bestChain: 0,
     maxHats: 0,
     hatKingTicks: 0,
+    skillCasts: 0,
     killsById: new Map(),
   }
 }
@@ -84,6 +87,9 @@ export class StatsTracker {
           break
         case 'BrickDestroyed':
           if (e.OwnerNetEntityIdRaw === me) this.eventBricks++
+          break
+        case 'SkillActivated':
+          if (e.PlayerNetEntityIdRaw === me) this.s.skillCasts++
           break
         case 'BombExploded':
         case 'ChainResolved':

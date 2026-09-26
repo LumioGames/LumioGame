@@ -27,6 +27,10 @@ export interface SearchOptions {
   startWaterTicks?: number
   /** 危险窗冲突判定的余量（Tick），缺省 2；走投无路时以 0 重试。 */
   margin?: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0030）：泡泡护体到该 Tick（不含）：护体内的火不算冲突、别人的火不算伤害。缺省 −1 = 无。
+   */
+  immuneUntil?: number
 }
 
 /**
@@ -61,7 +65,10 @@ export function searchPaths(board: Board, dm: DangerMap, start: number, now: num
   const parent = new Int32Array(n2).fill(-1)
   const viaPoison = new Uint8Array(n2)
   const poisonTicks = new Float64Array(n2)
-  const startPoisoned = dm.poison[start] <= now
+  const immune = opts.immuneUntil ?? -1
+  // 原型扩展（NON-CONTRACT，ADR 0030）：别人的光环 / 火墙按毒圈同样处理（延后展开、计入穿毒时长）；护体期内不算。
+  const burnAt = (c: number, t: number): boolean => dm.burn !== undefined && dm.burn[c] > t && t >= immune
+  const startPoisoned = dm.poison[start] <= now || burnAt(start, now)
   const reached: number[] = [start]
   const slow = opts.slowPerCell ?? 0.5
   const margin = opts.margin ?? 2
@@ -69,7 +76,7 @@ export function searchPaths(board: Board, dm: DangerMap, start: number, now: num
   enter[start] = now
   enterLate[start] = now
   const tpcOf = (c: number): number => (isWater(board, c) ? opts.tpcWater : opts.tpcLand)
-  const startOk = !conflicts(dm, start, now, Math.ceil(now + tpcOf(start) + slow), margin)
+  const startOk = !conflicts(dm, start, now, Math.ceil(now + tpcOf(start) + slow), margin, immune)
   const maxWater = opts.maxWaterTicks ?? Infinity
   // 离开该格时已连续泡水的 Tick（陆地 = 0）。起点按「已泡的 + 从实际位置走出本格」算，不按整格：
   // 人可能已走到格边，整格估会把紧挨着的上岸路线误判成超额，把人困在水里干等到溺死。
@@ -101,13 +108,13 @@ export function searchPaths(board: Board, dm: DangerMap, start: number, now: num
       const base = c === start ? (startWet ? (opts.startWaterTicks ?? 0) + exit + slow : 0) : waterRun[c]
       const run = wet ? base + cost : 0
       if (run >= maxWater) continue
-      if (conflicts(dm, nb, Math.floor(early), Math.ceil(late + cost), margin)) continue
+      if (conflicts(dm, nb, Math.floor(early), Math.ceil(late + cost), margin, immune)) continue
       waterRun[nb] = run
       steps[nb] = steps[c] + 1
       enter[nb] = early
       enterLate[nb] = late
       parent[nb] = c
-      const poisoned = dm.poison[nb] <= Math.ceil(late + cost)
+      const poisoned = dm.poison[nb] <= Math.ceil(late + cost) || burnAt(nb, Math.floor(early))
       viaPoison[nb] = poisoned || viaPoison[c] ? 1 : 0
       poisonTicks[nb] = (c === start ? (startPoisoned ? exit + slow : 0) : poisonTicks[c]) + (poisoned ? cost : 0)
       if (poisoned) later.push(nb)

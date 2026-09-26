@@ -196,7 +196,8 @@ describe('snapshot publishing', () => {
     const bv = f.snapshot.Bombs[0]
     expect(bv.BomberBombState.BombKind).toBe(BombKind.Pierce)
     expect(bv.BomberBombState.PierceLayers).toBe(2)
-    expect(bv.kick).toEqual({ dir: 方向.右, progressMilli: 400, cellsLeft: 2, speedMilli: DEFAULT_RULES.kickSpeedMilli })
+    // advanceKickedBombs 已跑一步：400 + kickMilliPerTick（< 1000，未前进一格）。
+    expect(bv.kick).toEqual({ dir: 方向.右, progressMilli: 400 + w.ticks.kickMilliPerTick, cellsLeft: 2, speedMilli: DEFAULT_RULES.kickSpeedMilli })
     expect(f.snapshot.Pickups[0].skill).toEqual({ id: 'blink', level: 2 })
   })
 

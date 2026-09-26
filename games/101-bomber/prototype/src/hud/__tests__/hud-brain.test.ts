@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { BlockType, MatchPhase, type BomberEvent } from '../../contract'
 import { HudBrain, multiKillLabel, type HudMoment } from '../hud-brain'
+import { feedText } from '../kill-feed'
 import type { DerivedBrick } from '../timeline'
 import { TipId } from '../tips'
-import { batch, died, exploded, ME, snap } from './fixtures'
+import { batch, died, exploded, held, ME, pickup, skillsView, snap } from './fixtures'
 
 const newBrain = (): HudBrain => new HudBrain({ localId: ME, pillarMinHats: 3, tickRateHz: 20, pointsPerHeart: 2 })
 /** 爽感弹字（不含帽子流向的 +N / −N 帽）。 */
@@ -236,8 +237,158 @@ describe('HudBrain stats + match lifecycle', () => {
     if (r?.kind !== 'settlement') throw new Error('no settlement')
     expect(r.results.localRank).toBe(2)
     expect(r.results.percentBeaten).toBe(50)
+    expect(r.results.reason).toBe('timeUp')
+    expect(r.results.winnerId).toBe(2)
     expect(b.consume(batch(11, [], { snapshot: snap({ tick: 11, phase: MatchPhase.Settlement, king: 2, players }) })).some((x) => x.kind === 'settlement')).toBe(
       false,
     )
+  })
+})
+
+describe('HudBrain round 4 (skills, burn, survivor ranking)', () => {
+  const texts = (ms: HudMoment[], kind: HudMoment['kind']): string[] =>
+    ms.flatMap((m) => (m.kind === kind && 'text' in m ? [m.text] : m.kind === kind && 'title' in m ? [m.title] : []))
+
+  it('a SkillCandy PickupTaken gives no hat popup but still completes the Candy tip', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const m = b.consume(batch(5, [{ type: 'PickupTaken', PickerNetEntityIdRaw: ME, Kind: 4, Tick: 5, proto: { PickupNetEntityIdRaw: 9, Cell: { X: 1, Y: 1 }, Skill: 'kick', SkillLevel: 1 } }]))
+    expect(hatPopups(m)).toEqual([])
+    expect(m.some((x) => x.kind === 'tip' && x.id === TipId.Candy)).toBe(true)
+    expect(texts(m, 'pickup')).toEqual(['+ 踢弹'])
+  })
+
+  it('SkillGained level-up flash; my SkillEvolved → evolve banner, someone else → none', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const g = b.consume(batch(5, [{ type: 'SkillGained', presentationOnly: true, PlayerNetEntityIdRaw: ME, Skill: 'blink', Slot: 'active', Level: 2, How: 'levelUp', Tick: 5 }]))
+    expect(texts(g, 'pickup')).toEqual(['闪现 升到 Lv2'])
+    const evo = (who: number): HudMoment[] =>
+      b.consume(batch(6, [{ type: 'SkillEvolved', presentationOnly: true, PlayerNetEntityIdRaw: who, From: ['blink', 'fireAura'], Combo: 'fireDash', Slot: 'active', FreedSlot: null, Tick: 6 }]))
+    const mine = evo(ME).find((x) => x.kind === 'banner')
+    expect(mine).toMatchObject({ kind: 'banner', tone: 'evolve', mine: true, title: '进化：火焰冲刺！', sub: '闪现 + 火焰光环' })
+    expect(banners(evo(2))).toEqual([])
+  })
+
+  it('SkillFailed cooldown notice carries the seconds left from the snapshot', () => {
+    const b = newBrain()
+    const sk = skillsView({ character: 'cat', slots: { bomb: null, active: held('blink', 1, true), passive: null }, cdFromTick: 0, cdUntilTick: 70 })
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME, skills: sk }] }) }))
+    const m = b.consume(batch(10, [{ type: 'SkillFailed', presentationOnly: true, PlayerNetEntityIdRaw: ME, Skill: 'blink', Reason: 'cooldown', Tick: 10 }]))
+    expect(texts(m, 'notice')).toEqual(['闪现 冷却中 · 3.0 秒'])
+  })
+
+  it('without skill events, snapshot diffs produce gain and evolve moments', () => {
+    const b = newBrain()
+    const s0 = skillsView({ character: 'cat', slots: { bomb: null, active: held('blink', 1, true), passive: null } })
+    const s1 = skillsView({ character: 'cat', slots: { bomb: held('pierceBomb'), active: held('blink', 1, true), passive: null } })
+    const s2 = skillsView({ character: 'cat', slots: { bomb: held('pierceBomb'), active: held('fireDash', 1, true), passive: null } })
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME, skills: s0 }] }) }))
+    expect(texts(b.consume(batch(1, [], { snapshot: snap({ tick: 1, players: [{ id: ME, skills: s1 }] }) })), 'pickup')).toEqual(['获得 穿透弹 Lv1'])
+    expect(banners(b.consume(batch(2, [], { snapshot: snap({ tick: 2, players: [{ id: ME, skills: s2 }] }) })))).toEqual(['进化：火焰冲刺！'])
+  })
+
+  it('standing on a candy that cannot be picked up explains why, once', () => {
+    const b = newBrain()
+    const sk = skillsView({ character: 'cat', slots: { bomb: null, active: held('blink', 1, true), passive: null } })
+    const s = (t: number) => snap({ tick: t, players: [{ id: ME, skills: sk, x: 3.5, z: 3.5 }], pickups: [pickup(40, 3, 3, 4, { id: 'bubble', level: 1 })] })
+    expect(texts(b.consume(batch(0, [], { snapshot: s(0) })), 'notice')).toEqual([])
+    expect(texts(b.consume(batch(1, [], { snapshot: s(1) })), 'notice')).toEqual(['主动已有 闪现，捡不了 泡泡'])
+    expect(texts(b.consume(batch(2, [], { snapshot: s(2) })), 'notice')).toEqual([])
+  })
+
+  it('burn death by 火焰熊: kill feed, recap killer and headline with the fire source', () => {
+    const b = newBrain()
+    const before = snap({
+      tick: 9,
+      players: [{ id: ME, hp: 2 }, { id: 3 }],
+      fireZones: [{ owner: 3, source: 'aura', cells: [{ X: 1, Y: 1 }], untilTick: 80 }],
+    })
+    b.consume(batch(9, [], { snapshot: before }))
+    const burn: BomberEvent = {
+      type: 'DamageApplied',
+      VictimNetEntityIdRaw: ME,
+      SourceBombNetEntityIdRaw: 0,
+      SourceBombOwnerNetEntityIdRaw: 3,
+      ChainId: 0,
+      HealthPointsLeft: 0,
+      Tick: 10,
+      proto: { Cause: 2, Points: 2 },
+    }
+    const dead: BomberEvent = { ...(died(10, ME, 3, 0) as Extract<BomberEvent, { type: 'PlayerDied' }>), Cause: 2 }
+    const m = b.consume(batch(10, [burn, dead], { before }))
+    const d = m.find((x) => x.kind === 'death')
+    if (d?.kind !== 'death') throw new Error('no recap')
+    expect(d.recap.killerName).toBe('豆豆熊')
+    expect(d.recap.headline).toBe('被 豆豆熊 的火焰光环烧倒了')
+    expect(d.recap.burnSource).toBe('aura')
+    expect(d.recap.sources[0].label).toBe('豆豆熊的火')
+    expect(feedText(b.killFeed.entries()[0])).toBe('豆豆熊 烧倒了 你')
+  })
+
+  it('burn hit while alive shows the owner hint', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME }, { id: 3 }] }) }))
+    const m = b.consume(
+      batch(5, [
+        { type: 'DamageApplied', VictimNetEntityIdRaw: ME, SourceBombNetEntityIdRaw: 0, SourceBombOwnerNetEntityIdRaw: 3, ChainId: 0, HealthPointsLeft: 4, Tick: 5, proto: { Cause: 2, Points: 2 } },
+      ]),
+    )
+    const h = m.find((x) => x.kind === 'hits')
+    expect(h?.kind === 'hits' && h.hint).toBe('被 豆豆熊 的火烧到 −1 心')
+  })
+
+  it('names refresh after a new match with new roster metadata', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0, players: [{ id: ME }, { id: 2 }] }) }))
+    const s = snap({ tick: 10, matchIndex: 2, players: [{ id: ME }, { id: 2 }] })
+    s.Players[1].meta = { ...s.Players[1].meta, name: '雷雷猫', animal: 'cat' }
+    b.consume(batch(10, [{ type: 'MatchStarted', presentationOnly: true, MatchIndex: 2, Tick: 10 }], { snapshot: s }))
+    b.consume(batch(11, [died(11, 2, 2, 0)]))
+    expect(b.killFeed.entries().map((e) => e.victimName)).toEqual(['雷雷猫'])
+  })
+
+  it('settlement with match.results: a 0-hat survivor is rank 1 and the winner', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const s = snap({
+      tick: 50,
+      phase: MatchPhase.Settlement,
+      players: [{ id: ME, hats: 4, eliminated: true, eliminatedTick: 40 }, { id: 2, hats: 0 }],
+      results: {
+        reason: 'lastSurvivor',
+        winner: 2,
+        rows: [
+          { id: 2, rank: 1, place: 1, survived: true, hats: 0, eliminatedTick: 0 },
+          { id: ME, rank: 2, place: 2, survived: false, hats: 4, eliminatedTick: 40 },
+        ],
+      },
+    })
+    const r = b.consume(batch(50, [{ type: 'MatchEnded', Tick: 50 }], { snapshot: s })).find((x) => x.kind === 'settlement')
+    if (r?.kind !== 'settlement') throw new Error('no settlement')
+    expect([r.results.reason, r.results.winnerId, r.results.localRank, r.results.rows[0].id]).toEqual(['lastSurvivor', 2, 2, 2])
+    expect(r.results.percentBeaten).toBe(0)
+  })
+
+  it('1×1 ring notice', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const m = b.consume(batch(5, [{ type: 'RingShrinkAnnounced', presentationOnly: true, StageIndex: 5, Next: { Min: 9, Max: 9 }, AtTick: 205, Tick: 5 }]))
+    expect(texts(m, 'notice')).toEqual(['10 秒后只剩正中 1 格 · 快进去！'])
+  })
+
+  it('SkillsDropped → skills-lost; PlayerHealed → heal; PlayerFrozen → notice', () => {
+    const b = newBrain()
+    b.consume(batch(0, [], { snapshot: snap({ tick: 0 }) }))
+    const m = b.consume(
+      batch(5, [
+        { type: 'SkillsDropped', presentationOnly: true, VictimNetEntityIdRaw: ME, Skills: [{ Skill: 'kick', Level: 1 }], Devolved: null, Cell: { X: 1, Y: 1 }, Tick: 5 },
+        { type: 'PlayerHealed', presentationOnly: true, NetEntityIdRaw: ME, Points: 2, HealthPointsLeft: 6, Source: 'regen', Tick: 5 },
+        { type: 'PlayerFrozen', presentationOnly: true, VictimNetEntityIdRaw: ME, SourceBombNetEntityIdRaw: 7, SourceBombOwnerNetEntityIdRaw: 2, UntilTick: 21, Tick: 5 },
+      ]),
+    )
+    expect(texts(m, 'skills-lost')).toEqual(['踢弹 Lv1'])
+    expect(m.some((x) => x.kind === 'heal' && x.points === 2)).toBe(true)
+    expect(texts(m, 'notice')).toEqual(['被冻住了！'])
   })
 })

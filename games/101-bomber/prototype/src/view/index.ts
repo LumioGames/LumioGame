@@ -2,6 +2,7 @@ import type { BomberConfig, ProtoRules, U64 } from '../contract'
 import type { FeedSample } from '../present/feed'
 import type { PresentationSettings } from '../present/settings'
 import { ViewRuntime } from './runtime'
+export { renderDollPortraits } from './portrait'
 import './view.css'
 
 export interface ViewOptions {

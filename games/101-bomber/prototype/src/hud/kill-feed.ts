@@ -35,14 +35,25 @@ export function feedBase(e: FeedEntry): string {
     case 'poison':
       return `${e.victimName} 中毒倒下`
     case 'burn':
-      return `${e.victimName} 被烧倒了`
+      // 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙烧倒的有主人，读成击杀。
+      return burnHasKiller(e) ? `${e.killerName} 烧倒了 ${e.victimName}` : `${e.victimName} 被烧倒了`
   }
+}
+
+/** 烧倒的有别人当主人（火焰熊的光环 / 火墙）。 */
+export function burnHasKiller(e: FeedEntry): boolean {
+  return e.kind === 'burn' && e.killerId !== 0 && e.killerId !== e.victimId
+}
+
+/** 这条的色点跟谁：击杀（含有主人的烧倒）跟击杀者，其余跟死者。 */
+export function feedColorId(e: FeedEntry): U64 {
+  return e.kind === 'kill' || burnHasKiller(e) ? e.killerId : e.victimId
 }
 
 /** 后半句：「B 掉了 N 个强化」；没掉 / 还不知道时为空串。 */
 export function feedLossText(e: FeedEntry): string {
   if (!e.lost) return ''
-  return e.kind === 'kill' ? `${e.victimName} 掉了 ${e.lost} 个强化` : `掉了 ${e.lost} 个强化`
+  return e.kind === 'kill' || burnHasKiller(e) ? `${e.victimName} 掉了 ${e.lost} 个强化` : `掉了 ${e.lost} 个强化`
 }
 
 /** 整句：「A 炸飞了 B · B 掉了 N 个强化」。 */

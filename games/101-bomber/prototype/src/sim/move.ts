@@ -6,6 +6,8 @@ import { CELL_MILLI, HALF_MILLI, chestAt, playerCell, unexplodedBombAt, type Sim
  * 移动技能（契约 §2.1 四向 + 停；design §6.1 手感规则）。位置是整数千分格，恒在某条通道上：
  * 横向偏移或纵向偏移至少一个为 0。转角修正把垂直偏移以同速推回通道中心；转角缓冲让提前按下的
  * 垂直方向保留 turnBufferTicks，期间沿原方向继续走、走到路口自动转。
+ * 原型扩展（NON-CONTRACT，ADR 0032）：输入可带 `副方向`（更早按住的垂直键），主方向走不动时沿它滑动；
+ * 吸附阈值 / 连续吸附阈值 / 连续窗口全部取自 ProtoRules。无新状态、不改哈希。
  */
 
 /** 可通行 = 砖层为空（水可走）且无未爆炸弹、无宝箱；爆炸态炸弹不挡路。自己所在格从不检查（离格穿透由此而来）。 */
@@ -89,10 +91,69 @@ function effectiveSpeed(w: World, p: SimPlayer): number {
   return onWater ? Math.floor((p.speed * w.rules.waterSpeedPermille) / 1000) : p.speed
 }
 
+function isHorizontal(d: 方向): boolean {
+  return d === 方向.左 || d === 方向.右
+}
+
+/** 两个方向互相垂直（任一为停都不算）。 */
+function perpendicular(a: 方向, b: 方向): boolean {
+  return a !== 方向.停 && b !== 方向.停 && isHorizontal(a) !== isHorizontal(b)
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0032）：副方向只在与主方向垂直时有效；反向键从不拿来兜底
+ * （那是掉头，不是沿墙滑动）；缺省 / 停 = 没有。
+ */
+export function sideDirection(primary: 方向, side: 方向 | undefined): 方向 {
+  return side !== undefined && perpendicular(primary, side) ? side : 方向.停
+}
+
+/** 走完这一步后仍偏离 dir 所在通道的中心（吸附还没走完）。 */
+function offLane(r: Advance, dir: 方向): boolean {
+  const perp = isHorizontal(dir) ? r.my : r.mx
+  return (perp - HALF_MILLI) % CELL_MILLI !== 0
+}
+
+type MoveSource = 'buffer' | 'primary' | 'side' | 'carry'
+
+interface MoveChoice {
+  dir: 方向
+  r: Advance
+  source: MoveSource | null
+}
+
+const NO_CHOICE: MoveChoice = { dir: 方向.停, r: NO_MOVE, source: null }
+
+/**
+ * 本 Tick 按序试走（ADR 0032）：缓冲转向 → 主方向（最新的键）→ 副方向（更早按住的垂直键）→ 缓冲接续；
+ * 第一个真能走动的胜出。auto（副方向 / 接续）是规则层替玩家选的，同转角修正一样不进危险格（design §6.1 规则 1）。
+ * 接续只沿与缓冲转向垂直的上一方向走（反向不接续）。
+ */
+function chooseMove(w: World, p: SimPlayer, primary: 方向, side: 方向, buffered: 方向, budget: number, danger: Uint8Array): MoveChoice {
+  const tried: 方向[] = []
+  const attempt = (dir: 方向, source: MoveSource, auto: boolean): MoveChoice | null => {
+    if (dir === 方向.停 || tried.includes(dir)) return null
+    tried.push(dir)
+    const r = tryAdvance(w, p, dir, budget, danger)
+    if (!r.moved || (auto && entersDanger(w, p, r, danger))) return null
+    return { dir, r, source }
+  }
+  const carry =
+    buffered !== 方向.停 && (primary === p.pendingDir || primary === 方向.停) && perpendicular(p.lastDir, buffered) ? p.lastDir : 方向.停
+  return (
+    attempt(buffered, 'buffer', false) ??
+    attempt(primary, 'primary', false) ??
+    attempt(side, 'side', true) ??
+    attempt(carry, 'carry', true) ??
+    NO_CHOICE
+  )
+}
+
 /**
  * `lastDir` 只记「上一 Tick 实际走动的方向」：本 Tick 没走动（停 / 被挡）就清成停，
  * 转角缓冲的「沿原方向继续走」因此只接续正在进行的移动，不会重放几秒前的旧方向。
- * 接续是替玩家做的决定，所以同转角修正一样不把人带进危险格（design §6.1 规则 1）。
+ * 两键同按（ADR 0032）：最新的键能走就走它；走不动改走更早按住的垂直键（沿墙滑动），到第一个路口拐进去。
+ * 缓冲转向一旦被采纳就把吸附走完（点按松手也不会停在半路）。
  */
 export function applyMove(w: World, p: SimPlayer, input: 移动技能输入, danger: Uint8Array): void {
   if (input.按了转弯) {
@@ -101,44 +162,27 @@ export function applyMove(w: World, p: SimPlayer, input: 移动技能输入, dan
   }
   const hz = w.cfg.tickRateHz
   const speed = effectiveSpeed(w, p)
-  let dir = input.方向
-  let continued = false
-  if (p.turnBuf > 0) {
-    const peek = Math.floor((p.moveAcc + speed) / hz)
-    if (p.pendingDir !== 方向.停 && tryAdvance(w, p, p.pendingDir, peek, danger).moved) {
-      dir = p.pendingDir
-      p.turnBuf = 0
-    } else {
-      // 缓冲中：还拐不进去就沿上一方向继续走，走到路口再转。
-      if (p.lastDir !== 方向.停 && (dir === p.pendingDir || dir === 方向.停)) {
-        dir = p.lastDir
-        continued = true
-      }
-      p.turnBuf--
-    }
+  const budget = Math.floor((p.moveAcc + speed) / hz)
+  const buffered = p.turnBuf > 0 ? p.pendingDir : 方向.停
+  const c = chooseMove(w, p, input.方向, sideDirection(input.方向, input.副方向), buffered, budget, danger)
+  if (buffered !== 方向.停) {
+    // 缓冲转向被采纳：吸附没走完就续 1 Tick，走上新通道才清零；否则照旧倒数。
+    p.turnBuf = c.source === 'buffer' ? (offLane(c.r, c.dir) ? 1 : 0) : p.turnBuf - 1
   }
-  if (dir === 方向.停) {
+  if (c.source === null) {
     p.moveAcc = 0
     p.lastDir = 方向.停
     return
   }
-  p.moveAcc += speed
-  const step = Math.floor(p.moveAcc / hz)
-  p.moveAcc -= step * hz
-  const r = tryAdvance(w, p, dir, step, danger)
-  if (!r.moved || (continued && entersDanger(w, p, r, danger))) {
-    p.moveAcc = 0
-    p.lastDir = 方向.停
-    return
-  }
-  if (r.slid) {
+  p.moveAcc += speed - budget * hz
+  if (c.r.slid) {
     const { tol, fresh } = assistTolerance(w, p)
     if (fresh) p.assistTol = tol
     p.lastAssistTick = w.t
   }
-  p.mx = r.mx
-  p.my = r.my
-  p.lastDir = dir
+  p.mx = c.r.mx
+  p.my = c.r.my
+  p.lastDir = c.dir
 }
 
 function entersDanger(w: World, p: SimPlayer, r: Advance, danger: Uint8Array): boolean {

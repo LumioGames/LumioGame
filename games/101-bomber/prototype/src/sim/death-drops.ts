@@ -9,7 +9,8 @@ import { cellOfIdx, emit, type SimPlayer, type World } from './world'
  * 常规阶段死亡：每级按 deathPowerupDropPermille 掷一次；决赛圈死亡（出局）：全部级数掉落、不掷。
  * 掉出的级数从死者身上扣掉（最低保留初始值），在死亡格半径 3 内的空地各落一颗、谁捡归谁；格不够则余下作废（级数照扣）。
  */
-const DROP_RADIUS = 3
+/** 死者掉落（强化与技能糖，ADR 0030 D8 同口径）的落点半径（格，按可通行路径 BFS）。 */
+export const DEATH_DROP_RADIUS = 3
 
 export interface PowerupLevels {
   fire: number
@@ -87,7 +88,7 @@ export function dropPowerups(w: World, v: SimPlayer, deathCell: number, kinds: r
   }
   v.speed = Math.max(tier0, v.speed - speedsLost * step)
 
-  const cells = freeCellsNear(w, deathCell, DROP_RADIUS)
+  const cells = freeCellsNear(w, deathCell, DEATH_DROP_RADIUS)
   for (let i = cells.length - 1; i > 0; i--) {
     const j = rng.NextInt(0, i + 1)
     const tmp = cells[i]

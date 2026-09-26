@@ -1,13 +1,20 @@
 import { BlockType } from '../contract'
+import { bombLoadout } from './skills'
 import { anyBombAt, cellOfIdx, chestAt, emit, makeBomb, newId, playerCell, type SimPlayer, type World } from './world'
 
 /**
  * 放弹技能（契约 §2.1，准入五步中与玩法相关的两步）：③ 手上炸弹数基础 ≥ 1；⑤ 所在格没有炸弹。
  * 两者失败都不扣消耗、保留缓冲（design §6.1 规则 4：125 ms 内进入合法格自动放）。
  * 水方格上放下即熄灭（design §5.1）：不生成实体、不扣手上炸弹数，但保护照样解除。
+ * 原型扩展（NON-CONTRACT，ADR 0030）：泡泡期 / 冻结中按键作废——不放、不留缓冲、不解除泡泡；
+ * 炸弹槽技能决定这颗弹的种类 / 穿透层数 / 冻结时长（skills.ts bombLoadout）。
  */
 export function applyPlace(w: World, p: SimPlayer, pressed: boolean): void {
   const t = w.t
+  if (t < p.bubbleUntilTick || t < p.frozenUntilTick) {
+    p.bombBufUntil = 0
+    return
+  }
   if (pressed) p.bombBufUntil = t + w.ticks.inputBuffer
   if (t >= p.bombBufUntil) return
   if (p.capacity < 1) return
@@ -22,7 +29,7 @@ export function applyPlace(w: World, p: SimPlayer, pressed: boolean): void {
   p.capacity--
   const id = newId(w)
   const fuseEndTick = t + w.ticks.fuse
-  w.bombs.push(makeBomb({ id, owner: p.id, cell, bornTick: t, fuseEndTick, power: p.power }))
+  w.bombs.push(makeBomb({ id, owner: p.id, cell, bornTick: t, fuseEndTick, power: p.power, ...bombLoadout(w, p) }))
   emit(w, {
     type: 'BombPlaced',
     OwnerNetEntityIdRaw: p.id,

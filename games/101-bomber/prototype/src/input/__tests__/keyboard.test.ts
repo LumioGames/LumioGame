@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { 方向, type AbilityActivation } from '../../contract'
+import { 方向, type AbilityActivation, type 移动技能输入 } from '../../contract'
 import { attachKeyboard, DirectionStack, InputState, type KeyEventLike, type ListenerTarget } from '../keyboard'
 import { Joystick4 } from '../joystick'
 
@@ -40,12 +40,13 @@ function key(code: string, extra: Partial<KeyEventLike> = {}): FakeKey {
   return e
 }
 
-const move = (acts: AbilityActivation[]): { 方向: 方向; 按了转弯: boolean } => {
+const move = (acts: AbilityActivation[]): 移动技能输入 => {
   const m = acts.find((a) => a.ability === '移动')
   if (!m || m.ability !== '移动') throw new Error('no move')
   return m.输入
 }
 const bombs = (acts: AbilityActivation[]): number => acts.filter((a) => a.ability === '放弹').length
+const skills = (acts: AbilityActivation[]): number => acts.filter((a) => a.ability === '技能').length
 
 describe('DirectionStack', () => {
   it('last pressed held key wins; releasing it falls back to the previous one', () => {
@@ -59,6 +60,31 @@ describe('DirectionStack', () => {
     s.release(方向.右)
     expect(s.current()).toBe(方向.停)
   })
+
+  it('secondary (ADR 0032): the most recent held key perpendicular to the top; opposite keys never count', () => {
+    const s = new DirectionStack()
+    s.press(方向.右)
+    s.press(方向.上)
+    expect(s.secondary()).toBe(方向.右)
+    s.press(方向.左)
+    expect(s.current()).toBe(方向.左)
+    expect(s.secondary()).toBe(方向.上)
+    s.release(方向.上)
+    // [右, 左]：只剩反向键 → 没有副方向。
+    expect(s.secondary()).toBe(方向.停)
+    s.clear()
+    expect(s.secondary()).toBe(方向.停)
+  })
+
+  it('tracks keys, not directions (H6): D + → held, releasing D keeps 右', () => {
+    const s = new DirectionStack()
+    s.press(方向.右, 'KeyD')
+    s.press(方向.右, 'ArrowRight')
+    s.release(方向.右, 'KeyD')
+    expect(s.current()).toBe(方向.右)
+    s.release(方向.右, 'ArrowRight')
+    expect(s.current()).toBe(方向.停)
+  })
 })
 
 describe('InputState poll', () => {
@@ -69,7 +95,7 @@ describe('InputState poll', () => {
     expect(move(s.poll())).toEqual({ 方向: 方向.右, 按了转弯: true })
     expect(move(s.poll())).toEqual({ 方向: 方向.右, 按了转弯: false })
     s.keyDown('ArrowUp', false)
-    expect(move(s.poll())).toEqual({ 方向: 方向.上, 按了转弯: true })
+    expect(move(s.poll())).toEqual({ 方向: 方向.上, 按了转弯: true, 副方向: 方向.右 })
     s.keyUp('ArrowUp')
     expect(move(s.poll())).toEqual({ 方向: 方向.右, 按了转弯: true })
     s.keyUp('KeyD')
@@ -103,6 +129,59 @@ describe('InputState poll', () => {
     s.keyDown('KeyA', false)
     expect(move(s.poll(方向.下))).toEqual({ 方向: 方向.下, 按了转弯: true })
     expect(move(s.poll())).toEqual({ 方向: 方向.左, 按了转弯: true })
+  })
+
+  it('poll emits 副方向 only for a perpendicular held key; a 副方向 change is not a turn (ADR 0032)', () => {
+    const s = new InputState()
+    s.keyDown('KeyD', false)
+    s.poll()
+    s.keyDown('KeyA', false)
+    // 反向键：只换方向，不带副方向。
+    expect(move(s.poll())).toEqual({ 方向: 方向.左, 按了转弯: true })
+    s.keyDown('KeyW', false)
+    expect(move(s.poll())).toEqual({ 方向: 方向.上, 按了转弯: true, 副方向: 方向.左 })
+    s.keyUp('KeyA')
+    // 副方向从左变成右（D 还按着），主方向没变：不算转弯。
+    expect(move(s.poll())).toEqual({ 方向: 方向.上, 按了转弯: false, 副方向: 方向.右 })
+  })
+
+  it('per-key release (H6): holding D and →, releasing D keeps walking right', () => {
+    const s = new InputState()
+    s.keyDown('KeyD', false)
+    s.keyDown('ArrowRight', false)
+    s.poll()
+    s.keyUp('KeyD')
+    expect(move(s.poll())).toEqual({ 方向: 方向.右, 按了转弯: false })
+    s.keyUp('ArrowRight')
+    expect(move(s.poll()).方向).toBe(方向.停)
+  })
+
+  it('poll(external, externalSide) passes the touch 副方向 through, only while the stick is active', () => {
+    const s = new InputState()
+    expect(move(s.poll(方向.右, 方向.下))).toEqual({ 方向: 方向.右, 按了转弯: true, 副方向: 方向.下 })
+    // 非垂直的外部副方向不送。
+    expect(move(s.poll(方向.右, 方向.左))).toEqual({ 方向: 方向.右, 按了转弯: false })
+    s.keyDown('KeyW', false)
+    // 摇杆松开：回到键盘，键盘没有第二个键 → 不带副方向。
+    expect(move(s.poll(方向.停, 方向.下))).toEqual({ 方向: 方向.上, 按了转弯: true })
+  })
+
+  it('Shift is edge-triggered: one 技能 per press, auto-repeat ignored, consumed by poll; never a 放弹', () => {
+    const s = new InputState()
+    expect(s.keyDown('ShiftLeft', false)).toEqual({ handled: true, command: null })
+    expect(s.keyDown('ShiftLeft', true)).toEqual({ handled: true, command: null })
+    const acts = s.poll()
+    expect(skills(acts)).toBe(1)
+    expect(bombs(acts)).toBe(0)
+    expect(skills(s.poll())).toBe(0)
+    s.keyUp('ShiftLeft')
+    s.keyDown('ShiftRight', false)
+    expect(skills(s.poll())).toBe(1)
+    s.pressSkill()
+    expect(skills(s.poll())).toBe(1)
+    s.keyDown('ShiftLeft', false)
+    s.clear()
+    expect(skills(s.poll())).toBe(0)
   })
 
   it('clear() releases every key and drops an unconsumed bomb press', () => {
@@ -157,6 +236,29 @@ describe('attachKeyboard', () => {
     expect(move(s.poll()).方向).toBe(方向.停)
   })
 
+  it('Shift is prevented but is not a command', () => {
+    const t = new FakeTarget()
+    const s = new InputState()
+    const cmds: string[] = []
+    attachKeyboard(t, s, (c) => cmds.push(c))
+    const shift = key('ShiftRight')
+    t.fire('keydown', shift)
+    expect(shift.prevented).toBe(true)
+    expect(cmds).toEqual([])
+    expect(skills(s.poll())).toBe(1)
+  })
+
+  it('⌘ keyup releases held directions (macOS swallows their keyups while ⌘ is down)', () => {
+    const t = new FakeTarget()
+    const s = new InputState()
+    attachKeyboard(t, s, () => undefined)
+    t.fire('keydown', key('KeyD'))
+    expect(move(s.poll()).方向).toBe(方向.右)
+    // ⌘ 按下期间 KeyD 的 keyup 被系统吞掉，只收到 MetaLeft 的 keyup。
+    t.fire('keyup', key('MetaLeft'))
+    expect(move(s.poll()).方向).toBe(方向.停)
+  })
+
   it('window blur clears held keys so the doll does not keep walking', () => {
     const t = new FakeTarget()
     const s = new InputState()
@@ -188,5 +290,22 @@ describe('Joystick4', () => {
     j.end()
     expect(j.direction()).toBe(方向.停)
     expect(j.move(50, 0)).toBe(方向.停)
+  })
+
+  it('secondary (ADR 0032): the minor axis counts once it reaches half the major axis', () => {
+    const j = new Joystick4(60, 0.18, 0.15, 0.5)
+    j.start(0, 0)
+    expect(j.move(60, 30)).toBe(方向.右)
+    expect(j.secondary()).toBe(方向.下)
+    j.move(60, 10)
+    expect(j.secondary()).toBe(方向.停)
+    j.move(-40, -60)
+    expect(j.direction()).toBe(方向.上)
+    expect(j.secondary()).toBe(方向.左)
+    j.move(3, 3)
+    expect(j.secondary()).toBe(方向.停)
+    j.move(60, -40)
+    j.end()
+    expect(j.secondary()).toBe(方向.停)
   })
 })

@@ -1,20 +1,40 @@
 import {
   BombKind,
+  DEFAULT_RULES,
   DeathCause,
   MatchPhase,
   PickupKind,
   isPowerupKind,
+  skillParams,
   type AnimalId,
+  type MatchEndReason,
+  type PlayerSkillsView,
   type PlayerView,
+  type ProtoRules,
+  type SkillId,
   type U64,
   type WorldSnapshot,
 } from '../contract'
+import { resultsOf } from '../present/ranking'
+import { cellOf } from '../shared/grid'
 import { ChainLedger } from './chain-ledger'
+import { ringNoticeText } from './final-circle'
 import { heartDelta, lossPopupText } from './format'
 import { HatLossResolver, type ResolvedLoss } from './hat-loss'
 import { DEATH_AFTER_LAST_HIT_MS, hitHintText, lastHitDelayMs, staggerLocalHits, type StaggeredHit } from './hit-stagger'
 import { KillFeed } from './kill-feed'
-import { percentBeaten, rankFinal, type FinalRow } from './ranking'
+import { percentBeaten, rankFinal, type ElimRecord, type FinalRow } from './ranking'
+import {
+  blockedCandyText,
+  burnSourceAt,
+  burnSourceName,
+  diffSkills,
+  evolveBanner,
+  skillFailText,
+  skillGainText,
+  skillsDroppedText,
+  type BurnSource,
+} from './skill-moments'
 import { StatsTracker, type MatchStats } from './stats-tracker'
 import type { TickBatch } from './timeline'
 import { TIP_HATS_GOAL, TipId } from './tips'
@@ -26,7 +46,7 @@ import { TIP_HATS_GOAL, TipId } from './tips'
  * 「掉了 N 个强化」按 proto.HatsLost → PowerupsDropped → 快照帽数差 先到先用（hat-loss.ts）。
  */
 
-export type PopupTone = 'chain' | 'kill' | 'demolish' | 'harvest' | 'comeback' | 'hat' | 'hatloss'
+export type PopupTone = 'chain' | 'kill' | 'demolish' | 'harvest' | 'comeback' | 'hat' | 'hatloss' | 'skill'
 
 export interface RecapSource {
   /** 「灰灰猫的炸弹」/「你自己的炸弹」/「溺水」。 */
@@ -55,12 +75,20 @@ export interface DeathRecap {
   /** 决赛圈内死亡 = 出局，不再复活（design §4.2）。 */
   final: boolean
   tick: U64
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：掉出的技能（SkillsDropped；晚到时经 `skills-lost` 时刻补上）。 */
+  skillsLost: string | null
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：烧倒时是哪片火。 */
+  burnSource: BurnSource | null
 }
 
 export interface SettlementResults {
   matchIndex: number
-  /** 局终排名（`rankFinal`：并列时存活优先 → 出局越晚越前 → id）。 */
+  /** 局终排名（`rankFinal`：D2 活到最后者赢——存活者在前、出局越晚越前；优先用规则层的 match.results）。 */
   rows: FinalRow[]
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：结束原因（唯一存活 / 时间到 / 同归于尽）。 */
+  reason: MatchEndReason
+  /** 领奖台中央（= rows[0]）。 */
+  winnerId: U64
   /** 本局是否进入过决赛圈（结算表才标 ★ 存活 / 出局）。 */
   finalCircle: boolean
   /** MatchEnded 的 Tick（领奖台从这里起算 podiumMs）；缺事件时取进入结算的第一份快照。 */
@@ -76,17 +104,22 @@ export type HudMoment =
   | { kind: 'popup'; key: string; tone: PopupTone; text: string; tier: number }
   | { kind: 'tip'; id: TipId }
   | { kind: 'notice'; text: string }
-  | { kind: 'pickup'; pickupKind: PickupKind; text: string }
+  | { kind: 'pickup'; pickupKind: PickupKind; text: string; skill?: SkillId }
   | { kind: 'hits'; hits: StaggeredHit[]; hpBefore: number; hint: string | null }
   | { kind: 'death'; recap: DeathRecap; delayMs: number }
   | { kind: 'drops'; text: string }
   | { kind: 'hats-lost'; count: number }
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：本人死时掉出的技能（死亡回顾「掉落技能」一行）。 */
+  | { kind: 'skills-lost'; text: string }
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：本人回春回血（半心点）。 */
+  | { kind: 'heal'; points: number }
   | { kind: 'eliminated'; rank: number; total: number }
   | { kind: 'respawned' }
   | { kind: 'match-reset'; matchIndex: number }
   | { kind: 'settlement'; results: SettlementResults }
 
-export type BannerTone = 'crown' | 'fall' | 'final'
+/** 'evolve' = 原型扩展（NON-CONTRACT，ADR 0030）：本人进化横幅，只给本人看。 */
+export type BannerTone = 'crown' | 'fall' | 'final' | 'evolve'
 
 export interface HudBrainOptions {
   localId: U64
@@ -94,7 +127,11 @@ export interface HudBrainOptions {
   pillarMinHats: number
   tickRateHz: number
   pointsPerHeart: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：技能 / 角色表（技能文案用）；缺省 = DEFAULT_RULES。 */
+  rules?: HudBrainRules
 }
+
+export type HudBrainRules = Pick<ProtoRules, 'skills' | 'combos' | 'skillMaxLevel' | 'characters' | 'burnPointsPerInterval' | 'burnIntervalMs'>
 
 /** 多杀文案（design §3.1）。 */
 export function multiKillLabel(kills: number): string | null {
@@ -117,7 +154,7 @@ const PICKUP_TEXT: Readonly<Record<PickupKind, string>> = {
   [PickupKind.BombPlus]: '+1 炸弹',
   [PickupKind.SpeedPlus]: '+1 速度',
   [PickupKind.HealthPack]: '+1 心',
-  [PickupKind.SkillCandy]: '技能糖',
+  [PickupKind.SkillCandy]: '+ 技能糖',
 }
 
 const DROP_NAME: Readonly<Record<PickupKind, string>> = {
@@ -179,8 +216,8 @@ export class HudBrain {
   /** 本人最近已知血量（快照或伤害单更新），用来在没有 proto.Points 时算每单扣了几点。 */
   private localHp: number | null = null
   private readonly meta = new Map<U64, { name: string; animal: AnimalId; slot: number }>()
-  /** 本局出局名单：id → PlayerEliminated.Rank。 */
-  private readonly eliminations = new Map<U64, number>()
+  /** 本局出局名单：id → PlayerEliminated 的 Rank 与 Tick（或快照兜底）。 */
+  private readonly eliminations = new Map<U64, ElimRecord>()
   private finalCircle = false
   private matchEndedTick: U64 | null = null
   private readonly losses = new HatLossResolver()
@@ -191,11 +228,20 @@ export class HudBrain {
   /** 本人上一份快照里的帽数（快照推「+1 帽」与第 3 条提示用）。 */
   private myHats: number | null = null
   private gainSeq = 0
+  /** 见过技能表现事件（SkillGained / SkillEvolved）之后技能时刻只认事件；之前退回快照 diff。 */
+  private sawSkillEvents = false
+  /** 本人上一份快照里的技能（快照推技能变化用）。 */
+  private mySkills: PlayerSkillsView | null = null
+  /** 本人脚下那颗技能糖（连续两份快照都站在上面且捡不起来才提示）。 */
+  private standingOn: U64 = 0
+  private readonly blockedShown = new Set<U64>()
+  private readonly rules: HudBrainRules
   readonly killFeed: KillFeed
 
   constructor(private readonly opts: HudBrainOptions) {
     this.stats = new StatsTracker(opts.localId)
     this.killFeed = new KillFeed(opts.localId)
+    this.rules = opts.rules ?? DEFAULT_RULES
   }
 
   consume(batch: TickBatch): HudMoment[] {
@@ -283,11 +329,53 @@ export class HudBrain {
         case 'PickupTaken':
           this.sawPickupEvents = true
           if (e.PickerNetEntityIdRaw === me) {
-            out.push({ kind: 'pickup', pickupKind: e.Kind, text: PICKUP_TEXT[e.Kind] ?? '+1' })
+            if (e.Kind !== PickupKind.SkillCandy) out.push({ kind: 'pickup', pickupKind: e.Kind, text: PICKUP_TEXT[e.Kind] ?? '+1' })
+            else if (!this.sawSkillEvents && !batch.events.some((x) => x.type === 'SkillGained' || x.type === 'SkillEvolved')) {
+              // 技能糖：SkillGained / SkillEvolved 会给具体文案；没有这类事件的数据源才在这里说一句。
+              const sk = e.proto?.Skill
+              out.push({ kind: 'pickup', pickupKind: e.Kind, text: sk ? `+ ${this.rules.skills[sk].name}` : PICKUP_TEXT[e.Kind], ...(sk ? { skill: sk } : {}) })
+            }
             out.push({ kind: 'tip', id: TipId.Candy })
             // 帽子 = 强化数：吃到火力 / 炸弹 / 速度就多一顶帽子；血包与技能糖不算（D5）。
             if (isPowerupKind(e.Kind)) this.onHatGain(e.Tick, 1, out)
           }
+          break
+        case 'SkillGained':
+          this.sawSkillEvents = true
+          if (e.PlayerNetEntityIdRaw === me) {
+            const text = skillGainText({ kind: e.How, skill: e.Skill, level: e.Level }, this.rules)
+            out.push({ kind: 'pickup', pickupKind: PickupKind.SkillCandy, skill: e.Skill, text })
+          }
+          break
+        case 'SkillEvolved':
+          this.sawSkillEvents = true
+          if (e.PlayerNetEntityIdRaw === me) out.push({ kind: 'banner', tone: 'evolve', mine: true, ...evolveBanner(e.Combo, e.From, this.rules) })
+          break
+        case 'SkillFailed':
+          if (e.PlayerNetEntityIdRaw === me) {
+            const sk = findPlayer(batch.snapshot ?? before, me)?.skills ?? this.mySkills
+            const cdLeft = sk ? Math.max(0, (sk.cdUntilTick - e.Tick) / this.opts.tickRateHz) : 0
+            out.push({ kind: 'notice', text: skillFailText(e.Reason, e.Skill, cdLeft, sk?.character ?? null, this.rules) })
+          }
+          break
+        case 'SkillActivated':
+          if (e.PlayerNetEntityIdRaw === me && (e.Skill === 'bubble' || e.Skill === 'bounceBubble')) {
+            const ms =
+              e.UntilTick > e.Tick ? ((e.UntilTick - e.Tick) * 1000) / this.opts.tickRateHz : skillParams(this.rules.skills, e.Skill, e.Level).durationMs
+            out.push({ kind: 'notice', text: `泡泡护体 ${Math.round(ms / 100) / 10} 秒 · 期间不能放弹` })
+          }
+          break
+        case 'SkillsDropped':
+          this.sawSkillEvents = true
+          if (e.VictimNetEntityIdRaw === me && (e.Skills.length > 0 || e.Devolved)) {
+            out.push({ kind: 'skills-lost', text: skillsDroppedText(e.Skills, e.Devolved, this.rules) })
+          }
+          break
+        case 'PlayerHealed':
+          if (e.NetEntityIdRaw === me) out.push({ kind: 'heal', points: e.Points })
+          break
+        case 'PlayerFrozen':
+          if (e.VictimNetEntityIdRaw === me) out.push({ kind: 'notice', text: '被冻住了！' })
           break
         case 'PowerupsDropped': {
           if (e.VictimNetEntityIdRaw === me) out.push({ kind: 'drops', text: dropsText(e.Kinds) })
@@ -296,7 +384,7 @@ export class HudBrain {
           break
         }
         case 'PlayerEliminated':
-          this.eliminations.set(e.NetEntityIdRaw, e.Rank)
+          this.eliminations.set(e.NetEntityIdRaw, { rank: e.Rank, tick: e.Tick })
           this.killFeed.onEliminated(e.NetEntityIdRaw)
           if (e.NetEntityIdRaw === me) {
             const total = (batch.snapshot ?? before)?.Players.length ?? e.Rank
@@ -309,7 +397,7 @@ export class HudBrain {
         case 'RingShrinkAnnounced': {
           const side = e.Next.Max - e.Next.Min + 1
           const sec = Math.max(1, Math.round((e.AtTick - e.Tick) / this.opts.tickRateHz))
-          out.push({ kind: 'notice', text: `安全圈 ${sec} 秒后缩到 ${side}×${side} · 往中间走` })
+          out.push({ kind: 'notice', text: ringNoticeText(side, sec) })
           break
         }
         case 'MatchEnded':
@@ -351,6 +439,7 @@ export class HudBrain {
       this.stats.consumeSnapshot(batch)
       for (const r of this.losses.onSnapshot(snap)) this.onLossResolved(r, out)
       this.checkMyHats(snap, out)
+      this.checkMySkills(snap, out)
       this.localHp = findPlayer(snap, me)?.玩家属性.血量当前 ?? this.localHp
       this.checkCrown(snap, out)
       if (snap.BomberMatchState.Phase === MatchPhase.Endgame && !this.finalCircle) this.startFinalCircle(out)
@@ -359,7 +448,7 @@ export class HudBrain {
         if (p.eliminated && !this.eliminations.has(p.NetEntityIdRaw)) {
           let alive = 0
           for (const q of snap.Players) if (!q.eliminated) alive++
-          this.eliminations.set(p.NetEntityIdRaw, alive + 1)
+          this.eliminations.set(p.NetEntityIdRaw, { rank: alive + 1, tick: p.eliminatedTick || snap.Tick })
           if (p.NetEntityIdRaw === me) out.push({ kind: 'eliminated', rank: alive + 1, total: snap.Players.length })
         }
       }
@@ -402,6 +491,11 @@ export class HudBrain {
     this.losses.clear()
     this.pendingFalls.clear()
     this.myHats = null
+    this.mySkills = null
+    this.standingOn = 0
+    this.blockedShown.clear()
+    // 第 4 轮 Bot 每局重抽角色与名字：换局时再用新快照覆盖一次。
+    this.learnNames(batch.snapshot)
     out.push({ kind: 'match-reset', matchIndex: idx })
   }
 
@@ -453,6 +547,53 @@ export class HudBrain {
     if (p.玩家属性.血量当前 <= 0 || p.eliminated) return
     out.push({ kind: 'tip', id: TipId.Candy })
     this.onHatGain(snap.Tick, hats - was, out)
+  }
+
+  /**
+   * 本人技能的快照判定（原型扩展 NON-CONTRACT，ADR 0030）：
+   * - 数据源没有 SkillGained / SkillEvolved / SkillsDropped 时，由前后快照 diff 出「获得 / 升级 / 进化 / 掉落」；
+   * - 连续两份快照都站在一颗捡不起来的技能糖上 → 提示为什么（每颗糖只提示一次）。
+   */
+  private checkMySkills(snap: WorldSnapshot, out: HudMoment[]): void {
+    const p = findPlayer(snap, this.opts.localId)
+    const now = p?.skills ?? null
+    const was = this.mySkills
+    this.mySkills = now
+    if (!p || !now) return
+    if (!this.sawSkillEvents && was) {
+      const lost: { Skill: SkillId; Level: number }[] = []
+      let devolved: { Combo: SkillId; To: SkillId } | null = null
+      for (const c of diffSkills(was, now, this.rules)) {
+        if (c.kind === 'equip' || c.kind === 'levelUp') {
+          out.push({ kind: 'pickup', pickupKind: PickupKind.SkillCandy, skill: c.skill, text: skillGainText(c, this.rules) })
+        } else if (c.kind === 'evolve') {
+          out.push({ kind: 'banner', tone: 'evolve', mine: true, ...evolveBanner(c.combo, c.from, this.rules) })
+        } else if (c.kind === 'lost') lost.push({ Skill: c.skill, Level: c.level })
+        else if (c.kind === 'devolve') devolved = { Combo: c.combo, To: c.to }
+      }
+      if (lost.length || devolved) out.push({ kind: 'skills-lost', text: skillsDroppedText(lost, devolved, this.rules) })
+    }
+    let on: U64 = 0
+    if (p.玩家属性.血量当前 > 0 && !p.eliminated) {
+      const w = p.LogicTransform.WorldPosition
+      const c = cellOf(w.x, w.z)
+      for (const k of snap.Pickups) {
+        if (k.BomberPickupItem.Kind !== PickupKind.SkillCandy || !k.skill) continue
+        const kw = k.LogicTransform.WorldPosition
+        const kc = cellOf(kw.x, kw.z)
+        if (kc.X !== c.X || kc.Y !== c.Y) continue
+        on = k.NetEntityIdRaw
+        if (this.standingOn === on && !this.blockedShown.has(on)) {
+          const text = blockedCandyText(now.slots, { skill: k.skill.id, level: k.skill.level }, this.rules)
+          if (text) {
+            this.blockedShown.add(on)
+            out.push({ kind: 'notice', text })
+          }
+        }
+        break
+      }
+    }
+    this.standingOn = on
   }
 
   /** 死者掉了几个强化定下来了：击杀栏补后半句；本人弹「掉了 N 个强化」；帽王死时播倒台横幅。 */
@@ -509,11 +650,16 @@ export class HudBrain {
               ? 'self'
               : 'bomb'
     const km = killer !== 0 && killer !== me ? this.meta.get(killer) : undefined
+    // 原型扩展（NON-CONTRACT，ADR 0030）：火焰光环 / 火墙烧倒的有主人（Killer = 火的主人）。
+    const burnBy = cause === 'burn' && killer !== 0 && killer !== me
+    const burnSource = cause === 'burn' ? burnSourceAt(batch.before ?? batch.snapshot, killer, e.Cell) : null
     const headline =
       cause === 'drown'
         ? '在水里泡太久，溺水了'
         : cause === 'burn'
-          ? '被火烧倒了'
+          ? burnBy
+            ? `被 ${this.nameOf(killer)} 的${burnSourceName(burnSource)}烧倒了`
+            : '被火烧倒了'
           : cause === 'poison'
             ? '在圈外中毒倒下了'
             : cause === 'self'
@@ -529,16 +675,18 @@ export class HudBrain {
     const ownerId = fatal && fatal.env === null ? fatal.owner : cause === 'bomb' ? killer : 0
     const ENV_LABEL = { drown: '溺水', poison: '毒圈', burn: '燃烧' } as const
     const sources = [...this.damage].reverse().map((d): RecapSource => {
-      const om = d.env ? undefined : this.meta.get(d.owner)
+      // 有主人的烧伤读成「X的火」，带主人的颜色。
+      const ownedBurn = d.env === 'burn' && d.owner !== 0 && d.owner !== me
+      const om = d.env && !ownedBurn ? undefined : this.meta.get(d.owner)
       const n = d.chainId !== 0 ? this.ledger.bombs(d.chainId) : 0
-      const label = d.env ? ENV_LABEL[d.env] : d.owner === me ? '你自己的炸弹' : `${this.nameOf(d.owner)}的炸弹`
+      const label = ownedBurn ? `${this.nameOf(d.owner)}的火` : d.env ? ENV_LABEL[d.env] : d.owner === me ? '你自己的炸弹' : `${this.nameOf(d.owner)}的炸弹`
       const detail = [heartDelta(d.points, this.opts.pointsPerHeart), n >= 2 ? `×${n} 连锁` : ''].filter(Boolean).join(' · ')
       return { label, detail, animal: om?.animal ?? null, slot: om?.slot ?? null }
     })
     return {
       cause,
       headline,
-      killerName: cause === 'bomb' ? this.nameOf(killer) : null,
+      killerName: cause === 'bomb' || burnBy ? this.nameOf(killer) : null,
       killerAnimal: km?.animal ?? null,
       killerSlot: km?.slot ?? null,
       bombOwnerName: ownerId === 0 ? null : ownerId === me ? '你自己' : this.nameOf(ownerId),
@@ -549,15 +697,20 @@ export class HudBrain {
       drops: null,
       final: this.finalCircle || (batch.snapshot ?? batch.before)?.BomberMatchState.Phase === MatchPhase.Endgame,
       tick: e.Tick,
+      skillsLost: null,
+      burnSource,
     }
   }
 
   private buildResults(snap: WorldSnapshot): SettlementResults {
     const me = this.opts.localId
-    const rows = rankFinal(snap.Players, this.eliminations, this.finalCircle, snap.BomberMatchState.HatKingNetEntityIdRaw, me)
+    const res = resultsOf(snap, (id) => this.eliminations.get(id)?.tick)
+    const rows = rankFinal(snap.Players, this.eliminations, this.finalCircle, snap.BomberMatchState.HatKingNetEntityIdRaw, me, res)
     return {
       matchIndex: snap.match.matchIndex,
       rows,
+      reason: res.reason,
+      winnerId: res.winner,
       finalCircle: this.finalCircle,
       endTick: this.matchEndedTick ?? snap.Tick,
       localRank: rows.find((r) => r.isLocal)?.rank ?? rows.length,
@@ -567,10 +720,13 @@ export class HudBrain {
     }
   }
 
+  /** 名字 / 动物总以最新快照为准（第 4 轮 Bot 每局重抽角色与名字）。 */
   private learnNames(snap: WorldSnapshot | null): void {
     if (!snap) return
     for (const p of snap.Players) {
-      if (!this.meta.has(p.NetEntityIdRaw)) this.meta.set(p.NetEntityIdRaw, { name: p.meta.name, animal: p.meta.animal, slot: p.meta.slot })
+      const m = this.meta.get(p.NetEntityIdRaw)
+      if (m && m.name === p.meta.name && m.animal === p.meta.animal && m.slot === p.meta.slot) continue
+      this.meta.set(p.NetEntityIdRaw, { name: p.meta.name, animal: p.meta.animal, slot: p.meta.slot })
     }
   }
 

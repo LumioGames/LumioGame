@@ -1,4 +1,4 @@
-import { MatchPhase, type BomberCell, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import { MatchPhase, poisonPointsAt, type BomberCell, type ProtoRules, type RingRect, type U64, type WorldSnapshot } from '../contract'
 import { cellOf } from '../shared/grid'
 
 /**
@@ -19,6 +19,22 @@ export interface CircleHud {
   /** 本人活着、未出局、决赛圈中且站在安全圈外。 */
   outside: boolean
   localEliminated: boolean
+  /** 圈外中毒提示（按当前段的毒强度，ADR 0031）；没给规则时为 null（沿用默认文案）。 */
+  poisonText: string | null
+}
+
+export type CircleRules = Pick<ProtoRules, 'ringStages' | 'poisonPointsPerInterval' | 'poisonIntervalMs'>
+
+/** 「圈外中毒 −0.5 心/秒！回到圈内」/「圈外中毒 −1 心/秒！回到圈内」。 */
+export function poisonWarnText(points: number, intervalMs: number, pointsPerHeart: number): string {
+  const perSec = (points / Math.max(1, pointsPerHeart)) * (1000 / Math.max(1, intervalMs))
+  return `圈外中毒 −${Math.round(perSec * 10) / 10} 心/秒！回到圈内`
+}
+
+/** 缩圈预告：「安全圈 10 秒后缩到 5×5 · 往中间走」；最后一段 1×1 为「10 秒后只剩正中 1 格 · 快进去！」。 */
+export function ringNoticeText(side: number, sec: number): string {
+  if (side <= 1) return `${sec} 秒后只剩正中 1 格 · 快进去！`
+  return `安全圈 ${sec} 秒后缩到 ${side}×${side} · 往中间走`
 }
 
 /** 闭区间正方形安全圈：X、Y ∈ [Min, Max] 为圈内。 */
@@ -26,7 +42,15 @@ export function outsideRing(cell: BomberCell, ring: RingRect): boolean {
   return cell.X < ring.Min || cell.X > ring.Max || cell.Y < ring.Min || cell.Y > ring.Max
 }
 
-export function circleHud(snap: WorldSnapshot, localId: U64, renderTick: number, resourcePermille: number): CircleHud {
+/** @param rules 给了才算 `poisonText`（毒强度按段）。 */
+export function circleHud(
+  snap: WorldSnapshot,
+  localId: U64,
+  renderTick: number,
+  resourcePermille: number,
+  rules?: CircleRules,
+  pointsPerHeart = 2,
+): CircleHud {
   const phase = snap.BomberMatchState.Phase
   const fc = phase === MatchPhase.Endgame ? snap.match.finalCircle : null
   const me = snap.Players.find((p) => p.NetEntityIdRaw === localId)
@@ -53,6 +77,7 @@ export function circleHud(snap: WorldSnapshot, localId: U64, renderTick: number,
     thresholdPct: Math.round(resourcePermille / 10),
     outside,
     localEliminated,
+    poisonText: fc && rules ? poisonWarnText(poisonPointsAt(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
   }
 }
 

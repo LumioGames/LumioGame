@@ -1,6 +1,7 @@
 import { CanvasTexture, ClampToEdgeWrapping, LinearMipmapLinearFilter, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
 import { BlockType } from '../contract'
 import { hexCss } from './palette'
+import { RING_TEX } from './logic/doll-fit'
 import { mulberry32 } from './logic/rand'
 
 /** 程序化贴图（CanvasTexture），不读任何资源文件。 */
@@ -37,11 +38,12 @@ export function radialTexture(): Texture {
 
 /** 实心抗锯齿圆环（脚圈 / 危险地圈）。 */
 export function ringTexture(): Texture {
-  const { c, g } = canvas(256, 256)
+  // 尺寸与 logic/doll-fit 的 RING_TEX 同源：脚圈外沿直径靠它反推。
+  const { c, g } = canvas(RING_TEX.half * 2, RING_TEX.half * 2)
   g.strokeStyle = '#fff'
-  g.lineWidth = 22
+  g.lineWidth = RING_TEX.width
   g.beginPath()
-  g.arc(128, 128, 112, 0, Math.PI * 2)
+  g.arc(RING_TEX.half, RING_TEX.half, RING_TEX.radius, 0, Math.PI * 2)
   g.stroke()
   return tex(c)
 }

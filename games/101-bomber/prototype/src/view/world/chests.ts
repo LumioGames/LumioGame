@@ -38,7 +38,8 @@ const SHAKE_MS = 450
 const LID_OPEN_MS = 280
 const OPEN_HOLD_MS = 900
 const OPEN_SHRINK_MS = 320
-const POOL = 4
+/** 同时在场的宝箱上限：决赛圈 5 段落箱（ADR 0031，1×1 不落）+ 余量；skills-fx.test 对 ringStages 守护。 */
+export const CHEST_POOL = 6
 
 export interface ChestDiff {
   spawned: { id: number; x: number; z: number }[]
@@ -55,7 +56,7 @@ export class ChestLayer {
   constructor(parent: Object3D) {
     const body = chestBodyGeometry()
     const lidGeo = chestLidGeometry()
-    for (let i = 0; i < POOL; i++) {
+    for (let i = 0; i < CHEST_POOL; i++) {
       const mat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.34, metalness: 0.38, emissive: this.flash, emissiveIntensity: 0 })
       const root = new Group()
       const bodyMesh = new Mesh(body, mat)

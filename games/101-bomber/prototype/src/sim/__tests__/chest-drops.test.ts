@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BlockType, PickupKind, 方向 } from '../../contract'
+import { BlockType, candyPool, PickupKind, 方向 } from '../../contract'
 import { createPickup } from '../pickup'
 import type { SimChest, World } from '../world'
 import { addBomb, BOMB, cell, evs, makeWorld, mv, player, put, run, setBrick, step } from './helpers'
@@ -41,10 +41,13 @@ describe('strong chest', () => {
     expect(opened[0]).toMatchObject({ ChestNetEntityIdRaw: chest.id, Cell: { X: 9, Y: 5 }, OpenerNetEntityIdRaw: hits[2].SourceBombOwnerNetEntityIdRaw })
     expect(f.snapshot.Chests).toHaveLength(0)
     const loot = evs(f, 'PickupSpawned').filter((p) => p.Source === 'chest')
-    expect(loot.map((p) => p.Kind)).toEqual([PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack])
+    // 四样强化之后再喷一颗技能糖（原型扩展 ADR 0030 / D14：chestSkillCandies = 1）。
+    expect(loot.map((p) => p.Kind)).toEqual([PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack, PickupKind.SkillCandy])
+    expect(candyPool(w.rules.skills)).toContain(loot[4].Skill)
+    expect(loot[4].SkillLevel).toBe(w.rules.skillCandyLevel)
     expect(loot[0].Cell).toEqual({ X: 9, Y: 5 })
     expect(loot.every((p) => p.DroppedByNetEntityIdRaw === 0 && p.FromCell.X === 9 && p.FromCell.Y === 5)).toBe(true)
-    expect(new Set(loot.map((p) => `${p.Cell.X},${p.Cell.Y}`)).size).toBe(4)
+    expect(new Set(loot.map((p) => `${p.Cell.X},${p.Cell.Y}`)).size).toBe(5)
     for (const p of loot) expect(Math.abs(p.Cell.X - 9) + Math.abs(p.Cell.Y - 5)).toBeLessThanOrEqual(2)
     // 宝箱不出帽子。
     expect(evs(f, 'HatPileSpawned')).toHaveLength(0)

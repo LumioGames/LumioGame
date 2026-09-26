@@ -11,7 +11,7 @@ import {
 } from '../contract'
 import type { FeedSample } from '../present/feed'
 import { cellCenter } from '../shared/grid'
-import { CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localIsWinner } from './cues'
+import { CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localIsWinner, SkillCueWatch } from './cues'
 import { chainDelaySec, RateLimiter, spatialize } from './mixing'
 import { musicMode, MusicSequencer } from './music'
 import * as sfx from './sounds'
@@ -26,6 +26,8 @@ export interface AudioSystem {
   setMusicEnabled(on: boolean): void
   /** 每帧调用：按 sample.dueEvents 播音效，按 renderTick 驱动持续音（引信、心跳）。 */
   update(sample: FeedSample, localPlayerId: U64): void
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：选角界面的换卡 / 确认音（在 unlock 之后才响）。 */
+  ui(kind: 'select' | 'confirm'): void
   dispose(): void
 }
 
@@ -53,6 +55,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
   const rules = opts.rules ?? DEFAULT_RULES
   const crown = new CrownWatch(rules.hatKingPillarMinHats)
   const hatGain = new HatGainWatch()
+  const skillCue = new SkillCueWatch()
   const seq = new MusicSequencer()
   let crownSnap: WorldSnapshot | null = null
   let stallTick = -1
@@ -126,7 +129,11 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         if (v === me) {
           if (c.poison) sfx.poisonBuzz(s, here(0.9, c.delay))
           else sfx.hurt(s, here(1, c.delay))
-        } else if (p && !c.poison) sfx.hurt(s, at(p.x, p.z, 0.45, c.delay))
+          if (c.burn) sfx.sizzle(s, here(0.8, c.delay))
+        } else if (p && !c.poison) {
+          sfx.hurt(s, at(p.x, p.z, 0.45, c.delay))
+          if (c.burn) sfx.sizzle(s, at(p.x, p.z, 0.4, c.delay))
+        }
       }
       lastHit.set(v, cues.reduce((m, c) => Math.max(m, c.delay), 0))
     }
@@ -166,7 +173,9 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           hatGain.noteEvent()
           if (e.PickerNetEntityIdRaw === me) {
             if (e.Kind === PickupKind.HealthPack) sfx.healthPack(s, here(0.9))
-            else sfx.candy(s, here(0.9))
+            // 技能糖的声音由 SkillGained / SkillEvolved 负责；没有这些事件时给一声普通糖。
+            else if (e.Kind !== PickupKind.SkillCandy || !sample.dueEvents.some((x) => x.type === 'SkillGained' || x.type === 'SkillEvolved'))
+              sfx.candy(s, here(0.9))
             // 帽子 = 强化数（ADR 0028）：吃到强化，帽子落上帽塔「啵」一声。
             if (isPowerup(e.Kind)) hatPop(1)
           }
@@ -193,8 +202,44 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         case 'RingShrinkAnnounced':
           sfx.ringWarn(s, t0)
           break
+        // ---- 第 4 轮技能（原型扩展 NON-CONTRACT，ADR 0030）----
+        case 'SkillActivated': {
+          skillCue.noteEvent()
+          const place = e.PlayerNetEntityIdRaw === me ? here(0.9) : cellAt(e.Cell.X, e.Cell.Y, 0.7)
+          if (e.Skill === 'bubble' || e.Skill === 'bounceBubble') sfx.skillBubble(s, place)
+          else if (e.Skill === 'blink') sfx.skillBlink(s, place)
+          else if (e.Skill === 'fireAura') sfx.skillIgnite(s, place)
+          else if (e.Skill === 'fireDash') {
+            sfx.skillBlink(s, place)
+            sfx.skillIgnite(s, { ...place, at: place.at + 0.08 })
+          }
+          break
+        }
+        case 'SkillFailed':
+          if (e.PlayerNetEntityIdRaw === me) sfx.skillDenied(s, here(0.7))
+          break
+        case 'SkillGained':
+          if (e.PlayerNetEntityIdRaw === me) sfx.skillGain(s, here(0.9), e.How === 'levelUp')
+          break
+        case 'SkillEvolved': {
+          skillCue.noteEvent()
+          const p = posOf(snap, e.PlayerNetEntityIdRaw)
+          sfx.evolve(s, e.PlayerNetEntityIdRaw === me ? here(1) : p ? at(p.x, p.z, 0.4) : here(0.3))
+          break
+        }
+        case 'PlayerHealed':
+          if (e.NetEntityIdRaw === me) sfx.regenChime(s, here(0.8))
+          break
+        case 'BombKicked':
+          sfx.kick(s, e.KickerNetEntityIdRaw === me ? here(0.9) : cellAt(e.FromCell.X, e.FromCell.Y, 0.8))
+          break
+        case 'PlayerFrozen': {
+          const p = e.VictimNetEntityIdRaw === me ? null : posOf(snap, e.VictimNetEntityIdRaw)
+          sfx.freeze(s, e.VictimNetEntityIdRaw === me ? here(0.9) : p ? at(p.x, p.z, 0.6) : here(0.3))
+          break
+        }
         case 'MatchEnded':
-          // 领奖台开场（design §13）：胜利号角（本人第一更亮）+ 短掌声。
+          // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
           matchEndedTick = e.Tick
           sfx.victoryFanfare(s, t0 + 0.05, localIsWinner(snap, me))
           sfx.applause(s, t0 + APPLAUSE_AFTER_SEC, () => Math.random())
@@ -211,6 +256,10 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       // 没有 PickupTaken 的数据源：本人帽数上涨也「啵」。
       const gained = hatGain.check(snap, me)
       if (gained > 0) hatPop(gained)
+      // 没有技能表现事件的数据源：本人冷却终点变大 / 新出现组合技也响。
+      const sc = skillCue.check(snap, me, rules.skills)
+      if (sc.cast) sfx.skillBlink(s, here(0.6))
+      if (sc.evolved) sfx.evolve(s, here(0.9))
     }
     for (const list of chains.values()) {
       list.sort((a, b) => (a.proto?.IndexInChain ?? 0) - (b.proto?.IndexInChain ?? 0))
@@ -356,6 +405,12 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         return
       }
       run(synth, sample, localPlayerId)
+    },
+    ui(kind: 'select' | 'confirm') {
+      if (!synth || muted) return
+      const at = synth.now() + 0.01
+      if (kind === 'select') sfx.uiSelect(synth, at)
+      else sfx.uiConfirm(synth, at)
     },
     dispose() {
       bus.removeEventListener?.(MUSIC_EVENT, onMusicEvent)

@@ -18,6 +18,7 @@ export class RecapView {
   private readonly bar: HTMLDivElement
   private readonly footLabel: HTMLSpanElement
   private dropsEl: HTMLElement | null = null
+  private skillsEl: HTMLElement | null = null
   private drops: string | null = null
   private hatsLost: number | null = null
   private visible = false
@@ -56,6 +57,11 @@ export class RecapView {
     this.hatsLost = r.hatsLost
     fact('掉落强化', lossLine(r.drops, r.hatsLost))
     this.dropsEl = this.facts.lastElementChild as HTMLElement | null
+    this.skillsEl = null
+    if (r.skillsLost) {
+      fact('掉落技能', r.skillsLost)
+      this.skillsEl = this.facts.lastElementChild as HTMLElement | null
+    }
     this.root.classList.toggle('is-final', r.final)
     setText(this.footLabel, r.final ? '决赛圈出局 · 不再复活' : '重新摆上桌')
     this.sources.textContent = ''
@@ -78,6 +84,16 @@ export class RecapView {
   setDrops(text: string): void {
     this.drops = text
     if (this.dropsEl) setText(this.dropsEl, lossLine(this.drops, this.hatsLost))
+  }
+
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：SkillsDropped 到达 → 「掉落技能」一行（D8）；卡片未显示时由 show() 从 recap 读。 */
+  setSkillsLost(text: string): void {
+    if (!this.visible) return
+    if (!this.skillsEl) {
+      el('dt', '', this.facts).textContent = '掉落技能'
+      this.skillsEl = el('dd', '', this.facts)
+    }
+    setText(this.skillsEl, text)
   }
 
   /** 掉了几个强化（= 几顶帽子）定下来了。 */

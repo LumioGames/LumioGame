@@ -60,6 +60,17 @@ export const ICON = {
       '<rect x="8" y="8" width="8" height="8" rx="1.6" fill="currentColor"/>',
   ),
   water: svg('<path fill="currentColor" d="M12 2.8s6.3 6.9 6.3 11.4a6.3 6.3 0 0 1-12.6 0C5.7 9.7 12 2.8 12 2.8z"/>'),
+  /** 进化横幅（ADR 0030）。 */
+  spark: svg('<path fill="currentColor" d="M12 1.8 14 9l7.2 2-7.2 2-2 7.2-2-7.2-7.2-2L10 9z"/><circle cx="19.5" cy="4.5" r="1.6" fill="currentColor"/>'),
+  /** 专属技能（不掉、不被替换）。 */
+  lock: svg(
+    '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/>' +
+      '<path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="2.2" fill="none"/>',
+  ),
+  /** 换角色（ADR 0030）。 */
+  swap: svg(
+    '<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  ),
 } as const
 
 /** 动物主色（与 view 的玩偶配色一致，Top-10 / 回顾卡的头像色点用）。 */

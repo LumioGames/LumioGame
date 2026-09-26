@@ -1,4 +1,5 @@
 import { BlockType, MATERIALS, PickupKind, type PickupKindName, type SkillId } from '../contract'
+import { canTakeSkill, rollCrateSkill, takeSkillCandy } from './skill-candy'
 import {
   CELL_MILLI,
   HALF_MILLI,
@@ -71,14 +72,22 @@ function rollKind(w: World): PickupKind {
   return PickupKind.FirePlus
 }
 
-/** 本 Tick 写批里的爆炸砖（此时写批里只有爆炸下的单）按材质掉落：积木掷 dropRatePermille，木箱必掉。 */
+/**
+ * 本 Tick 写批里的爆炸砖（此时写批里只有爆炸下的单）按材质掉落：积木掷 dropRatePermille，木箱必掉。
+ * 原型扩展（NON-CONTRACT，ADR 0030）：木箱照旧先在 rng.drop 上掷强化种类（drop 流序列不变），再在 rng.skill 上掷
+ * crateSkillCandyPermille，中了就改掉一颗 skillCandyLevel 级技能糖；积木从不掉技能糖。
+ */
 export function spawnDrops(w: World): void {
   for (const wr of w.batch.values()) {
     const drop = MATERIALS[wr.block].drop
     if (drop === 'none') continue
     if (drop === 'roll' && w.rng.drop.NextInt(0, 1000) >= w.cfg.dropRatePermille) continue
-    const source = wr.block === BlockType.木箱 ? 'crate' : 'brick'
-    createPickup(w, wr.cell, rollKind(w), { source, droppedBy: 0, fromCell: wr.cell })
+    const crate = wr.block === BlockType.木箱
+    const kind = rollKind(w)
+    const origin: PickupOrigin = { source: crate ? 'crate' : 'brick', droppedBy: 0, fromCell: wr.cell }
+    const skill = crate ? rollCrateSkill(w) : null
+    if (skill !== null) createPickup(w, wr.cell, PickupKind.SkillCandy, origin, { skill, level: w.rules.skillCandyLevel })
+    else createPickup(w, wr.cell, kind, origin)
   }
 }
 
@@ -88,9 +97,9 @@ export function liveBombsOf(w: World, id: number): number {
   return n
 }
 
-/** 上限判定在准入里（契约 §2.3）：达上限 → 不下 Effect、物品留地（矩阵 5.3）。 */
-function canTake(w: World, p: SimPlayer, kind: PickupKind): boolean {
-  switch (kind) {
+/** 上限判定在准入里（契约 §2.3）：达上限 → 不下 Effect、物品留地（矩阵 5.3）。技能糖拒收同理（skill-candy.ts）。 */
+function canTake(w: World, p: SimPlayer, it: SimPickup): boolean {
+  switch (it.kind) {
     case PickupKind.FirePlus:
       return p.power < w.rules.powerCap
     case PickupKind.BombPlus:
@@ -100,13 +109,12 @@ function canTake(w: World, p: SimPlayer, kind: PickupKind): boolean {
     case PickupKind.HealthPack:
       return p.health < w.cfg.maxHealthPoints
     case PickupKind.SkillCandy:
-      // W0 桩：技能切片接入 resolveSkillPickup（skill-candy.ts）；在此之前技能糖没人能捡。
-      return false
+      return canTakeSkill(w, p, it)
   }
 }
 
-function applyPickup(w: World, p: SimPlayer, kind: PickupKind): void {
-  switch (kind) {
+function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
+  switch (it.kind) {
     case PickupKind.FirePlus:
       p.power = Math.min(w.rules.powerCap, p.power + 1)
       break
@@ -120,7 +128,7 @@ function applyPickup(w: World, p: SimPlayer, kind: PickupKind): void {
       p.health = Math.min(w.cfg.maxHealthPoints, p.health + w.rules.healthPackPoints)
       break
     case PickupKind.SkillCandy:
-      // W0 桩：技能切片接入 takeSkillCandy。
+      takeSkillCandy(w, p, it)
       break
   }
 }
@@ -147,19 +155,24 @@ export function processPickups(w: World): void {
     const keep: SimPickup[] = []
     for (const it of w.pickups) {
       // 刚在本 Tick 由写批生成的掉落物还压在砖格下，自然没人站在上面。
-      const winner = w.brick[it.cell] === BlockType.Air ? contestWinner(w, it.cell, (p) => canTake(w, p, it.kind)) : undefined
+      const winner = w.brick[it.cell] === BlockType.Air ? contestWinner(w, it.cell, (p) => canTake(w, p, it)) : undefined
       if (!winner) {
         keep.push(it)
         continue
       }
-      applyPickup(w, winner, it.kind)
+      // PickupTaken 先发，技能糖随后的 SkillGained / SkillEvolved 排在它后面。
       emit(w, {
         type: 'PickupTaken',
         PickerNetEntityIdRaw: winner.id,
         Kind: it.kind,
         Tick: t,
-        proto: { PickupNetEntityIdRaw: it.id, Cell: cellOfIdx(w, it.cell) },
+        proto: {
+          PickupNetEntityIdRaw: it.id,
+          Cell: cellOfIdx(w, it.cell),
+          ...(it.skill !== null ? { Skill: it.skill, SkillLevel: it.level } : {}),
+        },
       })
+      applyPickup(w, winner, it)
     }
     w.pickups = keep
   }

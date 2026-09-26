@@ -1,5 +1,6 @@
 import { BlockType, PickupKind, type PickupKindName } from '../contract'
 import { createPickup } from './pickup'
+import { rollSkillCandy } from './skill-candy'
 import { cellOccupied, cellOfIdx, chestAt, emit, type SimBomb, type SimChest, type World } from './world'
 
 /**
@@ -62,7 +63,11 @@ export function hitChest(w: World, chest: SimChest, b: SimBomb): void {
   })
 }
 
-/** VoxelCommit 相：归零的宝箱移除，战利品落在宝箱格与半径 2 内最近的空地上（格不够则余下作废）。 */
+/**
+ * VoxelCommit 相：归零的宝箱移除，战利品落在宝箱格与半径 2 内最近的空地上（格不够则余下作废）。
+ * 原型扩展（NON-CONTRACT，ADR 0030 / D14）：强化之后再喷 chestSkillCandies 颗技能糖（种类掷 rng.skill，skillCandyLevel 级），
+ * 接着用同一张空地表的下一格。
+ */
 export function openChests(w: World): void {
   if (!w.chests.some((c) => c.hitsLeft <= 0)) return
   const opened = w.chests.filter((c) => c.hitsLeft <= 0)
@@ -78,7 +83,13 @@ export function openChests(w: World): void {
     })
     const cells = freeCellsNear(w, chest.cell, 2)
     const loot = w.rules.chestLoot
-    for (let i = 0; i < loot.length && i < cells.length; i++)
-      createPickup(w, cells[i], KIND_BY_NAME[loot[i]], { source: 'chest', droppedBy: 0, fromCell: chest.cell })
+    const origin = { source: 'chest', droppedBy: 0, fromCell: chest.cell } as const
+    let k = 0
+    for (; k < loot.length && k < cells.length; k++) createPickup(w, cells[k], KIND_BY_NAME[loot[k]], origin)
+    for (let j = 0; j < w.rules.chestSkillCandies && k < cells.length; j++) {
+      const skill = rollSkillCandy(w)
+      if (skill === null) break
+      createPickup(w, cells[k++], PickupKind.SkillCandy, origin, { skill, level: w.rules.skillCandyLevel })
+    }
   }
 }

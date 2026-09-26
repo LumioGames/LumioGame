@@ -10,6 +10,17 @@ const CROWN_SVG =
 const HAT_SVG =
   '<svg viewBox="0 0 24 20" aria-hidden="true"><rect x="1" y="15" width="22" height="4" rx="2" fill="#2B2320"/><rect x="5" y="2" width="14" height="14" rx="2.5" fill="#2B2320"/><rect x="5" y="10" width="14" height="3.5" fill="#FFC93C"/></svg>'
 
+/** 原型扩展（NON-CONTRACT，ADR 0030）：进化飘字的星芒、回春飘字的爱心。 */
+const SPARK_SVG =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l2.6 7.2 7.4 2.3-7.4 2.6L12 22.5l-2.6-8.9L2 11l7.4-2.3z" fill="#FFD84D" stroke="#2B2320" stroke-width="1.4" stroke-linejoin="round"/></svg>'
+const HEART_SVG =
+  '<svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 20.5S3 14.9 1.8 9.2C1 5.3 3.6 2 7 2c2.1 0 3.8 1.2 5 3 1.2-1.8 2.9-3 5-3 3.4 0 6 3.3 5.2 7.2C21 14.9 12 20.5 12 20.5z" fill="#FF5A6E" stroke="#2B2320" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+
+/** 飘字种类：吃强化落帽「+1」/ 进化「进化！」/ 回春「+1 心」。 */
+export type FloatKind = 'hat' | 'evolve' | 'heal'
+
+const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: SPARK_SVG, heal: HEART_SVG }
+
 export interface PlayerTagState {
   name: string
   isLocal: boolean
@@ -150,12 +161,15 @@ class ChestBadge {
   }
 }
 
-/** 世界锚定的飘字（吃强化时帽塔上的「+1」）：progress 0 → 1 上浮淡出。 */
+/** 世界锚定的飘字（吃强化时帽塔上的「+1」、进化、回春）：progress 0 → 1 上浮淡出；图标按种类。 */
 class FloatLabel {
   readonly el: HTMLDivElement
   private last = { text: '', o: -1, x: NaN, y: NaN }
 
-  constructor(root: HTMLElement, kind: string) {
+  constructor(
+    root: HTMLElement,
+    private readonly kind: FloatKind,
+  ) {
     this.el = document.createElement('div')
     this.el.className = `bv-float bv-float-${kind}`
     root.appendChild(this.el)
@@ -164,7 +178,7 @@ class FloatLabel {
   update(text: string, x: number, y: number, progress: number, visible: boolean): void {
     const l = this.last
     if (text !== l.text) {
-      this.el.innerHTML = `${HAT_SVG}<span></span>`
+      this.el.innerHTML = `${FLOAT_ICON[this.kind]}<span></span>`
       ;(this.el.lastChild as HTMLElement).textContent = text
       l.text = text
     }
@@ -248,7 +262,7 @@ export class LabelLayer {
   }
 
   /** key 由调用方分配（每条飘字唯一）；kind 决定配色（'hat' 金色）。 */
-  setFloat(key: number, kind: string, text: string, wx: number, wy: number, wz: number, progress: number): void {
+  setFloat(key: number, kind: FloatKind, text: string, wx: number, wy: number, wz: number, progress: number): void {
     let f = this.floats.get(key)
     if (!f) {
       f = new FloatLabel(this.root, kind)

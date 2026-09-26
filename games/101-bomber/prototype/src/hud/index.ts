@@ -1,13 +1,26 @@
 import './hud.css'
-import { MatchPhase, type BomberConfig, type PlayerView, type ProtoRules, type U64, type WorldSnapshot } from '../contract'
+import {
+  MatchPhase,
+  PickupKind,
+  type BomberConfig,
+  type BotDifficulty,
+  type CharacterId,
+  type PlayerView,
+  type ProtoRules,
+  type U64,
+  type WorldSnapshot,
+} from '../contract'
 import type { FeedSample } from '../present/feed'
 import type { PresentationSettings } from '../present/settings'
+import { skillButtonView, skillHudModel, type SkillButtonView } from '../present/skill-hud'
+import { skillCss } from '../present/skill-style'
 import type { ScreenPoint } from '../view'
+import type { Portraits } from './character-select'
 import { ElimOverlay, KillFeedView, PoisonWarn, ResourceMeter, RuleCard } from './circle-views'
 import { el, iconEl, roundButton, setIcon, setStyle, setText } from './dom'
 import { edgeArrowPlacement, interpolatedPlayerPos } from './edge-arrow'
 import { circleHud, circleSubtitle } from './final-circle'
-import { formatClock, heartFills, heartsLabel, speedLevel } from './format'
+import { formatClock, heartFills, heartsLabel, speedLevel, uiScale } from './format'
 import { BannerQueue, HintPill, HitHint, PickupFlash, PopupStack } from './fx-layers'
 import { HeartTrack } from './hit-stagger'
 import { HudBrain, type DeathRecap, type HudMoment, type SettlementResults } from './hud-brain'
@@ -18,6 +31,8 @@ import { PodiumView } from './podium-view'
 import { rankPlayers } from './ranking'
 import { RecapView } from './recap-view'
 import { ResultsView } from './results-view'
+import { characterLine, selectCards } from './select-model'
+import { RegenRing, SkillBar } from './skill-bar'
 import { HudTimeline } from './timeline'
 import { localTipStore, ruleCardLines, TipProgress } from './tips'
 
@@ -32,6 +47,8 @@ export interface HudCallbacks {
    * audio 模块自己监听同名事件（hud 与 audio 互不 import）。
    */
   onToggleMusic?(on: boolean): void
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：「换角色」确认（下一局生效）；没接时不显示换角色按钮。 */
+  onChangeCharacter?(id: CharacterId): void
 }
 
 /** 音乐开关的跨模块信号：`CustomEvent<{ on: boolean }>`，派发在 globalThis（浏览器里是 window）上。 */
@@ -46,6 +63,14 @@ export interface HudOptions {
   /** 由 view 提供的投影，用于屏幕边缘帽王箭头。 */
   project(x: number, y: number, z: number): ScreenPoint
   callbacks: HudCallbacks
+  /** 选角卡的玩偶头像（app 从 view 拿到后传进来；HUD 不 import view）。 */
+  portraits?: Promise<Portraits> | Portraits
+  /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：本局 Bot 难度（暂停卡显示）。 */
+  ai?: BotDifficulty
+  /** 触屏控件是否在显示（技能条提示「副按钮」而不是 Shift）。 */
+  isTouch?(): boolean
+  /** 开局选的角色（快照还没带角色时——首局开局倒数——换角色卡用它当当前选中）。 */
+  character?: CharacterId
 }
 
 export interface Hud {
@@ -54,6 +79,8 @@ export interface Hud {
   setMuted(muted: boolean): void
   /** 外部（app）改了音乐开关时同步按钮图标。 */
   setMusic(on: boolean): void
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：触屏技能按钮该显示什么（主动槽为空时 null）。每帧 update 之后读。 */
+  skillButton(): SkillButtonView | null
   dispose(): void
 }
 
@@ -99,7 +126,7 @@ export function createHud(opts: HudOptions): Hud {
   const logo = el('div', 'hud-logo', layer)
   el('div', 'logo-title', logo).textContent = '帽王乱斗'
   el('div', 'logo-en', logo).textContent = 'VOXEL BOMBER · 101'
-  el('div', 'logo-sub', logo).textContent = '原型 · 规则按策划稿 Stage 0–2 + 决赛圈'
+  el('div', 'logo-sub', logo).textContent = '原型 · 角色技能 + 决赛圈缩到 1 格'
 
   // ---- 顶部中央：计分板 + 提示 ----
   const top = el('div', 'hud-top', layer)
@@ -121,6 +148,7 @@ export function createHud(opts: HudOptions): Hud {
   const hint = new HintPill(top, tips)
   const banners = new BannerQueue(layer)
   const ruleCard = new RuleCard(layer, ruleCardLines(rules.finalCircleMs / 1000))
+  const cards = selectCards(rules, config)
 
   // ---- 右上：圆形按钮 ----
   let musicOn = loadMusicOn()
@@ -147,8 +175,9 @@ export function createHud(opts: HudOptions): Hud {
   const leaderboard = new LeaderboardView(side, () => (coarse?.matches ? 5 : 10))
   const feed = new KillFeedView(side)
 
-  // ---- 底部中央：属性胶囊 ----
-  const stats = el('div', 'hud-stats pill', layer)
+  // ---- 底部中央：属性胶囊 + 技能条（ADR 0030） ----
+  const bottom = el('div', 'hud-bottom', layer)
+  const stats = el('div', 'hud-stats pill', bottom)
   const hearts = el('div', 'st-hearts', stats)
   const heartEls: HTMLSpanElement[] = []
   const heartCount = Math.ceil(config.maxHealthPoints / config.healthPointsPerHeart)
@@ -159,6 +188,7 @@ export function createHud(opts: HudOptions): Hud {
     iconEl('heart', '', fill)
     heartEls.push(fill)
   }
+  const regenRing = new RegenRing(stats, hearts)
   const statItem = (icon: 'flame' | 'bomb' | 'speed' | 'hat', label: string, cls: string): HTMLSpanElement => {
     el('span', 'st-sep', stats)
     const item = el('span', `st-item ${cls}`, stats)
@@ -170,6 +200,8 @@ export function createHud(opts: HudOptions): Hud {
   const bombVal = statItem('bomb', '炸弹', 'is-bomb')
   const speedVal = statItem('speed', '速度', 'is-speed')
   const hatVal = statItem('hat', '帽', 'is-hat')
+  const skillBar = new SkillBar(bottom)
+  let lastButton: SkillButtonView | null = null
   const flash = new PickupFlash(layer)
   const hitHint = new HitHint(layer)
 
@@ -187,8 +219,31 @@ export function createHud(opts: HudOptions): Hud {
   const recap = new RecapView(layer, config.respawnMs / 1000)
   const elim = new ElimOverlay(layer)
   const podium = new PodiumView(layer)
-  const results = new ResultsView(layer, Math.max(1, (rules.settlementMs - rules.podiumMs) / 1000))
-  const overlays = new Overlays(layer, settings, callbacks)
+  // 换角色（下一局生效）：记下最近选定的角色（开局所选或换过的），换角色卡再打开时选中它。
+  let pendingCharacter: CharacterId | null = opts.character ?? null
+  let lastNow = 0
+  const hudCallbacks: HudCallbacks = callbacks.onChangeCharacter
+    ? {
+        ...callbacks,
+        onChangeCharacter: (id) => {
+          pendingCharacter = id
+          callbacks.onChangeCharacter?.(id)
+        },
+      }
+    : callbacks
+  const results = new ResultsView(
+    layer,
+    Math.max(1, (rules.settlementMs - rules.podiumMs) / 1000),
+    callbacks.onChangeCharacter ? () => overlays.open('character') : undefined,
+  )
+  const overlays = new Overlays(layer, settings, hudCallbacks, {
+    rules,
+    config,
+    ...(opts.ai ? { ai: opts.ai } : {}),
+    ...(opts.portraits ? { portraits: opts.portraits } : {}),
+    currentCharacter: () => pendingCharacter ?? (shownSnap ? (findMe(shownSnap)?.skills?.character ?? null) : null),
+    notice: (text) => hint.showNotice(text, lastNow),
+  })
 
   // ---- 尺寸：--u 缩放 + 缓存视口尺寸（每帧读 clientWidth 会强制回流） ----
   let vw = root.clientWidth || globalThis.innerWidth || 1280
@@ -196,13 +251,12 @@ export function createHud(opts: HudOptions): Hud {
   const onResize = (): void => {
     vw = root.clientWidth || globalThis.innerWidth || vw
     vh = root.clientHeight || globalThis.innerHeight || vh
-    const u = Math.max(0.75, Math.min(1.25, Math.min(vw / 1280, vh / 720)))
-    root.style.setProperty('--u', u.toFixed(3))
+    root.style.setProperty('--u', uiScale(vw, vh).toFixed(3))
   }
   onResize()
   globalThis.addEventListener?.('resize', onResize)
 
-  const brain = new HudBrain({ localId: me, pillarMinHats: rules.hatKingPillarMinHats, tickRateHz: rate, pointsPerHeart: config.healthPointsPerHeart })
+  const brain = new HudBrain({ localId: me, pillarMinHats: rules.hatKingPillarMinHats, tickRateHz: rate, pointsPerHeart: config.healthPointsPerHeart, rules })
   const timeline = new HudTimeline()
   const heartTrack = new HeartTrack()
   /** 按连锁节奏延后执行的表现（逐颗红晕、死亡回顾）。 */
@@ -211,6 +265,8 @@ export function createHud(opts: HudOptions): Hud {
   let shownSnap: WorldSnapshot | null = null
   let pendingRecap: DeathRecap | null = null
   let settle: SettlementResults | null = null
+  /** 本局规则卡上的「你是谁」已写过的角色（每局只写一次）。 */
+  let cardCharacter: CharacterId | null | undefined
   const findMe = (s: WorldSnapshot): PlayerView | undefined => s.Players.find((p) => p.NetEntityIdRaw === me)
   const colorOf = (id: number): { animal: string; slot: number } | null => {
     const p = shownSnap?.Players.find((q) => q.NetEntityIdRaw === id)
@@ -232,7 +288,14 @@ export function createHud(opts: HudOptions): Hud {
         hint.showNotice(m.text, now)
         break
       case 'pickup':
-        flash.show(m.text, m.pickupKind, now)
+        flash.show(m.text, m.pickupKind, now, m.skill ? skillCss(m.skill) : undefined)
+        break
+      case 'heal':
+        flash.show(`回春 +${m.points / config.healthPointsPerHeart} 心`, PickupKind.HealthPack, now, skillCss('regen'))
+        break
+      case 'skills-lost':
+        if (pendingRecap) pendingRecap.skillsLost = m.text
+        recap.setSkillsLost(m.text)
         break
       case 'hits':
         heartTrack.schedule(now, m.hpBefore, m.hits)
@@ -276,6 +339,7 @@ export function createHud(opts: HudOptions): Hud {
         later = []
         pendingRecap = null
         settle = null
+        cardCharacter = undefined
         break
       case 'settlement':
         recap.hide()
@@ -300,13 +364,13 @@ export function createHud(opts: HudOptions): Hud {
     const live = sample.curr
     const phase = live.BomberMatchState.Phase
     const remaining = (live.match.phaseEndTick - sample.renderTick) / rate
-    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille)
+    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille, rules, config.healthPointsPerHeart)
     let t: string
-    let s = '帽子最多者赢'
+    let s = '活到最后者赢'
     let mode = ''
     if (phase === MatchPhase.Warmup) {
       t = String(Math.max(1, Math.ceil(remaining)))
-      s = '准备开局 · 帽子最多者赢'
+      s = '准备开局 · 活到最后者赢'
       mode = 'warmup'
     } else if (phase === MatchPhase.Settlement) {
       t = '结算'
@@ -329,13 +393,27 @@ export function createHud(opts: HudOptions): Hud {
     setText(kingHats, king ? String(king.BomberPlayerState.HatCount) : '–')
     kingSide.classList.toggle('is-me', kingId === me)
     ruleCard.setVisible(phase === MatchPhase.Warmup)
-    poison.update(circle.outside, sample.realNow, settings.fullscreenFx)
+    const character = mine?.skills?.character ?? null
+    if (character !== cardCharacter) {
+      cardCharacter = character
+      const card = character ? cards.find((c) => c.id === character) : undefined
+      ruleCard.setCharacter(card ? characterLine(card) : '')
+    }
+    leaderboard.setTitle(circle.finalCircle ? '决赛圈 · 存活优先' : '帽子榜')
+    poison.update(circle.outside, sample.realNow, settings.fullscreenFx, circle.poisonText ?? undefined)
+    bottom.classList.toggle('is-out', circle.localEliminated)
     stats.classList.toggle('is-out', circle.localEliminated)
     if (elim.isVisible()) elim.update(remaining)
   }
 
-  const updateStats = (snap: WorldSnapshot, now: number): void => {
+  const updateStats = (sample: FeedSample, snap: WorldSnapshot, now: number): void => {
     const p = findMe(snap)
+    // 技能条读最新快照（冷却环按 renderTick 平滑走），不等 HUD 时间线。
+    const liveMe = findMe(sample.curr) ?? p
+    const m = skillHudModel(liveMe, sample.renderTick, rate, rules, config, opts.isTouch?.() ?? coarse?.matches ?? false)
+    skillBar.update(m)
+    regenRing.update(m.regen)
+    lastButton = skillButtonView(m)
     if (!p) return
     const a = p.玩家属性
     const hp = Math.max(0, heartTrack.displayed(now, a.血量当前))
@@ -387,7 +465,7 @@ export function createHud(opts: HudOptions): Hud {
       podium.hide()
       results.hide()
     } else if (settlementScene(sample.renderTick, settle.endTick, rules.podiumMs, rate) === 'podium') {
-      if (!podium.isVisible()) podium.show(podiumModel(settle.rows))
+      if (!podium.isVisible()) podium.show(podiumModel(settle.rows, settle.reason))
     } else {
       podium.hide()
       if (!results.isVisible()) results.show(settle, rate)
@@ -405,6 +483,7 @@ export function createHud(opts: HudOptions): Hud {
   return {
     update(sample: FeedSample): void {
       const now = sample.realNow
+      lastNow = now
       for (const batch of timeline.advance(sample.curr, sample.renderTick, sample.dueEvents)) {
         for (const m of brain.consume(batch)) apply(m, now)
       }
@@ -417,7 +496,7 @@ export function createHud(opts: HudOptions): Hud {
         leaderboard.update(rankPlayers(snap.Players, snap.BomberMatchState.HatKingNetEntityIdRaw, me), out)
       }
       // 逐击扣心期间每帧都要刷新心；其余时候只在快照变化时刷新也一样便宜。
-      updateStats(snap, now)
+      updateStats(sample, snap, now)
       feed.update(brain.killFeed.entries(), brain.killFeed.version, colorOf)
       updateScoreboard(sample, snap)
       updateArrow(sample, snap)
@@ -453,6 +532,9 @@ export function createHud(opts: HudOptions): Hud {
     setMusic(on: boolean): void {
       setMusic(on, false)
       saveMusicOn(on)
+    },
+    skillButton(): SkillButtonView | null {
+      return lastButton
     },
     dispose(): void {
       globalThis.removeEventListener?.('resize', onResize)

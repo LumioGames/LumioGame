@@ -10,7 +10,10 @@ interface BannerItem {
   mine: boolean
 }
 
-/** 全场横幅：只播加冕 / 倒台 / 决赛圈开场（design §3.1、§4.2），排队逐条播放。 */
+/**
+ * 全场横幅：只播加冕 / 倒台 / 决赛圈开场（design §3.1、§4.2），排队逐条播放。
+ * 原型扩展（NON-CONTRACT，ADR 0030）：本人进化「进化：火焰冲刺！」也走横幅（tone 'evolve'，只给本人看）。
+ */
 export class BannerQueue {
   private readonly root: HTMLDivElement
   private readonly title: HTMLDivElement
@@ -21,6 +24,8 @@ export class BannerQueue {
   static readonly DURATION_MS = 1800
   /** 决赛圈开场横幅更久（规则变了，要读完两句）。 */
   static readonly FINAL_DURATION_MS = 2800
+  /** 进化横幅：一句名字 + 配方，比加冕略长。 */
+  static readonly EVOLVE_DURATION_MS = 2200
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'hud-banner', parent)
@@ -45,9 +50,10 @@ export class BannerQueue {
       this.root.classList.remove('is-on')
       return
     }
-    this.until = now + (next.tone === 'final' ? BannerQueue.FINAL_DURATION_MS : BannerQueue.DURATION_MS)
+    this.until =
+      now + (next.tone === 'final' ? BannerQueue.FINAL_DURATION_MS : next.tone === 'evolve' ? BannerQueue.EVOLVE_DURATION_MS : BannerQueue.DURATION_MS)
     this.root.dataset.tone = next.tone
-    setIcon(this.icon, next.tone === 'final' ? 'ring' : 'crown')
+    setIcon(this.icon, next.tone === 'final' ? 'ring' : next.tone === 'evolve' ? 'spark' : 'crown')
     this.root.classList.toggle('is-mine', next.mine)
     setText(this.title, next.title)
     setText(this.sub, next.sub)
@@ -111,7 +117,7 @@ export class PopupStack {
   }
 }
 
-/** 属性胶囊旁的「+1 火力」闪字。 */
+/** 属性胶囊旁的「+1 火力」闪字；技能糖（「获得 闪现 Lv1」）按技能色描字（ADR 0030）。 */
 export class PickupFlash {
   private readonly node: HTMLDivElement
   private until = 0
@@ -120,9 +126,11 @@ export class PickupFlash {
     this.node = el('div', 'hud-flash', parent)
   }
 
-  show(text: string, kind: PickupKind, now: number): void {
+  show(text: string, kind: PickupKind, now: number, color?: string): void {
     setText(this.node, text)
     this.node.dataset.kind = String(kind)
+    if (color) this.node.style.setProperty('--flash', color)
+    else this.node.style.removeProperty('--flash')
     this.until = now + 1000
     restartAnimation(this.node, 'is-on')
   }

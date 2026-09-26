@@ -1,9 +1,25 @@
-import { BlockType, PickupKind, type BomberConfig, type PlayerView, type ProtoRules, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import {
+  BlockType,
+  BombKind,
+  msToTicks,
+  PickupKind,
+  type BomberConfig,
+  type BotTactics,
+  type PickupView,
+  type PlayerView,
+  type ProtoRules,
+  type RingRect,
+  type U64,
+  type WorldSnapshot,
+} from '../contract'
 import { cellOf, FOUR_DIRS, DIR_VEC, idx, inBounds } from '../shared/grid'
+import { blinkScan } from '../shared/skill-geometry'
+import { resolveSkillPickup, type SkillPickupOutcome } from '../shared/skill-rules'
 import type { BotRng } from './bot-rng'
-import { isOpen, isWater, ticksPerCell, type Board } from './board'
-import { isSafe, poisonFreeAfter, restsAt, traceBlast, NEVER, type DangerMap } from './danger-map'
+import { gridProbe, isOpen, isWater, ticksPerCell, type Board } from './board'
+import { conflicts, isSafe, poisonFreeAfter, restsAt, traceBlast, NEVER, type DangerMap } from './danger-map'
 import { exitTicks, searchPaths, type PathField } from './path-search'
+import { activeReady, durationTicks, isBlinkSkill, isBubbleSkill, ownBombKind, paramsOf, readSkills, slotsOf, type SkillSnapshot } from './skill-state'
 
 /** 一次思考的只读上下文。 */
 export interface ThinkContext {
@@ -28,6 +44,22 @@ export interface ThinkContext {
   fireSlack?: number | null
   /** 放宽毒圈门槛（允许穿毒）时，路线在毒圈里最多能待的 Tick（按当前血量算，不能走到毒死）。缺省不限。 */
   poisonBudget?: number
+  /**
+   * 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：放宽毒圈的那一档（允许经毒圈到达）。
+   * 取代旧的「restHorizon < STRICT_REST」隐式判断——摊牌期的晚进圈只放宽「待多久」，不放宽「穿毒」。
+   */
+  relaxedPoison?: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：自己的技能状态（快照读出；无技能 = 全空）。 */
+  skills: SkillSnapshot
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：泡泡护体到的 Tick（不含）；−1 = 无。 */
+  immuneUntil: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：自己炸弹的穿透层数。 */
+  pierce: number
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：决赛圈摊牌期（安全圈边长 ≤ showdownRingSide）。 */
+  showdown: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：当前（含已预告段）圈外每跳毒伤的半心点。 */
+  poisonRate: number
+  tactics: BotTactics
 }
 
 export interface Goal {
@@ -53,20 +85,26 @@ export function isRestCell(ctx: ThinkContext, c: number): boolean {
     calmEnough(ctx, c) &&
     !isWater(ctx.board, c) &&
     poisonFreeAfter(ctx.dm, c, ctx.restHorizon) &&
-    (ctx.field.viaPoison[c] === 0 || (ctx.restHorizon < STRICT_REST && ctx.field.poisonTicks[c] <= (ctx.poisonBudget ?? Infinity)))
+    ctx.dm.burn[c] <= Math.max(ctx.field.enter[c], ctx.immuneUntil) &&
+    (ctx.field.viaPoison[c] === 0 || (ctx.relaxedPoison === true && ctx.field.poisonTicks[c] <= (ctx.poisonBudget ?? Infinity)))
   )
 }
 
 function calmEnough(ctx: ThinkContext, c: number): boolean {
   if (isSafe(ctx.dm, c)) return true
+  // 泡泡护体：危险在护体结束前（留 2 Tick）烧完的格子照样能待。
+  if (ctx.immuneUntil >= 0 && ctx.dm.until[c] + 2 <= ctx.immuneUntil) return true
   const slack = ctx.fireSlack
   if (slack === null || slack === undefined) return false
   return restsAt(ctx.dm, c, ctx.field.enter[c]) || ctx.dm.from[c] > ctx.field.enterLate[c] + slack
 }
 
-/** 从 field 的起点出发，c 是否可达且到达后不再着火（不论水陆、不看毒圈）。 */
-export function reachesRest(field: PathField, dm: DangerMap, c: number): boolean {
-  return field.steps[c] >= 0 && restsAt(dm, c, field.enter[c])
+/**
+ * 从 field 的起点出发，c 是否可达且到达后不再着火（不论水陆、不看毒圈）。
+ * `immuneUntil` ≥ 0（泡泡护体）时按「到达时刻与护体结束取晚者」判。
+ */
+export function reachesRest(field: PathField, dm: DangerMap, c: number, immuneUntil = -1): boolean {
+  return field.steps[c] >= 0 && restsAt(dm, c, Math.max(field.enter[c], immuneUntil))
 }
 
 /** 活着、没出局的对手。 */
@@ -74,9 +112,10 @@ export function isActiveEnemy(ctx: ThinkContext, p: PlayerView): boolean {
   return p.NetEntityIdRaw !== ctx.self && p.玩家属性.血量当前 > 0 && !p.eliminated
 }
 
-/** 起爆时仍在重生保护里（炸了也白炸）。 */
+/** 起爆时仍在重生保护里（炸了也白炸）；原型扩展（NON-CONTRACT，ADR 0030）：或仍在泡泡里。 */
 export function protectedAtDetonation(ctx: ThinkContext, p: PlayerView): boolean {
-  return p.BomberPlayerState.ProtectedUntilTick > ctx.board.now + ctx.fuseTicks
+  const t = ctx.board.now + ctx.fuseTicks
+  return p.BomberPlayerState.ProtectedUntilTick > t || (p.skills?.bubbleUntilTick ?? 0) > t
 }
 
 /**
@@ -89,7 +128,7 @@ export function pickEscape(ctx: ThinkContext, landSlack = Infinity): Goal {
   let water = -1
   for (const poisonAware of [true, false]) {
     for (const c of field.reached) {
-      if (c === field.start || !restsAt(dm, c, field.enter[c])) continue
+      if (c === field.start || !restsAt(dm, c, Math.max(field.enter[c], ctx.immuneUntil))) continue
       if (poisonAware && !poisonFreeAfter(dm, c, field.enter[c] + 40)) continue
       if (!isWater(board, c)) return { cell: c, bombOnArrival: false }
       if (water < 0) water = c
@@ -121,45 +160,73 @@ export function pickEscape(ctx: ThinkContext, landSlack = Infinity): Goal {
 
 /** 强化（火力 / 炸弹 / 速度）既是实力也是帽子（ADR 0028：帽数 = 强化数），比血包多追这么多步。 */
 const POWERUP_BONUS = 2
+/** 残血找血包多追的步数。 */
+const HEAL_BONUS = 8
+/** 技能糖打分的额外优先（步）：进化 / 升级 / 装备。 */
+const CANDY_SCORE: Readonly<Record<'evolve' | 'levelUp' | 'equip', number>> = { evolve: 4, levelUp: 2, equip: 1 }
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0030）：这颗技能糖对自己是什么结果（shared/skill-rules 同一口径）；
+ * null = 不值得捡（拒收、没带技能信息，或 freezeBombDamages 关掉时会把炸弹换成不扣血的冰冻弹）。
+ */
+export function candyOutcome(ctx: Pick<ThinkContext, 'rules' | 'me'>, p: PickupView): Exclude<SkillPickupOutcome, { kind: 'reject' }> | null {
+  if (!p.skill) return null
+  const o = resolveSkillPickup(ctx.rules, slotsOf(ctx.me), { skill: p.skill.id, level: p.skill.level })
+  if (o.kind === 'reject') return null
+  if (!ctx.rules.freezeBombDamages && o.slot === 'bomb') {
+    const id = o.kind === 'evolve' ? o.combo : p.skill.id
+    const now = ownBombKind(ctx.rules, readSkills(ctx.me))
+    if ((ctx.rules.skills[id].bombKind ?? BombKind.Standard) === BombKind.Freeze && now !== BombKind.Freeze) return null
+  }
+  return o
+}
 
 /**
  * 糖果：只捡没到上限的（到上限规则层不让捡，跑过去白费）。强化糖多追 POWERUP_BONUS 步；死者掉出的强化
  * （droppedBy ≠ 0）是别人抢的对象，追的距离再多 droppedBonus 步、同距离时优先；`fresh` 里的（刚掉出来的）再优先一点。
  * `droppedOnly` 只看死者掉落（给「火来之前抢了就走」用）。
+ * 原型扩展（NON-CONTRACT，ADR 0030 / 0031）：技能糖按 {@link candyOutcome} 估值（进化 > 升级 > 装备）；
+ * 决赛圈里任何掉血都值得去找血包（healReachSteps）。
  */
 export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8, fresh?: ReadonlySet<U64>, droppedOnly = false): Goal | null {
   const a = ctx.me.玩家属性
   let ownLive = 0
   for (const b of ctx.board.pending) if (b.owner === ctx.self) ownLive++
-  const useful = (k: PickupKind): boolean => {
-    switch (k) {
+  const inCircle = ctx.board.finalCircle !== null
+  /** −1 = 不值得；否则 [多追的步数, 打分优先]。 */
+  const value = (p: PickupView): [number, number] | null => {
+    switch (p.BomberPickupItem.Kind) {
       case PickupKind.FirePlus:
-        return a.火力当前 < ctx.rules.powerCap
+        return a.火力当前 < ctx.rules.powerCap ? [POWERUP_BONUS, 1] : null
       case PickupKind.BombPlus:
-        return a.手上炸弹数当前 + ownLive < ctx.rules.capacityCap
+        return a.手上炸弹数当前 + ownLive < ctx.rules.capacityCap ? [POWERUP_BONUS, 1] : null
       case PickupKind.SpeedPlus:
-        return a.移速当前 < ctx.rules.speedCapMilli
-      case PickupKind.HealthPack:
-        return a.血量当前 < ctx.config.maxHealthPoints
-      case PickupKind.SkillCandy:
-        // W0 桩：Bot 切片接入 resolveSkillPickup 判断值不值得捡；在此之前不去捡技能糖。
-        return false
+        return a.移速当前 < ctx.rules.speedCapMilli ? [POWERUP_BONUS, 1] : null
+      case PickupKind.HealthPack: {
+        if (a.血量当前 >= ctx.config.maxHealthPoints) return null
+        if (inCircle) return [ctx.tactics.healReachSteps, 0]
+        return [a.血量当前 <= ctx.rules.bombDamagePoints ? HEAL_BONUS : 0, 0]
+      }
+      case PickupKind.SkillCandy: {
+        const o = candyOutcome(ctx, p)
+        return o ? [ctx.tactics.candyBonusSteps[o.kind], CANDY_SCORE[o.kind]] : null
+      }
     }
   }
   let best: Goal | null = null
   let bestScore = Infinity
   for (const p of ctx.snap.Pickups) {
     const c = cellIndexOf(ctx.board, p.LogicTransform.WorldPosition)
-    if (c < 0 || !isRestCell(ctx, c) || !useful(p.BomberPickupItem.Kind)) continue
+    if (c < 0 || !isRestCell(ctx, c)) continue
+    const v = value(p)
+    if (!v) continue
     const d = ctx.field.steps[c]
-    const powerup = p.BomberPickupItem.Kind !== PickupKind.HealthPack
     const dropped = (p.droppedBy ?? 0) !== 0
     if (droppedOnly && !dropped) continue
     const isFresh = dropped && fresh !== undefined && fresh.has(p.NetEntityIdRaw)
-    const needHeal = !powerup && a.血量当前 <= ctx.rules.bombDamagePoints
-    const reach = maxSteps + (powerup ? POWERUP_BONUS : 0) + (dropped ? droppedBonus : 0) + (needHeal ? 8 : 0)
+    const reach = maxSteps + v[0] + (dropped ? droppedBonus : 0)
     if (d > reach) continue
-    const score = d - (dropped ? 3 : 0) - (isFresh ? 2 : 0) - (powerup ? 1 : 0)
+    const score = d - (dropped ? 3 : 0) - (isFresh ? 2 : 0) - v[1]
     if (score < bestScore) {
       bestScore = score
       best = { cell: c, bombOnArrival: false }
@@ -172,7 +239,7 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
 export function brickValue(ctx: ThinkContext, c: number, power: number): number {
   const size = ctx.board.size
   const X = c % size
-  const bl = traceBlast(ctx.board, X, (c - X) / size, power, { covered: [], bricks: [], chests: [] })
+  const bl = traceBlast(ctx.board, X, (c - X) / size, power, { covered: [], bricks: [], chests: [] }, undefined, ctx.pierce)
   let v = 0
   for (const b of bl.bricks) {
     if (ctx.dm.doomedAt[b] !== NEVER) continue
@@ -209,7 +276,7 @@ const RICH_CAP = 14
  * 起爆时仍受保护的扣分。所有 Bot 都会追帽王与富人（不只 hunter），强化才会流动。
  * `richWeight` 是每顶帽子折合的步数（hunter 人格更高）；帽子加分封顶 RICH_CAP 步。
  */
-export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 1.2): PlayerView | null {
+export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 1.2, weakWeight = 1.5): PlayerView | null {
   const king = ctx.snap.BomberMatchState.HatKingNetEntityIdRaw
   const hereX = ctx.here % ctx.board.size
   const hereY = (ctx.here - hereX) / ctx.board.size
@@ -224,9 +291,12 @@ export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 
     const Y = (c - X) / ctx.board.size
     const steps = ctx.field.steps[c]
     let score = steps >= 0 ? steps : 2 * (Math.abs(X - hereX) + Math.abs(Y - hereY)) + 10
-    if (p.NetEntityIdRaw === king) score -= 10
-    score -= Math.min(RICH_CAP, richWeight * p.BomberPlayerState.HatCount)
-    score -= (maxHp - p.玩家属性.血量当前) * 1.5
+    // 原型扩展（NON-CONTRACT，ADR 0031）：摊牌期只看「谁最容易先倒」——帽子不决定名次先后，最弱的先打。
+    if (!ctx.showdown) {
+      if (p.NetEntityIdRaw === king) score -= 10
+      score -= Math.min(RICH_CAP, richWeight * p.BomberPlayerState.HatCount)
+    }
+    score -= (maxHp - p.玩家属性.血量当前) * weakWeight
     if (protectedAtDetonation(ctx, p)) score += 12
     if (p.NetEntityIdRaw === prefer) score -= 3
     if (score < bestScore) {
@@ -258,7 +328,7 @@ export function huntGoal(ctx: ThinkContext, target: PlayerView, avoid: number): 
     const ty = (t - tx) / size
     if (X !== tx && Y !== ty) continue
     if (Math.abs(X - tx) + Math.abs(Y - ty) > power) continue
-    if (!traceBlast(ctx.board, X, Y, power, { covered: [], bricks: [] }).covered.includes(t)) continue
+    if (!traceBlast(ctx.board, X, Y, power, { covered: [], bricks: [] }, undefined, ctx.pierce).covered.includes(t)) continue
     const score = steps + (c === t ? 1 : 0)
     if (score < bestScore) {
       bestScore = score
@@ -335,7 +405,7 @@ export function enemiesInBlast(ctx: ThinkContext): number {
 export function enemiesInCross(ctx: ThinkContext, c: number): PlayerView[] {
   const size = ctx.board.size
   const X = c % size
-  const bl = traceBlast(ctx.board, X, (c - X) / size, ctx.me.玩家属性.火力当前, { covered: [], bricks: [] })
+  const bl = traceBlast(ctx.board, X, (c - X) / size, ctx.me.玩家属性.火力当前, { covered: [], bricks: [] }, undefined, ctx.pierce)
   const covered = new Set(bl.covered)
   const out: PlayerView[] = []
   for (const p of ctx.snap.Players) {
@@ -364,8 +434,12 @@ export function enemiesNear(ctx: ThinkContext, slack: number): PlayerView[] {
 /**
  * 对手在给定棋盘 / 危险图下是否还逃得掉：按对手的真实移速、零余量、不带慢速估计（往乐观里估对手），
  * 能走到一个到达后不再着火的格子就算逃得掉。给「这颗弹 + 场上已有的弹能不能把他困死」用。
+ * 原型扩展（NON-CONTRACT，ADR 0030 / 0031）：
+ * - 冻住的对手从解冻那一 Tick 起才能走；冻结期内本格就着火 → 逃不掉；
+ * - `poisonAware`：落脚格还得 40 Tick 内不进毒圈（摊牌期换血用；困杀判定不开）；
+ * - 走不掉时，现成的泡泡（本格的火在泡泡结束前烧完）或闪现（落点能待）也算逃得掉。
  */
-export function enemyCanEscape(board: Board, dm: DangerMap, enemy: PlayerView, ctx: ThinkContext): boolean {
+export function enemyCanEscape(board: Board, dm: DangerMap, enemy: PlayerView, ctx: ThinkContext, poisonAware = false): boolean {
   const p = enemy.LogicTransform.WorldPosition
   const cell = cellOf(p.x, p.z)
   if (!inBounds(cell.X, cell.Y, board.size)) return true
@@ -373,7 +447,13 @@ export function enemyCanEscape(board: Board, dm: DangerMap, enemy: PlayerView, c
   const hz = ctx.config.tickRateHz
   const speed = enemy.玩家属性.移速当前
   const wet = isWater(board, start)
-  const f = searchPaths(board, dm, start, board.now, {
+  const sk = readSkills(enemy)
+  let t0 = board.now
+  if (sk.frozenUntil > board.now) {
+    if (conflicts(dm, start, board.now, sk.frozenUntil + 1)) return false
+    t0 = sk.frozenUntil
+  }
+  const f = searchPaths(board, dm, start, t0, {
     tpcLand: ticksPerCell(speed, hz),
     tpcWater: ticksPerCell(speed, hz, ctx.rules.waterSpeedPermille),
     slowPerCell: 0,
@@ -381,9 +461,26 @@ export function enemyCanEscape(board: Board, dm: DangerMap, enemy: PlayerView, c
     allowWater: true,
     startExit: exitTicks(p, cell.X, cell.Y, speed, hz, wet ? ctx.rules.waterSpeedPermille : 1000),
   })
-  for (const c of f.reached) if (restsAt(dm, c, f.enter[c])) return true
+  // 毒圈感知：落脚格 POISON_AWARE_TICKS 内不进毒圈，且路上在圈外待的时长挨不到一跳毒（短暂出圈不掉血，绕一大圈要掉）。
+  const hop = msToTicks(ctx.rules.poisonIntervalMs, hz)
+  for (const c of f.reached)
+    if (restsAt(dm, c, f.enter[c]) && (!poisonAware || (poisonFreeAfter(dm, c, f.enter[c] + POISON_AWARE_TICKS) && f.poisonTicks[c] < hop))) return true
+  if (!activeReady(sk, board.now) || !sk.active) return false
+  if (isBubbleSkill(sk.active.id)) return dm.until[start] + 2 <= board.now + durationTicks(ctx.rules, sk.active, hz)
+  if (isBlinkSkill(sk.active.id)) {
+    const range = paramsOf(ctx.rules, sk.active).rangeCells
+    const probe = gridProbe(board)
+    for (const d of FOUR_DIRS) {
+      const r = blinkScan(probe, start, d, range)
+      if (r && !isWater(board, r.landing) && restsAt(dm, r.landing, board.now + 1) && (!poisonAware || poisonFreeAfter(dm, r.landing, board.now + POISON_AWARE_TICKS)))
+        return true
+    }
+  }
   return false
 }
+
+/** 摊牌期换血：对手的落脚格至少这么多 Tick 内不进毒圈才算逃得掉（同 pickEscape 的 40）。 */
+const POISON_AWARE_TICKS = 40
 
 /** 格到安全圈的格数（圈内 = 0）。 */
 export function ringDistance(r: RingRect, c: number, size: number): number {

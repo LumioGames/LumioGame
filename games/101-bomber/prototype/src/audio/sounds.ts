@@ -199,3 +199,88 @@ export function applause(s: Synth, at: number, jitter: () => number): void {
   s.tone(v, { f0: 1500, f1: 2300, at: at + 0.2, dur: 0.28, peak: 0.08 })
   s.tone(v, { f0: 1700, f1: 2600, at: at + 0.9, dur: 0.3, peak: 0.07 })
 }
+
+// ---- 第 4 轮：角色技能（原型扩展 NON-CONTRACT，ADR 0030；音色为表现取值，推断待验证） ----
+
+/** 吹泡泡：上滑的「啵噜」+ 一点高光。 */
+export function skillBubble(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.5, p.gain, p.pan)
+  s.tone(v, { f0: 300, f1: 900, at: p.at, dur: 0.18, peak: 0.35, attack: 0.01 })
+  s.tone(v, { type: 'triangle', f0: 1400, f1: 1800, at: p.at + 0.14, dur: 0.22, peak: 0.16 })
+}
+
+/** 闪现：一道高频扫过 + 落地轻响。 */
+export function skillBlink(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.35, p.gain, p.pan)
+  s.noiseBurst(v, { filter: 'bandpass', f0: 2500, f1: 7000, at: p.at, dur: 0.14, peak: 0.3, q: 2 })
+  s.tone(v, { type: 'square', f0: 1760, f1: 880, at: p.at, dur: 0.1, peak: 0.08 })
+  s.tone(v, { f0: 520, f1: 420, at: p.at + 0.15, dur: 0.06, peak: 0.3 })
+}
+
+/** 点火：「呼」的低频噪声膨胀。 */
+export function skillIgnite(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.6, p.gain, p.pan)
+  s.noiseBurst(v, { filter: 'lowpass', f0: 400, f1: 2400, at: p.at, dur: 0.5, peak: 0.5, attack: 0.08 })
+  s.tone(v, { f0: 110, f1: 160, at: p.at, dur: 0.35, peak: 0.25, attack: 0.05 })
+}
+
+/** 技能按不出来：两声短促低音。 */
+export function skillDenied(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.2, p.gain, p.pan)
+  s.tone(v, { type: 'square', f0: 220, at: p.at, dur: 0.05, peak: 0.1 })
+  s.tone(v, { type: 'square', f0: 185, at: p.at + 0.08, dur: 0.07, peak: 0.1 })
+}
+
+/** 获得技能 / 升级（升级更高一档）。 */
+export function skillGain(s: Synth, p: Placement, levelUp: boolean): void {
+  const v = s.voice(p.at, 0.5, p.gain, p.pan)
+  const base = levelUp ? 784 : 659.25
+  ;[1, 1.25, 1.5].forEach((k, i) => s.tone(v, { type: 'triangle', f0: base * k, at: p.at + i * 0.07, dur: 0.12, peak: 0.26 }))
+}
+
+/** 进化：上行琶音 + 闪亮和弦。 */
+export function evolve(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 1.4, p.gain, p.pan)
+  ;[523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: p.at + i * 0.06, dur: 0.16, peak: 0.26 }))
+  ;[1046.5, 1318.5, 1568].forEach((f) => s.tone(v, { type: 'sine', f0: f, at: p.at + 0.34, dur: 0.8, peak: 0.12, attack: 0.03 }))
+  s.noiseBurst(v, { filter: 'highpass', f0: 5000, at: p.at + 0.3, dur: 0.4, peak: 0.08 })
+}
+
+/** 回春回血：柔和的两声铃。 */
+export function regenChime(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.7, p.gain, p.pan)
+  s.tone(v, { type: 'sine', f0: 880, at: p.at, dur: 0.3, peak: 0.2, attack: 0.02 })
+  s.tone(v, { type: 'sine', f0: 1174.66, at: p.at + 0.12, dur: 0.45, peak: 0.18, attack: 0.02 })
+}
+
+/** 踢弹：木头「咚」+ 滑出去的摩擦。 */
+export function kick(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.45, p.gain, p.pan)
+  s.tone(v, { f0: 180, f1: 90, at: p.at, dur: 0.1, peak: 0.55, attack: 0.002 })
+  s.noiseBurst(v, { filter: 'bandpass', f0: 900, f1: 500, at: p.at + 0.04, dur: 0.35, peak: 0.12, q: 1.5 })
+}
+
+/** 被冻住：冰裂的高频碎响。 */
+export function freeze(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.5, p.gain, p.pan)
+  s.noiseBurst(v, { filter: 'highpass', f0: 4000, f1: 8000, at: p.at, dur: 0.18, peak: 0.25 })
+  ;[2637, 3136, 2349].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: p.at + 0.03 + i * 0.05, dur: 0.08, peak: 0.12 }))
+}
+
+/** 烧伤：短促的「嘶」。 */
+export function sizzle(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.3, p.gain, p.pan)
+  s.noiseBurst(v, { filter: 'highpass', f0: 3000, f1: 1800, at: p.at, dur: 0.25, peak: 0.22 })
+}
+
+/** 选角换卡。 */
+export function uiSelect(s: Synth, at: number): void {
+  const v = s.voice(at, 0.1, 0.6, 0)
+  s.tone(v, { type: 'triangle', f0: 1046.5, at, dur: 0.05, peak: 0.2 })
+}
+
+/** 选角确认。 */
+export function uiConfirm(s: Synth, at: number): void {
+  const v = s.voice(at, 0.4, 0.7, 0)
+  ;[659.25, 987.77].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: at + i * 0.08, dur: 0.14, peak: 0.26 }))
+}

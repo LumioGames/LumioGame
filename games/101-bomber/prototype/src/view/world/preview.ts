@@ -27,7 +27,7 @@ export class BombPreview {
     scene.add(this.batch.mesh)
   }
 
-  /** blockers：挡火的宝箱格（火焰停在其前）。 */
+  /** blockers：挡火的宝箱格（火焰停在其前）；pierce：本机炸弹槽的穿透层数（原型扩展 NON-CONTRACT，ADR 0030）。 */
   update(
     show: boolean,
     terrain: Pick<TerrainView, 'size' | 'ground' | 'brick'>,
@@ -37,6 +37,7 @@ export class BombPreview {
     now: number,
     dt: number,
     blockers?: ReadonlySet<number>,
+    pierce = 0,
   ): void {
     this.alpha = Math.max(0, Math.min(1, this.alpha + (show ? dt / 0.15 : -dt / 0.15)))
     this.batch.begin()
@@ -44,7 +45,7 @@ export class BombPreview {
       if (show) {
         this.cx = cellX
         this.cy = cellY
-        computeFireCross(terrain, cellX, cellY, power, this.cross, blockers)
+        computeFireCross(terrain, cellX, cellY, power, this.cross, blockers, pierce)
       }
       const c = this.cross
       this.cellAlpha = this.alpha * (0.42 + 0.08 * Math.sin(now * 0.006))

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { edgeArrowPlacement } from '../edge-arrow'
-import { ruleCardLines, TIP_HATS_GOAL, TipId, TipProgress, TIPS, type TipStore } from '../tips'
+import { DEFAULT_RULES } from '../../contract'
+import { helpRuleLines, ruleCardLines, TIP_HATS_GOAL, TipId, TipProgress, TIPS, type TipStore } from '../tips'
 
 function memStore(initial: number[] = []): TipStore & { saved: number[] } {
   const s = {
@@ -39,15 +40,21 @@ describe('TipProgress', () => {
   })
 })
 
-describe('rule card (ADR 0028)', () => {
-  it('says hats = power-ups, death drops half, and the final circle has no respawn', () => {
-    expect(ruleCardLines(90)).toEqual([
-      '吃一个强化糖，头顶多一顶帽子（帽子 = 强化数）',
+describe('rule card (ADR 0028 / 0031)', () => {
+  it('says hats = power-ups (skills do not count), death drops half, and survivors win the 115 s final circle', () => {
+    expect(ruleCardLines(DEFAULT_RULES.finalCircleMs / 1000)).toEqual([
+      '吃一个强化糖，头顶多一顶帽子（帽子 = 强化数，技能不算）',
       '被炸死会掉一半强化，谁捡归谁',
-      '最后 90 秒决赛圈：不能复活，圈外有毒',
+      '决赛圈 115 秒：不能复活、圈外有毒，活到最后者赢',
     ])
-    expect(ruleCardLines(60)[2]).toBe('最后 60 秒决赛圈：不能复活，圈外有毒')
-    for (const l of ruleCardLines()) expect(l).not.toMatch(/击杀|炸倒人都|帽子全掉|散落/)
+    expect(ruleCardLines()[2]).toContain('115')
+    for (const l of ruleCardLines()) expect(l).not.toMatch(/击杀|炸倒人都|帽子全掉|散落|帽子最多者赢|最后 \d+ 秒/)
+  })
+
+  it('help lines come from the rules: characters, combos, the 1×1 ring, 115 s and the survivor rule', () => {
+    const lines = helpRuleLines(DEFAULT_RULES).join('\n')
+    for (const s of ['棉花兔', '泡泡鸭', '闪电猫', '火焰熊', '火焰冲刺', '弹射泡泡', '冰川弹', '正中 1 格', '115 秒', '活到最后者赢']) expect(lines).toContain(s)
+    expect(lines).not.toMatch(/90 秒|帽子最多者赢/)
   })
 })
 

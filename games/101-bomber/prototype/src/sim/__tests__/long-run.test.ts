@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CONFIG, DEFAULT_RULES, isPowerupKind, MatchPhase } from '../../contract'
+import { DEFAULT_CONFIG, DEFAULT_RULES, isPowerupKind, MatchPhase, type MatchResultsView } from '../../contract'
+import { matchEndReason } from '../../shared/ranking'
+import { destructibleInside, finalCellBlocker, gridOfSnapshot } from '../../../tests/support/final-cell'
 import { createWorld } from '../match-phase'
 import { stepWorld } from '../step'
 import { playerCell } from '../world'
@@ -7,9 +9,11 @@ import { hatCountOf } from '../death-drops'
 import { evs, specs, Walker } from './helpers'
 
 /**
- * 设计 §7 第 13 项（矩阵 7.4 / 7.5 精神）+ ADR 0025 / 0028：8 人随机游走连跑多局，每局都经过决赛圈与结算进入下一局，
+ * 设计 §7 第 13 项（矩阵 7.4 / 7.5 精神）+ ADR 0025 / 0028 / 0031：8 人随机游走连跑多局，每局都经过决赛圈与结算进入下一局，
  * 决赛圈前的死者按时复活、决赛圈内的死者出局且不再动。帽数 = 强化数：逐帧帽数变化只来自拾取强化（+1）与死亡掉落，
  * 「死亡扣掉的级数 == Σ HatsLost == 落地的死亡掉落 + 因没格子作废的」，且永远不出帽堆。
+ * ADR 0031：清场段生效帧圈内无可破坏砖、1×1 可进入；提前结束落在击杀当 Tick；结束原因与存活数一致；
+ * 名次表存活者在前（帽数不增）、出局者按出局 Tick 不增；每条 PlayerEliminated.Rank 等于名次表里的名次。
  */
 describe('headless multi-match run', () => {
   it('reaches Endgame and Settlement repeatedly with conservation, timely respawns and eliminations', () => {
@@ -31,6 +35,9 @@ describe('headless multi-match run', () => {
     let endTick = Infinity
     let stepMs = 0
     let ticks = 0
+    // ADR 0031 的局终 / 名次账。
+    let elimRank = new Map<number, number>()
+    let results: MatchResultsView | null = null
     // 帽子账（ADR 0028）。
     const prevHats = new Map<number, number>(w.players.map((p) => [p.id, 0]))
     let removedOnDeath = 0
@@ -114,18 +121,49 @@ describe('headless multi-match run', () => {
         diedAt.delete(e.NetEntityIdRaw)
         eliminations++
       }
+      for (const e of evs(f, 'RingShrunk')) {
+        if (!w.ticks.ringStages[e.StageIndex].clearInside) continue
+        const g = gridOfSnapshot(f.snapshot)
+        expect(destructibleInside(g, e.Ring)).toEqual([])
+        if (e.Ring.Min === e.Ring.Max) expect(finalCellBlocker(g)).toBeNull()
+      }
+      for (const e of evs(f, 'PlayerEliminated')) elimRank.set(e.NetEntityIdRaw, e.Rank)
       if (evs(f, 'MatchEnded').length) {
         ended++
         endTick = t
         expect(fcStart).toBeGreaterThanOrEqual(0)
         expect(t - fcStart).toBeLessThanOrEqual(w.ticks.finalCircle)
         const alive = f.snapshot.Players.filter((p) => !p.eliminated).length
-        if (t - fcStart < w.ticks.finalCircle) expect(alive).toBeLessThanOrEqual(1)
-      }
+        // 提前结束落在击杀当 Tick：同一帧里至少有一条 PlayerDied。
+        if (t - fcStart < w.ticks.finalCircle) {
+          expect(alive).toBeLessThanOrEqual(1)
+          expect(evs(f, 'PlayerDied').length).toBeGreaterThan(0)
+        }
+        const res = f.snapshot.match.results!
+        expect(res).not.toBeNull()
+        expect(evs(f, 'MatchEnded')[0].proto).toEqual({ Reason: res.reason, WinnerNetEntityIdRaw: res.winner })
+        expect(res.reason).toBe(matchEndReason(alive, w.players.length))
+        expect(res.winner).toBe(res.rows[0].id)
+        const surv = res.rows.filter((r) => r.survived)
+        expect(surv).toHaveLength(alive)
+        expect(res.rows.slice(0, alive).every((r) => r.survived)).toBe(true)
+        for (let i = 1; i < res.rows.length; i++) {
+          const [a, b] = [res.rows[i - 1], res.rows[i]]
+          expect(a.rank).toBeLessThanOrEqual(b.rank)
+          if (a.survived && b.survived) expect(a.hats).toBeGreaterThanOrEqual(b.hats)
+          if (!a.survived && !b.survived) expect(a.eliminatedTick).toBeGreaterThanOrEqual(b.eliminatedTick)
+        }
+        for (const r of res.rows) if (!r.survived) expect(elimRank.get(r.id)).toBe(r.rank)
+        expect(elimRank.size).toBe(res.rows.length - alive)
+        results = res
+      } else if (f.snapshot.BomberMatchState.Phase === MatchPhase.Settlement) expect(f.snapshot.match.results).toEqual(results)
+      else expect(f.snapshot.match.results).toBeNull()
       if (evs(f, 'MatchStarted').length) {
         started++
         expect(t).toBe(endTick + w.ticks.settlement)
         diedAt.clear()
+        elimRank = new Map()
+        results = null
         fcStart = -1
         endTick = Infinity
         expect(w.players.every((p) => !p.eliminated && hatCountOf(w, p) === 0)).toBe(true)

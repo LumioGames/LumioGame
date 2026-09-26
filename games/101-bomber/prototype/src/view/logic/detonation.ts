@@ -15,6 +15,8 @@ export interface DetonationBomb {
   y: number
   power: number
   fuseEndTick: number
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：穿透层数（缺省 0）。 */
+  pierce?: number
 }
 
 type TerrainLike = Pick<TerrainView, 'size' | 'ground' | 'brick'>
@@ -46,7 +48,7 @@ export function effectiveDetonationTicks(
   const reaches: number[][] = []
   for (let i = 0; i < n; i++) {
     const b = bombs[i]
-    computeFireCross(terrain, b.x, b.y, b.power, cross, blockers)
+    computeFireCross(terrain, b.x, b.y, b.power, cross, blockers, b.pierce ?? 0)
     const hit: number[] = []
     const visit = (x: number, y: number): void => {
       const list = cellOf.get(y * size + x)

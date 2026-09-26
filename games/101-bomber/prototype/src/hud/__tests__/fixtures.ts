@@ -5,9 +5,16 @@ import {
   type BombView,
   type BomberEvent,
   type FinalCircleView,
+  type FireZoneView,
+  type MatchResultsView,
+  type PickupView,
+  type PlayerSkillsView,
   type PlayerView,
+  type SkillId,
+  type SkillSlotView,
   type U64,
   type WorldSnapshot,
+  方向,
 } from '../../contract'
 import type { TickBatch } from '../timeline'
 
@@ -23,7 +30,30 @@ export interface PlayerSpec {
   z?: number
   respawnAt?: number
   eliminated?: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：技能状态；缺省 = 快照没有 skills 字段。 */
+  skills?: PlayerSkillsView
+  eliminatedTick?: number
 }
+
+/** 技能状态夹具：未给的字段全 0 / 空槽。 */
+export function skillsView(over: Partial<PlayerSkillsView> = {}): PlayerSkillsView {
+  return {
+    character: null,
+    facing: 方向.下,
+    slots: { bomb: null, active: null, passive: null },
+    cdFromTick: 0,
+    cdUntilTick: 0,
+    bubbleUntilTick: 0,
+    auraUntilTick: 0,
+    frozenUntilTick: 0,
+    regenFromTick: 0,
+    regenNextTick: 0,
+    blinkTick: 0,
+    ...over,
+  }
+}
+
+export const held = (skill: SkillId, level = 1, bound = false): SkillSlotView => ({ skill, level, bound })
 
 export function player(p: PlayerSpec): PlayerView {
   const i = (p.id - 1) % 8
@@ -35,6 +65,8 @@ export function player(p: PlayerSpec): PlayerView {
     玩家属性: { 血量当前: p.hp ?? 6, 火力当前: 2, 移速当前: 3500, 手上炸弹数当前: 1 },
     meta: { name: NAMES[i], isBot: p.id !== ME, animal: ANIMALS[i], slot: i },
     eliminated: p.eliminated ?? false,
+    ...(p.skills ? { skills: p.skills } : {}),
+    ...(p.eliminatedTick !== undefined ? { eliminatedTick: p.eliminatedTick } : {}),
   }
 }
 
@@ -85,6 +117,23 @@ export interface SnapSpec {
   resourceInitial?: number
   resourceRemaining?: number
   finalCircle?: FinalCircleView | null
+  /** 原型扩展（NON-CONTRACT，ADR 0031）：结算名次表。 */
+  results?: MatchResultsView | null
+  fireZones?: FireZoneView[]
+  pickups?: PickupView[]
+}
+
+/** 拾取物夹具（技能糖带 skill）。 */
+export function pickup(id: U64, X: number, Y: number, kind: number, skill?: { id: SkillId; level: number }): PickupView {
+  return {
+    NetEntityIdRaw: id,
+    LogicTransform: { WorldPosition: { x: X + 0.5, y: 1, z: Y + 0.5 } },
+    teleportTick: 0,
+    BomberPickupItem: { Kind: kind as PickupView['BomberPickupItem']['Kind'] },
+    droppedBy: 0,
+    protectedUntilTick: 0,
+    ...(skill ? { skill } : {}),
+  }
 }
 
 export const SIZE = 9
@@ -100,7 +149,7 @@ export function snap(s: SnapSpec): WorldSnapshot {
     Players: (s.players ?? [{ id: ME }]).map(player),
     Bombs: (s.bombs ?? []).map(bomb),
     HatPiles: [],
-    Pickups: [],
+    Pickups: s.pickups ?? [],
     Chests: [],
     Terrain: { size: SIZE, ground: new Uint8Array(SIZE * SIZE).fill(BlockType.地面), brick: s.brick ?? emptyBricks(), rev: s.rev ?? 0 },
     match: {
@@ -110,7 +159,9 @@ export function snap(s: SnapSpec): WorldSnapshot {
       resourceInitial: s.resourceInitial ?? 0,
       resourceRemaining: s.resourceRemaining ?? 0,
       finalCircle: s.finalCircle ?? null,
+      ...(s.results !== undefined ? { results: s.results } : {}),
     },
+    ...(s.fireZones ? { FireZones: s.fireZones } : {}),
   }
 }
 

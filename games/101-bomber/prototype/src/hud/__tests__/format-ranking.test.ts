@@ -89,10 +89,33 @@ describe('rankPlayers', () => {
     expect(visibleRows(rows, 10)).toHaveLength(5)
   })
 
-  it('percentBeaten counts only players with strictly fewer hats', () => {
+  it('percentBeaten counts only players ranked strictly below', () => {
     const rows = rankPlayers(players, 0, ME)
-    // 本人 2 顶：只严格多于 id 4（0 顶）；并列的 id 5 不算。4 名对手里击败 1 名。
+    // 本人 2 顶：只严格排在 id 4（0 顶）前面；并列的 id 5 不算。4 名对手里击败 1 名。
     expect(percentBeaten(rows, ME)).toBe(25)
     expect(percentBeaten(rankPlayers([player({ id: ME })], 0, ME), ME)).toBe(100)
+  })
+
+  it('in the final circle survivors rank above every eliminated player (D2), eliminated by later tick', () => {
+    const rows = rankPlayers(
+      [
+        player({ id: ME, hats: 0 }),
+        player({ id: 2, hats: 6, eliminated: true, eliminatedTick: 90 }),
+        player({ id: 3, hats: 1 }),
+        player({ id: 4, hats: 2, eliminated: true, eliminatedTick: 120 }),
+        player({ id: 5, hats: 0, eliminated: true }),
+      ],
+      2,
+      ME,
+      (id) => (id === 5 ? 120 : undefined),
+    )
+    expect(rows.map((r) => [r.id, r.rank])).toEqual([
+      [3, 1],
+      [ME, 2],
+      [4, 3],
+      [5, 3],
+      [2, 5],
+    ])
+    expect(percentBeaten(rows, ME)).toBe(75)
   })
 })

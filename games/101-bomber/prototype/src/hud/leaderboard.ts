@@ -19,20 +19,27 @@ export class LeaderboardView {
   readonly root: HTMLDivElement
   private readonly list: HTMLDivElement
   private readonly rows = new Map<U64, RowEls>()
+  private readonly title: HTMLSpanElement
   private sig = ''
 
   constructor(parent: HTMLElement, private readonly limit: () => number) {
     this.root = el('div', 'hud-board', parent)
     const head = el('div', 'lb-head', this.root)
     iconEl('hat', 'lb-head-ico', head)
-    el('span', 'lb-title', head).textContent = '帽子榜'
+    this.title = el('span', 'lb-title', head)
+    this.title.textContent = '帽子榜'
     this.list = el('div', 'lb-list', this.root)
+  }
+
+  /** 「帽子榜」（常规）/「决赛圈 · 存活优先」（决赛圈，D2）。 */
+  setTitle(text: string): void {
+    setText(this.title, text)
   }
 
   /** @param out 决赛圈已出局的玩家（行变灰）。 */
   update(all: readonly RankRow[], out: ReadonlySet<U64> = new Set()): void {
     const shown = visibleRows(all, this.limit())
-    const sig = shown.map((r) => `${r.id}:${r.rank}:${r.hats}:${r.isKing ? 1 : 0}:${out.has(r.id) ? 1 : 0}`).join('|')
+    const sig = shown.map((r) => `${r.id}:${r.rank}:${r.hats}:${r.isKing ? 1 : 0}:${out.has(r.id) ? 1 : 0}:${r.name}:${r.animal}:${r.slot}`).join('|')
     if (sig === this.sig) return
     this.sig = sig
     const visible = new Set<U64>()
@@ -42,6 +49,9 @@ export class LeaderboardView {
       setText(els.rank, String(r.rank))
       setText(els.name, r.name)
       setText(els.hats, String(r.hats))
+      // 第 4 轮 Bot 每局重抽角色（名字 / 动物跟着变），色点要跟着刷新。
+      setStyle(els.dot, 'background', ANIMAL_COLOR[r.animal] ?? '#ccc')
+      setStyle(els.dot, 'border-color', SLOT_COLOR[r.slot] ?? '#fff')
       els.root.classList.toggle('is-king', r.isKing)
       els.root.classList.toggle('is-local', r.isLocal)
       els.root.classList.toggle('is-out', out.has(r.id))

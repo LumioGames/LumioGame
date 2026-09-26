@@ -1,16 +1,18 @@
 import { el, iconEl, setStyle, setText } from './dom'
 import { formatClock } from './format'
 import { ANIMAL_COLOR, SLOT_COLOR } from './icons'
-import { feedBase, feedLossText, type FeedEntry } from './kill-feed'
+import { feedBase, feedColorId, feedLossText, type FeedEntry } from './kill-feed'
 
 /** 开局倒数期间屏幕正中的一句话规则卡（design §9.6，ADR 0025）；Running 开始时由 CSS 过渡淡出。 */
 export class RuleCard {
   private readonly root: HTMLDivElement
+  private readonly who: HTMLDivElement
   private on = false
 
   constructor(parent: HTMLElement, lines: readonly string[]) {
     this.root = el('div', 'hud-rules', parent)
     el('div', 'ru-title', this.root).textContent = '一句话规则'
+    this.who = el('div', 'ru-who', this.root)
     const list = el('ol', 'ru-list', this.root)
     lines.forEach((t, i) => {
       const li = el('li', '', list)
@@ -23,6 +25,12 @@ export class RuleCard {
     if (on === this.on) return
     this.on = on
     this.root.classList.toggle('is-on', on)
+  }
+
+  /** 原型扩展（NON-CONTRACT，ADR 0030）：「你是 闪电猫 · Shift 闪现」；空串 = 不显示。 */
+  setCharacter(line: string): void {
+    setText(this.who, line)
+    this.who.classList.toggle('is-on', line !== '')
   }
 }
 
@@ -52,20 +60,23 @@ export class ResourceMeter {
   }
 }
 
-/** 本人站在安全圈外：紫色屏幕边缘脉冲 + 「圈外中毒！回到圈内」（design §4.2 表现行）。 */
+/** 本人站在安全圈外：紫色屏幕边缘脉冲 + 「圈外中毒 −0.5 心/秒！回到圈内」（design §4.2 表现行；毒强度按段，ADR 0031）。 */
 export class PoisonWarn {
   private readonly edge: HTMLDivElement
   private readonly pill: HTMLDivElement
+  private readonly text: HTMLSpanElement
   private on = false
 
   constructor(parent: HTMLElement) {
     this.edge = el('div', 'hud-poison-edge', parent)
     this.pill = el('div', 'hud-poison pill', parent)
     iconEl('ring', 'po-ico', this.pill)
-    el('span', '', this.pill).textContent = '圈外中毒！回到圈内'
+    this.text = el('span', '', this.pill)
+    this.text.textContent = '圈外中毒！回到圈内'
   }
 
-  update(outside: boolean, now: number, fxScale: number): void {
+  update(outside: boolean, now: number, fxScale: number, text?: string): void {
+    if (text) setText(this.text, text)
     if (outside !== this.on) {
       this.on = outside
       this.pill.classList.toggle('is-on', outside)
@@ -130,7 +141,7 @@ export class KillFeedView {
       const row = el('div', 'kf-row', this.root)
       row.classList.toggle('is-local', e.involvesLocal)
       row.dataset.kind = e.kind
-      const c = colorOf(e.kind === 'kill' ? e.killerId : e.victimId)
+      const c = colorOf(feedColorId(e))
       const dot = el('span', 'lb-dot kf-dot', row)
       if (c) {
         dot.style.background = ANIMAL_COLOR[c.animal] ?? '#ccc'

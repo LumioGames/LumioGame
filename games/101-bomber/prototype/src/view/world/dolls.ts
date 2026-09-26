@@ -1,12 +1,15 @@
 import { Color, Group, Mesh, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three'
 import type { AnimalId } from '../../contract'
 import { DOLL, dollGeometries, patchGeometry, tuftGeometry } from '../geo/doll'
+import { DOLL_SCALE_MAX, PODIUM_DOLL_SCALE } from '../logic/doll-fit'
 import { approachAngle, clamp01 } from '../logic/interp'
 import { hash01 } from '../logic/rand'
 import type { SharedMaterials } from '../materials'
 
-/** 参考图里角色约占一格宽、比方块高；玩偶模型按 1.08 格高建，整体放大到约 1.4 格高。 */
-const DOLL_SCALE = 1.3
+/**
+ * 玩偶模型按 1.08 格高建；场内缩放由 logic/doll-fit 的 dollLayout(rules) 给（≈ 1.2，向前探出 ≤ 0.35 格，ADR 0032），
+ * 领奖台固定 PODIUM_DOLL_SCALE（1.3，仪式取景不变）。
+ */
 
 /**
  * 一只玩偶的表现状态机：走路（颠 + 挤压拉伸 + 摆臂迈脚）、转身、眨眼、受击闪白 + 晃、
@@ -21,6 +24,21 @@ const FLASH_MS = 80
 const WOBBLE_MS = 350
 const BURST_HIDE_MS = 1200
 const GRAVITY = -18
+/** 闪现落地的「啵」：0.7 → 1.08 → 1（表现取值，推断待验证）。 */
+const BLINK_IN_MS = 180
+/** 冻住时的冰蓝色调（乘在顶点色上）。 */
+const FROZEN_TINT = 0xcfefff
+const WHITE = 0xffffff
+
+/** 技能状态给玩偶的外观（ADR 0030，NON-CONTRACT 字段缺席时不传）。 */
+export interface DollFx {
+  /** 冻住：步态与眨眼停下、整体偏冰蓝。 */
+  frozen: boolean
+  /** 组合技形态的自发光强度（0 = 无）。 */
+  glow: number
+  /** 自发光颜色（缺省白）。 */
+  glowColor?: number
+}
 
 const _v = new Vector3()
 
@@ -56,6 +74,7 @@ export class Doll {
   private readonly parts: PartRest[] = []
   private readonly burstVel = new Float32Array(6 * 6)
   private readonly headTopLocal: number
+  private readonly footZ: number
 
   // 位置 / 运动
   x = 0
@@ -79,6 +98,8 @@ export class Doll {
   private dropAt = -1e9
   private burstAt = -1e9
   private blinkAt: number
+  private blinkInAt = -1e9
+  private tinted = false
   /** 名牌上小血条显示到何时（viewNow 毫秒）。 */
   hitBarUntil = -1e9
   hp = 6
@@ -99,6 +120,8 @@ export class Doll {
     readonly slot: number,
     mats: SharedMaterials,
     shared: { patch: ReturnType<typeof patchGeometry>; tufts: ReturnType<typeof tuftGeometry> },
+    /** 场内缩放（dollLayout(rules).scale）。 */
+    readonly scale: number = DOLL_SCALE_MAX,
   ) {
     const g = dollGeometries(animal)
     this.mat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0, emissive: new Color(0xffffff), emissiveIntensity: 0 })
@@ -119,12 +142,14 @@ export class Doll {
     this.headPivot.add(this.head, this.eyes)
     this.armL.position.set(-DOLL.shoulderX, DOLL.shoulderY, 0)
     this.armR.position.set(DOLL.shoulderX, DOLL.shoulderY, 0)
-    this.armL.rotation.z = -0.38
-    this.armR.rotation.z = 0.38
+    this.armL.rotation.z = -DOLL.armRestZ
+    this.armR.rotation.z = DOLL.armRestZ
     this.armL.add(armMeshL)
     this.armR.add(armMeshR)
-    this.footL.position.set(-DOLL.footX, 0, 0.02)
-    this.footR.position.set(DOLL.footX, 0, 0.02)
+    // 脚按脚几何的包围盒居中（ADR 0032：两脚中点 = 逻辑位置，脚圈与接触阴影都画在那里）。
+    this.footZ = g.footZ
+    this.footL.position.set(-DOLL.footX, 0, this.footZ)
+    this.footR.position.set(DOLL.footX, 0, this.footZ)
     this.bodyPivot.add(this.body, this.headPivot, this.armL, this.armR, this.patch, this.tufts)
     this.root.add(this.bodyPivot, this.footL, this.footR)
     // 只让身体和头投影：小零件的影子看不出来，却各占一次阴影 pass 的 draw call。
@@ -185,7 +210,7 @@ export class Doll {
     this.bodyPivot.position.set(0, 0, 0)
     this.bodyPivot.scale.set(1, 1, 1)
     this.root.rotation.z = 0
-    this.root.scale.setScalar(DOLL_SCALE)
+    this.root.scale.setScalar(this.scale)
     this.patch.visible = false
     this.tufts.visible = false
     for (let i = 0; i < this.parts.length; i++) {
@@ -209,6 +234,11 @@ export class Doll {
     this.dropAt = now
   }
 
+  /** 闪现落地：原地「啵」一下（不走重生的高空落下）。 */
+  blinkIn(now: number): void {
+    this.blinkInAt = now
+  }
+
   hide(): void {
     this.visual = 'hidden'
     this.root.visible = false
@@ -223,7 +253,7 @@ export class Doll {
     this.bodyPivot.position.set(0, 0, 0)
     this.bodyPivot.rotation.set(0, 0, 0)
     this.bodyPivot.scale.set(1, 1, 1)
-    this.root.scale.setScalar(DOLL_SCALE)
+    this.root.scale.setScalar(this.scale)
     this.root.rotation.set(0, this.yaw, 0)
   }
 
@@ -242,7 +272,7 @@ export class Doll {
    * @param now viewNow（毫秒）
    * @param dt 表现时钟步长（秒；定帧时为 0）
    */
-  update(x: number, z: number, now: number, dt: number, heartStage: number, protectedNow: boolean): void {
+  update(x: number, z: number, now: number, dt: number, heartStage: number, protectedNow: boolean, fx?: DollFx): void {
     if (this.visual === 'burst') {
       this.updateBurst(now, dt)
       return
@@ -287,7 +317,8 @@ export class Doll {
       this.swayX = Math.max(-0.3, Math.min(0.3, this.swayX + this.swayVX * dt))
       this.swayZ = Math.max(-0.3, Math.min(0.3, this.swayZ + this.swayVZ * dt))
     }
-    this.walkPhase += TAU * d
+    const frozen = fx?.frozen === true
+    if (!frozen) this.walkPhase += TAU * d
     const w = clamp01(this.speed / 1.2)
     const t = now / 1000
     const phi = this.walkPhase
@@ -295,7 +326,7 @@ export class Doll {
     // 身体：颠、挤压拉伸、呼吸
     const bob = Math.abs(Math.sin(phi)) * 0.06 * w
     const squash = 1 - 0.06 * Math.cos(2 * phi) * w
-    const breathe = 1 + 0.02 * Math.sin(TAU * 1.2 * t + this.id) * (1 - w)
+    const breathe = frozen ? 1 : 1 + 0.02 * Math.sin(TAU * 1.2 * t + this.id) * (1 - w)
     const sy = squash * breathe
     const sxz = 1 / Math.sqrt(sy)
     this.bodyPivot.position.y = bob
@@ -303,16 +334,19 @@ export class Doll {
 
     // 手脚
     const swing = Math.sin(phi) * w
-    this.footL.position.z = 0.02 + swing * 0.08
-    this.footR.position.z = 0.02 - swing * 0.08
+    this.footL.position.z = this.footZ + swing * DOLL.footSwing
+    this.footR.position.z = this.footZ - swing * DOLL.footSwing
     this.footL.position.y = Math.max(0, Math.cos(phi)) * 0.04 * w
     this.footR.position.y = Math.max(0, -Math.cos(phi)) * 0.04 * w
     const armSwing = (25 * Math.PI) / 180
     this.armL.rotation.x = -swing * armSwing
     this.armR.rotation.x = swing * armSwing
 
-    // 眨眼
-    if (now >= this.blinkAt) {
+    // 眨眼（冻住时不眨）
+    if (frozen) {
+      this.eyes.scale.y = 1
+      this.blinkAt = Math.max(this.blinkAt, now + 200)
+    } else if (now >= this.blinkAt) {
       const k = now - this.blinkAt
       if (k < 110) this.eyes.scale.y = 0.12
       else {
@@ -332,7 +366,11 @@ export class Doll {
     const fl = now - this.flashAt
     const flash = fl >= 0 && fl < FLASH_MS ? 0.9 * (1 - fl / FLASH_MS) : 0
     this.protectedPulse = protectedNow ? 0.5 + 0.5 * Math.sin(TAU * 4 * t) : 0
-    this.mat.emissiveIntensity = Math.max(flash, this.protectedPulse * 0.55)
+    const glow = fx?.glow ?? 0
+    const base = Math.max(flash, this.protectedPulse * 0.55)
+    this.mat.emissiveIntensity = Math.max(base, glow)
+    this.mat.emissive.setHex(glow > base && fx?.glowColor !== undefined ? fx.glowColor : WHITE)
+    this.setTint(frozen)
 
     // 重生下落 + 落地压扁
     let y = this.groundY
@@ -350,9 +388,16 @@ export class Doll {
       rsY = 1 - 0.25 * s
       rsXZ = 1 + 0.12 * s
     }
+    const bt = now - this.blinkInAt
+    if (bt >= 0 && bt < BLINK_IN_MS) {
+      const u = bt / BLINK_IN_MS
+      const k = u < 0.5 ? 0.7 + (1.08 - 0.7) * (u / 0.5) : 1.08 - 0.08 * ((u - 0.5) / 0.5)
+      rsXZ *= k
+      rsY *= k
+    }
     this.root.position.set(x, y, z)
     this.root.rotation.set(0, this.yaw, wobble)
-    this.root.scale.set(rsXZ * DOLL_SCALE, rsY * DOLL_SCALE, rsXZ * DOLL_SCALE)
+    this.root.scale.set(rsXZ * this.scale, rsY * this.scale, rsXZ * this.scale)
 
     this.root.updateMatrixWorld(true)
     this.headTop.set(0, this.headTopLocal, 0)
@@ -379,9 +424,9 @@ export class Doll {
     let headX = 0
     let headZ = 0
     let armLx = 0
-    let armLz = -0.38
+    let armLz: number = -DOLL.armRestZ
     let armRx = 0
-    let armRz = 0.38
+    let armRz: number = DOLL.armRestZ
     let bob = 0
     switch (kind) {
       case 'cheer': {
@@ -456,17 +501,25 @@ export class Doll {
     this.headPivot.rotation.set(headX, 0, headZ)
     this.armL.rotation.set(armLx, 0, armLz)
     this.armR.rotation.set(armRx, 0, armRz)
-    this.footL.position.set(-DOLL.footX, 0, 0.02)
-    this.footR.position.set(DOLL.footX, 0, 0.02)
+    this.footL.position.set(-DOLL.footX, 0, this.footZ)
+    this.footR.position.set(DOLL.footX, 0, this.footZ)
     this.eyes.scale.y = kind === 'cheer' ? 0.45 : kind === 'droop' ? 0.6 : 1
     this.mat.emissiveIntensity = glow
+    this.mat.emissive.setHex(WHITE)
+    this.setTint(false)
     this.root.position.set(x, y, z)
     this.root.rotation.set(0, yaw + spin, 0)
-    this.root.scale.set(sxz * DOLL_SCALE, sy * DOLL_SCALE, sxz * DOLL_SCALE)
+    this.root.scale.set(sxz * PODIUM_DOLL_SCALE, sy * PODIUM_DOLL_SCALE, sxz * PODIUM_DOLL_SCALE)
     this.root.updateMatrixWorld(true)
     this.headTop.set(0, this.headTopLocal, 0)
     this.headPivot.localToWorld(this.headTop)
     this.headPivot.getWorldQuaternion(this.headQuat)
+  }
+
+  private setTint(frozen: boolean): void {
+    if (frozen === this.tinted) return
+    this.tinted = frozen
+    this.mat.color.setHex(frozen ? FROZEN_TINT : WHITE)
   }
 
   private updateBurst(now: number, dt: number): void {
@@ -526,9 +579,13 @@ export class DollFactory {
   private readonly patch = patchGeometry()
   private readonly tufts = tuftGeometry()
 
-  constructor(private readonly mats: SharedMaterials) {}
+  /** @param scale 场内缩放（dollLayout(rules).scale）；领奖台姿势另用 PODIUM_DOLL_SCALE。 */
+  constructor(
+    private readonly mats: SharedMaterials,
+    readonly scale: number = DOLL_SCALE_MAX,
+  ) {}
 
   create(id: number, animal: AnimalId, slot: number): Doll {
-    return new Doll(id, animal, slot, this.mats, { patch: this.patch, tufts: this.tufts })
+    return new Doll(id, animal, slot, this.mats, { patch: this.patch, tufts: this.tufts }, this.scale)
   }
 }

@@ -1,13 +1,15 @@
 import { MatchPhase, 方向 } from '../contract'
 import type { LocalSimOptions } from './local-sim'
+import { deathEliminates } from './death-drops'
 import { advanceRing, finalCircleTrigger, startFinalCircle } from './final-circle'
 import { evaluateHatKing, processDeaths } from './hats'
 import { generateMap } from './mapgen'
 import { placeAtMatchStart } from './respawn'
+import { simMatchResults } from './results'
 import { mixSeed, Sfc32 } from './rng'
 import { assignRoster } from './roster'
 import { tickTable } from './ticks'
-import { aliveCount, countResource, emit, emptySlots, resetAbilityFields, resetAttributes, type SimPlayer, type World } from './world'
+import { countResource, emit, emptySlots, resetAbilityFields, resetAttributes, type SimPlayer, type World } from './world'
 
 /**
  * 对局阶段机（契约 BomberMatchState.Phase；design §4 / §4.1 / §4.2 / §13）：
@@ -158,8 +160,20 @@ function streams(seed: number): World['rng'] {
 }
 
 /**
- * Tick 末推进阶段。Running 每 Tick 查决赛圈触发；Endgame 推进安全圈，存活 ≤ 1（且不止一人在局）即提前结束；
- * 到 EndTick 进入结算。
+ * 本 Tick 待结算的死亡落地之后仍在局的人数：未出局、且没有一条会让其出局的待处理死亡（决赛圈内的死亡一律出局）。
+ * 用于「只剩一人 → 当 Tick 结束」（原型扩展 NON-CONTRACT，ADR 0031 / design §4.2）。倒计时复活中的人算在局。
+ */
+export function survivorsAfterPending(w: World): number {
+  const out = new Set<number>()
+  for (const d of w.pendingDeaths) if (deathEliminates(w, d.tick)) out.add(d.victim)
+  let n = 0
+  for (const p of w.players) if (!p.eliminated && !out.has(p.id)) n++
+  return n
+}
+
+/**
+ * Tick 末推进阶段。Running 每 Tick 查决赛圈触发；Endgame 下本 Tick 的死亡结清后在局 ≤ 1（且不止一人在局）
+ * 即在击杀当 Tick 结束（ADR 0031），否则推进安全圈（结束的那一帧不再预告 / 落箱 / 清场）；到 EndTick 进入结算。
  */
 export function advanceMatchPhase(w: World): void {
   const m = w.match
@@ -176,15 +190,16 @@ export function advanceMatchPhase(w: World): void {
     if (trigger) startFinalCircle(w, trigger)
   }
   if (m.phase === MatchPhase.Endgame) {
-    advanceRing(w)
-    if (aliveCount(w) <= 1 && w.players.length > 1) m.endTick = Math.min(m.endTick, w.t)
+    if (w.players.length > 1 && survivorsAfterPending(w) <= 1) m.endTick = Math.min(m.endTick, w.t)
+    if (w.t < m.endTick) advanceRing(w)
   }
   if (w.t >= m.endTick) enterSettlement(w)
 }
 
 /**
- * 进入结算前把本 Tick 已发布的死亡结清（掉强化、出局），名次才与事件一致；
- * 之后规则冻结，MatchEnded 排在本 Tick 所有伤害 / 死亡事件之后。
+ * 进入结算前把本 Tick 已发布的死亡结清（掉强化、出局，出局 Tick = 死亡 Tick），名次才与事件一致；
+ * 之后规则冻结，MatchEnded 排在本 Tick 所有伤害 / 死亡 / 出局事件之后。
+ * 原型扩展（NON-CONTRACT，ADR 0031）：MatchEnded.proto 带结束原因与领奖台中央（= 名次表第一行，sim/results.ts）。
  */
 function enterSettlement(w: World): void {
   const m = w.match
@@ -194,7 +209,8 @@ function enterSettlement(w: World): void {
   }
   m.endTick = w.t
   m.phase = MatchPhase.Settlement
-  emit(w, { type: 'MatchEnded', Tick: w.t })
+  const r = simMatchResults(w)
+  emit(w, { type: 'MatchEnded', Tick: w.t, proto: { Reason: r.reason, WinnerNetEntityIdRaw: r.winner } })
 }
 
 /** 当前阶段结束的 Tick（MatchMeta.phaseEndTick）：Running 与 Endgame 共用 EndTick。 */

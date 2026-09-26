@@ -188,3 +188,29 @@
   paint-order: stroke fill;
   text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
 }
+
+/* 原型扩展（NON-CONTRACT，ADR 0030）：进化「进化！」金色大一号；回春「+1 心」粉色。 */
+.bv-float-evolve {
+  color: #ffd84d;
+  font-size: 20px;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-evolve svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bv-float-heal {
+  color: #ff8fb0;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-heal svg {
+  width: 17px;
+  height: 16px;
+}

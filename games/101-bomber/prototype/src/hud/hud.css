@@ -381,12 +381,17 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* ---------- 底部中央：属性胶囊 ---------- */
-.hud-stats {
+/* ---------- 底部中央：属性胶囊 + 技能条（第 4 轮包一层 .hud-bottom） ---------- */
+.hud-bottom {
   position: absolute;
   bottom: calc(var(--gap) + var(--safe-b));
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--u));
+}
+.hud-stats {
   display: flex;
   align-items: center;
   gap: calc(12px * var(--u));
@@ -1166,7 +1171,7 @@
 }
 @media (pointer: coarse) and (max-width: 1100px) {
   /* 触屏：属性胶囊让开右下的放弹按钮（88px）。 */
-  .hud-stats {
+  .hud-bottom {
     bottom: calc(var(--gap) + var(--safe-b) + 104px);
   }
   .hud-flash {
@@ -1532,7 +1537,7 @@
   paint-order: stroke fill;
   white-space: nowrap;
 }
-.hud-podium:not(.has-winner) .pd-title {
+.hud-podium:not(.has-winner) :is(.pd-title, .pd-sub) {
   display: none;
 }
 .hud-podium.is-on .pd-title {
@@ -1668,7 +1673,7 @@
   font-size: calc(26px * var(--u));
 }
 /* 领奖台期间只留 3D 舞台、名牌与右上按钮 */
-.hud-layer[data-scene='podium'] :is(.hud-top, .hud-logo, .hud-side, .hud-stats, .hud-arrow, .hud-popups, .hud-flash, .hud-hit, .hud-recap, .hud-elim, .hud-vignette, .hud-poison, .hud-poison-edge, .hud-banner, .hud-rules) {
+.hud-layer[data-scene='podium'] :is(.hud-top, .hud-logo, .hud-side, .hud-bottom, .hud-arrow, .hud-popups, .hud-flash, .hud-hit, .hud-recap, .hud-elim, .hud-vignette, .hud-poison, .hud-poison-edge, .hud-banner, .hud-rules) {
   visibility: hidden;
 }
 @keyframes hud-fade-in {
@@ -1745,5 +1750,374 @@
 @media (prefers-reduced-motion: reduce) {
   .hud-poison.is-on {
     animation: none;
+  }
+}
+
+/* =====================================================================
+ * Round 4（ADR 0030 / 0031）：选角、技能条、回春环、进化横幅、换角色
+ * ===================================================================== */
+
+/* 技能条：三个槽 */
+.hud-skills {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--u));
+  padding: calc(6px * var(--u)) calc(10px * var(--u));
+  background: var(--glass-strong);
+}
+.hud-skills.is-none {
+  display: none;
+}
+.hud-skills.is-frozen {
+  border-color: rgba(159, 227, 255, 0.9);
+}
+.sk-chip {
+  --skill: #fff;
+  --cd: 0;
+  --fx: 0;
+  position: relative;
+  width: calc(46px * var(--u));
+  height: calc(46px * var(--u));
+  border-radius: calc(14px * var(--u));
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  color: var(--skill);
+  box-sizing: border-box;
+}
+.sk-chip .sk-ico {
+  font-size: calc(26px * var(--u));
+}
+.sk-chip::after {
+  /* 冷却遮罩：顺时针剩余部分变暗。 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(rgba(20, 16, 14, 0.72) calc(var(--cd) * 1turn), transparent 0);
+  pointer-events: none;
+}
+.sk-slot {
+  display: none;
+  font-size: calc(10px * var(--u));
+  color: var(--muted);
+}
+.sk-chip.is-empty {
+  border-style: dashed;
+  color: var(--muted);
+}
+.sk-chip.is-empty .sk-slot {
+  display: block;
+}
+.sk-chip.is-bound {
+  border-color: var(--sun);
+}
+.sk-chip.is-combo {
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(43, 35, 32, 0.9), rgba(43, 35, 32, 0.9)) padding-box,
+    linear-gradient(135deg, var(--sun), var(--skill), var(--tang)) border-box;
+}
+.sk-chip.is-ready[data-slot='active'] {
+  box-shadow: 0 0 0 2px var(--skill), 0 0 12px var(--skill);
+}
+.sk-chip.is-effect {
+  animation: hud-pulse 0.6s ease-in-out infinite;
+}
+.sk-sec {
+  position: absolute;
+  z-index: 1;
+  font-size: calc(18px * var(--u));
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  font-variant-numeric: tabular-nums;
+}
+.sk-lv {
+  position: absolute;
+  bottom: calc(-5px * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: calc(2px * var(--u));
+}
+.sk-pip {
+  display: none;
+  width: calc(6px * var(--u));
+  height: calc(6px * var(--u));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--ink);
+}
+.sk-pip.is-max {
+  display: block;
+}
+.sk-pip.is-on {
+  background: var(--sun);
+}
+.sk-chip.is-combo .sk-pip {
+  display: none;
+}
+.sk-key {
+  position: absolute;
+  top: calc(-9px * var(--u));
+  right: calc(-6px * var(--u));
+  padding: 0 calc(4px * var(--u));
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--muted);
+  font-size: calc(9px * var(--u));
+  white-space: nowrap;
+}
+.sk-key:empty {
+  display: none;
+}
+
+/* 回春环（心旁边） */
+.st-regen {
+  display: none;
+  width: calc(20px * var(--u));
+  height: calc(20px * var(--u));
+  margin-left: calc(-4px * var(--u));
+}
+.st-regen.is-on {
+  display: inline-block;
+}
+.st-regen svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.st-regen circle {
+  fill: none;
+  stroke-width: 3;
+}
+.st-regen .rg-bg {
+  stroke: rgba(255, 255, 255, 0.18);
+}
+.st-regen .rg-arc {
+  stroke: #ff8fb0;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+/* 技能糖 / 回春闪字按技能色 */
+.hud-flash[data-kind='4'],
+.hud-flash[style*='--flash'] {
+  color: var(--flash, #b57bff);
+}
+
+/* 进化横幅 */
+.hud-banner[data-tone='evolve'] .bn-ico,
+.hud-banner[data-tone='evolve'] .bn-title {
+  color: #ffd84d;
+}
+.hud-banner[data-tone='evolve'].is-on {
+  animation-duration: 2.2s;
+}
+
+/* 规则卡上的「你是谁」 */
+.ru-who {
+  display: none;
+  margin: 0 0 calc(10px * var(--u));
+  padding: calc(4px * var(--u)) calc(10px * var(--u));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: calc(15px * var(--u));
+  color: var(--sun);
+  width: fit-content;
+}
+.ru-who.is-on {
+  display: block;
+}
+
+/* 领奖台副标题 / 出局标签；结算页换角色按钮 */
+.pd-sub {
+  position: absolute;
+  top: calc(var(--safe-t) + 84px * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: calc(16px * var(--u));
+  color: #fff;
+  -webkit-text-stroke: 4px var(--ink);
+  paint-order: stroke fill;
+  white-space: nowrap;
+}
+.pd-out {
+  margin-top: calc(4px * var(--u));
+  font-size: calc(11px * var(--u));
+  color: var(--muted);
+}
+.rs-foot .rs-char {
+  margin-top: calc(10px * var(--u));
+}
+
+/* ---------- 选角界面（开局一屏 / 换角色卡） ---------- */
+.hud-select {
+  display: none;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+.hud-select.is-on {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--u));
+}
+.hud-select[data-mode='start'] {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  align-items: center;
+  justify-content: center;
+  padding: calc(24px * var(--u)) 16px;
+  overflow: auto;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 201, 60, 0.28), rgba(43, 35, 32, 0.88) 70%);
+}
+.sel-head {
+  text-align: center;
+}
+.sel-title {
+  font-size: calc(34px * var(--u));
+  font-weight: 900;
+  color: var(--sun);
+  -webkit-text-stroke: 6px var(--ink);
+  paint-order: stroke fill;
+}
+.hud-select[data-mode='switch'] .sel-title {
+  font-size: calc(24px * var(--u));
+  -webkit-text-stroke: 0;
+  color: var(--text);
+}
+.sel-sub {
+  margin-top: calc(4px * var(--u));
+  font-size: calc(13px * var(--u));
+  color: var(--muted);
+}
+.sel-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, calc(200px * var(--u))));
+  gap: calc(12px * var(--u));
+  justify-content: center;
+}
+.sel-card {
+  --skill: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(6px * var(--u));
+  padding: calc(12px * var(--u)) calc(10px * var(--u));
+  border-radius: calc(20px * var(--u));
+  border: 2px solid var(--line);
+  background: rgba(43, 35, 32, 0.8);
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.sel-card.is-on {
+  border-color: var(--skill);
+  box-shadow: 0 0 0 3px var(--skill), 0 10px 30px rgba(43, 35, 32, 0.4);
+  transform: translateY(-4px);
+}
+.sel-num {
+  position: absolute;
+  top: calc(8px * var(--u));
+  left: calc(10px * var(--u));
+  font-size: calc(12px * var(--u));
+  color: var(--muted);
+}
+.sel-art {
+  width: calc(120px * var(--u));
+  height: calc(120px * var(--u));
+  display: grid;
+  place-items: center;
+}
+.sel-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.sel-swatch {
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+}
+.sel-name {
+  font-size: calc(20px * var(--u));
+  font-weight: 900;
+}
+.sel-tag {
+  font-size: calc(12px * var(--u));
+  color: var(--muted);
+}
+.sel-skill {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--u));
+  color: var(--skill);
+  font-size: calc(15px * var(--u));
+}
+.sel-skill .ico {
+  font-size: calc(20px * var(--u));
+}
+.sel-badge {
+  padding: 0 calc(6px * var(--u));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: calc(11px * var(--u));
+}
+.sel-key {
+  font-size: calc(11px * var(--u));
+  color: var(--muted);
+}
+.sel-desc {
+  font-size: calc(12px * var(--u));
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+}
+.sel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(10px * var(--u));
+  width: min(calc(840px * var(--u)), 100%);
+  margin: 0 auto;
+}
+.sel-info {
+  display: flex;
+  gap: calc(12px * var(--u));
+  font-size: calc(13px * var(--u));
+  color: var(--muted);
+}
+.sel-actions {
+  display: flex;
+  gap: calc(10px * var(--u));
+}
+.md-card.md-character {
+  width: min(calc(900px * var(--u)), 100%);
+}
+@media (max-width: 760px) {
+  .sel-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .sel-art {
+    width: calc(84px * var(--u));
+    height: calc(84px * var(--u));
+  }
+  .hud-bottom {
+    flex-direction: column-reverse;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-chip.is-effect,
+  .sel-card {
+    animation: none !important;
+    transition: none !important;
   }
 }

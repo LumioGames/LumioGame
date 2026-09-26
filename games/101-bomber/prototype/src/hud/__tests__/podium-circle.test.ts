@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { MatchPhase, type BomberEvent, type PlayerDied } from '../../contract'
 import { circleHud, circleSubtitle, outsideRing } from '../final-circle'
 import { FEED_MAX, feedBase, feedLossText, feedText, KillFeed } from '../kill-feed'
-import { podiumEndTick, podiumModel, plateTitle, settlementScene } from '../podium'
-import { rankFinal } from '../ranking'
+import { podiumEndTick, podiumHeadline, podiumModel, plateTitle, resultsRuleLine, settlementScene } from '../podium'
+import { rankFinal, type ElimRecord } from '../ranking'
 import { ME, player, snap } from './fixtures'
 
-describe('rankFinal (领奖台 / 结算表排名)', () => {
-  it('ranks by hats with competition ranks; ties: survivors → later eliminated → id', () => {
+const elimMap = (e: [number, number, number][]): Map<number, ElimRecord> => new Map(e.map(([id, rank, tick]) => [id, { rank, tick }]))
+
+describe('rankFinal (领奖台 / 结算表排名，D2 活到最后者赢)', () => {
+  it('survivors first by hats (competition ranks), then eliminated by later tick; hats never lift an eliminated player', () => {
     const players = [
       player({ id: ME, hats: 0, eliminated: true }),
       player({ id: 2, hats: 4 }),
@@ -15,29 +17,64 @@ describe('rankFinal (领奖台 / 结算表排名)', () => {
       player({ id: 4, hats: 0, eliminated: true }),
       player({ id: 5, hats: 0 }),
       player({ id: 6, hats: 0, eliminated: true }),
+      player({ id: 7, hats: 5, eliminated: true }),
     ]
-    // Rank 越小 = 出局越晚：6 最后出局（第 3），ME 第 4，4 最早（第 5）
-    const elim = new Map([
-      [4, 5],
-      [ME, 4],
-      [6, 3],
+    // 出局 Tick：7 最早，4、ME，6 最晚
+    const elim = elimMap([
+      [7, 7, 10],
+      [4, 6, 20],
+      [ME, 5, 30],
+      [6, 4, 40],
     ])
     const rows = rankFinal(players, elim, true, 2, ME)
-    expect(rows.map((r) => [r.id, r.rank, r.status])).toEqual([
-      [2, 1, 'survivor'],
-      [3, 1, 'survivor'],
-      [5, 3, 'survivor'],
-      [6, 4, 'eliminated'],
-      [ME, 5, 'eliminated'],
-      [4, 6, 'eliminated'],
+    expect(rows.map((r) => [r.id, r.rank, r.status, r.survived])).toEqual([
+      [2, 1, 'survivor', true],
+      [3, 1, 'survivor', true],
+      [5, 3, 'survivor', true],
+      [6, 4, 'eliminated', false],
+      [ME, 5, 'eliminated', false],
+      [4, 6, 'eliminated', false],
+      [7, 7, 'eliminated', false],
+    ])
+    expect(rows.map((r) => r.place)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(rows.find((r) => r.id === ME)?.elimRank).toBe(5)
+  })
+
+  it('same-tick eliminations share a rank; snapshot eliminatedTick wins over the record', () => {
+    const rows = rankFinal(
+      [player({ id: 2 }), player({ id: 3, hats: 2, eliminated: true, eliminatedTick: 50 }), player({ id: 4, eliminated: true, eliminatedTick: 50 })],
+      new Map(),
+      true,
+      0,
+      ME,
+    )
+    expect(rows.map((r) => [r.id, r.rank])).toEqual([
+      [2, 1],
+      [3, 2],
+      [4, 2],
+    ])
+  })
+
+  it('prefers match.results from the rules layer', () => {
+    const rows = rankFinal([player({ id: ME, hats: 3 }), player({ id: 2 })], new Map(), true, 0, ME, {
+      reason: 'timeUp',
+      winner: 2,
+      rows: [
+        { id: 2, rank: 1, place: 1, survived: true, hats: 0, eliminatedTick: 0 },
+        { id: ME, rank: 2, place: 2, survived: false, hats: 3, eliminatedTick: 9 },
+      ],
+    })
+    expect(rows.map((r) => [r.id, r.rank, r.name, r.status])).toEqual([
+      [2, 1, '小黄鸭', 'survivor'],
+      [ME, 2, '你', 'eliminated'],
     ])
   })
 
   it('without a final circle nobody is tagged and ties fall back to id', () => {
     const rows = rankFinal([player({ id: 3, hats: 1 }), player({ id: 2, hats: 1 })], new Map(), false, 0, ME)
-    expect(rows.map((r) => [r.id, r.status])).toEqual([
-      [2, null],
-      [3, null],
+    expect(rows.map((r) => [r.id, r.status, r.rank])).toEqual([
+      [2, null, 1],
+      [3, null, 1],
     ])
   })
 })
@@ -76,15 +113,40 @@ describe('podiumModel', () => {
     expect(m.plates.filter((p) => p.isWinner)).toHaveLength(2)
   })
 
-  it('no 本局帽王 when nobody has a hat; an eliminated 0-hat player ranks below 0-hat survivors, survivor ties say 并列', () => {
-    const zero = rankFinal([player({ id: 2 }), player({ id: 3 }), player({ id: 4 }), player({ id: ME, eliminated: true })], new Map([[ME, 4]]), true, 0, ME)
-    const m = podiumModel(zero)
-    expect(m.plates.some((p) => p.isWinner)).toBe(false)
-    expect(m.localLine).toBe('你的名次：第 4 名 / 共 4 人')
+  it('a 0-hat sole survivor is the winner; eliminated players with more hats stand below; survivor ties say 并列', () => {
+    const sole = rankFinal(
+      [player({ id: 2 }), player({ id: 3, hats: 5, eliminated: true }), player({ id: ME, hats: 2, eliminated: true })],
+      elimMap([
+        [ME, 3, 40],
+        [3, 2, 50],
+      ]),
+      true,
+      0,
+      ME,
+    )
+    const m = podiumModel(sole, 'lastSurvivor')
+    expect(m.plates.map((p) => [p.name, p.rank, p.isWinner, p.survived])).toEqual([
+      ['小黄鸭', 1, true, true],
+      ['豆豆熊', 2, false, false],
+      ['你', 3, false, false],
+    ])
+    expect(m.localLine).toBe('你拿到了第 3 名！')
+    expect(m.headline).toEqual({ title: '本局冠军', sub: '唯一存活 · 活到最后者赢' })
+    const zero = podiumModel(rankFinal([player({ id: 2 }), player({ id: 3 }), player({ id: ME, eliminated: true, eliminatedTick: 9 })], new Map(), true, 0, ME))
+    expect(zero.plates.filter((p) => p.isWinner)).toHaveLength(2)
+    expect(zero.localLine).toBe('你拿到了第 3 名！')
     const tied = podiumModel(
       rankFinal([player({ id: 2, hats: 2 }), player({ id: 3, hats: 1 }), player({ id: 4, hats: 1 }), player({ id: 5 }), player({ id: ME })], new Map(), true, 2, ME),
     )
     expect(tied.localLine).toBe('你的名次：并列第 4 名 / 共 5 人')
+  })
+
+  it('headline and results rule line by end reason', () => {
+    expect(podiumHeadline('timeUp').sub).toBe('时间到 · 存活者里帽子最多')
+    expect(podiumHeadline('allDown').sub).toBe('同归于尽 · 最后倒下的并列第一')
+    expect(podiumHeadline(null)).toEqual({ title: '本局冠军', sub: '活到最后者赢' })
+    expect(resultsRuleLine('lastSurvivor')).toBe('活到最后者赢 · 时间到时存活者比帽子，并列同名次 · 本局：唯一存活')
+    expect(resultsRuleLine(null)).not.toMatch(/帽子最多者赢/)
   })
 
   it('shows the podium for rules.podiumMs after MatchEnded, then the results table', () => {

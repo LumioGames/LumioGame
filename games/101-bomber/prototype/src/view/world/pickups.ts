@@ -1,7 +1,9 @@
 import { Color, MeshBasicMaterial, SphereGeometry, TorusGeometry, type Object3D } from 'three'
-import { PickupKind, type PickupView } from '../../contract'
+import { PickupKind, SKILL_IDS, type PickupView, type SkillId } from '../../contract'
+import { SKILL_COLOR } from '../../present/skill-style'
 import { Batch, M, trs } from '../batch'
 import { candyGeometry, candyRingGeometry } from '../geo/candy'
+import { levelPipGeometry, skillCandyGeometry } from '../geo/skill'
 import { clamp01, easeOutBack } from '../logic/interp'
 import type { SharedMaterials } from '../materials'
 import type { GroundMarks } from './ground-marks'
@@ -12,6 +14,8 @@ import type { GroundMarks } from './ground-marks'
  * 死者掉出的强化（PickupView.droppedBy ≠ 0，design §9.6）多一圈死者脚圈色的光环 + 同色地圈；
  * 死者掉落 / 宝箱喷出的糖果从来源格沿抛物线弹出（0.35 s），落地后才开始悬浮。
  * 保护期内（renderTick < protectedUntilTick，ADR 0029：炸不掉）罩一层淡金色泡泡，最后 0.8 s 闪烁提示即将失效。
+ * 原型扩展（NON-CONTRACT，ADR 0030）：技能糖（Kind = SkillCandy）按 PickupView.skill 画各自的糖球 + 技能色光环
+ * （代替金环，一眼分得出「帽子糖」和「技能糖」）+ 糖下 1–3 颗等级金豆；skill 缺席时退回普通糖果。
  */
 interface PickupVis {
   id: number
@@ -30,6 +34,9 @@ interface PickupVis {
   halo: number
   /** 免疫爆炸截止 Tick（0 = 无保护）。 */
   protUntil: number
+  /** 技能糖里的技能与等级（其余糖果为 null / 0）。 */
+  skill: SkillId | null
+  level: number
 }
 
 /** 新糖果的来源：弹出起点、延迟（等死者散架 / 开箱）与光环色。 */
@@ -42,6 +49,11 @@ export interface PickupOrigin {
 
 const KINDS = [PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack] as const
 const DIE_MS = 220
+/** 每种技能糖同时在场的上限。 */
+const SKILL_CANDY_CAP = 32
+/** 等级金豆：糖心下方的距离与间距（格）。 */
+const PIP_DROP = 0.24
+const PIP_GAP = 0.1
 export const PICKUP_ARC_MS = 350
 
 export class PickupLayer {
@@ -49,6 +61,9 @@ export class PickupLayer {
   private readonly rings: Batch
   private readonly halos: Batch
   private readonly bubbles: Batch
+  private readonly skillCandies = new Map<SkillId, Batch>()
+  private readonly skillRings: Batch
+  private readonly pips: Batch
   private readonly map = new Map<number, PickupVis>()
   private stamp = 0
   private readonly c = new Color()
@@ -65,6 +80,14 @@ export class PickupLayer {
     )
     for (const b of this.candies) scene.add(b.mesh)
     scene.add(this.rings.mesh, this.halos.mesh, this.bubbles.mesh)
+    for (const id of SKILL_IDS) {
+      const b = new Batch(skillCandyGeometry(id), mats.plastic, SKILL_CANDY_CAP, { castShadow: true })
+      this.skillCandies.set(id, b)
+      scene.add(b.mesh)
+    }
+    this.skillRings = new Batch(candyRingGeometry(), mats.solid, 128, { color: true })
+    this.pips = new Batch(levelPipGeometry(), mats.gold, 128, {})
+    scene.add(this.skillRings.mesh, this.pips.mesh)
   }
 
   /** origin：新出现的糖果从哪来（死者掉落 / 宝箱喷出）；返回 null = 原地弹出。 */
@@ -89,10 +112,14 @@ export class PickupLayer {
           arc: !!o && (o.fromX !== x || o.fromZ !== z || o.delayMs > 0),
           halo: o ? o.halo : -1,
           protUntil: p.protectedUntilTick ?? 0,
+          skill: null,
+          level: 0,
         }
         this.map.set(v.id, v)
       }
       v.kind = p.BomberPickupItem.Kind
+      v.skill = v.kind === PickupKind.SkillCandy && p.skill ? p.skill.id : null
+      v.level = v.skill ? p.skill?.level ?? 1 : 0
       v.protUntil = p.protectedUntilTick ?? 0
       v.x = x
       v.z = z
@@ -107,9 +134,14 @@ export class PickupLayer {
 
   update(now: number, camYaw: number, marks: GroundMarks, renderTick = 0, tickRateHz = 20): void {
     for (const b of this.candies) b.begin()
+    for (const b of this.skillCandies.values()) b.begin()
     this.rings.begin()
+    this.skillRings.begin()
+    this.pips.begin()
     this.halos.begin()
     this.bubbles.begin()
+    const rx = Math.cos(camYaw)
+    const rz = -Math.sin(camYaw)
     const t = now / 1000
     for (const [id, v] of this.map) {
       let s = 1
@@ -137,10 +169,22 @@ export class PickupLayer {
       }
       const bob = Math.sin(t * 2.4 + v.id) * 0.06
       const y = 0.5 + bob + lift + (now >= v.dieAt ? (now - v.dieAt) / DIE_MS * 0.4 : 0)
-      const batch = this.candies[v.kind] ?? this.candies[0]
-      batch.push(trs(M, px, y, pz, 0, t * 1.5 + v.id, 0, s * 1.05, s * 1.05, s * 1.05))
-      // 金环面朝镜头（绕 Y 对齐镜头朝向），向镜头仰起一点
-      this.rings.push(trs(M, px, y, pz, -0.35, camYaw, 0, s, s, s))
+      const skillBatch = v.skill ? this.skillCandies.get(v.skill) : undefined
+      if (skillBatch && v.skill) {
+        // 技能糖：正面浮雕对着镜头轻轻左右摆（整圈自转会把剪影转到背面），外圈技能色光环。
+        skillBatch.push(trs(M, px, y, pz, 0, camYaw + Math.sin(t * 1.5 + v.id) * 0.6, 0, s * 1.05, s * 1.05, s * 1.05))
+        const ri = this.skillRings.push(trs(M, px, y, pz, -0.35, camYaw, 0, s, s, s))
+        this.skillRings.color(ri, this.c.setHex(SKILL_COLOR[v.skill]))
+        for (let k = 0; k < v.level; k++) {
+          const off = (k - (v.level - 1) / 2) * PIP_GAP * s
+          this.pips.push(trs(M, px + rx * off, y - PIP_DROP * s, pz + rz * off, 0, 0, 0, s, s, s))
+        }
+      } else {
+        const batch = this.candies[v.kind] ?? this.candies[0]
+        batch.push(trs(M, px, y, pz, 0, t * 1.5 + v.id, 0, s * 1.05, s * 1.05, s * 1.05))
+        // 金环面朝镜头（绕 Y 对齐镜头朝向），向镜头仰起一点
+        this.rings.push(trs(M, px, y, pz, -0.35, camYaw, 0, s, s, s))
+      }
       if (v.halo >= 0) {
         const pulse = 1 + 0.06 * Math.sin(t * 5 + v.id)
         const hi = this.halos.push(trs(M, px, y, pz, -0.35, camYaw, 0, s * pulse, s * pulse, s * pulse))
@@ -157,7 +201,10 @@ export class PickupLayer {
       marks.shadow(px, pz, 0.55, y - 0.25)
     }
     for (const b of this.candies) b.end()
+    for (const b of this.skillCandies.values()) b.end()
     this.rings.end()
+    this.skillRings.end()
+    this.pips.end()
     this.halos.end()
     this.bubbles.end()
   }

@@ -1,4 +1,5 @@
 import { allPowerupKinds, deathEliminates, dropPowerups, hatCountOf } from './death-drops'
+import { allSkillDrops, dropSkills } from './skill-drops'
 import { aliveCount, emit, findPlayer, playerCell, resetAbilityFields, type PendingDeath, type SimPlayer, type World } from './world'
 
 /**
@@ -7,8 +8,9 @@ import { aliveCount, emit, findPlayer, playerCell, resetAbilityFields, type Pend
  */
 
 /**
- * 决赛圈在死亡结算之后的同一 Tick 触发时，那个 Tick 的死者按出局处理：掉落改成全部级数。
- * 死亡事件还没发布（仍在 w.out），HatsLost 一并改成实际掉落数。
+ * 决赛圈在死亡结算之后的同一 Tick 触发时，那个 Tick 的死者按出局处理：掉落改成全部级数，
+ * 技能也改成全部可掉单位（原型扩展 NON-CONTRACT，ADR 0030 / D8）。
+ * 死亡事件还没发布（仍在 w.out），HatsLost 一并改成实际掉落的强化数（技能不算帽子，D5）。
  */
 export function promoteEliminations(w: World): void {
   for (let i = 0; i < w.pendingDeaths.length; i++) {
@@ -17,8 +19,9 @@ export function promoteEliminations(w: World): void {
     const v = findPlayer(w, d.victim)
     if (!v) continue
     const all = allPowerupKinds(w, v)
-    if (all.length === d.dropKinds.length) continue
-    w.pendingDeaths[i] = { ...d, dropKinds: all }
+    const skills = allSkillDrops(v)
+    if (all.length === d.dropKinds.length && skills.length === d.dropSkills.length) continue
+    w.pendingDeaths[i] = { ...d, dropKinds: all, dropSkills: skills }
     for (const e of w.out)
       if (e.type === 'PlayerDied' && e.VictimNetEntityIdRaw === d.victim && e.Tick === d.tick && e.proto) e.proto.HatsLost = all.length
   }
@@ -40,12 +43,15 @@ export function processDeaths(w: World): void {
     const cell = playerCell(w, v)
     const eliminated = deathEliminates(w, d.tick)
     let kinds = d.dropKinds
+    let skills = d.dropSkills
     if (eliminated) {
-      // 触发与死亡同 Tick 时死亡结算只掷了一半；出局一律全掉。
+      // 触发与死亡同 Tick 时死亡结算只掷了一半；出局一律全掉（强化与技能，ADR 0030 D8）。
       const all = allPowerupKinds(w, v)
       if (all.length !== kinds.length) kinds = all
+      skills = allSkillDrops(v)
     }
     dropPowerups(w, v, cell, kinds)
+    dropSkills(w, v, cell, skills)
     resetAbilityFields(v)
     if (eliminated) {
       v.eliminated = true
@@ -86,11 +92,16 @@ export function evaluateHatKing(w: World): void {
   w.match.hatKing = king
 }
 
-/** 中途退出（design §4 中途进出）：身上强化全部掉落成道具（谁捡归谁），然后移除玩家实体、重判帽王。 */
+/**
+ * 中途退出（design §4 中途进出）：身上强化全部掉落成道具（谁捡归谁），非专属技能也全部掉成技能糖
+ * （原型扩展 NON-CONTRACT，ADR 0030 D8），然后移除玩家实体、重判帽王。
+ */
 export function removePlayerFromWorld(w: World, id: number): boolean {
   const p = findPlayer(w, id)
   if (!p) return false
-  dropPowerups(w, p, playerCell(w, p), allPowerupKinds(w, p))
+  const cell = playerCell(w, p)
+  dropPowerups(w, p, cell, allPowerupKinds(w, p))
+  dropSkills(w, p, cell, allSkillDrops(p))
   w.players = w.players.filter((q) => q !== p)
   evaluateHatKing(w)
   return true

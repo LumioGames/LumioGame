@@ -1,4 +1,4 @@
-import { BlockType, MATERIALS } from '../contract'
+import { BlockType, BombKind, MATERIALS, 方向 } from '../contract'
 import { hitChest } from './chest'
 import { addBrickWrite } from './terrain-commit'
 import { cellOfIdx, chestAt, emit, findPlayer, isAlive, pickupProtectedUntil, playerCell, type SimBomb, type SimChest, type World } from './world'
@@ -16,23 +16,35 @@ const ARMS: readonly (readonly [number, number])[] = [
   [1, 0],
 ]
 
-/** 不引爆、不写砖的十字覆盖格（含中心），给危险格与重生避让用；规则同真实传播。 */
-export function crossCells(w: World, cell: number, power: number): number[] {
+/**
+ * 不引爆、不写砖的十字覆盖格（含中心），给危险格与重生避让用；规则同真实传播（{@link runExplosions} 的臂循环），
+ * 穿透按唯一口径（contract/skills.ts 文件头）：每条臂 s = 1..power——出界 / 铁皮停；宝箱停（不覆盖）；
+ * 软砖：本臂已穿透数 < pierceLayers 则覆盖该格、计数 +1、继续，否则停（不覆盖）；水地面覆盖后停。
+ */
+export function crossCells(w: World, cell: number, power: number, pierceLayers = 0): number[] {
   const size = w.size
   const x0 = cell % size
   const y0 = Math.floor(cell / size)
   const out = [cell]
-  for (const [dx, dy] of ARMS)
+  for (const [dx, dy] of ARMS) {
+    let pierced = 0
     for (let s = 1; s <= power; s++) {
       const x = x0 + dx * s
       const y = y0 + dy * s
       if (x < 0 || y < 0 || x >= size || y >= size) break
       const c = y * size + x
       const fire = MATERIALS[w.brick[c] as BlockType].fire
-      if (fire === 'stopBefore' || fire === 'destroyThenStop' || chestAt(w, c)) break
+      if (fire === 'stopBefore' || chestAt(w, c)) break
+      if (fire === 'destroyThenStop') {
+        if (pierced >= pierceLayers) break
+        pierced++
+        out.push(c)
+        continue
+      }
       out.push(c)
       if (MATERIALS[w.ground[c] as BlockType].fire === 'coverThenStop') break
     }
+  }
   return out
 }
 
@@ -43,7 +55,7 @@ export function computeDangerCells(w: World): Uint8Array {
     if (b.explodedAtTick > 0) {
       if (w.t < b.dangerUntilTick) for (const c of b.covered) d[c] = 1
     } else if (b.fuseEndTick - w.t <= w.ticks.danger) {
-      for (const c of crossCells(w, b.cell, b.power)) d[c] = 1
+      for (const c of crossCells(w, b.cell, b.power, b.pierceLayers)) d[c] = 1
     }
   }
   return d
@@ -103,6 +115,10 @@ export function runExplosions(w: World): void {
     b.dangerUntilTick = t + w.ticks.danger
     b.burnUntilTick = b.dangerUntilTick
     b.seq = w.explodeSeq++
+    // 滑行中被引爆 / 到期：就地爆炸，滑行字段清零（ADR 0030 踢弹）。
+    b.kickDir = 方向.停
+    b.kickCellsLeft = 0
+    b.kickAcc = 0
     const blast: Blast = { bomb: b, bricks: [], chests: [] }
     blasts.push(blast)
 
@@ -112,6 +128,7 @@ export function runExplosions(w: World): void {
     const reach = [0, 0, 0, 0]
     for (let a = 0; a < 4; a++) {
       const [dx, dy] = ARMS[a]
+      let pierced = 0
       for (let s = 1; s <= b.power; s++) {
         const x = x0 + dx * s
         const y = y0 + dy * s
@@ -122,7 +139,13 @@ export function runExplosions(w: World): void {
         if (fire === 'stopBefore') break
         if (fire === 'destroyThenStop') {
           blast.bricks.push({ cell: c, block })
-          break
+          // 穿透（唯一口径见 contract/skills.ts 文件头）：被穿透的砖照样摧毁，并计入覆盖与 Reach（火焰看得见穿过去）；
+          // 穿够了的那块砖摧毁后停、不覆盖（= 标准弹行为）。
+          if (pierced >= b.pierceLayers) break
+          pierced++
+          reach[a] = s
+          covered.push(c)
+          continue
         }
         // 宝箱与软砖同口径：臂停在宝箱上、宝箱格不计入 Reach。
         const chest = chestAt(w, c)
@@ -223,7 +246,10 @@ function removeBurnedOut(w: World): void {
 
 /**
  * 「引爆时站在那里」与「火焰阶段内走进来」同一条规则：每个火焰阶段的炸弹对其覆盖格上的活人下单，
- * 同弹同人只一次（命中记忆在炸弹上），同链同人累计封顶。保护期内不受伤、也不记命中。
+ * 同弹同人只一次（命中记忆在炸弹上），同链同人累计封顶。保护期、泡泡期内（ADR 0030）不受伤、也不记命中。
+ * 冰冻弹 / 冰川弹（BombKind.Freeze，ADR 0030 + 第 4 轮 Q1）：rules.freezeBombDamages 时照常扣血（照样进同链封顶账），
+ * 然后再下一张冻结单（points = 0，见 effects.ts settleEffects）——伤害全部结算完才冻住**幸存者**，
+ * 所以同一颗弹（及同一 Tick 的其他伤害）不会解冻；之后的伤害才解冻。
  */
 function dangerPass(w: World): void {
   const t = w.t
@@ -233,21 +259,27 @@ function dangerPass(w: World): void {
   const dmgPts = w.rules.bombDamagePoints
   const cap = w.cfg.maxHealthPoints
   for (const b of active) {
+    const freeze = b.kind === BombKind.Freeze
+    const damages = !freeze || w.rules.freezeBombDamages
     for (const c of b.covered)
       for (const { p, cell } of alive) {
         if (cell !== c) continue
-        if (t < p.protectedUntilTick || b.hit.includes(p.id)) continue
+        if (t < p.protectedUntilTick || t < p.bubbleUntilTick || b.hit.includes(p.id)) continue
         b.hit.push(p.id)
-        let perChain = w.chainDmg.get(b.chainId)
-        if (!perChain) {
-          perChain = new Map()
-          w.chainDmg.set(b.chainId, perChain)
+        if (damages) {
+          let perChain = w.chainDmg.get(b.chainId)
+          if (!perChain) {
+            perChain = new Map()
+            w.chainDmg.set(b.chainId, perChain)
+          }
+          const got = perChain.get(p.id) ?? 0
+          const pts = Math.min(dmgPts, cap - got)
+          if (pts > 0) {
+            perChain.set(p.id, got + pts)
+            w.effects.push({ target: p.id, points: pts, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
+          }
         }
-        const got = perChain.get(p.id) ?? 0
-        const pts = Math.min(dmgPts, cap - got)
-        if (pts <= 0) continue
-        perChain.set(p.id, got + pts)
-        w.effects.push({ target: p.id, points: pts, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
+        if (freeze) w.effects.push({ target: p.id, points: 0, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
       }
   }
 }

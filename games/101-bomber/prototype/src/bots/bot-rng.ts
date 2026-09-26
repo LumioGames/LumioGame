@@ -4,12 +4,15 @@
  */
 export class BotRng {
   private state: number
+  /** 已抽的次数（测试用：钉住「hard 不碰第二随机流」「新代码不改主随机流的抽样位置」）。 */
+  draws = 0
 
   constructor(seed: number) {
     this.state = seed >>> 0
   }
 
   nextU32(): number {
+    this.draws++
     this.state = (this.state + 0x6d2b79f5) >>> 0
     let t = this.state
     t = Math.imul(t ^ (t >>> 15), t | 1)

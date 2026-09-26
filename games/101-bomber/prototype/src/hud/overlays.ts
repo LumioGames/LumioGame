@@ -1,30 +1,55 @@
+import type { BomberConfig, BotDifficulty, CharacterId } from '../contract'
 import type { PresentationSettings } from '../present/settings'
+import { CharacterSelect, type Portraits } from './character-select'
 import { el, iconEl, roundButton } from './dom'
 import type { HudCallbacks } from './index'
+import { AI_LABEL, selectCards, type SelectRules } from './select-model'
+import { helpRuleLines, type HelpRules } from './tips'
 
-type Card = 'pause' | 'help' | 'settings'
+type Card = 'pause' | 'help' | 'settings' | 'character'
+
+/** 原型扩展（NON-CONTRACT，ADR 0030）：暂停卡上的难度一行、帮助卡的规则来源、「换角色」卡要的东西。 */
+export interface OverlayOptions {
+  rules: SelectRules & HelpRules
+  config: Pick<BomberConfig, 'healthPointsPerHeart'>
+  ai?: BotDifficulty
+  portraits?: Promise<Portraits> | Portraits
+  /** 本机当前角色（换角色卡的初始选中）。 */
+  currentCharacter(): CharacterId | null
+  /** 临时通知（提示胶囊）。 */
+  notice(text: string): void
+}
 
 /**
- * 暂停 / 帮助 / 设置三张卡，同一时刻只显示一张。打开帮助或设置会先请求暂停；
- * 关闭它们回到暂停卡，恢复游戏只走「继续」（或 Esc），与规则层暂停状态保持单一来源。
+ * 暂停 / 帮助 / 设置 / 换角色四张卡，同一时刻只显示一张。打开帮助、设置或换角色会先请求暂停
+ * （换角色因此也停住结算倒计时）；关闭帮助 / 设置回到暂停卡，恢复游戏只走「继续」（或 Esc），
+ * 与规则层暂停状态保持单一来源。换角色确认后直接恢复游戏（下一局生效）。
  */
 export class Overlays {
   private readonly root: HTMLDivElement
   private readonly cards: Record<Card, HTMLDivElement>
   private readonly muteBox: HTMLInputElement
+  private readonly picker: CharacterSelect | null
   private paused = false
   private card: Card | null = null
   private pendingCard: Card | null = null
 
-  constructor(parent: HTMLElement, private readonly settings: PresentationSettings, private readonly cb: HudCallbacks) {
+  constructor(
+    parent: HTMLElement,
+    private readonly settings: PresentationSettings,
+    private readonly cb: HudCallbacks,
+    private readonly o: OverlayOptions,
+  ) {
     this.root = el('div', 'hud-modal', parent)
     this.root.dataset.ui = '1'
     this.cards = {
       pause: this.buildPause(),
       help: this.buildHelp(),
       settings: el('div', 'md-card'),
+      character: el('div', 'md-card md-character'),
     }
     this.muteBox = this.buildSettings(this.cards.settings)
+    this.picker = cb.onChangeCharacter ? this.buildCharacter(this.cards.character) : null
     for (const c of Object.values(this.cards)) this.root.appendChild(c)
   }
 
@@ -35,7 +60,8 @@ export class Overlays {
     this.pendingCard = null
   }
 
-  open(card: 'help' | 'settings'): void {
+  open(card: 'help' | 'settings' | 'character'): void {
+    if (card === 'character' && !this.picker) return
     if (this.paused) {
       this.show(card)
       return
@@ -56,6 +82,27 @@ export class Overlays {
     this.card = card
     this.root.classList.toggle('is-on', card !== null)
     for (const [k, node] of Object.entries(this.cards)) node.classList.toggle('is-on', k === card)
+    if (card === 'character') this.picker?.show(this.o.currentCharacter())
+    else this.picker?.hide()
+  }
+
+  /** 「换角色」卡：选角卡片的 switch 模式；确认 → 记下（下一局生效）并恢复游戏，取消 → 回暂停卡。 */
+  private buildCharacter(card: HTMLDivElement): CharacterSelect {
+    const cards = selectCards(this.o.rules, this.o.config)
+    return new CharacterSelect({
+      host: card,
+      mode: 'switch',
+      cards,
+      ...(this.o.ai ? { aiLabel: AI_LABEL[this.o.ai] } : {}),
+      portraits: this.o.portraits ?? new Map(),
+      onConfirm: (id) => {
+        this.cb.onChangeCharacter?.(id)
+        this.o.notice(`下一局换成 ${cards.find((c) => c.id === id)?.name ?? id}`)
+        if (this.paused) this.cb.onTogglePause()
+        else this.show(null)
+      },
+      onCancel: () => this.show(this.paused ? 'pause' : null),
+    })
   }
 
   private header(card: HTMLElement, title: string, closable: boolean): void {
@@ -93,6 +140,17 @@ export class Overlays {
       set.blur()
       this.show('settings')
     })
+    if (this.cb.onChangeCharacter) {
+      const swap = el('button', 'md-btn', row)
+      swap.type = 'button'
+      iconEl('swap', '', swap)
+      el('span', '', swap).textContent = '换角色（下一局生效）'
+      swap.addEventListener('click', () => {
+        swap.blur()
+        this.show('character')
+      })
+    }
+    if (this.o.ai) el('p', 'md-note md-ai', card).textContent = `对手难度：${AI_LABEL[this.o.ai]}（网址加 ?ai=easy / normal / hard 可换）`
     return card
   }
 
@@ -102,11 +160,12 @@ export class Overlays {
     const keys: [string, string][] = [
       ['WASD / 方向键', '移动（四向，靠近路口会自动转弯）'],
       ['空格', '放炸弹'],
+      ['Shift', '主动技能（角色专属或拾到的技能）'],
       ['V', '切换跟随 / 全局俯瞰'],
       ['Esc', '暂停'],
       ['M', '全部静音（音乐 + 音效）'],
       ['右上音符按钮', '只开关背景音乐'],
-      ['触屏', '左下拖动摇杆移动，右下按钮放炸弹'],
+      ['触屏', '左下摇杆移动，右下大按钮放炸弹、小按钮放技能'],
     ]
     const dl = el('dl', 'md-keys', card)
     for (const [k, v] of keys) {
@@ -114,19 +173,7 @@ export class Overlays {
       el('dd', '', dl).textContent = v
     }
     const rules = el('ul', 'md-rules', card)
-    for (const t of [
-      '3 颗心；每颗炸弹 −1 心，连锁能一口气秒杀。',
-      '炸开积木会掉糖：火力、炸弹、速度、血包。',
-      '头顶的帽子 = 身上的强化数：吃一个火力 / 炸弹 / 速度就多一顶，血包不算。',
-      '被炸死时强化每级一半概率掉出（决赛圈里全掉），帽子跟着变少；掉在地上的强化谁捡归谁。',
-      '帽子最多的是帽王，头顶有光柱；屏幕边缘箭头指向他。',
-      '水里会减速、放不了炸弹，泡久了会溺水。',
-      '最后 90 秒（或积木快被炸光时）进入决赛圈：死了不再复活，圈外中毒，安全圈会缩小。',
-      '决赛圈里的金色宝箱要被炸 3 次才开，里面有强化和血包。',
-      '计时结束（或决赛圈只剩 1 人），帽子最多者赢。',
-    ]) {
-      el('li', '', rules).textContent = t
-    }
+    for (const t of helpRuleLines(this.o.rules)) el('li', '', rules).textContent = t
     return card
   }
 

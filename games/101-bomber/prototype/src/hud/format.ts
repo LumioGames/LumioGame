@@ -75,3 +75,8 @@ export function lossLine(drops: string | null, hatsLost: number | null): string 
   if (hatsLost !== null) return `${hatsLost} 个强化（−${hatsLost} 帽）`
   return '…'
 }
+
+/** HUD 缩放系数 `--u`：以 1280×720 为 1，夹在 [0.75, 1.25]（HUD 与选角界面共用）。 */
+export function uiScale(vw: number, vh: number): number {
+  return Math.max(0.75, Math.min(1.25, Math.min(vw / 1280, vh / 720)))
+}

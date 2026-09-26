@@ -18,7 +18,11 @@ export class HatRenderer {
   readonly hats: Batch
   private readonly segments: Mesh[] = []
   private segUsed = 0
-  private readonly crown: Mesh
+  /** 皇冠池：领奖台上并列第 1 的人各戴一顶（ADR 0031：rank === 1 都戴冠）。 */
+  private readonly crowns: Mesh[] = []
+  private crownUsed = 0
+  private readonly crownGeo = crownGeometry()
+  private readonly goldMat: SharedMaterials['gold']
   private readonly layout = createHatStackLayout()
   private readonly segMat: MeshStandardMaterial
   private readonly segGeo = hatSegmentGeometry()
@@ -33,22 +37,21 @@ export class HatRenderer {
     const stripes = stripeTexture()
     stripes.repeat.set(1, 3)
     this.segMat = new MeshStandardMaterial({ map: stripes, roughness: 0.7 })
-    this.crown = new Mesh(crownGeometry(), mats.gold)
-    this.crown.castShadow = true
-    this.crown.renderOrder = 2
-    this.crown.visible = false
-    scene.add(this.crown)
+    this.goldMat = mats.gold
+    this.crownMesh()
+    this.crownUsed = 0
   }
 
   begin(): void {
     this.hats.begin()
     this.segUsed = 0
-    this.crown.visible = false
+    this.crownUsed = 0
   }
 
   end(): void {
     this.hats.end()
     for (let i = this.segUsed; i < this.segments.length; i++) this.segments[i].visible = false
+    for (let i = this.crownUsed; i < this.crowns.length; i++) this.crowns[i].visible = false
   }
 
   /** 单顶帽子（飞行帽）。 */
@@ -94,9 +97,24 @@ export class HatRenderer {
   }
 
   private placeCrown(x: number, y: number, z: number, q: Quaternion): void {
-    this.crown.position.set(x, y, z)
-    this.crown.quaternion.copy(q)
-    this.crown.visible = true
+    const crown = this.crownMesh()
+    crown.position.set(x, y, z)
+    crown.quaternion.copy(q)
+    crown.visible = true
+  }
+
+  private crownMesh(): Mesh {
+    let m = this.crowns[this.crownUsed]
+    if (!m) {
+      m = new Mesh(this.crownGeo, this.goldMat)
+      m.castShadow = true
+      m.renderOrder = 2
+      m.visible = false
+      this.scene.add(m)
+      this.crowns.push(m)
+    }
+    this.crownUsed++
+    return m
   }
 
   private segment(): Mesh {

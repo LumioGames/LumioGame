@@ -1,3 +1,5 @@
+import type { SkillId } from '../contract'
+import { SKILL_ICON } from '../present/skill-style'
 import { ICON } from './icons'
 
 /** 极简 DOM 工具：HUD 每帧都在跑，写之前先比较，避免无谓的样式失效。 */
@@ -16,6 +18,22 @@ export function iconEl(name: keyof typeof ICON, className = '', parent?: Element
   const s = el('span', `ico ${className}`.trim(), parent)
   s.innerHTML = ICON[name]
   return s
+}
+
+/** 技能图标（ADR 0030）：同 {@link iconEl}，图形取自 present/skill-style。 */
+export function skillIconEl(id: SkillId, className = '', parent?: Element): HTMLSpanElement {
+  const s = el('span', `ico sk-ico ${className}`.trim(), parent)
+  s.dataset.skill = id
+  s.innerHTML = SKILL_ICON[id]
+  return s
+}
+
+/** 换技能图标（同一个就不动 DOM）。 */
+export function setSkillIcon(node: HTMLElement, id: SkillId | null): void {
+  const key = id ?? ''
+  if (node.dataset.skill === key) return
+  node.dataset.skill = key
+  node.innerHTML = id ? SKILL_ICON[id] : ''
 }
 
 export function setIcon(node: HTMLElement, name: keyof typeof ICON): void {

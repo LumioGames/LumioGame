@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { MatchPhase, type BomberEvent, type PlayerView, type WorldSnapshot } from '../../contract'
-import { CrownWatch, HatGainWatch, hitCues, isPowerup, localIsWinner } from '../cues'
+import { DEFAULT_RULES, MatchPhase, 方向, type BomberEvent, type PlayerSkillsView, type PlayerView, type WorldSnapshot } from '../../contract'
+import { CrownWatch, HatGainWatch, hitCues, isPowerup, localIsWinner, SkillCueWatch } from '../cues'
 import { FANFARE_SEC, LOOP_STEPS, MELODY, musicMode, MusicSequencer, notesAt, pentaFreq, stepSeconds, VARIANTS, type MusicInputs } from '../music'
 
 function player(id: number, hats: number): PlayerView {
@@ -54,7 +54,7 @@ describe('CrownWatch (review: no fanfare when the current king crosses N)', () =
 })
 
 describe('hitCues (hurt / death sounds follow the chain rhythm)', () => {
-  const dmg = (bomb: number, chain: number, cause?: 0 | 1 | 3): BomberEvent => ({
+  const dmg = (bomb: number, chain: number, cause?: 0 | 1 | 2 | 3): BomberEvent => ({
     type: 'DamageApplied',
     VictimNetEntityIdRaw: 1,
     SourceBombNetEntityIdRaw: bomb,
@@ -82,14 +82,18 @@ describe('hitCues (hurt / death sounds follow the chain rhythm)', () => {
   })
 
   it('marks poison ticks (for the buzz) and plays them without delay', () => {
-    expect(hitCues([dmg(0, 0, 3)], 1)).toEqual([{ delay: 0, poison: true }])
-    expect(hitCues([dmg(0, 0, 1)], 1)).toEqual([{ delay: 0, poison: false }])
+    expect(hitCues([dmg(0, 0, 3)], 1)).toEqual([{ delay: 0, poison: true, burn: false }])
+    expect(hitCues([dmg(0, 0, 1)], 1)).toEqual([{ delay: 0, poison: false, burn: false }])
+  })
+
+  it('flags burns (aura / fire wall, Cause 2) for the sizzle, without chain delay', () => {
+    expect(hitCues([dmg(0, 0, 2)], 1)).toEqual([{ delay: 0, poison: false, burn: true }])
   })
 })
 
 describe('hat pop (ADR 0028: hats = power-ups)', () => {
-  it('only power-ups pop a hat; health packs do not', () => {
-    expect([0, 1, 2, 3].map((k) => isPowerup(k as 0 | 1 | 2 | 3))).toEqual([true, true, true, false])
+  it('only power-ups pop a hat; health packs and skill candy do not (D5)', () => {
+    expect([0, 1, 2, 3, 4].map((k) => isPowerup(k as 0 | 1 | 2 | 3 | 4))).toEqual([true, true, true, false, false])
   })
 
   it('HatGainWatch infers pops from the local HatCount while alive, resets per match, and yields to PickupTaken', () => {
@@ -107,11 +111,58 @@ describe('hat pop (ADR 0028: hats = power-ups)', () => {
   })
 })
 
-describe('localIsWinner', () => {
-  it('is true for a (shared) top hat count above zero', () => {
+describe('localIsWinner (D2 活到最后者赢)', () => {
+  it('is true for rank 1 among survivors (shared ranks included), regardless of hats', () => {
     expect(localIsWinner(snap(1, 0, { 1: 3, 2: 3 }), 1)).toBe(true)
     expect(localIsWinner(snap(1, 0, { 1: 2, 2: 3 }), 1)).toBe(false)
-    expect(localIsWinner(snap(1, 0, { 1: 0, 2: 0 }), 1)).toBe(false)
+    expect(localIsWinner(snap(1, 0, { 1: 0, 2: 0 }), 1)).toBe(true)
+  })
+
+  it('a 0-hat sole survivor wins; an eliminated top-hat player does not', () => {
+    const s = snap(1, 0, { 1: 0, 2: 6 })
+    s.Players[1].eliminated = true
+    s.Players[1].eliminatedTick = 50
+    expect(localIsWinner(s, 1)).toBe(true)
+    expect(localIsWinner(s, 2)).toBe(false)
+  })
+
+  it('reads match.results first', () => {
+    const s = snap(1, 0, { 1: 5, 2: 0 })
+    s.match.results = { reason: 'timeUp', winner: 2, rows: [{ id: 2, rank: 1, place: 1, survived: true, hats: 0, eliminatedTick: 0 }] }
+    expect(localIsWinner(s, 1)).toBe(false)
+    expect(localIsWinner(s, 2)).toBe(true)
+  })
+})
+
+describe('SkillCueWatch (snapshot fallback for skill sounds)', () => {
+  const withSkills = (tick: number, sk: Partial<PlayerSkillsView>, matchIndex = 1): WorldSnapshot => {
+    const s = snap(tick, 0, { 1: 0 }, matchIndex)
+    s.Players[0].skills = {
+      character: 'cat',
+      facing: 方向.下,
+      slots: { bomb: null, active: { skill: 'blink', level: 1, bound: true }, passive: null },
+      cdFromTick: 0,
+      cdUntilTick: 0,
+      bubbleUntilTick: 0,
+      auraUntilTick: 0,
+      frozenUntilTick: 0,
+      regenFromTick: 0,
+      regenNextTick: 0,
+      blinkTick: 0,
+      ...sk,
+    }
+    return s
+  }
+
+  it('detects a cast (cdUntil grows) and a new combo; silent after the first event and on a new match', () => {
+    const w = new SkillCueWatch()
+    expect(w.check(withSkills(1, {}), 1, DEFAULT_RULES.skills)).toEqual({ cast: false, evolved: null })
+    expect(w.check(withSkills(2, { cdUntilTick: 240 }), 1, DEFAULT_RULES.skills)).toEqual({ cast: true, evolved: null })
+    const evo = withSkills(3, { cdUntilTick: 240, slots: { bomb: null, active: { skill: 'fireDash', level: 1, bound: true }, passive: null } })
+    expect(w.check(evo, 1, DEFAULT_RULES.skills)).toEqual({ cast: false, evolved: 'fireDash' })
+    expect(w.check(withSkills(4, { cdUntilTick: 0 }, 2), 1, DEFAULT_RULES.skills)).toEqual({ cast: false, evolved: null })
+    w.noteEvent()
+    expect(w.check(withSkills(5, { cdUntilTick: 500 }, 2), 1, DEFAULT_RULES.skills).cast).toBe(false)
   })
 })
 

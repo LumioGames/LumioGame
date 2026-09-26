@@ -1,15 +1,20 @@
-import { BoxGeometry, Group, IcosahedronGeometry, Mesh, Quaternion, Vector3 } from 'three'
+import { BoxGeometry, Color, Group, IcosahedronGeometry, Mesh, Quaternion, Vector3 } from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import {
   BlockType,
+  BombKind,
   MatchPhase,
   msToTicks,
+  skillParams,
+  type BomberCell,
   type BomberEvent,
   type PickupView,
   type PlayerView,
+  type SkillId,
   type WorldSnapshot,
 } from '../contract'
 import type { FeedSample } from '../present/feed'
+import { COMBO_FORM, SKILL_COLOR } from '../present/skill-style'
 import { cellOf } from '../shared/grid'
 import { CameraRig } from './camera'
 import { buildDecor } from './geo/decor'
@@ -17,10 +22,11 @@ import { ExplosionFx } from './fx/explosion'
 import { HatFlyFx } from './fx/hat-fly'
 import { ParticlePool } from './fx/particles'
 import type { PodiumAnchor, ScreenPoint, ViewOptions } from './index'
-import { LabelLayer, type PlayerTagState } from './labels'
+import { LabelLayer, type FloatKind, type PlayerTagState } from './labels'
 import { chainHitstopMs, chainShakeAmplitude, CAMERA } from './logic/camera-math'
 import { CELL_GROW_MS, computeChainDelays, type ChainBomb } from './logic/chain-stagger'
 import { effectiveDetonationTicks, type DetonationBomb } from './logic/detonation'
+import { DOLL_FIT, dollLayout, localRingPulse, type DollLayout } from './logic/doll-fit'
 import { canPreviewBomb } from './logic/fire-preview'
 import {
   diffHatCounts,
@@ -35,8 +41,10 @@ import {
 } from './logic/hat-flow'
 import { HAT } from './logic/hat-layout'
 import { clamp01, easeInOutCubic, heartStage, interpolateXZ, type XZ } from './logic/interp'
-import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, type CamPose, type PodiumSpot } from './logic/podium'
+import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
 import { hash01 } from './logic/rand'
+import { finalCellOf } from './logic/ring'
+import { blinkLanding, comboOf, newCombos, SKILL_FX, teleportKind } from './logic/skill-fx'
 import { chooseSpectateTarget, type SpectateCandidate } from './logic/spectate'
 import { Timeline } from './logic/timeline'
 import { createSharedMaterials, type SharedMaterials } from './materials'
@@ -47,12 +55,14 @@ import { dashedRingTexture, dashTexture, previewTexture, radialTexture, ringText
 import { BombLayer } from './world/bombs'
 import { ChestLayer, type ChestDiff } from './world/chests'
 import { Doll, DollFactory } from './world/dolls'
+import { FireCellLayer, type FireOwner } from './world/fire-cells'
 import { GroundMarks } from './world/ground-marks'
 import { HatRenderer } from './world/hat-stack'
 import { PickupLayer, type PickupOrigin } from './world/pickups'
 import { PODIUM_ORDER, PodiumStage } from './world/podium'
 import { BombPreview } from './world/preview'
 import { RingFog } from './world/ring-fog'
+import { SkillFxLayer } from './world/skill-fx'
 import { Spotlight } from './world/spotlight'
 import { TerrainView3D, type RemovedBrick } from './world/terrain'
 
@@ -63,6 +73,9 @@ import { TerrainView3D, type RemovedBrick } from './world/terrain'
  * （决赛圈 / 出局 / 宝箱 / 死者掉落全看快照；帽子 = 强化数（ADR 0028），落帽 / 飞帽全看 HatCount 的变化，
  * PickupSpawned(Source='death') 与 PickupView.droppedBy 只用来找飞帽落点）。
  * 结算开头 podiumMs 内是领奖台仪式：对局实体整组隐藏（`world` 组），舞台 + 台上玩偶 + 电影镜头接管。
+ * 原型扩展（NON-CONTRACT，ADR 0030 / 0031 / 0032）：角色技能（泡泡 / 冰块 / 组合技形态 / 闪现拖尾 / 火焰光环与火墙 /
+ * 被踢炸弹 / 冰冻穿透弹 / 技能糖）、领奖台按 match.results（D2 活到最后者赢）、1×1 决赛圈正中辉光、玩偶脚印 0.7 格。
+ * 这些都只读快照里的可选字段，缺席时退化为第 3 轮的表现。
  */
 
 interface PendingBlast {
@@ -78,6 +91,8 @@ interface PendingBlast {
   right: number
   fuseEnd: number
   dangerUntil: number
+  /** 冰冻弹 / 冰川弹：冰霜配色。 */
+  frost: boolean
 }
 
 interface PendingHit {
@@ -106,6 +121,10 @@ const CONFETTI_COLORS = [SUNSHINE, TANGERINE, SKY, LEAF, 0xff6fa8, 0xb57bff, 0xf
 const FLOAT_MS = 1100
 const CINE_IN_SEC = 0.9
 const CINE_OUT_SEC = 0.8
+/** 1×1 决赛圈正中那格的金色脉动辉光（线性 RGB 由 SUNSHINE 换算）。 */
+const FINAL_CELL_GLOW = new Color(SUNSHINE)
+/** 回血飘字（原型扩展 NON-CONTRACT，ADR 0030）。 */
+const HEAL_TEXT = (hearts: number): string => `+${hearts} 心`
 
 interface PodiumActor extends PodiumSpot {
   doll: Doll
@@ -135,6 +154,7 @@ function ceremonySignature(s: WorldSnapshot): string {
 interface FloatText {
   key: number
   id: number
+  kind: FloatKind
   text: string
   start: number
 }
@@ -182,6 +202,17 @@ export class ViewRuntime {
   private readonly chestCells = new Set<number>()
   private readonly detBombs: DetonationBomb[] = []
   private readonly fuseTicks: number
+  /** 玩偶脚印（ADR 0032）：缩放、脚圈、接触阴影。 */
+  private readonly layout: DollLayout
+  private readonly fire: FireCellLayer
+  private readonly skillFx: SkillFxLayer
+  /** 每位玩家上次看到的 skills.blinkTick（闪现判定）。 */
+  private readonly lastBlink = new Map<number, number>()
+  /** 这一帧快照里刚闪现过的玩家：位置不跨闪现插值。 */
+  private readonly blinkSnap = new Set<number>()
+  /** 本机闪现落点预览（每个快照算一次）。 */
+  private localLanding: { landing: BomberCell; path: BomberCell[] } | null = null
+  private localLandingColor = 0xffffff
 
   private readonly size: number
   private readonly tickMs: number
@@ -220,7 +251,7 @@ export class ViewRuntime {
   private pendingChest: PendingChest[] = []
   private pendingHatFlows: PendingHatFlow[] = []
   /** 出局顺序：PlayerEliminated.Rank（有则用）+ 快照首见 Tick。 */
-  private readonly elim = new Map<number, { rank?: number; tick: number }>()
+  private readonly elim = new Map<number, { tick: number }>()
   private floats: FloatText[] = []
   private floatSeq = 0
   private spectateId = 0
@@ -280,7 +311,10 @@ export class ViewRuntime {
     this.confetti.batch.mesh.renderOrder = PODIUM_ORDER
     this.confetti.floorAt = (x, z) => this.podium.floorAt(x, z)
     scene.add(this.confetti.batch.mesh)
-    this.factory = new DollFactory(this.mats)
+    this.layout = dollLayout(opts.rules)
+    this.factory = new DollFactory(this.mats, this.layout.scale)
+    this.fire = new FireCellLayer(world, this.mats)
+    this.skillFx = new SkillFxLayer(world, this.mats, opts.rules.skills)
 
     const decor = new Mesh(buildDecor(this.size / 2, this.size / 2 + 0.4, 101), this.mats.plastic)
     decor.castShadow = true
@@ -291,11 +325,15 @@ export class ViewRuntime {
     this.fog.warmup(true)
     this.chests.warmup(true)
     this.podium.warmup(true)
+    this.fire.warmup(true)
+    this.skillFx.warmup(true)
     this.cam.update(0, 0, 0, this.size / 2, this.size / 2, 0, 0, 0)
     this.host.renderer.compile(scene, this.cam.camera)
     this.fog.warmup(false)
     this.chests.warmup(false)
     this.podium.warmup(false)
+    this.fire.warmup(false)
+    this.skillFx.warmup(false)
   }
 
   // ---------------------------------------------------------------- 公共面
@@ -376,8 +414,12 @@ export class ViewRuntime {
     if (ceremony) {
       this.updateCeremony(ceremony, curr, now)
     } else {
+      this.skillFx.begin()
       this.updateDolls(s, now, dt)
-      this.bombs.update(s.renderTick, now, dt, this.camQuat, this.marks)
+      this.skillFx.end(now, this.marks)
+      this.bombs.update(s.renderTick, now, dt, this.camQuat, this.marks, s.alpha)
+      this.fire.update(now, s.renderTick, curr.match.tickRateHz, this.marks, this.fireOwner)
+      this.updateFinalCell(curr, now)
       this.pickups.update(now, 0, this.marks, s.renderTick, curr.match.tickRateHz)
       this.fly.update(now, this.hats, this.resolveTowerTop, this.onHatLanded, this.onHatLost)
       this.blasts.update(now, this.marks)
@@ -442,7 +484,7 @@ export class ViewRuntime {
       const st = b.BomberBombState
       if (st.ExplodedAtTick > 0) continue
       const c = cellOf(b.LogicTransform.WorldPosition.x, b.LogicTransform.WorldPosition.z)
-      det.push({ id: b.NetEntityIdRaw, x: c.X, y: c.Y, power: st.Power, fuseEndTick: st.FuseEndTick })
+      det.push({ id: b.NetEntityIdRaw, x: c.X, y: c.Y, power: st.Power, fuseEndTick: st.FuseEndTick, pierce: st.PierceLayers ?? 0 })
     }
     const detonateAt = effectiveDetonationTicks(det, curr.Terrain, this.chestCells, this.fuseTicks)
     this.bombs.sync(curr.Bombs, (owner) => this.currMap.get(owner)?.meta.slot ?? 0, now, detonateAt)
@@ -464,6 +506,7 @@ export class ViewRuntime {
         right: st.ReachRight,
         fuseEnd: st.FuseEndTick,
         dangerUntil: st.DangerUntilTick,
+        frost: st.BombKind === BombKind.Freeze,
       })
     }
 
@@ -477,6 +520,9 @@ export class ViewRuntime {
       this.addDropCell(by, pk.LogicTransform.WorldPosition.x, pk.LogicTransform.WorldPosition.z)
     }
     this.knownPickups = known
+    // 会烧人的火（火焰光环 / 火墙）：快照 FireZones，缺席 = 没有火。
+    this.fire.sync(curr.FireZones ?? [])
+    this.blinkSnap.clear()
 
     // 玩家：受伤 / 死亡 / 瞬移
     for (const p of curr.Players) {
@@ -503,25 +549,38 @@ export class ViewRuntime {
         }
       }
       if (prevHp === undefined && (hp <= 0 || p.eliminated)) doll.hide()
+      // 回血（回春 / 血包）：头顶「+N 心」。
+      if (!silent && prevHp !== undefined && prevHp > 0 && hp > prevHp) this.addFloat(id, 'heal', HEAL_TEXT(Math.round(((hp - prevHp) / this.perHeart) * 10) / 10))
       this.lastHp.set(id, hp)
-      if (p.eliminated && !this.elim.has(id)) this.elim.set(id, { tick: curr.Tick })
+      if (p.eliminated && !this.elim.has(id)) this.elim.set(id, { tick: p.eliminatedTick || curr.Tick })
       // 重生两种信号都认：teleportTick 前进（瞬移到出生点），或血量从 ≤0 回到 >0
       // （规则层若在死亡当帧就把人挪走、复活时不再瞬移，只看 teleportTick 会让玩偶一直藏着）。
+      // 闪现（blinkTick === teleportTick，或 blinkTick 前进）不是重生：演拖尾 + 原地「啵」，不从天而降。
       const tp = this.lastTeleport.get(id)
       const teleported = tp === undefined || p.teleportTick > tp
-      const revived = prevHp !== undefined && prevHp <= 0 && hp > 0
+      const bt = p.skills?.blinkTick
+      const kind = teleportKind(tp, { teleportTick: p.teleportTick, blinkTick: bt, hp, eliminated: p.eliminated }, prevHp, this.lastBlink.get(id))
       if (teleported) this.lastTeleport.set(id, p.teleportTick)
+      if (bt !== undefined) this.lastBlink.set(id, bt)
+      if (kind === 'blink' && !silent) this.onBlink(id, doll, this.prevMap.get(id), p, now)
       // 决赛圈出局者不再复活：即使规则层把人挪回出生点，玩偶也不再上桌。
-      if (hp > 0 && !p.eliminated && (teleported || revived)) {
+      else if (kind === 'first' || kind === 'respawn') {
         this.pendingRespawns.push({ id, tick: silent ? 0 : teleported ? p.teleportTick : curr.Tick })
       }
+      // 进化：新长出的组合技给所有人看（彩纸 + 棉花 + 「进化！」）。
+      if (!silent) for (const c of newCombos(this.prevMap.get(id)?.skills, p.skills, this.opts.rules.skills)) this.timeline.add(now, () => this.evolveBurst(id, c))
     }
+    const local = this.currMap.get(this.opts.localPlayerId)
+    this.localLanding = local ? blinkLanding(curr, local, this.opts.rules) : null
+    const act = local?.skills?.slots.active
+    this.localLandingColor = act ? SKILL_COLOR[act.skill] : 0xffffff
     for (const [id, d] of this.dolls) {
       if (!this.currMap.has(id)) {
         d.dispose()
         this.dolls.delete(id)
         this.lastHp.delete(id)
         this.lastTeleport.delete(id)
+        this.lastBlink.delete(id)
       }
     }
 
@@ -599,6 +658,11 @@ export class ViewRuntime {
     this.terrain.reset()
     this.lastHp.clear()
     this.lastTeleport.clear()
+    this.lastBlink.clear()
+    this.blinkSnap.clear()
+    this.localLanding = null
+    this.fire.clear()
+    this.skillFx.clear()
   }
 
   private addDropCell(victim: number, x: number, z: number): void {
@@ -622,12 +686,16 @@ export class ViewRuntime {
           // 死者掉出的强化：飞帽落点（与快照 droppedBy 推出的同格会去重）。
           if (e.Source === 'death' && e.DroppedByNetEntityIdRaw !== 0) this.addDropCell(e.DroppedByNetEntityIdRaw, e.Cell.X + 0.5, e.Cell.Y + 0.5)
           break
-        case 'PlayerEliminated': {
-          const r = this.elim.get(e.NetEntityIdRaw)
-          if (r) r.rank = e.Rank
-          else this.elim.set(e.NetEntityIdRaw, { rank: e.Rank, tick: e.Tick })
+        case 'PlayerEliminated':
+          if (!this.elim.has(e.NetEntityIdRaw)) this.elim.set(e.NetEntityIdRaw, { tick: e.Tick })
           break
-        }
+        case 'BombKicked':
+          // 提示：踢出去的那一格扬一小团灰（滑行本身按快照 kick 插值）。
+          this.puffCotton(e.FromCell.X + 0.5, 0.15, e.FromCell.Y + 0.5, 5, 1.4, 0xf3e6c8, 0.18)
+          break
+        case 'SkillActivated':
+          if (e.Skill === 'fireAura' || e.Skill === 'fireDash') this.puffCotton(e.Cell.X + 0.5, 0.3, e.Cell.Y + 0.5, 8, 2.0, SKILL_COLOR[e.Skill], 0.2)
+          break
         case 'BombExtinguished': {
           // 水上放弹即熄灭：一小团水汽
           for (let i = 0; i < 6; i++) {
@@ -689,7 +757,7 @@ export class ViewRuntime {
           this.bombDelay.set(b.id, delay)
           this.bombs.scheduleHide(b.id, at)
           const durMs = Math.max(this.tickMs, (b.dangerUntil - b.tick) * this.tickMs)
-          this.blasts.start(b.cx, b.cy, b.up, b.down, b.left, b.right, at, durMs, (b.id * 0.618) % 6.28)
+          this.blasts.start(b.cx, b.cy, b.up, b.down, b.left, b.right, at, durMs, (b.id * 0.618) % 6.28, b.frost)
           this.markBrick(b.cx, b.cy - b.up - 1, at + (b.up + 1) * CELL_GROW_MS)
           this.markBrick(b.cx, b.cy + b.down + 1, at + (b.down + 1) * CELL_GROW_MS)
           this.markBrick(b.cx - b.left - 1, b.cy, at + (b.left + 1) * CELL_GROW_MS)
@@ -872,7 +940,7 @@ export class ViewRuntime {
 
   /** 落帽落上塔顶：「+1」飘字 + 一小团金色棉花。 */
   private readonly onHatLanded = (id: number): void => {
-    this.floats.push({ key: ++this.floatSeq, id, text: '+1', start: this.lastViewNow })
+    this.addFloat(id, 'hat', '+1')
     const doll = this.dolls.get(id)
     if (doll && doll.shown) {
       const th = this.towerH.get(id) ?? 0
@@ -893,7 +961,18 @@ export class ViewRuntime {
   }
 
   /** 彩纸：从 (x, y, z) 沿 (dx, dy, dz) 喷出 n 片；spread = 横向散开。 */
-  private confettiBurst(x: number, y: number, z: number, dx: number, dy: number, dz: number, n: number, speed: number, spread: number): void {
+  private confettiBurst(
+    x: number,
+    y: number,
+    z: number,
+    dx: number,
+    dy: number,
+    dz: number,
+    n: number,
+    speed: number,
+    spread: number,
+    colors: readonly number[] = CONFETTI_COLORS,
+  ): void {
     const seed = Math.floor(this.lastViewNow) + Math.floor(x * 97 + z * 31)
     for (let i = 0; i < n; i++) {
       const a = hash01(i, seed) * Math.PI * 2
@@ -910,7 +989,7 @@ export class ViewRuntime {
         sy: 0.12,
         sz: 0.62,
         lifeMs: 2400 + hash01(i + 13, seed) * 1400,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        color: colors[i % colors.length],
         gravity: -3.4,
         drag: 1.7,
         restitution: 0,
@@ -1003,14 +1082,22 @@ export class ViewRuntime {
       if (!doll) continue
       // 出局者散架演完就不再露面（死亡记录还在 = 散架还没演，先别藏）。
       if (p.eliminated && doll.visual === 'alive' && !this.deaths.some((d) => d.id === p.NetEntityIdRaw)) doll.hide()
-      const prevP = this.prevMap.get(p.NetEntityIdRaw)
+      // 刚闪现过：不跨闪现插值（规则层没推进 teleportTick 时也不「滑」3 格）。
+      const prevP = this.blinkSnap.has(p.NetEntityIdRaw) ? undefined : this.prevMap.get(p.NetEntityIdRaw)
       interpolateXZ(this.pos, prevP ? xz(prevP) : undefined, xz(p), p.teleportTick, prev.Tick, alpha)
       const inWater = this.terrain.groundAt(Math.floor(this.pos.x), Math.floor(this.pos.z)) === BlockType.水
       doll.groundY += ((inWater ? -0.1 : 0) - doll.groundY) * Math.min(1, dt * 10)
       const hp = p.玩家属性.血量当前
       const stage = heartStage(hp, this.perHeart)
       const prot = renderTick < p.BomberPlayerState.ProtectedUntilTick
-      doll.update(this.pos.x, this.pos.z, now, dt, stage, prot)
+      const sk = p.skills
+      const combo = comboOf(sk, this.opts.rules.skills)
+      const form = combo ? COMBO_FORM[combo] : undefined
+      this.dollFx.frozen = renderTick < (sk?.frozenUntilTick ?? 0)
+      this.dollFx.glow = form ? form.glow * (0.75 + 0.25 * Math.sin((now / 1000) * Math.PI * 2)) : 0
+      this.dollFx.glowColor = form?.ring
+      doll.update(this.pos.x, this.pos.z, now, dt, stage, prot, this.dollFx)
+      this.skillFx.player(doll, sk, renderTick, curr.match.tickRateHz, now)
 
       const isLocal = p.NetEntityIdRaw === localId
       if (isLocal) {
@@ -1023,15 +1110,17 @@ export class ViewRuntime {
         t.dz = doll.dirZ * k
       }
       if (!doll.shown) continue
-      this.marks.shadow(doll.x, doll.z, 0.9, doll.airHeight)
+      // 脚印（ADR 0032）：接触阴影画在插值后的逻辑位置上；脚圈外沿 = 0.7 格，本机只往里呼吸。
+      const L = this.layout
+      this.marks.shadow(doll.x, doll.z, L.shadow, doll.airHeight)
       const color = slotColor(p.meta.slot)
       if (isLocal) {
-        const pulse = 1 + 0.05 * Math.sin((now / 1000) * Math.PI * 2)
-        this.marks.ring(doll.x, doll.z, 1.02 * pulse, color, 0.95)
+        this.marks.ring(doll.x, doll.z, L.ringQuad * localRingPulse(now), color, DOLL_FIT.localRingAlpha)
+        if (this.localLanding) this.skillFx.landing(this.localLanding, this.localLandingColor, now, this.marks)
       } else {
-        this.marks.ring(doll.x, doll.z, 0.86, color, 0.85)
+        this.marks.ring(doll.x, doll.z, L.ringQuad, color, DOLL_FIT.otherRingAlpha)
       }
-      if (prot) this.marks.dashedRing(doll.x, doll.z, 1.2, 0xffffff, 0.9, now * 0.002)
+      if (prot) this.marks.dashedRing(doll.x, doll.z, L.protectRing, 0xffffff, 0.9, now * 0.002)
     }
     if (!localSeen) {
       this.localTarget.dx = 0
@@ -1112,7 +1201,7 @@ export class ViewRuntime {
       if (!doll || !doll.shown) continue
       const th = this.towerH.get(f.id) ?? 0
       const a = doll.labelAnchor(this.v3, th)
-      this.labels.setFloat(f.key, 'hat', f.text, a.x, a.y + 0.45, a.z, u)
+      this.labels.setFloat(f.key, f.kind, f.text, a.x, a.y + 0.45, a.z, u)
     }
     this.floats.length = keep
   }
@@ -1167,12 +1256,18 @@ export class ViewRuntime {
     c.sig = ceremonySignature(curr)
     const byId = new Map<number, PlayerView>()
     for (const p of curr.Players) byId.set(p.NetEntityIdRaw, p)
-    const rows = podiumOrder(
-      curr.Players.map((p) => {
-        const e = this.elim.get(p.NetEntityIdRaw)
-        return { id: p.NetEntityIdRaw, hats: p.BomberPlayerState.HatCount, eliminated: p.eliminated, elimRank: e?.rank, elimTick: e?.tick }
-      }),
-    )
+    // 名次（D2 活到最后者赢，ADR 0031）：规则层给了 match.results 就照它站位，否则按同一个 rankMatch 自己排。
+    const results = curr.match.results
+    const rows = results
+      ? rowsFromResults(results)
+      : podiumOrder(
+          curr.Players.map((p) => ({
+            id: p.NetEntityIdRaw,
+            hats: p.BomberPlayerState.HatCount,
+            eliminated: p.eliminated,
+            elimTick: p.eliminatedTick || this.elim.get(p.NetEntityIdRaw)?.tick,
+          })),
+        )
     const localId = this.opts.localPlayerId
     for (const spot of podiumSpots(rows)) {
       const p = byId.get(spot.id)
@@ -1182,7 +1277,8 @@ export class ViewRuntime {
       doll.setRenderOrder(PODIUM_ORDER)
       doll.root.visible = false
       const hats = p.BomberPlayerState.HatCount
-      c.actors.push({ ...spot, doll, hats, crowned: spot.place === 1 && hats > 0, isLocal: spot.id === localId, landed: t > spot.dropSec + 0.6 })
+      // 皇冠 = 名次第 1（并列第 1 都戴；0 顶帽的唯一幸存者也戴，ADR 0031）。
+      c.actors.push({ ...spot, doll, hats, crowned: spot.rank === 1, isLocal: spot.id === localId, landed: t > spot.dropSec + 0.6 })
     }
   }
 
@@ -1316,17 +1412,76 @@ export class ViewRuntime {
     this.spotlight.update(active, this.kingX, this.kingZ, now, dt, endgame, this.camQuat, this.marks)
   }
 
+  // ---------------------------------------------------------------- 技能（原型扩展 NON-CONTRACT，ADR 0030）
+
+  /** 光环主人此刻的表现位置 + 逻辑格（火苗跟着插值后的熊走）。 */
+  private readonly fireOwner = (id: number): FireOwner | null => {
+    const doll = this.dolls.get(id)
+    const p = this.currMap.get(id)
+    if (!doll || !p || !doll.shown) return null
+    return { x: doll.x, z: doll.z, cellX: Math.floor(p.LogicTransform.WorldPosition.x), cellY: Math.floor(p.LogicTransform.WorldPosition.z) }
+  }
+
+  private readonly dollFx: { frozen: boolean; glow: number; glowColor: number | undefined } = { frozen: false, glow: 0, glowColor: undefined }
+
+  /** 闪现 / 冲刺：起点 → 落点拖尾 + 两头各一团棉花 + 原地「啵」；本机镜头短滑。不走重生的从天而降。 */
+  private onBlink(id: number, doll: Doll, prevP: PlayerView | undefined, p: PlayerView, now: number): void {
+    const toX = p.LogicTransform.WorldPosition.x
+    const toZ = p.LogicTransform.WorldPosition.z
+    const fromX = prevP ? prevP.LogicTransform.WorldPosition.x : doll.x
+    const fromZ = prevP ? prevP.LogicTransform.WorldPosition.z : doll.z
+    const skill: SkillId = p.skills?.slots.active?.skill ?? 'blink'
+    const color = SKILL_COLOR[skill]
+    this.blinkSnap.add(id)
+    this.skillFx.trail(fromX, fromZ, toX, toZ, now, color)
+    this.puffCotton(fromX, 0.4, fromZ, 6, 1.6, color, 0.2)
+    this.puffCotton(toX, 0.4, toZ, 6, 1.6, 0xffffff, 0.22)
+    doll.teleport(toX, toZ)
+    doll.blinkIn(now)
+    if (id === this.opts.localPlayerId) this.cam.glide(this.realSec + SKILL_FX.blinkGlide)
+  }
+
+  /** 进化爆发（所有人可见）：组合技配色的彩纸 + 棉花 + 头顶「进化！」。 */
+  private evolveBurst(id: number, combo: SkillId): void {
+    const doll = this.dolls.get(id)
+    if (!doll || !doll.shown) return
+    const form = COMBO_FORM[combo]
+    const colors = form ? [form.ring, form.orb, 0xffffff] : CONFETTI_COLORS
+    const top = doll.headTop
+    this.confettiBurst(top.x, top.y + 0.3, top.z, 0, 1, 0, SKILL_FX.evolveConfetti, 4.5, 0.9, colors)
+    this.puffCotton(doll.x, 0.5, doll.z, 10, 2.4, form?.ring ?? 0xffffff, 0.24)
+    this.addFloat(id, 'evolve', '进化！')
+  }
+
+  private addFloat(id: number, kind: FloatKind, text: string): void {
+    this.floats.push({ key: ++this.floatSeq, id, kind, text, start: this.lastViewNow })
+  }
+
+  /** 决赛圈缩到 1×1（D7）：正中那格金色脉动辉光，预告期就亮。 */
+  private updateFinalCell(curr: WorldSnapshot, now: number): void {
+    const c = finalCellOf(curr.match.finalCircle)
+    if (!c) return
+    const k = 0.5 + 0.5 * Math.sin((now / 1000) * Math.PI * 2 * 1.2)
+    const g = FINAL_CELL_GLOW
+    this.marks.glowAt(c.X + 0.5, c.Y + 0.5, 1.1 + 0.25 * k, g.r * 1.5, g.g * 1.5, g.b * 1.5, 0.35 + 0.35 * k)
+    this.marks.dashedRing(c.X + 0.5, c.Y + 0.5, 1.15, SUNSHINE, 0.55 + 0.35 * k, -now * 0.0015)
+  }
+
   private updatePreview(curr: WorldSnapshot, now: number, dt: number): void {
     const p = this.currMap.get(this.opts.localPlayerId)
     let show = false
     let cx = 0
     let cy = 0
     let power = 0
+    let pierce = 0
     if (p) {
       // 契约 §1.2 所在格：数学 floor（与 shared/grid.cellOf 同义，这里内联免得每帧分配）
       cx = Math.floor(p.LogicTransform.WorldPosition.x)
       cy = Math.floor(p.LogicTransform.WorldPosition.z)
       power = p.玩家属性.火力当前
+      const sk = p.skills
+      const bombSlot = sk?.slots.bomb
+      pierce = bombSlot ? skillParams(this.opts.rules.skills, bombSlot.skill, bombSlot.level).pierceLayers : 0
       let cellHasBomb = false
       for (const b of curr.Bombs) {
         if (Math.floor(b.LogicTransform.WorldPosition.x) === cx && Math.floor(b.LogicTransform.WorldPosition.z) === cy) {
@@ -1341,9 +1496,11 @@ export class ViewRuntime {
           bombsInHand: p.玩家属性.手上炸弹数当前,
           cellHasBomb,
           groundBlock: curr.Terrain.ground[cy * curr.Terrain.size + cx] ?? BlockType.地面,
+          // 泡泡里 / 冻住时放不了弹（原型扩展 NON-CONTRACT，ADR 0030）。
+          blocked: !!sk && (curr.Tick < sk.bubbleUntilTick || curr.Tick < sk.frozenUntilTick),
         })
     }
-    this.preview.update(show, curr.Terrain, cx, cy, power, now, dt, this.chestCells)
+    this.preview.update(show, curr.Terrain, cx, cy, power, now, dt, this.chestCells, pierce)
   }
 }
 
