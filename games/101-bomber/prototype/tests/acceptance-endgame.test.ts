@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_RULES } from '../src/contract'
 import { formatRows, formatSummary, runMatch, summarize, type MatchStats } from './harness/match-runner'
 import { ACCEPT_ON, MATCH_TIMEOUT_MS } from './harness/stats-suite'
 
@@ -8,14 +9,15 @@ import { ACCEPT_ON, MATCH_TIMEOUT_MS } from './harness/stats-suite'
  * 种子固定为 1..6，永不更换；阈值不得放宽。
  */
 const SEEDS = [1, 2, 3, 4, 5, 6] as const
-const CAP_MS = 420_000
+/** ADR 0035：局时上限 4 分钟（原 ADR 0031 的 7 分钟）。 */
+const CAP_MS = DEFAULT_RULES.matchCapMs
 
 describe.runIf(ACCEPT_ON)('acceptance E: 6 seeded all-bot matches on normal', () => {
   const rows: MatchStats[] = []
 
   for (const seed of SEEDS)
     it(
-      `seed ${seed}: ends within 7 min, reaches the final circle, 1×1 stays enterable, ranking holds`,
+      `seed ${seed}: ends within the 4-min cap, reaches the final circle, 1×1 stays enterable, ranking holds`,
       () => {
         // runMatch 内部已校验名次不变量（违反即抛错）。
         const r = runMatch({ seed, ai: 'normal', local: 'normal' })
@@ -31,7 +33,7 @@ describe.runIf(ACCEPT_ON)('acceptance E: 6 seeded all-bot matches on normal', ()
       MATCH_TIMEOUT_MS,
     )
 
-  it('aggregate: avg ≤ 7 min, sole survivor ≥ 85% (= 6/6), time-up median survivors ≤ 2, 1×1 enterable every match', () => {
+  it('aggregate: avg ≤ 4 min, sole survivor ≥ 85% (= 6/6), time-up median survivors ≤ 2, 1×1 enterable every match', () => {
     expect(rows.map((r) => r.seed).sort((a, b) => a - b)).toEqual([...SEEDS])
     const s = summarize('E · 6 种子 · normal', rows)
     console.log(`\n## 验收 E（6 种子）\n\n${formatSummary([s])}\n\n${formatRows(rows)}\n`)

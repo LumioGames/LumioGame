@@ -32,22 +32,23 @@ import { cell, makeWorld } from '../src/sim/__tests__/helpers'
 const R = DEFAULT_RULES
 const hz = DEFAULT_CONFIG.tickRateHz
 
-describe('ADR 0031 · 7-min cap, 115 s final circle (design §4 / §4.1 / §4.2)', () => {
-  it('match cap: prototype 420 s via protoConfig, contract default untouched', () => {
-    // design §4「封顶 7 分钟」；RESOLUTIONS #18：契约 DEFAULT_CONFIG 仍是 360000，原型经 protoConfig() 用 ProtoRules.matchCapMs。
-    expect(protoConfig().matchDurationMs).toBe(420_000)
-    expect(R.matchCapMs).toBe(420_000)
+describe('ADR 0031 / ADR 0035 · 4-min cap, 115 s final circle (design §4 / §4.1 / §4.2)', () => {
+  it('match cap: prototype 240 s via protoConfig, contract default untouched', () => {
+    // ADR 0035（用户 2026-09-27「约 2 分钟开圈」）：封顶 7 分钟 → 4 分钟；RESOLUTIONS #18：契约 DEFAULT_CONFIG 仍是 360000，
+    // 原型经 protoConfig() 用 ProtoRules.matchCapMs。
+    expect(protoConfig().matchDurationMs).toBe(240_000)
+    expect(R.matchCapMs).toBe(240_000)
     expect(DEFAULT_CONFIG.matchDurationMs).toBe(360_000)
     // ?match= 覆盖只改局时（design §15 原型工具；RESOLUTIONS #15）。
     expect(protoConfig(R, { matchDurationMs: 120_000 }).matchDurationMs).toBe(120_000)
   })
 
-  it('final circle 115 s; regen stops 60 s before the time trigger; 10 s ring preview; resource trigger < 20 %', () => {
-    // design §4.2 触发 / 时长：固定 115 秒，时间触发 = 5:05；ADR 0026 再生在距时间触发 60 秒（4:05）停止。
+  it('final circle 115 s; regen stops 20 s before the time trigger; 10 s ring preview; resource trigger < 20 %', () => {
+    // design §4.2 触发 / 时长：固定 115 秒，时间触发 = 2:05（ADR 0035）；ADR 0026 再生停止点 ADR 0035 改为距时间触发 20 秒（1:45）。
     expect(R.finalCircleMs).toBe(115_000)
-    expect(R.regenStopBeforeFinalMs).toBe(60_000)
-    expect(protoConfig().matchDurationMs - R.finalCircleMs).toBe(305_000) // 5:05
-    expect(protoConfig().matchDurationMs - R.finalCircleMs - R.regenStopBeforeFinalMs).toBe(245_000) // 4:05
+    expect(R.regenStopBeforeFinalMs).toBe(20_000)
+    expect(protoConfig().matchDurationMs - R.finalCircleMs).toBe(125_000) // 2:05
+    expect(protoConfig().matchDurationMs - R.finalCircleMs - R.regenStopBeforeFinalMs).toBe(105_000) // 1:45
     // design §4.2 安全圈：每段前 10 秒画出下一圈。
     expect(R.ringPreviewMs).toBe(10_000)
     // design §4.2 触发：剩余可破坏砖 < 开局的 20%。

@@ -98,21 +98,22 @@ describe('final circle trigger', () => {
     expect(w.match.phase).toBe(MatchPhase.Settlement)
   })
 
-  it('7-minute defaults via protoConfig(): 8400-tick match, 2300-tick circle, regen stops at 4:05, time trigger at 5:05', () => {
+  // ADR 0035：4 分钟局（原 ADR 0031 的 7 分钟局 → 用户 2026-09-27「约 2 分钟开圈」）。
+  it('4-minute defaults via protoConfig(): 4800-tick match, 2300-tick circle, regen stops at 1:45, time trigger at 2:05', () => {
     const w = makeWorld({ cfg: protoConfig() })
-    expect(w.ticks.match).toBe(8400)
+    expect(w.ticks.match).toBe(4800)
     expect(w.ticks.finalCircle).toBe(2300)
     expect(w.ticks.ringStages.map((s) => s.at)).toEqual([200, 700, 1100, 1500, 1900, 2200])
     const s = w.t
     w.match.startTick = s
     w.match.endTick = s + w.ticks.match
-    w.t = s + 4899
+    w.t = s + 2099
     expect(regenActive(w)).toBe(true)
-    w.t = s + 4900
+    w.t = s + 2100
     expect(regenActive(w)).toBe(false)
-    w.t = s + 6099
+    w.t = s + 2499
     expect(finalCircleTrigger(w)).toBeNull()
-    w.t = s + 6100
+    w.t = s + 2500
     expect(finalCircleTrigger(w)).toBe('time')
   })
 

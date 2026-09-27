@@ -53,12 +53,14 @@
 | [0023](0023-wire-contract-pinned-in-tests.md) | 契约一致性测试在测试期直接读架构仓 wire JSON,缺检出即失败 | 生效 |
 | [0024](0024-per-game-directories-and-101-web-prototype.md) | 仓库按游戏分目录,炸弹人为 101;网页原型作为抛弃型参考落在 games/101-bomber/prototype | 生效（原型内容范围与「表现层不得依赖 NON-CONTRACT 字段」被 0030 取代） |
 | [0025](0025-bomber-final-circle-and-death-drops.md) | 炸弹人终局改为「最后一命决赛圈」,死亡掉落一半强化 | 生效（帽子资源条款被 0028 取代；90 秒 / 6 分钟封顶 / 3 段安全圈 / 恒定毒速 / 按帽子数定胜负 / 锁入 ≤ 90 秒被 0031 取代） |
-| [0026](0026-bomber-small-map-regen-and-resource-trigger-gate.md) | 19×19 档也做软砖再生,资源触发决赛圈只在再生停止后生效 | 生效 |
+| [0026](0026-bomber-small-map-regen-and-resource-trigger-gate.md) | 19×19 档也做软砖再生,资源触发决赛圈只在再生停止后生效 | 生效（再生停止 60 秒的数值被 0035 取代） |
 | [0027](0027-bomber-powerup-pickup-mints-hat.md) | 炸弹人吃一个强化铸一顶帽,帽子塔同时表示「谁最富」 | 被 0028 取代 |
 | [0028](0028-bomber-hats-are-powerup-count.md) | 炸弹人取消独立的帽子资源,帽子只表示身上的强化数 | 生效（局终帽子最多者胜被 0031 取代） |
 | [0029](0029-bomber-death-drops-blast-protection.md) | 死者掉出的强化落地后 3 秒内不会被爆炸摧毁 | 生效 |
 | [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效（技能糖池权重与宝箱技能糖被 0033 修订） |
-| [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效 |
+| [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效（整局封顶 7 分钟被 0035 取代） |
 | [0032](0032-bomber-movement-dual-direction-and-doll-footprint.md) | 炸弹人手感补充:同按两个方向走得通的那个、转角吸附 0.5 格、玩偶视觉占地不超过 0.7 格 | 生效 |
 | [0033](0033-bomber-toxin-and-shock-bombs-from-chests.md) | 炸弹人新增中毒弹与麻痹弹两种炸弹技能,技能糖池偏向炸弹类,决赛圈宝箱保底开出炸弹糖 | 生效 |
 | [0034](0034-bomber-character-balance-round-1.md) | 炸弹人角色平衡第一轮:削棉花兔回春、加强泡泡 / 闪现 / 火焰光环,普通档 Bot 少放技能 | 生效 |
+| [0035](0035-bomber-pacing-final-circle-at-two-minutes.md) | 炸弹人节奏提速:整局封顶 4 分钟,约 2 分钟开决赛圈 | 生效 |
+| [0036](0036-bomber-acceptance-d-player-enters-ring-on-time.md) | 炸弹人验收 D:脚本玩家按时进圈、不学 Bot 晚进圈,官方 D 由 30 局扩到 100 局 | 生效 |

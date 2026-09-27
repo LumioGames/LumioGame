@@ -60,6 +60,11 @@ export interface ThinkContext {
   /** 原型扩展（NON-CONTRACT，ADR 0031）：当前（含已预告段）圈外每跳毒伤的半心点。 */
   poisonRate: number
   tactics: BotTactics
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0036）：进圈纪律（= BotProfile.ringEntry；缺省 'late'）。'onTime' 逃生时先找
+   * 圈内永不进毒圈、路线也不穿毒的落脚格，找不到才退回常规逃生口径。
+   */
+  ringEntry?: 'late' | 'onTime'
 }
 
 export interface Goal {
@@ -122,9 +127,17 @@ export function protectedAtDetonation(ctx: ThinkContext, p: PlayerView): boolean
  * 逃生：最近的永不着火格，先陆地后水，且到达后短期内不进毒圈；都没有时同样顺序但不看毒圈（毒是慢慢掉血，火是一下一心）。
  * 再没有时，先找「危险还远」（余量 ≥ landSlack）的陆地格——泡在水里干等会溺死，上岸重置溺水计时、危险临近再回水里；
  * 再不行才挑危险来得最晚的可达格。
+ * 原型扩展（NON-CONTRACT，ADR 0036）：ringEntry 'onTime'（普通人）在这一切之前先找最近的「圈内」陆地落脚格
+ * （永不进毒圈、路线不穿毒）——躲弹往圈里躲，不往毒里躲。
  */
 export function pickEscape(ctx: ThinkContext, landSlack = Infinity): Goal {
   const { field, dm, board } = ctx
+  if (ctx.ringEntry === 'onTime') {
+    for (const c of field.reached) {
+      if (c === field.start || isWater(board, c) || field.viaPoison[c] !== 0 || !poisonFreeAfter(dm, c, STRICT_REST)) continue
+      if (restsAt(dm, c, Math.max(field.enter[c], ctx.immuneUntil))) return { cell: c, bombOnArrival: false }
+    }
+  }
   let water = -1
   for (const poisonAware of [true, false]) {
     for (const c of field.reached) {

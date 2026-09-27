@@ -6,7 +6,7 @@ import type { SourceNote } from './skills'
  * 全部「推断待验证」，除非注明 D9（用户第 4 轮给定的普通档数值）。
  */
 export type BotDifficulty = 'easy' | 'normal' | 'hard'
-/** 'player' = 验收 D 用的脚本「普通水平玩家」（比 normal 反应快、不设陷阱），不对外开放。 */
+/** 'player' = 验收 D 用的脚本「普通水平玩家」（比 normal 反应快、不设陷阱、按时进圈），不对外开放。 */
 export type BotProfileId = BotDifficulty | 'player'
 
 export interface BotProfile {
@@ -37,6 +37,12 @@ export interface BotProfile {
   reactMode: 'ownCell' | 'perBomb'
   /** 决赛圈摊牌期「以血换血」放弹概率（‰；1000 = 不掷）。 */
   showdownTradePermille: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0036；design §15 Bot 难度分档（原型工具））：决赛圈进圈纪律。
+   * 'late' = Bot 的摊牌期「晚进圈」战术（圈外格待到下一次收缩前 BOT_TACTICS.lateEntryTicks，showdown.ts lateEntryHorizon）；
+   * 'onTime' = 普通人：下一圈一预告就走进去，摊牌期也只把永不进毒圈的格子当落脚点、不在毒里逗留（逃生除外）。
+   */
+  ringEntry: 'late' | 'onTime'
   src: SourceNote
 }
 
@@ -56,6 +62,7 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     skillUsePermille: 1000,
     reactMode: 'ownCell',
     showdownTradePermille: 1000,
+    ringEntry: 'late',
     src: '已验证：= 第 3 轮 bot-brain.ts 常量（REACT 2–4、NOISE 5%、TRAP 92%、frenzy 直通）；技能 / 摊牌字段推断待验证',
   },
   normal: {
@@ -72,6 +79,7 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     skillUsePermille: 200,
     reactMode: 'perBomb',
     showdownTradePermille: 1000,
+    ringEntry: 'late',
     src: '引用 用户第 4 轮 D9（反应 4–7 Tick、噪声 15%、不设陷阱）；skillUsePermille 700 → 200 = 第 4 轮平衡（D 验收，ADR 0034）；其余推断待验证',
   },
   easy: {
@@ -88,6 +96,7 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     skillUsePermille: 100,
     reactMode: 'perBomb',
     showdownTradePermille: 600,
+    ringEntry: 'late',
     src: '推断待验证：比普通档慢一档、更犹豫；skillUsePermille 400 → 100 随普通档下调保持 easy < normal（ADR 0034）',
   },
   player: {
@@ -104,7 +113,8 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     skillUsePermille: 800,
     reactMode: 'perBomb',
     showdownTradePermille: 1000,
-    src: '推断待验证：验收 D 的脚本普通玩家（调参前固定：反应 3–5、噪声 5%、不设陷阱、1 颗进攻弹）',
+    ringEntry: 'onTime',
+    src: '推断待验证：验收 D 的脚本普通玩家（调参前固定：反应 3–5、噪声 5%、不设陷阱、1 颗进攻弹）；ringEntry onTime = 用户 2026-09-27「让脚本玩家更像普通人」（ADR 0036，按时进圈、不玩 Bot 的晚进圈）',
   },
 }
 

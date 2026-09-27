@@ -9,7 +9,7 @@ import { formatRows, formatSummary, runMatch, summarize, type MatchStats, type S
 export const STATS_ON = process.env.BOMBER_STATS === '1'
 export const ACCEPT_ON = process.env.BOMBER_ACCEPT === '1'
 
-/** 一局的超时：约 8400 Tick × 最多 ~10 ms。 */
+/** 一局的超时：约 4800 Tick（ADR 0035 的 4 分钟局；原 8400）× 最多 ~10 ms，留足余量。 */
 export const MATCH_TIMEOUT_MS = 180_000
 
 /**

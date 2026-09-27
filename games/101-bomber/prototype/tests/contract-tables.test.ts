@@ -244,12 +244,12 @@ describe('final circle and match cap (ADR 0031)', () => {
     expect([-1, 2, 3, 5].map((i) => poisonPointsAt(DEFAULT_RULES, i))).toEqual([1, 1, 2, 2])
   })
 
-  it('protoConfig applies the 7-minute cap; the contract default stays 360 s', () => {
+  it('protoConfig applies the 4-minute cap (ADR 0035); the contract default stays 360 s', () => {
     expect(DEFAULT_CONFIG.matchDurationMs).toBe(360000)
     const cfg = protoConfig()
-    expect(cfg.matchDurationMs).toBe(420000)
+    expect(cfg.matchDurationMs).toBe(240000)
     expect(protoConfig(DEFAULT_RULES, { matchDurationMs: 120000 }).matchDurationMs).toBe(120000)
-    expect(msToTicks(cfg.matchDurationMs, hz) - msToTicks(DEFAULT_RULES.finalCircleMs, hz)).toBe(6100)
+    expect(msToTicks(cfg.matchDurationMs, hz) - msToTicks(DEFAULT_RULES.finalCircleMs, hz)).toBe(2500)
   })
 })
 

@@ -89,6 +89,8 @@ export interface ProtoRules {
    * design §5 软砖再生（ADR 0026：19×19 档也做）：常规阶段每 regenIntervalMs 在无人区域补回至多
    * regenOrbitsPerInterval 组镜像积木，直到剩余量回到开局的 regenTargetPermille；
    * 距时间触发还剩 regenStopBeforeFinalMs 时停止再生，资源触发只在再生停止后生效。
+   * 原型扩展（NON-CONTRACT，ADR 0035）：regenStopBeforeFinalMs 60 s → 20 s（用户 2026-09-27「约 2 分钟开圈」：
+   * 4 分钟局里再生约 1:45 停，资源触发从 1:45 起可生效、时间触发 2:05，决赛圈约 1:45–2:05 开始；推断待验证）。
    */
   regenIntervalMs: number
   regenTargetPermille: number
@@ -96,7 +98,8 @@ export interface ProtoRules {
   regenStopBeforeFinalMs: number
   /**
    * design §4.2（ADR 0025）：决赛圈 = Phase 2 Endgame，固定时长；资源先触发时局终同步提前。
-   * 原型扩展（NON-CONTRACT，ADR 0031）：90 s → 115 s（时间触发 = 7 分钟局的 5:05，D7；推断待验证）。
+   * 原型扩展（NON-CONTRACT，ADR 0031）：90 s → 115 s（D7；推断待验证）。时间触发 = 局时上限 − 115 s
+   * （ADR 0035：4 分钟局的 2:05）。
    */
   finalCircleMs: number
   /** design §4.2：剩余可破坏砖（积木 + 木箱）< 开局数量 × 该千分比时触发决赛圈。 */
@@ -141,7 +144,8 @@ export interface ProtoRules {
   /** design §5：≤12 人档，本原型固定 8 人（你 + 7 Bot）。 */
   playerCount: number
   /**
-   * 原型扩展（NON-CONTRACT，ADR 0031）：局时上限 7 分钟。契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000，
+   * 原型扩展（NON-CONTRACT，ADR 0031 → ADR 0035）：局时上限。ADR 0031 定 7 分钟（420000）；ADR 0035 改为 4 分钟（240000，
+   * 用户 2026-09-27 试玩反馈「为啥不缩圈呢，时间太久了」→「约 2 分钟开圈」）。契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000，
    * 由 {@link protoConfig} 覆盖（待契约修订）；推断待验证。
    */
   matchCapMs: number
@@ -222,7 +226,8 @@ export const DEFAULT_RULES: ProtoRules = {
   regenIntervalMs: 8000,
   regenTargetPermille: 600,
   regenOrbitsPerInterval: 2,
-  regenStopBeforeFinalMs: 60000,
+  // ADR 0035：60000 → 20000（再生约 1:45 停；推断待验证）。
+  regenStopBeforeFinalMs: 20000,
   finalCircleMs: 115000,
   finalCircleResourcePermille: 200,
   // ADR 0031（D7）：13 → 9 → 7 → 5 → 3 → 1；5×5 起清场、毒翻倍，1×1 不落宝箱。时刻推断待验证。
@@ -249,7 +254,8 @@ export const DEFAULT_RULES: ProtoRules = {
   turnBufferTicks: 6,
   hatKingPillarMinHats: 3,
   playerCount: 8,
-  matchCapMs: 420000,
+  // ADR 0035：420000 → 240000（4 分钟封顶，时间触发 2:05；推断待验证）。
+  matchCapMs: 240000,
   characters: CHARACTERS,
   skills: SKILLS,
   combos: COMBOS,
@@ -272,7 +278,7 @@ export const DEFAULT_RULES: ProtoRules = {
 }
 
 /**
- * 原型扩展（NON-CONTRACT，ADR 0031）：原型实际使用的局配置 = 契约默认值 + 7 分钟局时上限（matchCapMs）+ 覆盖项
+ * 原型扩展（NON-CONTRACT，ADR 0031 / ADR 0035）：原型实际使用的局配置 = 契约默认值 + 局时上限（matchCapMs，4 分钟）+ 覆盖项
  * （`?match=` 传 `over.matchDurationMs`）。契约 `DEFAULT_CONFIG` 本身不改。
  */
 export function protoConfig(rules: Pick<ProtoRules, 'matchCapMs'> = DEFAULT_RULES, over: Partial<BomberConfig> = {}): BomberConfig {

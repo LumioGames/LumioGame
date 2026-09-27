@@ -30,9 +30,9 @@ describe('parseAppParams', () => {
   })
 })
 
-describe('appConfig (ADR 0031 7-minute cap)', () => {
-  it('defaults to the 420 s cap via protoConfig while DEFAULT_CONFIG stays 360 s', () => {
-    expect(appConfig(parseAppParams('', false)).matchDurationMs).toBe(420000)
+describe('appConfig (ADR 0035 4-minute cap)', () => {
+  it('defaults to the 240 s cap via protoConfig while DEFAULT_CONFIG stays 360 s', () => {
+    expect(appConfig(parseAppParams('', false)).matchDurationMs).toBe(240000)
     expect(appConfig(parseAppParams('', false)).matchDurationMs).toBe(DEFAULT_RULES.matchCapMs)
     expect(DEFAULT_CONFIG.matchDurationMs).toBe(360000)
   })
