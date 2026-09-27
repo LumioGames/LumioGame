@@ -64,3 +64,4 @@
 | [0034](0034-bomber-character-balance-round-1.md) | 炸弹人角色平衡第一轮:削棉花兔回春、加强泡泡 / 闪现 / 火焰光环,普通档 Bot 少放技能 | 生效 |
 | [0035](0035-bomber-pacing-final-circle-at-two-minutes.md) | 炸弹人节奏提速:整局封顶 4 分钟,约 2 分钟开决赛圈 | 生效 |
 | [0036](0036-bomber-acceptance-d-player-enters-ring-on-time.md) | 炸弹人验收 D:脚本玩家按时进圈、不学 Bot 晚进圈,官方 D 由 30 局扩到 100 局 | 生效 |
+| [0037](0037-bomber-hat-tower-capped-at-four-with-count-badge.md) | 炸弹人帽子塔封顶 4 顶:最多画 4 顶逐层缩小,超出用「×N」徽章,帽王皇冠戴在塔顶 | 生效 |
