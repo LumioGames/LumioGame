@@ -37,7 +37,7 @@ export interface MatchRunOptions {
   localPersonality?: BotPersonality
   /** 本机角色；'rotate' = CHARACTER_ORDER[seed % 4]；缺省 rabbit（LocalHost 缺省）。 */
   localCharacter?: CharacterId | 'rotate'
-  /** 缺省 protoConfig(rules)（7 分钟局）。 */
+  /** 缺省 protoConfig(rules)（4 分钟局，ADR 0035）。 */
   config?: BomberConfig
   rules?: ProtoRules
   /** 超过即抛错；缺省 warmup + 局时 + 200。 */

@@ -10,13 +10,13 @@ pnpm dev          # http://127.0.0.1:5173
 pnpm test         # 规则替身 / Bot / 表现层纯逻辑 / 接缝守卫 / 手感路径 / 整局联调（默认不跑整局统计，很快）
 pnpm build        # 类型检查 + 生产构建到 dist/
 pnpm accept       # BOMBER_ACCEPT=1：验收 E，6 个种子全员 normal Bot 各打一整局（无界面）
-pnpm stats        # BOMBER_STATS=1：统计批次——E 20 种子全员 normal、D 脚本玩家对 7 个 normal ×30、easy ×30、hard ×30（约 3.5 分钟）
+pnpm stats        # BOMBER_STATS=1：统计批次——E 20 种子全员 normal、D 脚本玩家对 7 个 normal ×100（种子 1–100，ADR 0036）、easy ×30、hard ×30
 ```
 
 URL 参数（可选）：
 
 - `?seed=123` 固定地图与 Bot 随机种子（默认随机）。
-- `?match=175` 局时秒数（默认 420 = 7 分钟封顶）。决赛圈固定 115 秒，`?match=` ≤ 115 时整局都是决赛圈。
+- `?match=175` 局时秒数（默认 240 = 4 分钟封顶，ADR 0035；原 ADR 0031 为 420）。决赛圈固定 115 秒，`?match=` ≤ 115 时整局都是决赛圈。
 - `?bots=7` Bot 数 0–7（默认 7）。
 - `?ai=normal` Bot 难度 `easy` / `normal` / `hard`（默认 normal；hard = 第 3 轮强度）。
 - `?char=cat` 本机角色 `rabbit` / `duck` / `cat` / `bear`，跳过选角界面（未知值照常显示选角）。
@@ -30,13 +30,13 @@ URL 参数（可选）：
 
 ## 内容范围
 
-- **Stage 0 + 1 规则**：19×19（含外圈铁皮）、你 + 7 个 Bot（动物玩偶）、四向移动与转角修正、离格穿透、125 ms 放弹缓冲；引信 2.1 s、危险窗 0.4 s、火力 2、连锁同 Tick 结算（同弹同人一次、同链同人 ≤ 3 心）；三心（半心点）、死亡晚一帧、3 s 重生 + 3 s 保护（放弹、施放火焰光环 / 火焰冲刺即解除）；三种糖果 + 血包；帽王光柱 + 边缘箭头 + Top-10；封顶 7 分钟一局 → 领奖台 + 结算共 16 s → 自动下一局。
+- **Stage 0 + 1 规则**：19×19（含外圈铁皮）、你 + 7 个 Bot（动物玩偶）、四向移动与转角修正、离格穿透、125 ms 放弹缓冲；引信 2.1 s、危险窗 0.4 s、火力 2、连锁同 Tick 结算（同弹同人一次、同链同人 ≤ 3 心）；三心（半心点）、死亡晚一帧、3 s 重生 + 3 s 保护（放弹、施放火焰光环 / 火焰冲刺即解除）；三种糖果 + 血包；帽王光柱 + 边缘箭头 + Top-10；封顶 4 分钟一局（ADR 0035，决赛圈约 1:45–2:05 开始） → 领奖台 + 结算共 16 s → 自动下一局。
 - **Stage 2 材质（用户要求提前放入）**：木箱（必掉 1 个：一半技能糖、一半糖果 / 血包）、水方格（减速 30%、放弹即熄灭、火焰覆盖首格后停、每秒 −0.5 心溺水、踢进水的炸弹熄灭）。
 - **开局选角 + 专属技能（ADR [0030](../../../.spec/decisions/0030-bomber-characters-exclusive-skills-and-combos.md)，design §8.0）**：棉花兔（被动·回春：20 秒没掉血回半心，之后每 20 秒再回，满血为止）、泡泡鸭（主动·泡泡：3.5 秒完整无敌、期间不能放弹，CD 14 s）、闪电猫（主动·闪现：朝面向最远 3 格、可越过砖块 / 炸弹 / 宝箱，CD 10 s）、火焰熊（主动·火焰光环：脚下 3×3 着火 5.5 秒，CD 16 s）。数值为角色平衡第一轮（ADR [0034](../../../.spec/decisions/0034-bomber-character-balance-round-1.md)）后的值。基础属性完全相同；Bot 每局重分角色，8 人时每个角色 2 个。
 - **技能糖、三槽与组合进化（ADR 0030，design §8.1–§8.4）**：炸弹槽 / 主动槽 / 被动槽，专属技能占自己的槽且绑定。走过技能糖按顺序判定、不按键：能和身上某个技能配成组合 → 立即进化；同技能 → 升 1 级（上限 Lv3）；对应槽空 → 装上；其余捡不起、留在地上（**不做替换确认**，Shift 只管主动技能）。3 条组合：闪现 + 火焰光环 → 火焰冲刺；泡泡 + 踢弹 → 弹射泡泡；冰冻弹 + 穿透弹 → 冰川弹。死亡时拾取的技能每个 50% 掉成技能糖（保留等级；决赛圈出局全掉），专属技能永不掉。技能不算帽子。
 - **中毒弹 / 麻痹弹（ADR [0033](../../../.spec/decisions/0033-bomber-toxin-and-shock-bombs-from-chests.md)，design §8.2 / §8.4 / §12）**：炸弹槽两种新形态，直击照常 −1 心。中毒 3 / 4 / 5 秒、每秒 −0.5 心、可致死（记投弹者），泡泡与血包解毒；麻痹 2 / 2.5 / 3 秒、移速降到 30%。技能糖池 = 泡泡 / 闪现 / 火焰光环 / 踢弹 / 冰冻弹 / 穿透弹 / 中毒弹 / 麻痹弹，炸弹类权重各 2、其余各 1（炸弹类约 2/3）；决赛圈强力宝箱每个多喷 1 颗、保底炸弹类。
 - **决赛圈缩到 1×1、活到最后者胜（ADR [0031](../../../.spec/decisions/0031-bomber-final-circle-to-one-cell-last-survivor-wins.md)，design §4 / §4.2）**：积木剩 < 20%（再生停止后才生效）或局时只剩 115 秒时触发，固定 115 秒；不能复活。安全圈相对触发 +10 / 35 / 55 / 75 / 95 / 110 秒缩到 13 / 9 / 7 / 5 / 3 / 1 格，+115 秒局终；末三段（5×5 / 3×3 / 1×1）生效时清掉新圈内的积木与木箱（只清这两种）。强力宝箱 5 个，1×1 段不落、不落中心格。圈外毒：5×5 前每秒 −0.5 心，5×5 起每秒 −1 心。只剩 1 人时在致死的同一 Tick 结束、他是第 1 名；时间到仍 ≥ 2 人存活按帽数排（并列同名次）；出局者排在存活者之后，出局越晚越靠前。
-- **软砖再生（ADR [0026](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)，design §5）**：常规阶段每 8 秒在无人区域补回镜像积木，距时间触发 60 秒（4:05）时停止；资源触发只在再生停止后生效。
+- **软砖再生（ADR [0026](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)，design §5）**：常规阶段每 8 秒在无人区域补回镜像积木，距时间触发 20 秒（1:45）时停止（ADR 0035；原 60 秒）；资源触发只在再生停止后生效。
 - **帽子 = 强化数（ADR [0028](../../../.spec/decisions/0028-bomber-hats-are-powerup-count.md)，design §9）**：没有独立的帽子资源，头顶几顶帽子就是身上几个强化（火力 / 炸弹 / 速度高出初始值的级数）；吃强化 +1 顶，死亡掉一半强化帽塔同步变矮，决赛圈出局强化全掉；地上不再有帽堆、击杀不单独铸帽。技能（专属、技能糖、等级、组合技）都不计帽数。
 - **死者掉落保护（ADR [0029](../../../.spec/decisions/0029-bomber-death-drops-blast-protection.md)）**：死者掉出的强化与技能糖落地后 3 秒内炸不掉，外罩淡金色泡泡。
 - **死亡掉强化（ADR [0025](../../../.spec/decisions/0025-bomber-final-circle-and-death-drops.md)，design §8.5）**：已吃的火力+ / 炸弹+ / 速度+ 每级 50% 掉在死亡点周围，谁捡归谁。
@@ -81,11 +81,11 @@ tests/harness/  无界面整局统计（pnpm accept / pnpm stats）
 - 表现事件（`presentationOnly`）：`BrickDestroyed`、`PickupSpawned`（第 4 轮加 `Skill` / `SkillLevel`）、`PickupDestroyed`、`BombExtinguished`、`ChainResolved`、`MatchStarted`、`BricksRegrown`、`PowerupsDropped`、`FinalCircleStarted`、`RingShrinkAnnounced`、`RingShrunk`、`PlayerEliminated`、`ChestSpawned` / `ChestHit` / `ChestOpened`（`HatMinted` 已停用）；第 4 轮 `SkillActivated`、`SkillFailed`、`SkillGained`、`SkillEvolved`、`SkillsDropped`、`PlayerHealed`、`BombKicked`、`PlayerFrozen`、`PlayerPoisoned`、`PlayerShocked`、`PlayerCured`。表现层把它们当提示，快照 diff 才是依据。
 - `PlayerMeta`（名字 / 动物 / 槽位）、`MatchMeta.phaseEndTick`、`EntityView.teleportTick`。
 - `ProtoRules`（`src/contract/config.ts`）：契约 §5 未收录但 design.md 给了数值（或原型自定）的规则参数，逐项注明出处。第 4 轮新增或改值：
-  - 局时与决赛圈：`matchCapMs` = 420000（经 `protoConfig()` 覆盖局时；契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000）、`finalCircleMs` 90000 → 115000、`ringStages` 6 段且每段带 `chest` / `clearInside` / `poisonPoints`（`RingStage`、`poisonPointsAt()`）；
+  - 局时与决赛圈：`matchCapMs` = 240000（ADR 0035，原 420000；经 `protoConfig()` 覆盖局时；契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000）、`finalCircleMs` 90000 → 115000、`ringStages` 6 段且每段带 `chest` / `clearInside` / `poisonPoints`（`RingStage`、`poisonPointsAt()`）；
   - 手感：`cornerAssistMilli` 400 → 500、`cornerAssistRepeatMilli` 200 → 250、`assistRepeatWindowTicks`、`dollFootprintMilli` / `dollReachMilli`（纯表现）；
   - 角色与技能：`characters` / `skills` / `combos`、`skillMaxLevel`、`skillCandyLevel`、`crateSkillCandyPermille`、`chestSkillCandies`、`chestSkillCandyPool`、`skillDeathDropPermille`、`burnIntervalMs` / `burnPointsPerInterval`、`toxinIntervalMs` / `toxinPointsPerInterval`、`freezeCapMs` / `freezeImmuneMs` / `freezeBombDamages`、`kickSpeedMilli`。
 - 数据表（`src/contract/skills.ts`，ADR 0030 / 0033）：`SKILLS`（`SkillId`；`SKILL_IDS` 编码只在末尾追加；`SkillParams` 含 `slowPermille`）、`COMBOS`、`CHARACTERS`，以及 `candyPool()` / `bombCandyPool()` / `describeSkill()`。
-- Bot 难度（`src/contract/ai.ts`，design §15「Bot 难度分档（原型工具）」）：`BOT_PROFILES`（`easy` / `normal` / `hard`，外加验收用的脚本玩家 `player`）、`BOT_TACTICS`（决赛圈对决与技能施放常量）、`parseBotDifficulty()`。规则层不读，只有 `src/bots` 与宿主读。
+- Bot 难度（`src/contract/ai.ts`，design §15「Bot 难度分档（原型工具）」）：`BOT_PROFILES`（`easy` / `normal` / `hard`，外加验收用的脚本玩家 `player`；`ringEntry` 决赛圈进圈纪律：三档 Bot 为 `late` 晚进圈战术，`player` 为 `onTime` 按时进圈，ADR 0036）、`BOT_TACTICS`（决赛圈对决与技能施放常量）、`parseBotDifficulty()`。规则层不读，只有 `src/bots` 与宿主读。
 - 以上扩展是否进契约，等原型验证后走契约修订另议（ADR 0025、0030–0033「后果」）。
 
 ## 规则替身对「契约未规定处」的取舍（C# 落地时逐条核对）
@@ -105,6 +105,20 @@ tests/harness/  无界面整局统计（pnpm accept / pnpm stats）
 - 玩家互不阻挡，1×1 那一格可以同时站好几个人（时间到按帽数排名）。
 
 ## 验收与实测
+
+### 节奏提速 + 验收 D 按时进圈（ADR [0035](../../../.spec/decisions/0035-bomber-pacing-final-circle-at-two-minutes.md) / [0036](../../../.spec/decisions/0036-bomber-acceptance-d-player-enters-ring-on-time.md)，2026-09-27）
+
+用户试玩反馈「为啥不缩圈呢，时间太久了」→ 选「约 2 分钟开圈」：`matchCapMs` 420000 → 240000（4 分钟封顶，时间触发 2:05），`regenStopBeforeFinalMs` 60000 → 20000（再生 1:45 停）；决赛圈 115 秒、段表、毒速、清场、胜负规则都不变。验收 D 按用户定义「让脚本玩家更像普通人」：`player` 档 `ringEntry: 'onTime'`（按时进圈，不学 Bot 的晚进圈），反应 / 噪声不变；官方 D 由 30 局扩到 100 局（种子 1–100），阈值 ≥ 50% 不变。三档 Bot 与 `BOT_TACTICS` 未改。官方种子只跑了一次（Wilson 95% 区间）：
+
+| 批次 | 局数 | 平均局长（最长） | 唯一存活 | 场均帽王更替 | 场均进化 | 本机前 3 | 结论 |
+|---|---|---|---|---|---|---|---|
+| 验收 E · 6 种子 · 全员 normal | 6 | 3.2 分（3.6） | 100%（区间 61–100%） | 8.2 | 0.8 | 83% | 通过 |
+| 统计 E · 种子 1–20 · 全员 normal | 20 | 3.2 分（3.6） | 100%（区间 84–100%） | 7.7 | 0.8 | 70% | 通过 |
+| 统计 D · 种子 1–100 · 脚本玩家 vs 7 normal | 100 | 3.2 分（3.6） | 100% | 7.1 | 1.1 | **42%（42/100，区间 33–52%）** | **未达标** |
+
+- 开圈时刻：官方三批 100% 由资源触发（再生一停就触发），即 1:45 开圈；0 局时间到，0 局打到 1×1（1×1 可进入仍由 `src/sim/__tests__/final-cell.test.ts` 断言）。E 20 种子场均毒死 2.5 次（原 3.75），约占「击杀 + 自爆 + 毒圈」22%。
+- D：官方 D 第 1 名（全 8 席）按角色为兔 33 / 鸭 29 / 熊 23 / 猫 15；脚本玩家第 1 名 19%、平均名次 4.2。留出种子 8001–8200（200 局）上按时进圈 49.5%（区间 43–56%），同种子晚进圈基线 43.5%；上线前的 ≥ 55% 预验证线也没过。`pnpm stats` 以 D 断言失败退出（exit 1），不改断言、不换种子；剩余杠杆见 ADR 0036。
+- 下面两节是 7 分钟局的旧数字，留作对照。
 
 ### 角色平衡第一轮（ADR [0034](../../../.spec/decisions/0034-bomber-character-balance-round-1.md)，2026-09-27）
 

@@ -582,7 +582,9 @@ export class BotBrain {
     const pos = me.LogicTransform.WorldPosition
     const fc = board.finalCircle
     const rate = poisonRate(this.rules, fc)
-    const lateHorizon = this.showdown ? lateEntryHorizon(fc, this.tactics, board.now) : null
+    // 原型扩展（NON-CONTRACT，ADR 0036）：晚进圈只是 Bot 的战术；ringEntry 'onTime'（验收 D 的脚本普通玩家）
+    // 摊牌期也按 STRICT_REST 选落脚点——下一圈一预告就走进去，不在将要变毒的格子上逗留。
+    const lateHorizon = this.showdown && this.profile.ringEntry === 'late' ? lateEntryHorizon(fc, this.tactics, board.now) : null
     const startExit = exitTicks(pos, here % board.size, Math.floor(here / board.size), me.玩家属性.移速当前, this.hz, inWater ? this.rules.waterSpeedPermille : 1000)
     const water = this.waterBudget(me.玩家属性.血量当前, false)
     const waterSurvive = this.waterBudget(me.玩家属性.血量当前, true)
@@ -608,6 +610,7 @@ export class BotBrain {
       showdown: this.showdown,
       poisonRate: rate,
       tactics: this.tactics,
+      ringEntry: this.profile.ringEntry,
     }
     const escape = (): void => {
       const landSlack = 2 * tpcLand + URGENT_SLACK + 1
@@ -962,6 +965,8 @@ export class BotBrain {
   /**
    * 选普通目标：先只接受永不进毒圈、永不着火的格子（决赛圈预告了下一圈就提前往里走）；一个都没有时
    * 先放宽火（圈内暂时不着火也行），再放宽到「近期不进毒圈」，再没有才完全不看毒圈（被砖困在圈外，也得先把路炸开）。
+   * 原型扩展（NON-CONTRACT，ADR 0036）：ringEntry 'onTime' 在放宽毒圈之前先守在最近的圈内落脚格（没事做就在圈里待着），
+   * 再不行就按 pickInward 走回圈里最近的格子；只有这些都没有才走放宽毒圈那几档——不为了找事做主动站进将要变毒的格子。
    */
   private chooseAtAnyHorizon(ctx: ThinkContext): { mode: BotMode; goal: Goal } | null {
     const g = this.chooseGoal(ctx)
@@ -969,6 +974,13 @@ export class BotBrain {
     if (g || !fc) return g
     const lukewarm = this.chooseGoal({ ...ctx, fireSlack: FIRE_SLACK })
     if (lukewarm) return lukewarm
+    if (this.profile.ringEntry === 'onTime') {
+      const hold = nearestRestCell({ ...ctx, fireSlack: FIRE_SLACK })
+      if (hold >= 0) return { mode: hold === ctx.here ? 'wait' : 'roam', goal: { cell: hold, bombOnArrival: false } }
+      // 被挤出圈（或圈内暂时全是火）：先回圈里最近的格子，不在毒里随机漫游 / 发育。
+      const back = pickInward(ctx, fc.nextRing ?? fc.ring)
+      if (back) return { mode: 'roam', goal: back }
+    }
     const relaxed = this.chooseGoal({ ...ctx, restHorizon: Math.min(ctx.restHorizon, ctx.board.now + POISON_RELAXED), relaxedPoison: true })
     if (relaxed) return relaxed
     const inward = pickInward(ctx, fc.nextRing ?? fc.ring)
@@ -1130,6 +1142,16 @@ export class BotBrain {
     const X = c % this.size
     return { X, Y: (c - X) / this.size }
   }
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0036）：步数最少的可待格（含脚下）；没有为 −1。 */
+function nearestRestCell(ctx: ThinkContext): number {
+  let best = -1
+  for (const c of ctx.field.reached) {
+    if (!isRestCell(ctx, c)) continue
+    if (best < 0 || ctx.field.steps[c] < ctx.field.steps[best]) best = c
+  }
+  return best
 }
 
 function isFrenzy(fc: FinalCircleView | null): boolean {

@@ -14,7 +14,7 @@ import {
 /**
  * 页面 URL 参数（纯函数，可单测）。全部可选：
  *   ?seed=123       固定地图与 Bot 随机种子（默认随机）
- *   ?match=150      局时秒数（默认 = 7 分钟上限 ProtoRules.matchCapMs，ADR 0031；≤ 决赛圈时长时整局都是决赛圈）
+ *   ?match=150      局时秒数（默认 = 4 分钟上限 ProtoRules.matchCapMs，ADR 0035；≤ 决赛圈时长时整局都是决赛圈）
  *   ?bots=7         Bot 数量 0–7（默认 7）
  *   ?ai=normal      Bot 难度 easy / normal / hard（默认 normal，design §15 Bot 难度分档（原型工具））
  *   ?char=cat       本机角色（跳过选角界面；未知值 = 照常显示选角）
@@ -71,7 +71,7 @@ export function parseAppParams(search: string, devEnabled: boolean): AppParams {
   }
 }
 
-/** 本局配置：契约默认 + 7 分钟上限（protoConfig），`?match=` 覆盖局时。 */
+/** 本局配置：契约默认 + 4 分钟上限（protoConfig，ADR 0035），`?match=` 覆盖局时。 */
 export function appConfig(p: Pick<AppParams, 'matchSec'>, rules: Pick<ProtoRules, 'matchCapMs'> = DEFAULT_RULES): BomberConfig {
   return protoConfig(rules, p.matchSec !== null ? { matchDurationMs: p.matchSec * 1000 } : {})
 }

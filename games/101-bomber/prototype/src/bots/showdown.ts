@@ -5,8 +5,9 @@ import type { DangerMap } from './danger-map'
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0031；design §15 Bot 难度分档（原型工具））：决赛圈「摊牌期」战术。
- * 5×5 生效起（毒翻倍，D7）所有难度都用：晚进圈（圈外格待到下一次收缩前 lateEntryTicks）、
- * 以血换血（自己也吃这颗弹，但结果严格领先或直接打死对手才放）、先打最弱的、每段毒伤按段读。
+ * 5×5 生效起（毒翻倍，D7）所有难度都用：晚进圈（圈外格待到下一次收缩前 lateEntryTicks；只限 profile.ringEntry
+ * 'late'，验收 D 的脚本普通玩家是 'onTime'，ADR 0036）、以血换血（自己也吃这颗弹，但结果严格领先或直接打死对手才放）、
+ * 先打最弱的、每段毒伤按段读。
  */
 
 export const ringSide = (r: RingRect): number => r.Max - r.Min + 1
