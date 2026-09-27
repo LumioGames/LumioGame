@@ -2,7 +2,7 @@
 
 > **状态**：设计中
 > **序位**：Lumio 首发产品（阶梯 ①）
-> **上游**：[`../product-direction.md`](../product-direction.md)、[`../worldview.md`](../worldview.md)、[`../art-style-pitch.md`](../art-style-pitch.md)；定调依据 ADR [`0013`](../../../.spec/decisions/0013-logic-first-browser-client-no-engine.md)（交付顺序与客户端载体）、[`0014`](../../../.spec/decisions/0014-bomber-v04-stage0-convergence.md)（v0.4 收敛，取代 [`0012`](../../../.spec/decisions/0012-bomber-hearts-replace-one-hit-kill.md) 并重申 [`0011`](../../../.spec/decisions/0011-bomber-100-player-io-gear-slots.md) 其余条款）、[`0025`](../../../.spec/decisions/0025-bomber-final-circle-and-death-drops.md)（最后一命决赛圈、死亡掉强化，取代 0014 的终局演出条款与支柱 3 的两处否决）、[`0026`](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)（19×19 再生与资源触发门槛）、[`0028`](../../../.spec/decisions/0028-bomber-hats-are-powerup-count.md)（帽子 = 强化数）、[`0029`](../../../.spec/decisions/0029-bomber-death-drops-blast-protection.md)（死者掉落 3 秒防爆）、[`0030`](../../../.spec/decisions/0030-bomber-characters-exclusive-skills-and-combos.md)（开局选角、专属技能、技能糖与组合进化；取代 0014「首发不做角色」与装备替换确认）、[`0031`](../../../.spec/decisions/0031-bomber-final-circle-to-one-cell-last-survivor-wins.md)（决赛圈缩到 1×1、活到最后者胜、封顶 7 分钟（局时已被 0035 取代）；取代 0025 / 0028 的胜负与时长条款）、[`0032`](../../../.spec/decisions/0032-bomber-movement-dual-direction-and-doll-footprint.md)（手感补充：同按两向滑行、吸附 0.5 格、玩偶视觉占地 0.7 格）、[`0033`](../../../.spec/decisions/0033-bomber-toxin-and-shock-bombs-from-chests.md)（中毒弹 / 麻痹弹、技能糖池偏向炸弹类、决赛圈宝箱保底炸弹糖；修订 0030 的池内等权）、[`0035`](../../../.spec/decisions/0035-bomber-pacing-final-circle-at-two-minutes.md)（节奏提速：封顶 4 分钟、约 2 分钟开圈；取代 0031 的 7 分钟与 0026 的再生停止 60 秒）、[`0036`](../../../.spec/decisions/0036-bomber-acceptance-d-player-enters-ring-on-time.md)（验收 D 的脚本玩家按时进圈、官方 D 扩到 100 局）
+> **上游**：[`../product-direction.md`](../product-direction.md)、[`../worldview.md`](../worldview.md)、[`../art-style-pitch.md`](../art-style-pitch.md)；定调依据 ADR [`0013`](../../../.spec/decisions/0013-logic-first-browser-client-no-engine.md)（交付顺序与客户端载体）、[`0014`](../../../.spec/decisions/0014-bomber-v04-stage0-convergence.md)（v0.4 收敛，取代 [`0012`](../../../.spec/decisions/0012-bomber-hearts-replace-one-hit-kill.md) 并重申 [`0011`](../../../.spec/decisions/0011-bomber-100-player-io-gear-slots.md) 其余条款）、[`0025`](../../../.spec/decisions/0025-bomber-final-circle-and-death-drops.md)（最后一命决赛圈、死亡掉强化，取代 0014 的终局演出条款与支柱 3 的两处否决）、[`0026`](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)（19×19 再生与资源触发门槛）、[`0028`](../../../.spec/decisions/0028-bomber-hats-are-powerup-count.md)（帽子 = 强化数）、[`0029`](../../../.spec/decisions/0029-bomber-death-drops-blast-protection.md)（死者掉落 3 秒防爆）、[`0030`](../../../.spec/decisions/0030-bomber-characters-exclusive-skills-and-combos.md)（开局选角、专属技能、技能糖与组合进化；取代 0014「首发不做角色」与装备替换确认）、[`0031`](../../../.spec/decisions/0031-bomber-final-circle-to-one-cell-last-survivor-wins.md)（决赛圈缩到 1×1、活到最后者胜、封顶 7 分钟（局时已被 0035 取代）；取代 0025 / 0028 的胜负与时长条款）、[`0032`](../../../.spec/decisions/0032-bomber-movement-dual-direction-and-doll-footprint.md)（手感补充：同按两向滑行、吸附 0.5 格、玩偶视觉占地 0.7 格）、[`0033`](../../../.spec/decisions/0033-bomber-toxin-and-shock-bombs-from-chests.md)（中毒弹 / 麻痹弹、技能糖池偏向炸弹类、决赛圈宝箱保底炸弹糖；修订 0030 的池内等权）、[`0035`](../../../.spec/decisions/0035-bomber-pacing-final-circle-at-two-minutes.md)（节奏提速：封顶 4 分钟、约 2 分钟开圈；取代 0031 的 7 分钟与 0026 的再生停止 60 秒）、[`0036`](../../../.spec/decisions/0036-bomber-acceptance-d-player-enters-ring-on-time.md)（验收 D 的脚本玩家按时进圈、官方 D 扩到 100 局）、[`0037`](../../../.spec/decisions/0037-bomber-hat-tower-capped-at-four-with-count-badge.md)（帽子塔封顶 4 顶 + ×N 徽章、皇冠戴塔顶）
 
 ## 1. 使命
 
@@ -456,7 +456,7 @@ ADR 0028（取代 0027，并取代 0011 / 0014 / 0025 里「帽子是独立计�
 
 ### 9.2 堆叠表示
 
-帽子在头顶**物理堆叠**，塔高即强化数：12 顶以内逐顶叠，超过 12 顶用压缩塔段 / 比例缩放，避免遮挡角色与战场；数字仍显示真实帽数。吃强化时一顶帽子落到头顶；掉强化时帽子从头顶飞向掉出的强化。
+帽子在头顶**物理堆叠**，但**最多画 4 顶**、自下而上逐层缩小（ADR 0037）：帽数 ≤ 4 时有几顶画几顶；帽数 > 4 时塔顶上方显示「×N」金色徽章（N = 真实帽数），帽王皇冠戴在封顶后的塔顶，避免遮挡角色与战场；领奖台同一规则。吃强化时一顶帽子落到头顶（目标层 = min(帽数, 4)）；掉强化时帽子从头顶飞向掉出的强化。
 
 ### 9.3 帽王可见性
 
@@ -696,7 +696,7 @@ ADR 0028（取代 0027，并取代 0011 / 0014 / 0025 里「帽子是独立计�
 | 材质可读性 | 同屏 ≤ 6 种材质在俯视下能否一眼分辨（进 B1） | 2 |
 | 爽感横幅密度 | 100 人下全场横幅只播大事件是否够克制；弹字是否遮挡战场 | 3 |
 | 补给光柱与帽王光柱 | 同屏区分是否一眼可辨（进 B1） | 3 |
-| 帽子塔与光柱俯视可读性 | 屏幕内 6–8 个帽塔 + 光柱在俯视 55°–65° 下是否醒目（B6） | 1 / 3 |
+| 帽子塔与光柱俯视可读性 | 屏幕内 6–8 个帽塔 + 光柱在俯视 55°–65° 下是否醒目（B6）；封顶 4 顶 + ×N 徽章（ADR 0037）下谁最强是否仍一眼可见（A/B 封顶 3 / 4 / 5 顶） | 1 / 3 |
 | 遥控引爆 | 首发不做；是否作为第 6 种炸弹形态回归 | 5+ |
 | 快速加入 | 引擎侧「房间目录」能力的排期（A6）；落地前房间码单入口是否影响验证 | 4 |
 

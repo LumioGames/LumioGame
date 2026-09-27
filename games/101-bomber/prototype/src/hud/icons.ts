@@ -75,14 +75,14 @@ export const ICON = {
 
 /** 动物主色（与 view 的玩偶配色一致，Top-10 / 回顾卡的头像色点用）。 */
 export const ANIMAL_COLOR: Readonly<Record<string, string>> = {
-  duck: '#FFD34D',
-  rabbit: '#F5EEE6',
-  bear: '#B9804F',
-  cat: '#9AA3B5',
-  frog: '#6CC551',
-  penguin: '#2F4A6B',
-  pig: '#FFA6B8',
-  dog: '#E3B77E',
+  duck: '#FFD21F',
+  rabbit: '#EDE6FF',
+  bear: '#B94A2C',
+  cat: '#6C63FF',
+  frog: '#2EC45A',
+  penguin: '#24375E',
+  pig: '#FF86AE',
+  dog: '#F28A2E',
 }
 
 export const ANIMAL_NAME: Readonly<Record<string, string>> = {

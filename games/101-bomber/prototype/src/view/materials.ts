@@ -1,18 +1,25 @@
 import {
   AdditiveBlending,
+  BackSide,
   Color,
   DoubleSide,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  MeshToonMaterial,
   NormalBlending,
   ShaderMaterial,
   type Blending,
   type Texture,
 } from 'three'
+import { RIM } from './logic/doll-look'
+import { OUTLINE } from './palette'
+import { toonRampTexture } from './textures'
 
 /**
- * 共享材质。整体口径（render-design §2）：高粗糙度塑料 / 毛毡感、不描边；
+ * 共享材质。整体口径（render-design §2）：地形与道具是高粗糙度塑料 / 毛毡感、不描边；
  * 铁皮与炸弹帽带一点金属 + 环境贴图。
+ * 角色层（玩偶）另走「卡通分阶光照 + 背面外扩描边 + 边缘补光」，靠「线 + 色」从哑光积木地形里分出来
+ * （原型表现占位，不代表 ADR 0007 比稿选定 B）。
  */
 
 const softVert = /* glsl */ `
@@ -82,8 +89,10 @@ export interface SharedMaterials {
   glowAdd: MeshBasicMaterial
   /** 金色金属（糖果金环、皇冠）。 */
   gold: MeshStandardMaterial
-  /** 纽扣眼：更亮的高光。 */
-  eyes: MeshStandardMaterial
+  /** 眼睛（眼底 + 白色高光）：不受光，黑始终是黑、高光始终纯白；受击闪白 / 冻住色调都不碰它。 */
+  eyes: MeshBasicMaterial
+  /** 玩偶描边外壳：所有玩偶共用一份（背面、外扩、纯色）。 */
+  dollOutline: MeshBasicMaterial
 }
 
 export function createSharedMaterials(): SharedMaterials {
@@ -97,6 +106,43 @@ export function createSharedMaterials(): SharedMaterials {
     flame: new MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, emissive: new Color(0xff8a2a), emissiveIntensity: 0.75 }),
     glowAdd: new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
     gold: new MeshStandardMaterial({ color: 0xffc93c, roughness: 0.3, metalness: 0.55 }),
-    eyes: new MeshStandardMaterial({ vertexColors: true, roughness: 0.2, metalness: 0 }),
+    eyes: new MeshBasicMaterial({ vertexColors: true }),
+    dollOutline: new MeshBasicMaterial({ color: OUTLINE, side: BackSide }),
   }
+}
+
+/** 玩偶边缘补光的 uniform：模块级、所有玩偶共享一份（调色只改这里）。 */
+export const DOLL_RIM_UNIFORMS = {
+  uRimColor: { value: new Color(RIM.color) },
+  uRimK: { value: RIM.k as number },
+}
+
+const RIM_PARS = /* glsl */ `
+uniform vec3 uRimColor;
+uniform float uRimK;
+`
+const RIM_FRAG = /* glsl */ `
+#include <emissivemap_fragment>
+float rimF = 1.0 - saturate( dot( normal, normalize( vViewPosition ) ) );
+totalEmissiveRadiance += uRimColor * uRimK * pow( rimF, ${RIM.power.toFixed(1)} );
+`
+
+/**
+ * 每只玩偶一份的主材质：顶点色 + 卡通三档光照（toonRampTexture）+ 边缘补光（不占 emissive 那一路：
+ * 受击闪白、保护脉冲、组合技发光仍然只动 emissive / emissiveIntensity）。所有玩偶共用一个 shader 程序。
+ */
+export function createDollMaterial(): MeshToonMaterial {
+  const m = new MeshToonMaterial({
+    vertexColors: true,
+    gradientMap: toonRampTexture(),
+    emissive: new Color(0xffffff),
+    emissiveIntensity: 0,
+  })
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uRimColor = DOLL_RIM_UNIFORMS.uRimColor
+    shader.uniforms.uRimK = DOLL_RIM_UNIFORMS.uRimK
+    shader.fragmentShader = RIM_PARS + shader.fragmentShader.replace('#include <emissivemap_fragment>', RIM_FRAG)
+  }
+  m.customProgramCacheKey = () => 'doll-toon-rim'
+  return m
 }

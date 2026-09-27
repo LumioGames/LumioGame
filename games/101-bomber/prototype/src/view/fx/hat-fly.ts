@@ -1,10 +1,13 @@
 import { dropOnHeight, HAT_DROP_MS, HAT_LOSS_MS, lossArc } from '../logic/hat-flow'
+import { lossScale } from '../logic/hat-layout'
 import type { HatRenderer } from '../world/hat-stack'
 
 /**
  * 表现帽的飞行（design §9.2 / §9.6，ADR 0028：帽子 = 强化数）：
- * - 落帽（drop）：吃到强化，1 顶帽子从帽塔顶上方 1.2 格处 0.3 s 落到塔顶（目标每帧跟着人走），落上去帽塔才长高；
- * - 飞帽（loss）：死亡掉强化，掉了几级就有几顶帽子从塔顶沿抛物线飞向掉出的强化所在格，落地「啵」掉。
+ * - 落帽（drop）：吃到强化，1 顶帽子从落点上方 1.2 格处 0.3 s 落到第 min(n, 4) 层（目标位置与缩放每帧跟着人走），
+ *   落上去帽塔才长高；塔已满 4 顶时落到虚拟第 4 层，落上即消失、×N 牌跳一下；
+ * - 飞帽（loss）：死亡掉强化，掉了几级就有几顶帽子从帽塔（lossLaunch 给的层）沿抛物线飞向掉出的强化所在格，落地「啵」掉；
+ *   飞行缩放从起飞层的缩放线性变到 0.75。
  *   起飞前（等玩偶散架）这几顶仍算在塔上。
  */
 interface Flight {
@@ -17,6 +20,8 @@ interface Flight {
   tx: number
   ty: number
   tz: number
+  /** drop：目标层缩放（每帧解析）；loss：起飞层缩放。 */
+  s: number
   start: number
   dur: number
   spin: number
@@ -25,24 +30,30 @@ interface Flight {
 
 const MAX = 64
 
-/** 帽塔顶（落点）的当前位置：头顶 + 塔高；返回 false = 人不在了。 */
-export type TargetResolver = (id: number, out: { x: number; y: number; z: number }) => boolean
+/** 落帽目标：落点的当前世界位置 + 该层缩放（已乘 unit）；返回 false = 人不在了。 */
+export interface DropTarget {
+  x: number
+  y: number
+  z: number
+  s: number
+}
+export type TargetResolver = (id: number, out: DropTarget) => boolean
 
 export class HatFlyFx {
   private readonly flights: Flight[] = []
-  private readonly tgt = { x: 0, y: 0, z: 0 }
+  private readonly tgt: DropTarget = { x: 0, y: 0, z: 0, s: 1 }
   private readonly pos = { x: 0, y: 0, z: 0 }
 
   /** 落帽：start 时刻起 0.3 s 落到 target 的帽塔顶。 */
   dropOn(target: number, start: number, spin: number): void {
     if (this.flights.length >= MAX) return
-    this.flights.push({ kind: 'drop', owner: target, fx: 0, fy: 0, fz: 0, tx: 0, ty: 0, tz: 0, start, dur: HAT_DROP_MS, spin, landed: false })
+    this.flights.push({ kind: 'drop', owner: target, fx: 0, fy: 0, fz: 0, tx: 0, ty: 0, tz: 0, s: 1, start, dur: HAT_DROP_MS, spin, landed: false })
   }
 
-  /** 飞帽：从 (fx, fy, fz)（塔顶）飞到地面格 (tx, tz)。 */
-  lose(owner: number, fx: number, fy: number, fz: number, tx: number, tz: number, start: number, spin: number): void {
+  /** 飞帽：从 (fx, fy, fz)（起飞层的帽底）飞到地面格 (tx, tz)；s = 起飞层缩放（已乘 unit）。 */
+  lose(owner: number, fx: number, fy: number, fz: number, tx: number, tz: number, start: number, spin: number, s = 1): void {
     if (this.flights.length >= MAX) return
-    this.flights.push({ kind: 'loss', owner, fx, fy, fz, tx, ty: 0, tz, start, dur: HAT_LOSS_MS, spin, landed: false })
+    this.flights.push({ kind: 'loss', owner, fx, fy, fz, tx, ty: 0, tz, s, start, dur: HAT_LOSS_MS, spin, landed: false })
   }
 
   clear(): void {
@@ -70,6 +81,7 @@ export class HatFlyFx {
         f.tx = this.tgt.x
         f.ty = this.tgt.y
         f.tz = this.tgt.z
+        f.s = this.tgt.s
       }
       if (u >= 1) {
         if (!f.landed) {
@@ -82,13 +94,13 @@ export class HatFlyFx {
       this.flights[keep++] = f
       if (u < 0) continue
       if (f.kind === 'drop') {
-        // 自由落体，落定前转慢；略微缩小入场，落上去正好 1:1 接进帽塔。
+        // 自由落体，落定前转慢；略微缩小入场，落上去正好按目标层缩放接进帽塔。
         const r = f.spin * (1 - u) * (1 - u)
-        hats.hat(f.tx, f.ty + dropOnHeight(u), f.tz, 0, r, 0, 0.85 + 0.15 * Math.min(1, u * 2))
+        hats.hat(f.tx, f.ty + dropOnHeight(u), f.tz, 0, r, 0, (0.85 + 0.15 * Math.min(1, u * 2)) * f.s)
       } else {
         const p = lossArc(u, f.fx, f.fy, f.fz, f.tx, f.tz, this.pos)
         const r = f.spin * u
-        hats.hat(p.x, p.y, p.z, r, r * 0.7, r * 0.4, 0.95 - 0.2 * u)
+        hats.hat(p.x, p.y, p.z, r, r * 0.7, r * 0.4, lossScale(u, f.s))
       }
     }
     this.flights.length = keep

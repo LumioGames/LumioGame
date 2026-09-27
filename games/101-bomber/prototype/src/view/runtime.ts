@@ -18,18 +18,17 @@ import { cellOf } from '../shared/grid'
 import { CameraRig } from './camera'
 import { buildDecor } from './geo/decor'
 import { ExplosionFx } from './fx/explosion'
-import { HatFlyFx } from './fx/hat-fly'
+import { HatFlyFx, type DropTarget } from './fx/hat-fly'
 import { ParticlePool } from './fx/particles'
 import type { PodiumAnchor, ScreenPoint, ViewOptions } from './index'
 import { LabelLayer, type FloatKind, type PlayerTagState } from './labels'
 import { chainHitstopMs, chainShakeAmplitude, CAMERA } from './logic/camera-math'
 import { CELL_GROW_MS, computeChainDelays, type ChainBomb } from './logic/chain-stagger'
 import { effectiveDetonationTicks, type DetonationBomb } from './logic/detonation'
-import { DOLL_FIT, dollLayout, localRingPulse, type DollLayout } from './logic/doll-fit'
+import { DOLL_FIT, dollLayout, localRingPulse, PODIUM_DOLL_SCALE, type DollLayout } from './logic/doll-fit'
 import { bombBlocked, canPreviewBomb } from './logic/fire-preview'
 import {
   diffHatCounts,
-  dropLandingOffset,
   HAT_DROP_GAP_MS,
   HAT_LOSS_GAP_MS,
   hatLossTargets,
@@ -38,7 +37,7 @@ import {
   type HatCountSample,
   type HatFlow,
 } from './logic/hat-flow'
-import { HAT } from './logic/hat-layout'
+import { dropLanding, HAT, lossLaunch, type HatSlot } from './logic/hat-layout'
 import { clamp01, easeInOutCubic, heartStage, interpolateXZ, type XZ } from './logic/interp'
 import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
 import { bombTone, type BombTone } from './logic/bomb-look'
@@ -240,8 +239,9 @@ export class ViewRuntime {
   private knownPickups = new Set<number>()
   /** 死者 → 掉出强化的格子（PickupSpawned(Source='death') 事件 + 快照 droppedBy 新糖果），飞帽落点。 */
   private readonly dropCells = new Map<number, CellPoint[]>()
-  /** 每位玩家帽塔顶最近一次画出的位置（死亡飞帽的起点）。 */
-  private readonly lastTop = new Map<number, { x: number; y: number; z: number }>()
+  /** 每位玩家帽塔最近一次画出时的头顶世界位置、塔上顶数与 unit（落帽目标 / 死亡飞帽起点）。 */
+  private readonly lastBase = new Map<number, { x: number; y: number; z: number; n: number; unit: number }>()
+  private readonly hatSlot: HatSlot = { offset: 0, scale: 0 }
 
   // 待触发（按 renderTick）
   private pendingBlasts: PendingBlast[] = []
@@ -273,7 +273,7 @@ export class ViewRuntime {
   private readonly pos: XZ = { x: 0, z: 0 }
   private readonly camQuat = new Quaternion()
   private readonly v3 = new Vector3()
-  private readonly tag: PlayerTagState = { name: '', isLocal: false, hats: 0, king: false, pips: -1, visible: true }
+  private readonly tag: PlayerTagState = { name: '', isLocal: false, stack: 0, king: false, pips: -1, visible: true }
   private readonly localTarget = { x: 0, z: 0, dx: 0, dz: 0 }
   private readonly towerH = new Map<number, number>()
   private kingX = 0
@@ -642,7 +642,7 @@ export class ViewRuntime {
     this.pendingChest = []
     this.pendingHatFlows = []
     this.dropCells.clear()
-    this.lastTop.clear()
+    this.lastBase.clear()
     this.elim.clear()
     this.floats = []
     this.spectateId = 0
@@ -929,37 +929,45 @@ export class ViewRuntime {
   }
 
   /**
-   * 死亡掉强化：count 顶帽子等玩偶散架后从帽塔顶（从上往下一顶顶）飞向掉出的强化所在格；
+   * 死亡掉强化：count 顶帽子等玩偶散架后从帽塔上飞向掉出的强化所在格（超出 4 顶的先从最上一层飞，
+   * 再从上往下一层层起飞，见 lossLaunch；塔在降到 4 顶以下前不变矮，只有 ×N 在往下数）；
    * 落点优先用 PickupSpawned(Source='death') / 快照 droppedBy，不够时飞向死亡点附近的格子（最多演 12 顶）。
    */
   private loseHats(id: number, count: number, now: number): void {
     let death: DeathRecord | undefined
     for (const d of this.deaths) if (d.id === id) death = d
-    const top = this.lastTop.get(id)
+    const base = this.lastBase.get(id)
     const p = this.currMap.get(id)
-    const x = top?.x ?? death?.x ?? p?.LogicTransform.WorldPosition.x
-    const z = top?.z ?? death?.z ?? p?.LogicTransform.WorldPosition.z
+    const x = base?.x ?? death?.x ?? p?.LogicTransform.WorldPosition.x
+    const z = base?.z ?? death?.z ?? p?.LogicTransform.WorldPosition.z
     if (x === undefined || z === undefined) return
-    const y = top?.y ?? 1.3
+    const y = base?.y ?? 1.1
+    const unit = base?.unit ?? 1
     const n = Math.min(count, 12)
+    // 起飞前塔上的顶数 = 规则层剩下的 + 这批要飞走的（起飞前 heldBack 仍把它们算在塔上）。
+    const nBefore = Math.max(0, p?.BomberPlayerState.HatCount ?? 0) + n
     const targets = hatLossTargets(n, this.dropCells.get(id) ?? [], death?.x ?? x, death?.z ?? z, id * 131 + this.lastRenderTick, this.size)
     this.dropCells.delete(id)
     const launch = Math.max(now, death && Number.isFinite(death.burstAt) ? death.burstAt : now + 120)
     for (let i = 0; i < n; i++) {
       const t = targets[i]
-      const fy = Math.max(0.9, y - i * HAT.spacing)
-      this.fly.lose(id, x, fy, z, t.x, t.z, launch + i * HAT_LOSS_GAP_MS, 6 + hash01(id, i + 17) * 8)
+      const slot = lossLaunch(i, nBefore, this.hatSlot)
+      const fy = Math.max(0.9, y + slot.offset * unit)
+      this.fly.lose(id, x, fy, z, t.x, t.z, launch + i * HAT_LOSS_GAP_MS, 6 + hash01(id, i + 17) * 8, slot.scale * unit)
     }
   }
 
-  /** 落帽的落点：头顶帽塔顶（跟着人走）。 */
-  private readonly resolveTowerTop = (id: number, out: { x: number; y: number; z: number }): boolean => {
+  /** 落帽的落点：塔上第 min(n, 4) 层（跟着人走；塔已满 4 顶时是虚拟第 4 层，落上即被收进 ×N）。 */
+  private readonly resolveTowerTop = (id: number, out: DropTarget): boolean => {
     const doll = this.dolls.get(id)
     if (!doll || !doll.shown) return false
-    const th = this.towerH.get(id) ?? 0
+    const base = this.lastBase.get(id)
+    const unit = base?.unit ?? 1
+    const slot = dropLanding(base?.n ?? 0, this.hatSlot)
     out.x = doll.headTop.x
-    out.y = doll.headTop.y + dropLandingOffset(th)
+    out.y = doll.headTop.y + slot.offset * unit
     out.z = doll.headTop.z
+    out.s = slot.scale * unit
     return true
   }
 
@@ -968,8 +976,12 @@ export class ViewRuntime {
     this.addFloat(id, 'hat', '+1')
     const doll = this.dolls.get(id)
     if (doll && doll.shown) {
-      const th = this.towerH.get(id) ?? 0
-      this.puffCotton(doll.headTop.x, doll.headTop.y + th, doll.headTop.z, 5, 1.2, SUNSHINE, 0.14)
+      // 棉花喷在落点（本帧塔还没把这顶算进去，lastBase.n 仍是落之前的顶数）。
+      const base = this.lastBase.get(id)
+      const unit = base?.unit ?? 1
+      const slot = dropLanding(base?.n ?? 0, this.hatSlot)
+      const y = doll.headTop.y + (slot.offset + HAT.height * slot.scale * 0.5) * unit
+      this.puffCotton(doll.headTop.x, y, doll.headTop.z, 5, 1.2, SUNSHINE, 0.14)
     }
   }
 
@@ -1166,11 +1178,13 @@ export class ViewRuntime {
       const crowned = king && n >= pillarMin
       const th = this.hats.tower(n, doll.headTop, doll.headQuat, doll.swayX, doll.swayZ, crowned)
       this.towerH.set(id, th)
-      let top = this.lastTop.get(id)
-      if (!top) this.lastTop.set(id, (top = { x: 0, y: 0, z: 0 }))
-      top.x = doll.headTop.x
-      top.y = doll.headTop.y + Math.max(0, th - HAT.height)
-      top.z = doll.headTop.z
+      let base = this.lastBase.get(id)
+      if (!base) this.lastBase.set(id, (base = { x: 0, y: 0, z: 0, n: 0, unit: 1 }))
+      base.x = doll.headTop.x
+      base.y = doll.headTop.y
+      base.z = doll.headTop.z
+      base.n = n
+      base.unit = 1
     }
   }
 
@@ -1368,13 +1382,15 @@ export class ViewRuntime {
         const pulse = 1 + 0.05 * Math.sin((now / 1000) * Math.PI * 2)
         this.marks.ring(x, z, 1.02 * pulse, slotColor(0), 0.95, 0, y + 0.02)
       }
-      const th = this.hats.tower(a.hats, doll.headTop, doll.headQuat, 0, 0, a.crowned)
+      // 领奖台同样封顶 4 顶 + 皇冠；帽子跟玩偶一起放大（PODIUM_DOLL_SCALE / 场内缩放）。
+      const th = this.hats.tower(a.hats, doll.headTop, doll.headQuat, 0, 0, a.crowned, PODIUM_DOLL_SCALE / this.layout.scale)
       this.towerH.set(-a.id, th)
       if (a.isLocal) {
         const tag = this.tag
         tag.isLocal = true
         tag.name = '你'
-        tag.hats = a.hats
+        // HUD 领奖台名次牌 pd-hats 已显示「×N」，同一处不放两个数字。
+        tag.stack = 0
         tag.king = a.crowned
         tag.pips = -1
         tag.visible = true
@@ -1409,7 +1425,7 @@ export class ViewRuntime {
       const alive = doll.shown
       tag.isLocal = p.NetEntityIdRaw === localId
       tag.name = tag.isLocal ? '你' : p.meta.name
-      tag.hats = this.shownHats(p, this.lastRenderTick, now)
+      tag.stack = this.shownHats(p, this.lastRenderTick, now)
       tag.king = kingId !== 0 && p.NetEntityIdRaw === kingId
       tag.pips = now < doll.hitBarUntil && alive ? heartStage(p.玩家属性.血量当前, this.perHeart) : -1
       tag.visible = alive
