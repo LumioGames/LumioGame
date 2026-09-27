@@ -22,16 +22,18 @@ const DASH_PARTS = [
 ] as const
 
 describe('fire aura', () => {
-  it('3×3 around the bear (air cells only, incl. his own) for 80 ticks, published as a FireZone', () => {
+  it('3×3 around the bear (air cells only, incl. his own) for the L1 duration, published as a FireZone', () => {
     const { w } = bearWorld()
     const f = step(w, { 1: [SKILL] })
     const T = w.t
-    expect(evs(f, 'SkillActivated')).toMatchObject([{ Skill: 'fireAura', UntilTick: T + 80, CdUntilTick: T + 400 }])
+    // 光环 L1 持续 / CD 读配表（第 4 轮平衡后 5.5 s / 16 s，ADR 0034）。
+    const { duration: DUR, cd: CD } = w.ticks.skills.fireAura[0]
+    expect(evs(f, 'SkillActivated')).toMatchObject([{ Skill: 'fireAura', UntilTick: T + DUR, CdUntilTick: T + CD }])
     expect(f.snapshot.FireZones).toEqual([
       {
         owner: 1,
         source: 'aura',
-        untilTick: T + 80,
+        untilTick: T + DUR,
         cells: [
           { X: 5, Y: 4 },
           { X: 4, Y: 5 },
@@ -41,9 +43,9 @@ describe('fire aura', () => {
         ],
       },
     ])
-    run(w, 78)
+    run(w, DUR - 2)
     expect(step(w).snapshot.FireZones).toHaveLength(1)
-    expect(w.t).toBe(T + 79)
+    expect(w.t).toBe(T + DUR - 1)
     expect(step(w).snapshot.FireZones).toEqual([])
   })
 

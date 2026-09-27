@@ -16,12 +16,15 @@ describe('select-model (选角界面)', () => {
   })
 
   it('descriptions carry the Lv1 numbers from the table', () => {
-    expect(cards[0].desc).toContain('10')
-    expect(cards[1].desc).toContain('18')
-    expect(cards[1].desc).toContain('3')
+    // 第 4 轮平衡（D 验收，ADR 0034）后的 L1：回春 20 秒 / 半心；泡泡 3.5 秒 / CD 14 秒；闪现 3 格 / CD 10 秒；光环 5.5 秒 / CD 16 秒。
+    expect(cards[0].desc).toContain('20 秒')
+    expect(cards[0].desc).toContain('0.5 心')
+    expect(cards[1].desc).toContain('3.5 秒')
+    expect(cards[1].desc).toContain('14 秒')
     expect(cards[2].desc).toContain('3 格')
-    expect(cards[2].desc).toContain('12')
-    expect(cards[3].desc).toContain('20')
+    expect(cards[2].desc).toContain('10 秒')
+    expect(cards[3].desc).toContain('5.5 秒')
+    expect(cards[3].desc).toContain('16 秒')
     for (const c of cards) expect(c.desc).not.toMatch(/\{\w+\}/)
   })
 

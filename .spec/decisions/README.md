@@ -61,3 +61,4 @@
 | [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效 |
 | [0032](0032-bomber-movement-dual-direction-and-doll-footprint.md) | 炸弹人手感补充:同按两个方向走得通的那个、转角吸附 0.5 格、玩偶视觉占地不超过 0.7 格 | 生效 |
 | [0033](0033-bomber-toxin-and-shock-bombs-from-chests.md) | 炸弹人新增中毒弹与麻痹弹两种炸弹技能,技能糖池偏向炸弹类,决赛圈宝箱保底开出炸弹糖 | 生效 |
+| [0034](0034-bomber-character-balance-round-1.md) | 炸弹人角色平衡第一轮:削棉花兔回春、加强泡泡 / 闪现 / 火焰光环,普通档 Bot 少放技能 | 生效 |

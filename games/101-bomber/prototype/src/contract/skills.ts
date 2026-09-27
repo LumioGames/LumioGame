@@ -127,7 +127,8 @@ const ZERO: SkillParams = { cdMs: 0, durationMs: 0, rangeCells: 0, intervalMs: 0
 const lv = (p: Partial<SkillParams>): SkillParams => ({ ...ZERO, ...p })
 
 /**
- * 技能表（ADR 0030，design §8.4 / §12）。L1 取自用户第 4 轮口述；L2 / L3 为推断待验证（CD 逐级缩短、效果逐级增强）。
+ * 技能表（ADR 0030，design §8.4 / §12）。L1 原取自用户第 4 轮口述，四个专属技能的数值经「第 4 轮平衡（D 验收）」（ADR 0034）改过，
+ * 闪现距离之外均为推断待验证；L2 / L3 为推断待验证（CD 逐级缩短、效果逐级增强）。
  * 糖池权重（ADR 0033 修订 RESOLUTIONS #2 的等权）：炸弹类（冰冻 / 穿透 / 中毒 / 麻痹）各 2，泡泡 / 闪现 / 火焰光环 / 踢弹各 1；
  * 回春只随棉花兔出生、不进池也不掉落，L2 / L3 因此实际不可达。
  */
@@ -139,9 +140,9 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     combo: false,
     candyWeight: 0,
     endsProtection: false,
-    levels: [lv({ intervalMs: 10000, points: 2 }), lv({ intervalMs: 8000, points: 2 }), lv({ intervalMs: 6000, points: 2 })],
+    levels: [lv({ intervalMs: 20000, points: 1 }), lv({ intervalMs: 16000, points: 1 }), lv({ intervalMs: 12000, points: 1 })],
     desc: '受伤后 {interval} 秒没再挨打回 {heal} 心，之后每 {interval} 秒再回，满血为止',
-    src: '推断待验证：L1 = 用户第 4 轮（10 秒，A/B 5 / 10 秒，上限满血）；L2 / L3 参照 §8.4 厚棉花去掉脱战等待',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 20 / 16 / 12 秒、每次 0.5 心（原 L1 = 用户第 4 轮 10 秒 / 1 心，棉花兔一家独大）；上限满血；L2 / L3 参照 §8.4 厚棉花去掉脱战等待',
   },
   bubble: {
     id: 'bubble',
@@ -150,9 +151,9 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     combo: false,
     candyWeight: 1,
     endsProtection: false,
-    levels: [lv({ durationMs: 3000, cdMs: 18000 }), lv({ durationMs: 3500, cdMs: 15000 }), lv({ durationMs: 4000, cdMs: 12000 })],
+    levels: [lv({ durationMs: 3500, cdMs: 14000 }), lv({ durationMs: 4000, cdMs: 12000 }), lv({ durationMs: 4500, cdMs: 10000 })],
     desc: '吹个泡泡，{dur} 秒内不受伤、不能放弹（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮（取代 §8.4 一次性护盾）；L2 / L3 推断',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 3.5 / 4 / 4.5 秒、CD 14 / 12 / 10 秒（原 L1 = 用户第 4 轮 3 秒 / 18 秒，取代 §8.4 一次性护盾）',
   },
   blink: {
     id: 'blink',
@@ -161,9 +162,9 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     combo: false,
     candyWeight: 1,
     endsProtection: false,
-    levels: [lv({ rangeCells: 3, cdMs: 12000 }), lv({ rangeCells: 3, cdMs: 10000 }), lv({ rangeCells: 4, cdMs: 8000 })],
+    levels: [lv({ rangeCells: 3, cdMs: 10000 }), lv({ rangeCells: 3, cdMs: 8000 }), lv({ rangeCells: 4, cdMs: 6000 })],
     desc: '朝面向瞬移至多 {range}，越过砖块、炸弹和宝箱（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮（取代 §8.4 冲刺）；L2 / L3 推断',
+    src: '推断待验证：距离 L1 = 用户第 4 轮（3 格，取代 §8.4 冲刺）；CD 10 / 8 / 6 秒 = 第 4 轮平衡（D 验收，ADR 0034，原 L1 12 秒）；L2 / L3 推断',
   },
   fireAura: {
     id: 'fireAura',
@@ -172,9 +173,9 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     combo: false,
     candyWeight: 1,
     endsProtection: true,
-    levels: [lv({ durationMs: 4000, cdMs: 20000 }), lv({ durationMs: 4500, cdMs: 17000 }), lv({ durationMs: 5000, cdMs: 14000 })],
+    levels: [lv({ durationMs: 5500, cdMs: 16000 }), lv({ durationMs: 6000, cdMs: 14000 }), lv({ durationMs: 6500, cdMs: 12000 })],
     desc: '点燃身边一圈 {dur} 秒，碰到的对手{burn}（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮；伤害口径同 §12 留火；L2 / L3 推断',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 5.5 / 6 / 6.5 秒、CD 16 / 14 / 12 秒（原 L1 = 用户第 4 轮 4 秒 / 20 秒）；伤害口径同 §12 留火；L2 / L3 推断',
   },
   kick: {
     id: 'kick',
@@ -295,7 +296,7 @@ export const CHARACTERS: Readonly<Record<CharacterId, CharacterDef>> = {
     animal: 'duck',
     name: '泡泡鸭',
     skill: 'bubble',
-    tagline: '吹个泡泡，3 秒刀枪不入',
+    tagline: '吹个泡泡，3.5 秒刀枪不入',
     botNames: ['泡泡鸭', '肥皂鸭'],
     src: '引用 用户第 4 轮',
   },

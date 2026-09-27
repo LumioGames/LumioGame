@@ -77,12 +77,15 @@ describe('skillHudModel', () => {
   })
 
   it('duck bubble: effect fraction and bubbled flag', () => {
-    const duck = skills({ character: 'duck', slots: { bomb: null, active: slot('bubble', 1, true), passive: null }, bubbleUntilTick: 160 })
+    // 泡泡 L1 持续读配表（第 4 轮平衡后 3.5 s = 70 Tick，ADR 0034）；看的是还剩一半的那一刻。
+    const dur = Math.ceil((DEFAULT_RULES.skills.bubble.levels[0].durationMs * R) / 1000)
+    const until = 130 + dur / 2
+    const duck = skills({ character: 'duck', slots: { bomb: null, active: slot('bubble', 1, true), passive: null }, bubbleUntilTick: until })
     const m = model(me(duck), 130)
     expect(m.chips[1].effectFrac).toBeCloseTo(0.5)
     expect(m.bubbled).toBe(true)
     expect(skillButtonView(m)?.effect).toBe(true)
-    expect(model(me(duck), 160).chips[1].effectFrac).toBe(0)
+    expect(model(me(duck), until).chips[1].effectFrac).toBe(0)
   })
 
   it('rabbit regen ring beside the hearts: progress and seconds left; hidden at full hp', () => {
