@@ -117,11 +117,11 @@ describe('skills table', () => {
     expect(SKILLS.shockBomb.name).toBe('麻痹弹')
   })
 
-  it('L1 values match the user brief', () => {
-    expect(skillParams(SKILLS, 'bubble', 1)).toMatchObject({ durationMs: 3000, cdMs: 18000 })
-    expect(skillParams(SKILLS, 'blink', 1)).toMatchObject({ rangeCells: 3, cdMs: 12000 })
-    expect(skillParams(SKILLS, 'fireAura', 1)).toMatchObject({ durationMs: 4000, cdMs: 20000 })
-    expect(skillParams(SKILLS, 'regen', 1)).toMatchObject({ intervalMs: 10000, points: 2 })
+  it('L1 values = user brief, character skills as rebalanced for acceptance D (ADR 0034)', () => {
+    expect(skillParams(SKILLS, 'bubble', 1)).toMatchObject({ durationMs: 3500, cdMs: 14000 })
+    expect(skillParams(SKILLS, 'blink', 1)).toMatchObject({ rangeCells: 3, cdMs: 10000 })
+    expect(skillParams(SKILLS, 'fireAura', 1)).toMatchObject({ durationMs: 5500, cdMs: 16000 })
+    expect(skillParams(SKILLS, 'regen', 1)).toMatchObject({ intervalMs: 20000, points: 1 })
     expect(skillParams(SKILLS, 'fireDash', 1)).toMatchObject({ rangeCells: 3, cdMs: 12000, durationMs: 2000 })
     expect(skillParams(SKILLS, 'bounceBubble', 1)).toMatchObject({ durationMs: 3000, cdMs: 18000, rangeCells: 5 })
     expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 1000, pierceLayers: 1 })
@@ -129,13 +129,14 @@ describe('skills table', () => {
 
   it('L1–L3 table is the contract table (RESOLUTIONS #8)', () => {
     const col = (id: SkillId, k: keyof ReturnType<typeof skillParams>): number[] => [1, 2, 3].map((l) => skillParams(SKILLS, id, l)[k])
-    expect(col('bubble', 'durationMs')).toEqual([3000, 3500, 4000])
-    expect(col('bubble', 'cdMs')).toEqual([18000, 15000, 12000])
+    expect(col('bubble', 'durationMs')).toEqual([3500, 4000, 4500])
+    expect(col('bubble', 'cdMs')).toEqual([14000, 12000, 10000])
     expect(col('blink', 'rangeCells')).toEqual([3, 3, 4])
-    expect(col('blink', 'cdMs')).toEqual([12000, 10000, 8000])
-    expect(col('fireAura', 'durationMs')).toEqual([4000, 4500, 5000])
-    expect(col('fireAura', 'cdMs')).toEqual([20000, 17000, 14000])
-    expect(col('regen', 'intervalMs')).toEqual([10000, 8000, 6000])
+    expect(col('blink', 'cdMs')).toEqual([10000, 8000, 6000])
+    expect(col('fireAura', 'durationMs')).toEqual([5500, 6000, 6500])
+    expect(col('fireAura', 'cdMs')).toEqual([16000, 14000, 12000])
+    expect(col('regen', 'intervalMs')).toEqual([20000, 16000, 12000])
+    expect(col('regen', 'points')).toEqual([1, 1, 1])
     expect(col('kick', 'rangeCells')).toEqual([3, 5, 99])
     expect(col('freezeBomb', 'freezeMs')).toEqual([800, 1000, 1200])
     expect(col('pierceBomb', 'pierceLayers')).toEqual([1, 2, 99])
@@ -160,12 +161,11 @@ describe('skills table', () => {
   it('describeSkill fills in the numbers of the given level', () => {
     const r = { skills: SKILLS, burnPointsPerInterval: 2, burnIntervalMs: 1000 }
     const cfg = { healthPointsPerHeart: 2 }
-    const b2 = describeSkill(r, cfg, 'bubble', 2)
-    expect(b2).toContain('3.5')
-    expect(b2).toContain('15')
+    // 第 4 轮平衡（D 验收，ADR 0034）：泡泡 L2 = 4 秒 / CD 12 秒；回春 L1 = 20 秒回半心。
+    expect(describeSkill(r, cfg, 'bubble', 2)).toBe('吹个泡泡，4 秒内不受伤、不能放弹（冷却 12 秒）')
     expect(describeSkill(r, cfg, 'blink', 3)).toContain('4 格')
     expect(describeSkill(r, cfg, 'kick', 3)).toContain('直到被挡')
-    expect(describeSkill(r, cfg, 'regen', 1)).toContain('10')
+    expect(describeSkill(r, cfg, 'regen', 1)).toBe('受伤后 20 秒没再挨打回 0.5 心，之后每 20 秒再回，满血为止')
     expect(describeSkill(r, cfg, 'fireAura', 1)).toContain('−1 心')
     expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('1')
     for (const id of SKILL_IDS) for (let l = 1; l <= 3; l++) expect(describeSkill(r, cfg, id, l)).not.toMatch(/\{\w+\}/)

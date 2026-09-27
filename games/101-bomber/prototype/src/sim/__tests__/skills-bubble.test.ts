@@ -17,14 +17,15 @@ describe('bubble', () => {
     const { w, duck } = duckWorld()
     step(w, { 1: [SKILL] })
     const T = w.t
+    const DUR = w.ticks.skills.bubble[0].duration
     const b = addBomb(w, 2, 5, 3, 1, 3)
     const f = step(w)
     expect(evs(f, 'DamageApplied')).toHaveLength(0)
     expect(b.hit).not.toContain(1)
     expect(w.chainDmg.get(b.chainId)?.get(1)).toBeUndefined()
     expect(duck.health).toBe(w.cfg.maxHealthPoints)
-    run(w, T + 60 - w.t)
-    expect(w.t).toBe(T + 60)
+    run(w, T + DUR - w.t)
+    expect(w.t).toBe(T + DUR)
     addBomb(w, 2, 5, 3, 1, 3)
     const g = step(w)
     expect(evs(g, 'DamageApplied')).toMatchObject([{ VictimNetEntityIdRaw: 1 }])
@@ -34,12 +35,13 @@ describe('bubble', () => {
     const { w, duck } = duckWorld()
     step(w, { 1: [SKILL] })
     const T = w.t
-    run(w, 60 - 3)
+    const DUR = w.ticks.skills.bubble[0].duration
+    run(w, DUR - 3)
     addBomb(w, 2, 5, 3, 1, 3)
     const frames = run(w, 4)
     const dmg = evs(frames, 'DamageApplied')
     expect(dmg).toHaveLength(1)
-    expect(dmg[0].Tick).toBe(T + 60)
+    expect(dmg[0].Tick).toBe(T + DUR)
     expect(duck.health).toBe(w.cfg.maxHealthPoints - w.rules.bombDamagePoints)
   })
 
@@ -79,7 +81,7 @@ describe('bubble', () => {
     const d2 = put(w2, 1, 1, 1)
     put(w2, 2, 9, 9)
     startCircle(w2)
-    // 直接把安全圈缩到中心，(1,1) 在圈外；泡泡 60 Tick 覆盖整个观察窗口。
+    // 直接把安全圈缩到中心，(1,1) 在圈外；泡泡 L1 持续（≥ 60 Tick）覆盖整个观察窗口。
     w2.finalCircle!.ring = { min: 8, max: 10 }
     step(w2, { 1: [SKILL] })
     const pf = run(w2, 45)

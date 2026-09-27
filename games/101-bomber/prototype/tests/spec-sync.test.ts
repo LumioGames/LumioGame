@@ -135,20 +135,20 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
 
   it('skill L1 / L2 / L3 values = design §8.4 table (RESOLUTIONS #8)', () => {
     const col = (id: SkillId, k: keyof SkillParams) => [1, 2, 3].map((lv) => skillParams(SKILLS, id, lv)[k])
-    // 泡泡：持续 3 / 3.5 / 4 s，CD 18 / 15 / 12 s（design §8.4 ★ 泡泡）。
-    expect(col('bubble', 'durationMs')).toEqual([3000, 3500, 4000])
-    expect(col('bubble', 'cdMs')).toEqual([18_000, 15_000, 12_000])
-    // 闪现：距离 3 / 3 / 4 格，CD 12 / 10 / 8 s（design §8.4 ★ 闪现）。
+    // 泡泡：持续 3.5 / 4 / 4.5 s，CD 14 / 12 / 10 s（design §8.4 ★ 泡泡；第 4 轮平衡（D 验收），ADR 0034）。
+    expect(col('bubble', 'durationMs')).toEqual([3500, 4000, 4500])
+    expect(col('bubble', 'cdMs')).toEqual([14_000, 12_000, 10_000])
+    // 闪现：距离 3 / 3 / 4 格，CD 10 / 8 / 6 s（design §8.4 ★ 闪现；CD = ADR 0034）。
     expect(col('blink', 'rangeCells')).toEqual([3, 3, 4])
-    expect(col('blink', 'cdMs')).toEqual([12_000, 10_000, 8000])
-    // 火焰光环：持续 4 / 4.5 / 5 s，CD 20 / 17 / 14 s；每 1000 ms −2 点（−1 心 / 秒，design §8.4 ★ 火焰光环 / §12 留火）。
-    expect(col('fireAura', 'durationMs')).toEqual([4000, 4500, 5000])
-    expect(col('fireAura', 'cdMs')).toEqual([20_000, 17_000, 14_000])
+    expect(col('blink', 'cdMs')).toEqual([10_000, 8000, 6000])
+    // 火焰光环：持续 5.5 / 6 / 6.5 s，CD 16 / 14 / 12 s（ADR 0034）；每 1000 ms −2 点（−1 心 / 秒，design §8.4 ★ 火焰光环 / §12 留火）。
+    expect(col('fireAura', 'durationMs')).toEqual([5500, 6000, 6500])
+    expect(col('fireAura', 'cdMs')).toEqual([16_000, 14_000, 12_000])
     expect(R.burnIntervalMs).toBe(1000)
     expect(R.burnPointsPerInterval).toBe(2)
-    // 回春：N = 10 / 8 / 6 s，每次回 1 心 = 2 点（design §8.4 ★ 回春 / §8.0）。
-    expect(col('regen', 'intervalMs')).toEqual([10_000, 8000, 6000])
-    expect(col('regen', 'points')).toEqual([2, 2, 2])
+    // 回春：N = 20 / 16 / 12 s，每次回半心 = 1 点（design §8.4 ★ 回春 / §8.0；ADR 0034）。
+    expect(col('regen', 'intervalMs')).toEqual([20_000, 16_000, 12_000])
+    expect(col('regen', 'points')).toEqual([1, 1, 1])
     // 踢弹：3 格 / 5 格 / 直到障碍，8 格 / 秒（design §8.4 ★ 踢弹）。
     expect(col('kick', 'rangeCells')).toEqual([3, 5, UNTIL_BLOCKED])
     expect(R.kickSpeedMilli).toBe(8000)

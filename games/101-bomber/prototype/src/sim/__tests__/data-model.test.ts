@@ -347,10 +347,11 @@ describe('step dispatch', () => {
 
   it('tick table converts the skill levels', () => {
     const w = makeWorld()
-    expect(w.ticks.skills.blink[0].cd).toBe(240)
-    expect(w.ticks.skills.bubble[0]).toMatchObject({ duration: 60, cd: 360 })
-    expect(w.ticks.skills.fireAura[0]).toMatchObject({ duration: 80, cd: 400 })
-    expect(w.ticks.skills.regen[0].interval).toBe(200)
+    // 第 4 轮平衡（D 验收，ADR 0034）：闪现 CD 10 s、泡泡 3.5 s / 14 s、光环 5.5 s / 16 s、回春 20 s（20 Hz）。
+    expect(w.ticks.skills.blink[0].cd).toBe(200)
+    expect(w.ticks.skills.bubble[0]).toMatchObject({ duration: 70, cd: 280 })
+    expect(w.ticks.skills.fireAura[0]).toMatchObject({ duration: 110, cd: 320 })
+    expect(w.ticks.skills.regen[0].interval).toBe(400)
     expect(w.ticks.skills.freezeBomb.map((r) => r.freeze)).toEqual([16, 20, 24])
     expect(w.ticks.burnInterval).toBe(20)
     expect(w.ticks.freezeCap).toBe(24)
