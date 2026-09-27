@@ -27,3 +27,5 @@
 
 - 决策**一律**记 [`decisions/`](decisions/README.md)(ADR,不改写、只新增取代)——功能内与框架级共用,唯一落点;feature 文档只描述设计现状,不留决策记录。
 - 结构一致性由 `node .spec/tools/lint-extensions.mjs` 校验,改完 `.spec/` 必跑;校验项清单以脚本头部注释为单一权威。
+
+过程稿一律写进 `.spec/archive/`；knowledge 导航不指向 archive，默认搜索排除该目录。任务执行真值在 Workflow。
