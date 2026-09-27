@@ -1,4 +1,5 @@
 import { BufferAttribute, BufferGeometry, Color, Euler, Matrix4, Quaternion, Vector3 } from 'three'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 /**
  * 顶点色合批：把一件物体的多个零件（各自一种颜色、各自一个变换）并成一个几何体，
@@ -54,6 +55,27 @@ export class GeoBuilder {
     if (g !== geo) g.dispose()
     geo.dispose()
     return this
+  }
+
+  /**
+   * 加一个描边外壳零件（给背面外扩描边用，颜色由材质决定）：先变换到目标空间，只留 position 做 mergeVertices
+   * （缝上 UV 接缝 / 锥体尖点 / 圆柱帽沿的重复顶点），再算平滑法线、每个顶点沿法线外推 t——
+   * 厚度在变换后的空间里均匀，硬边零件（锥、圆柱）也不会裂缝。geo 会被消费（dispose）。
+   */
+  addShell(geo: BufferGeometry, m: Matrix4 | undefined, t: number): this {
+    const src = geo.clone()
+    geo.dispose()
+    if (m) src.applyMatrix4(m)
+    for (const name of Object.keys(src.attributes)) if (name !== 'position') src.deleteAttribute(name)
+    const g = mergeVertices(src, 1e-5)
+    src.dispose()
+    g.computeVertexNormals()
+    const pos = g.getAttribute('position') as BufferAttribute
+    const nrm = g.getAttribute('normal') as BufferAttribute
+    for (let i = 0; i < pos.count; i++) {
+      pos.setXYZ(i, pos.getX(i) + nrm.getX(i) * t, pos.getY(i) + nrm.getY(i) * t, pos.getZ(i) + nrm.getZ(i) * t)
+    }
+    return this.add(g, 0)
   }
 
   /** 把另一个 builder 的零件整体变换后并进来。 */

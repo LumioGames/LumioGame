@@ -25,17 +25,94 @@ export interface AnimalColors {
   feet: number
   /** 口鼻 / 肚皮浅色。 */
   light: number
+  /** 标志花纹（鸭呆毛、猫闪电纹、狗垂耳与眼罩、蛙背斑、熊肚皮火苗……）。 */
+  mark: number
+  /** 腮红。 */
+  blush: number
 }
 
+/**
+ * 玩偶色板（原型表现取值，不是正式美术方向；ADR 0007 比稿未定）。
+ * 纪律（doll-look.test 守护）：body 离每个地形参考色 ΔE76 ≥ 20；有色玩偶彩度 C* ≥ 45（高于地形最高的 42.9 一档），
+ * 兔 / 企鹅是「明度型」（L ≥ 88 / L ≤ 30）豁免彩度；玩偶两两 ΔE ≥ 30。
+ */
 export const ANIMAL_COLORS: Readonly<Record<AnimalId, AnimalColors>> = {
-  duck: { body: 0xffd34d, accent: 0xff8a3d, feet: 0xff8a3d, light: 0xfff0b0 },
-  rabbit: { body: 0xf5eee6, accent: 0xffa6b8, feet: 0xe8ddd0, light: 0xffffff },
-  bear: { body: 0xb9804f, accent: 0x5a3a24, feet: 0x9a6a40, light: 0xebcb9e },
-  cat: { body: 0x9aa3b5, accent: 0xff9fb0, feet: 0x808a9e, light: 0xdfe3ec },
-  frog: { body: 0x6cc551, accent: 0xff8fa3, feet: 0x58b048, light: 0xd9f2b8 },
-  penguin: { body: 0x2f4a6b, accent: 0xffb02e, feet: 0xffb02e, light: 0xffffff },
-  pig: { body: 0xffa6b8, accent: 0xff8198, feet: 0xf28da3, light: 0xffd0da },
-  dog: { body: 0xe3b77e, accent: 0x8a5a3b, feet: 0xc99a62, light: 0xf6e3c4 },
+  duck: { body: 0xffd21f, accent: 0xff8a1f, feet: 0xff8a1f, light: 0xfff0a0, mark: 0xffb300, blush: 0xff8a5c },
+  rabbit: { body: 0xede6ff, accent: 0xff6f9c, feet: 0xdcd2f5, light: 0xffffff, mark: 0xffffff, blush: 0xff8fb0 },
+  bear: { body: 0xb94a2c, accent: 0x3a2020, feet: 0x9a3a22, light: 0xffd2a0, mark: 0xffb347, blush: 0xff9a8a },
+  cat: { body: 0x6c63ff, accent: 0xff8fb0, feet: 0x5a50e0, light: 0xe9e6ff, mark: 0xffd83d, blush: 0xff8fc0 },
+  frog: { body: 0x2ec45a, accent: 0xff7f9e, feet: 0x25a84b, light: 0xd8f7a8, mark: 0x1e8f43, blush: 0xff7f9e },
+  penguin: { body: 0x24375e, accent: 0xffa51f, feet: 0xffa51f, light: 0xffffff, mark: 0x3e5a92, blush: 0xff9cb5 },
+  pig: { body: 0xff86ae, accent: 0xff5f93, feet: 0xe86a95, light: 0xffc6da, mark: 0xc2446f, blush: 0xff4f86 },
+  dog: { body: 0xf28a2e, accent: 0xff7f9e, feet: 0xd9741f, light: 0xfff3e0, mark: 0x7a3e1c, blush: 0xff5e7a },
+}
+
+/** 玩偶描边（暖可可墨色，不用纯黑）。 */
+export const OUTLINE = 0x3a2824
+/** 眼底墨色（偏蓝，受光不变：眼睛用不受光材质）。 */
+export const EYE_INK = 0x1b1530
+/** 嘴 / 胡须等脸部线条。 */
+export const FACE_INK = 0x3a2824
+
+/**
+ * 地形参考色（只给测试用：玩偶配色要从数值上避开它们）。照抄 world/terrain.ts、geo/blocks.ts、textures.ts 的字面色；
+ * 那边改了色，这里要跟着改（不反向依赖，避免测试牵动地形模块）。
+ */
+export const TERRAIN_REFERENCE_COLORS: Readonly<Record<string, number>> = {
+  /** 积木四色（SOFT_BLOCK_COLORS）。 */
+  brickHoney: 0xf9d98a,
+  brickPeach: 0xf7b48a,
+  brickSky: 0x9fd3e2,
+  brickMint: 0xb3dc9c,
+  /** 软垫两档奶油色（textures.drawMatTexture）。 */
+  matLight: 0xf7eedb,
+  matDark: 0xefe1c6,
+  /** 木箱两色（blocks.ts 侧面 / 顶面）。 */
+  crateSide: 0xc98f5a,
+  crateTop: 0xd49c66,
+  /** 铁皮两色（blocks.ts 侧面 / 顶面）。 */
+  tinSide: 0x7f95b2,
+  tinTop: 0x95aac4,
+  /** 水（terrain.ts uShallow）。 */
+  water: 0x3db8da,
+  /** 围边（terrain.ts rims）。 */
+  rim: 0xf6ead3,
+}
+
+function srgbToLinear(c: number): number {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+}
+
+function labF(t: number): number {
+  return t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116
+}
+
+/** sRGB hex → CIELAB（D65）。纯数学，测试与调色用。 */
+export function labOf(hex: number): [number, number, number] {
+  const r = srgbToLinear((hex >> 16) & 255)
+  const g = srgbToLinear((hex >> 8) & 255)
+  const b = srgbToLinear(hex & 255)
+  const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+  const fx = labF(x)
+  const fy = labF(y)
+  const fz = labF(z)
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
+}
+
+/** CIE76 色差。 */
+export function deltaE76(a: number, b: number): number {
+  const p = labOf(a)
+  const q = labOf(b)
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])
+}
+
+/** CIELAB 彩度 C*。 */
+export function chromaOf(hex: number): number {
+  const l = labOf(hex)
+  return Math.hypot(l[1], l[2])
 }
 
 /** 线性空间里按系数压暗 / 提亮一个 sRGB hex（构建期用，不在热循环里调）。 */

@@ -1,12 +1,11 @@
 import { Vector3, type PerspectiveCamera } from 'three'
+import { stackBadge } from './logic/hat-layout'
 
 /**
- * 世界锚定的 DOM 标签层（opts.labelRoot）：玩家名牌（帽数牌 + 帽王皇冠 + 受击后 3 s 的小血条）、
+ * 世界锚定的 DOM 标签层（opts.labelRoot）：玩家名牌（帽塔超过 4 顶时贴着塔顶的「×N」牌 + 名字 + 受击后 3 s 的小血条）、
  * 本机「你」胶囊、强化帽落到头顶时的「+1」飘字、宝箱命中点。元素只在实体出现时创建，逐帧只写 transform 与变化了的文本。
  */
 
-const CROWN_SVG =
-  '<svg viewBox="0 0 24 18" aria-hidden="true"><path d="M2 16h20l1.5-11-6 4.5L12 1 6.5 9.5 0.5 5z" fill="#FFC93C" stroke="#2B2320" stroke-width="1.6" stroke-linejoin="round"/></svg>'
 const HAT_SVG =
   '<svg viewBox="0 0 24 20" aria-hidden="true"><rect x="1" y="15" width="22" height="4" rx="2" fill="#2B2320"/><rect x="5" y="2" width="14" height="14" rx="2.5" fill="#2B2320"/><rect x="5" y="10" width="14" height="3.5" fill="#FFC93C"/></svg>'
 
@@ -30,7 +29,8 @@ const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: 
 export interface PlayerTagState {
   name: string
   isLocal: boolean
-  hats: number
+  /** 画面上的帽数：> 4 时塔顶显示「×N」牌；0 = 隐藏（领奖台由 HUD 名次牌显示帽数）。 */
+  stack: number
   king: boolean
   /** 0..3 整心（受击后显示），< 0 隐藏。 */
   pips: number
@@ -40,26 +40,19 @@ export interface PlayerTagState {
 class PlayerTag {
   readonly el: HTMLDivElement
   private readonly nameEl: HTMLSpanElement
-  private readonly hatsEl: HTMLSpanElement
-  private readonly hatsNum: HTMLSpanElement
-  private readonly crownEl: HTMLSpanElement
+  private readonly stackEl: HTMLSpanElement
   private readonly pipsEl: HTMLSpanElement
   private readonly pipEls: HTMLElement[] = []
-  private last = { name: '', hats: -1, king: false, pips: -2, visible: true, x: NaN, y: NaN }
+  private last = { name: '', stack: -1, stackTier: -1, king: false, pips: -2, visible: true, x: NaN, y: NaN }
 
   constructor(root: HTMLElement, isLocal: boolean) {
     this.el = document.createElement('div')
     this.el.className = isLocal ? 'bv-tag bv-local' : 'bv-tag'
-    this.crownEl = document.createElement('span')
-    this.crownEl.className = 'bv-crown'
-    this.crownEl.innerHTML = CROWN_SVG
     this.nameEl = document.createElement('span')
     this.nameEl.className = isLocal ? 'bv-you' : 'bv-name'
-    this.hatsEl = document.createElement('span')
-    this.hatsEl.className = 'bv-hats'
-    this.hatsEl.innerHTML = HAT_SVG
-    this.hatsNum = document.createElement('span')
-    this.hatsEl.appendChild(this.hatsNum)
+    this.stackEl = document.createElement('span')
+    this.stackEl.className = 'bv-stack'
+    this.stackEl.style.display = 'none'
     this.pipsEl = document.createElement('span')
     this.pipsEl.className = 'bv-pips'
     for (let i = 0; i < 3; i++) {
@@ -69,8 +62,9 @@ class PlayerTag {
     }
     const row = document.createElement('span')
     row.className = 'bv-row'
-    row.append(this.crownEl, this.nameEl, this.hatsEl)
-    this.el.append(this.pipsEl, row)
+    row.append(this.nameEl)
+    // 从下往上：×N 牌（贴着塔顶 / 皇冠）→ 名字 → 血条点。
+    this.el.append(this.pipsEl, row, this.stackEl)
     root.appendChild(this.el)
   }
 
@@ -85,11 +79,7 @@ class PlayerTag {
       this.nameEl.textContent = s.name
       l.name = s.name
     }
-    if (s.hats !== l.hats) {
-      this.hatsNum.textContent = `${s.hats}`
-      this.hatsEl.style.display = s.hats > 0 ? '' : 'none'
-      l.hats = s.hats
-    }
+    if (s.stack !== l.stack) this.updateStack(s.stack)
     if (s.king !== l.king) {
       this.el.classList.toggle('bv-king', s.king)
       l.king = s.king
@@ -106,6 +96,29 @@ class PlayerTag {
       l.x = rx
       l.y = ry
     }
+  }
+
+  /** ×N 牌：> 4 顶显示（分三档），变大「弹」、变小「缩」一下；回到 4 顶及以下直接隐藏。 */
+  private updateStack(stack: number): void {
+    const l = this.last
+    const b = stackBadge(stack)
+    const el = this.stackEl
+    if (b.tier === 0) {
+      el.style.display = 'none'
+    } else {
+      el.textContent = b.text
+      if (b.tier !== l.stackTier) el.className = `bv-stack bv-stack-t${b.tier}`
+      // 数字变化（含 4 → 5 出现）重放动画，第一次见到不演（照宝箱命中点：移除类名 → 触发重排 → 加回）。
+      if (l.stack >= 0 && stack !== l.stack) {
+        const cls = stack > l.stack ? 'bv-stack-pop' : 'bv-stack-drop'
+        el.classList.remove('bv-stack-pop', 'bv-stack-drop')
+        void el.offsetWidth
+        el.classList.add(cls)
+      }
+      el.style.display = ''
+    }
+    l.stack = stack
+    l.stackTier = b.tier
   }
 
   remove(): void {

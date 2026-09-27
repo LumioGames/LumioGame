@@ -21,8 +21,11 @@ export interface PortraitDeps {
   createRenderer(px: number): PortraitRenderer
 }
 
-/** 取景（表现取值）：领奖台尺寸 1.3 的玩偶挥手，兔耳朵也放得下。 */
-const FRAME = { fov: 30, camY: 1.0, camZ: 3.9, lookY: 0.8, yaw: 0.35 } as const
+/**
+ * 取景（表现取值）：领奖台尺寸 1.3 的大头玩偶挥手。可视范围约 −0.1–1.9 m：兔耳顶（≈ 1.73 m，挥手时还会颠一下）
+ * 上方留出余量（规格稿的 camZ 3.6 / lookY 0.85 实拍时兔耳贴顶边，往后退 0.1、往上看 0.05）。
+ */
+const FRAME = { fov: 30, camY: 1.1, camZ: 3.7, lookY: 0.9, yaw: 0.35 } as const
 
 function webglRenderer(px: number): PortraitRenderer {
   const canvas = document.createElement('canvas')

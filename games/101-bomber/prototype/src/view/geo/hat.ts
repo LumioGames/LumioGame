@@ -27,10 +27,3 @@ export function crownGeometry(): BufferGeometry {
   }
   return b.build()
 }
-
-/** 压缩帽塔段（条纹贴图沿 V 重复），原点在底、单位高度，按段高缩放 Y。 */
-export function hatSegmentGeometry(): BufferGeometry {
-  const g = new CylinderGeometry(0.15, 0.15, 1, 20, 1, false)
-  g.translate(0, 0.5, 0)
-  return g
-}
