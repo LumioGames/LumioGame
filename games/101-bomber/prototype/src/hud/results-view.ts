@@ -142,6 +142,8 @@ export class ResultsView {
     stat('帽王时长', formatDuration(s.hatKingTicks / tickRateHz), true)
     stat('击杀', String(s.kills))
     stat('最高帽数', String(s.maxHats))
+    // 方向 B（ADR 0039）：本局本人最高心数上限。
+    stat('最高心数', String(s.maxHearts || '—'))
     stat('最佳连锁', s.bestChain >= 2 ? `×${s.bestChain}` : String(s.bestChain))
     stat('放弹', String(s.bombsPlaced))
     stat('破坏方块', String(s.bricksDestroyed))

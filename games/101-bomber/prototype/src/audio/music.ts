@@ -4,9 +4,9 @@ import { MatchPhase } from '../contract'
  * 背景音乐的纯逻辑（无 WebAudio，可单测）：按对局阶段选变奏（状态机），再把 8 小节循环排成音符事件。
  * 口径（round-2 规格 / design §3.1「加冕 · 音乐层」、§4.1「决赛圈音乐增强」、§13 领奖台）：
  * 欢快的 C 大调五声旋律 + 柔和贝斯 + 轻 tick，无噪声底；常规 112 BPM，决赛圈 128 BPM 加高八度层，
- * 领奖台先让位给胜利号角，结算表换安静变奏。
+ * 领奖台先让位给胜利号角，结算表换安静变奏；本人狂暴期间（ADR 0040）换 150 BPM 的加速层。
  */
-export type MusicMode = 'silent' | 'main' | 'final' | 'podium' | 'results'
+export type MusicMode = 'silent' | 'main' | 'final' | 'frenzy' | 'podium' | 'results'
 
 export interface MusicInputs {
   phase: MatchPhase
@@ -17,6 +17,8 @@ export interface MusicInputs {
   podiumMs: number
   /** 渲染时钟停住（暂停 / 切后台）时静音，避免暂停画面下音乐照放。 */
   stalled: boolean
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：本人正在狂暴（对局中才生效）。 */
+  frenzy?: boolean
 }
 
 /** 领奖台开场留给胜利号角 + 掌声的时长（秒），之后才进庆祝循环。 */
@@ -24,6 +26,7 @@ export const FANFARE_SEC = 2.6
 
 export function musicMode(i: MusicInputs): MusicMode {
   if (i.stalled) return 'silent'
+  if (i.frenzy && (i.phase === MatchPhase.Running || i.phase === MatchPhase.Endgame)) return 'frenzy'
   if (i.phase === MatchPhase.Warmup || i.phase === MatchPhase.Running) return 'main'
   if (i.phase === MatchPhase.Endgame) return 'final'
   if (i.matchEndedTick === null) return 'results'
@@ -48,6 +51,7 @@ export interface Variant {
 export const VARIANTS: Readonly<Record<Exclude<MusicMode, 'silent'>, Variant>> = {
   main: { bpm: 112, gain: 1, octaveLayer: false, ticks: 1, bassHits: 3 },
   final: { bpm: 128, gain: 1.1, octaveLayer: true, ticks: 2, bassHits: 3 },
+  frenzy: { bpm: 150, gain: 1.15, octaveLayer: true, ticks: 2, bassHits: 3 },
   podium: { bpm: 120, gain: 0.8, octaveLayer: true, ticks: 1, bassHits: 2 },
   results: { bpm: 96, gain: 0.55, octaveLayer: false, ticks: 0, bassHits: 1 },
 }

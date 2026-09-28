@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_RULES, type AnimalId } from '../../contract'
 import { dollGeometries } from '../geo/doll'
 import {
+  bossHeightScale,
   contactShadowSize,
   DOLL_MODEL_REACH,
   DOLL_SCALE_MAX,
@@ -62,8 +63,9 @@ interface WalkStats {
   shadowAhead: number
 }
 
-function walk(animal: AnimalId, dir: 1 | -1, heartStage: number, sun: { x: number; y: number; z: number } = SUN_OFFSET): WalkStats {
+function walk(animal: AnimalId, dir: 1 | -1, heartStage: number, sun: { x: number; y: number; z: number } = SUN_OFFSET, height = 1): WalkStats {
   const doll = factory.create(1, animal, 0)
+  doll.setHeight(height)
   const s: WalkStats = { forward: -Infinity, backward: -Infinity, side: 0, shadowAhead: -Infinity }
   let x = 9.5
   let now = 0
@@ -165,6 +167,63 @@ describe('doll footprint (vertex sampling over the walk animation)', () => {
     const worst = Math.max(...ANIMALS.map((a) => walk(a, 1, 3, old).shadowAhead))
     expect(worst).toBeGreaterThanOrEqual(BLOCK_FACE)
   })
+})
+
+describe('Boss 加高（ADR 0039 / 0043：只加高身体 / 头 / 帽，XZ 脚圈与前伸不变，守 ADR 0032）', () => {
+  const lift = bossHeightScale(8 * 2, 2, DEFAULT_RULES.bossMinHearts)
+
+  function feetBox(doll: Doll, animal: AnimalId): Box3 {
+    doll.root.updateMatrixWorld(true)
+    const foot = dollGeometries(animal).foot
+    const box = new Box3()
+    doll.root.traverse((o) => {
+      if (o instanceof Mesh && o.geometry === foot) box.expandByObject(o)
+    })
+    return box
+  }
+
+  it('an 8-heart Boss is clearly taller', () => {
+    expect(lift).toBeGreaterThan(1.25)
+    const a = factory.create(7, 'bear', 0)
+    const b = factory.create(8, 'bear', 0)
+    b.setHeight(lift)
+    for (const d of [a, b]) {
+      d.update(4.5, 4.5, 16, 1 / FPS, 3, false)
+      d.update(4.5, 4.5, 32, 1 / FPS, 3, false)
+    }
+    expect(b.headTop.y).toBeGreaterThan(a.headTop.y * 1.2)
+    a.dispose()
+    b.dispose()
+  })
+
+  for (const animal of ANIMALS) {
+    it(`${animal} Boss: forward reach ≤ 0.35, feet inside the 0.7 foot ring, same XZ as a normal doll`, () => {
+      for (const stage of [3, 1]) {
+        for (const dir of [1, -1] as const) {
+          const boss = walk(animal, dir, stage, SUN_OFFSET, lift)
+          const normal = walk(animal, dir, stage)
+          expect(boss.forward, `${animal} stage ${stage} dir ${dir} forward`).toBeLessThanOrEqual(REACH + 1e-3)
+          expect(boss.backward).toBeLessThanOrEqual(REACH + 1e-3)
+          expect(boss.side).toBeLessThan(BLOCK_FACE)
+          expect(boss.forward).toBeCloseTo(normal.forward, 6)
+          expect(boss.side).toBeCloseTo(normal.side, 6)
+        }
+      }
+      const d = factory.create(9, animal, 0)
+      d.setHeight(lift)
+      d.update(4.5, 7.5, 16, 1 / FPS, 3, false)
+      d.update(4.5, 7.5, 32, 1 / FPS, 3, false)
+      const box = feetBox(d, animal)
+      const size = box.getSize(new Vector3())
+      // 两脚外沿都在脚圈（外沿直径 = 0.7 格）里；脚圈本身与非 Boss 同一大小。
+      expect(Math.max(size.x, size.z)).toBeLessThanOrEqual(layout.ringOuter)
+      expect(layout.ringOuter).toBeCloseTo(0.7, 9)
+      const mid = box.getCenter(new Vector3())
+      expect(Math.abs(mid.x - 4.5)).toBeLessThan(0.01)
+      expect(Math.abs(mid.z - 7.5)).toBeLessThan(0.01)
+      d.dispose()
+    })
+  }
 })
 
 describe('doll skill looks (frozen / combo glow / blink pop / podium scale)', () => {

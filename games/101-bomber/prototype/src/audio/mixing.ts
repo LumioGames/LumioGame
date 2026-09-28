@@ -2,10 +2,23 @@
  * 音频的纯逻辑部分（无 WebAudio，可单测）：定位衰减、声部上限与抢占、爆炸限流、五声音阶。
  */
 
-/** 以本机玩家为听者：增益 1/(1 + d/6)，声像按 Δx/8 夹到 [-1, 1]。单位为格。 */
+/**
+ * 有世界位置的音效（爆炸、连锁、放弹、别人的受击 / 倒下、金币串、宝箱、补给…）按离本机玩家的距离衰减
+ * （用户试玩反馈 2026-09-28，推断待验证）：fullCells 格内满音量，silentCells 格外静音，中间 smoothstep 平滑过渡；
+ * 声像按左右偏移 Δx / panCells 夹到 [-1, 1]（Synth 每个声部一个 StereoPannerNode）。
+ * 本人自己的操作音（放弹、拾取、受击、击杀 / 命中确认）与 UI 音不走这里、不衰减。单位为格。
+ */
+export const SPATIAL = { fullCells: 4, silentCells: 14, panCells: 8 } as const
+
+/** 距离 → 增益：≤ fullCells 为 1，≥ silentCells 为 0，中间 1 − smoothstep。 */
+export function distanceGain(d: number): number {
+  const t = Math.max(0, Math.min(1, (d - SPATIAL.fullCells) / (SPATIAL.silentCells - SPATIAL.fullCells)))
+  return 1 - t * t * (3 - 2 * t)
+}
+
+/** 以本机玩家为听者：增益按 {@link distanceGain}，声像按 Δx / panCells。 */
 export function spatialize(dx: number, dz: number): { gain: number; pan: number } {
-  const d = Math.hypot(dx, dz)
-  return { gain: 1 / (1 + d / 6), pan: Math.max(-1, Math.min(1, dx / 8)) }
+  return { gain: distanceGain(Math.hypot(dx, dz)), pan: Math.max(-1, Math.min(1, dx / SPATIAL.panCells)) }
 }
 
 /**

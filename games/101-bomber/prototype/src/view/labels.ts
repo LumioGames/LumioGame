@@ -2,8 +2,9 @@ import { Vector3, type PerspectiveCamera } from 'three'
 import { stackBadge } from './logic/hat-layout'
 
 /**
- * 世界锚定的 DOM 标签层（opts.labelRoot）：玩家名牌（帽塔超过 4 顶时贴着塔顶的「×N」牌 + 名字 + 受击后 3 s 的小血条）、
- * 本机「你」胶囊、强化帽落到头顶时的「+1」飘字、宝箱命中点。元素只在实体出现时创建，逐帧只写 transform 与变化了的文本。
+ * 世界锚定的 DOM 标签层（opts.labelRoot）：玩家名牌（帽塔超过 4 顶时贴着塔顶的「×N」牌 + 名字 + 心条）、
+ * 本机「你」胶囊、强化帽落到头顶时的「+1」飘字、宝箱 / 金箱命中点、中央补给光柱名牌。元素只在实体出现时创建，逐帧只写 transform 与变化了的文本。
+ * 心条（ADR 0039，design §12）：格数 = 本人心数上限（3–8），金心那几格为金色；Boss（上限 ≥ 6 心）常驻、放大，其余受击后 3 s。
  */
 
 const HAT_SVG =
@@ -21,10 +22,17 @@ const TOXIN_SVG =
 const SHOCK_SVG =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.2 1.8 4.6 13.9h6.3L9.4 22.2l10-12.6h-6.4z" fill="#FFE23C" stroke="#2B2320" stroke-width="1.5" stroke-linejoin="round"/></svg>'
 
-/** 飘字种类：吃强化落帽「+1」/ 进化「进化！」/ 回春「+1 心」/ 中毒弹「中毒」/ 麻痹弹「麻痹」。 */
-export type FloatKind = 'hat' | 'evolve' | 'heal' | 'toxin' | 'shock'
+/**
+ * 飘字种类：吃强化落帽「+1」/ 进化「进化！」/ 回春「+1 心」/ 中毒弹「中毒」/ 麻痹弹「麻痹」/
+ * 命中「−1♥」（ADR 0043：自己的炸弹伤到人，红色，数字在前、心在后）。
+ */
+export type FloatKind = 'hat' | 'evolve' | 'heal' | 'toxin' | 'shock' | 'hurt'
 
-const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: SPARK_SVG, heal: HEART_SVG, toxin: TOXIN_SVG, shock: SHOCK_SVG }
+const FLOAT_ICON: Readonly<Record<FloatKind, string>> = { hat: HAT_SVG, evolve: SPARK_SVG, heal: HEART_SVG, toxin: TOXIN_SVG, shock: SHOCK_SVG, hurt: HEART_SVG }
+
+/** 中央补给名牌的礼盒图标（ADR 0040，与帽王皇冠区分）。 */
+const GIFT_SVG =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="9" width="17" height="4" rx="1" fill="#5EE0C8" stroke="#2B2320" stroke-width="1.3"/><rect x="5" y="13" width="14" height="8" rx="1.2" fill="#5EE0C8" stroke="#2B2320" stroke-width="1.3"/><rect x="10.8" y="9" width="2.4" height="12" fill="#FFF8EC"/><path d="M12 9c-1.5-3.4-5.6-4.4-5.6-1.8C6.4 8.6 9 9 12 9zm0 0c1.5-3.4 5.6-4.4 5.6-1.8 0 1.4-2.6 1.8-5.6 1.8z" fill="#FFF8EC" stroke="#2B2320" stroke-width="1.1"/></svg>'
 
 export interface PlayerTagState {
   name: string
@@ -32,10 +40,19 @@ export interface PlayerTagState {
   /** 画面上的帽数：> 4 时塔顶显示「×N」牌；0 = 隐藏（领奖台由 HUD 名次牌显示帽数）。 */
   stack: number
   king: boolean
-  /** 0..3 整心（受击后显示），< 0 隐藏。 */
+  /** 心条亮着的整心数（向上取整）；< 0 = 隐藏心条。 */
   pips: number
+  /** 心条格数 = 心数上限（缺省 3）。 */
+  pipMax?: number
+  /** 其中最上面几格是金心（缺省 0）。 */
+  pipGold?: number
+  /** Boss（上限 ≥ 6 心）：心条常驻、放大。 */
+  boss?: boolean
   visible: boolean
 }
+
+/** 心条最多几格（ADR 0039：封顶 8 心）。 */
+const PIP_CAP = 8
 
 class PlayerTag {
   readonly el: HTMLDivElement
@@ -43,7 +60,7 @@ class PlayerTag {
   private readonly stackEl: HTMLSpanElement
   private readonly pipsEl: HTMLSpanElement
   private readonly pipEls: HTMLElement[] = []
-  private last = { name: '', stack: -1, stackTier: -1, king: false, pips: -2, visible: true, x: NaN, y: NaN }
+  private last = { name: '', stack: -1, stackTier: -1, king: false, pips: -2, pipMax: -1, pipGold: -1, boss: false, visible: true, x: NaN, y: NaN }
 
   constructor(root: HTMLElement, isLocal: boolean) {
     this.el = document.createElement('div')
@@ -55,7 +72,7 @@ class PlayerTag {
     this.stackEl.style.display = 'none'
     this.pipsEl = document.createElement('span')
     this.pipsEl.className = 'bv-pips'
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < PIP_CAP; i++) {
       const p = document.createElement('i')
       this.pipEls.push(p)
       this.pipsEl.appendChild(p)
@@ -84,10 +101,28 @@ class PlayerTag {
       this.el.classList.toggle('bv-king', s.king)
       l.king = s.king
     }
-    if (s.pips !== l.pips) {
+    const pipMax = Math.max(1, Math.min(PIP_CAP, s.pipMax ?? 3))
+    const pipGold = Math.max(0, Math.min(pipMax, s.pipGold ?? 0))
+    const boss = s.boss === true
+    if (s.pips !== l.pips || pipMax !== l.pipMax || pipGold !== l.pipGold) {
       this.pipsEl.style.display = s.pips < 0 ? 'none' : ''
-      for (let i = 0; i < 3; i++) this.pipEls[i].className = i < s.pips ? 'on' : ''
+      for (let i = 0; i < PIP_CAP; i++) {
+        const el = this.pipEls[i]
+        if (i >= pipMax) {
+          el.style.display = 'none'
+          continue
+        }
+        el.style.display = ''
+        const gold = i >= pipMax - pipGold
+        el.className = `${i < s.pips ? 'on' : ''}${gold ? ' gold' : ''}`.trim()
+      }
       l.pips = s.pips
+      l.pipMax = pipMax
+      l.pipGold = pipGold
+    }
+    if (boss !== l.boss) {
+      this.el.classList.toggle('bv-boss', boss)
+      l.boss = boss
     }
     const rx = Math.round(x * 2) / 2
     const ry = Math.round(y * 2) / 2
@@ -197,8 +232,14 @@ class FloatLabel {
   update(text: string, x: number, y: number, progress: number, visible: boolean): void {
     const l = this.last
     if (text !== l.text) {
-      this.el.innerHTML = `${FLOAT_ICON[this.kind]}<span></span>`
-      ;(this.el.lastChild as HTMLElement).textContent = text
+      // 命中「−1♥」数字在前、心在后；其余图标在前。
+      if (this.kind === 'hurt') {
+        this.el.innerHTML = `<span></span>${FLOAT_ICON[this.kind]}`
+        ;(this.el.firstChild as HTMLElement).textContent = text
+      } else {
+        this.el.innerHTML = `${FLOAT_ICON[this.kind]}<span></span>`
+        ;(this.el.lastChild as HTMLElement).textContent = text
+      }
       l.text = text
     }
     const p = Math.max(0, Math.min(1, progress))
@@ -222,9 +263,51 @@ class FloatLabel {
   }
 }
 
+/** 中央补给光柱顶上的名牌（ADR 0040）：礼盒图标 +「补给 8」倒计时 / 「补给！」。 */
+class BeaconBadge {
+  readonly el: HTMLDivElement
+  private readonly text: HTMLSpanElement
+  private last = { text: '', x: NaN, y: NaN, visible: true }
+
+  constructor(root: HTMLElement) {
+    this.el = document.createElement('div')
+    this.el.className = 'bv-beacon'
+    this.el.innerHTML = GIFT_SVG
+    this.text = document.createElement('span')
+    this.el.appendChild(this.text)
+    root.appendChild(this.el)
+  }
+
+  update(text: string, x: number, y: number, visible: boolean): void {
+    const l = this.last
+    if (visible !== l.visible) {
+      this.el.style.display = visible ? '' : 'none'
+      l.visible = visible
+    }
+    if (!visible) return
+    if (text !== l.text) {
+      this.text.textContent = text
+      l.text = text
+    }
+    const rx = Math.round(x * 2) / 2
+    const ry = Math.round(y * 2) / 2
+    if (rx !== l.x || ry !== l.y) {
+      this.el.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
+      l.x = rx
+      l.y = ry
+    }
+  }
+
+  remove(): void {
+    this.el.remove()
+  }
+}
+
 export class LabelLayer {
   private readonly tags = new Map<number, PlayerTag>()
   private readonly chests = new Map<number, ChestBadge>()
+  private beacon: BeaconBadge | null = null
+  private beaconStamp = -1
   private readonly floats = new Map<number, FloatLabel>()
   private readonly chestStamp = new Map<number, number>()
   private readonly floatStamp = new Map<number, number>()
@@ -280,6 +363,14 @@ export class LabelLayer {
     c.update(left, req, this.v.x, this.v.y, on)
   }
 
+  /** 中央补给光柱名牌（全场只有一个）；本帧不调用即隐藏。 */
+  setBeacon(text: string, wx: number, wy: number, wz: number): void {
+    this.beacon ??= new BeaconBadge(this.root)
+    this.beaconStamp = this.stamp
+    const on = this.toScreen(wx, wy, wz)
+    this.beacon.update(text, this.v.x, this.v.y, on)
+  }
+
   /** key 由调用方分配（每条飘字唯一）；kind 决定配色（'hat' 金色）。 */
   setFloat(key: number, kind: FloatKind, text: string, wx: number, wy: number, wz: number, progress: number): void {
     let f = this.floats.get(key)
@@ -293,6 +384,7 @@ export class LabelLayer {
   }
 
   end(): void {
+    if (this.beacon && this.beaconStamp !== this.stamp) this.beacon.update('', 0, 0, false)
     for (const [id, c] of this.chests) {
       if (this.chestStamp.get(id) !== this.stamp) {
         c.remove()
@@ -320,6 +412,8 @@ export class LabelLayer {
     for (const t of this.tags.values()) t.remove()
     for (const c of this.chests.values()) c.remove()
     for (const f of this.floats.values()) f.remove()
+    this.beacon?.remove()
+    this.beacon = null
     this.tags.clear()
     this.chests.clear()
     this.floats.clear()

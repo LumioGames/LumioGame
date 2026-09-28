@@ -2305,3 +2305,32 @@
     animation: none;
   }
 }
+
+/* =====================================================================
+ * 方向 B · 心数上限 / 金心 / 击倒 Boss / 中央补给（ADR 0039 / 0040）
+ * ===================================================================== */
+/* 金色心格：金心带来的心（外形同心，金色 + 描一圈暖白，灰度下靠描边也分得出）。 */
+.heart.is-gold .heart-fill {
+  color: var(--sun);
+}
+.heart.is-gold .heart-bg {
+  color: rgba(255, 201, 60, 0.35);
+}
+.heart.is-gold .ico {
+  filter: drop-shadow(0 0 calc(2px * var(--u)) #fff8ec);
+}
+/* 击倒 Boss：玫红心 + 金字；中央补给：青绿礼盒（与帽王的金色皇冠区分）。 */
+.hud-banner[data-tone='boss'] .bn-ico {
+  color: var(--rose);
+}
+.hud-banner[data-tone='boss'] .bn-title {
+  color: var(--sun);
+}
+.hud-banner[data-tone='supply'] .bn-ico,
+.hud-banner[data-tone='supply'] .bn-title {
+  color: #5ee0c8;
+}
+.hud-banner[data-tone='boss'].is-on,
+.hud-banner[data-tone='supply'].is-on {
+  animation-duration: 2.2s;
+}
