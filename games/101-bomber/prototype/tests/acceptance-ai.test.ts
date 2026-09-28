@@ -73,10 +73,9 @@ describe('acceptance smoke: runMatch with the default lineup and M1 report items
     expect(formatM1(s.m1)).toContain('高光卡覆盖率：N/A')
   })
 
-  it('rejects a lineup whose length is not the bot count, a config for another map tier, and soft targets the frozen host cannot express', () => {
+  it('rejects a lineup whose length is not the bot count and a config for another map tier', () => {
     expect(() => runMatch({ seed: 1, map: 19, lineup: ['rookie'], local: 'normal' })).toThrow(/lineup has 1 entries for 7 bots/)
     expect(() => runMatch({ seed: 1, map: 27, local: 'normal', config: protoConfig(rulesOf({})) })).toThrow(/config.mapSize 19 != map tier 27/)
-    expect(() => runMatch({ seed: 1, map: 19, softTargets: 'none', local: 'normal' })).toThrow(/softTargets 'none' is not supported/)
   })
 
   it('without map or rules the harness stays on the legacy 8-player 19 tier (whatever DEFAULT_RULES defaults to)', () => {

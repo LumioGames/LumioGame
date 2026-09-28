@@ -294,6 +294,9 @@ function statusWorld(opts: { rules?: Partial<ProtoRules>; cfg?: Partial<BomberCo
 }
 
 describe('toxin bomb', () => {
+  // 这些用例验证中毒的节拍机制，按 1000 ms（20 Tick）节拍写；默认数值 1500 ms（用户 2026-09-28 削弱）由 spec-sync 钉住、见本组最后一例。
+  const MECH = { rules: { toxinIntervalMs: 1000 } } as const
+
   it('BOMB with toxinBomb L1 / L3 places a Toxin bomb with 60 / 100 toxin ticks; the snapshot shows BombKind 5', () => {
     const w = makeWorld()
     put(w, 1, 5, 5)
@@ -306,7 +309,7 @@ describe('toxin bomb', () => {
   })
 
   it('damages 2 points, then poisons the survivor: −1 point every 20 ticks for 3 s, killer = thrower, then clears', () => {
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     const b = addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     const f = step(w)
     const T = w.t
@@ -327,7 +330,7 @@ describe('toxin bomb', () => {
   })
 
   it('is lethal: the poison tick that empties the hearts kills with Cause Toxin, credited to the thrower', () => {
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     v.health = 3
     const b = addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
@@ -342,7 +345,7 @@ describe('toxin bomb', () => {
   })
 
   it('a second hit refreshes the duration without stacking the rate; the kill credit moves to the latest thrower', () => {
-    const { w, v } = statusWorld({ cfg: { maxHealthPoints: 20 } })
+    const { w, v } = statusWorld({ ...MECH, cfg: { maxHealthPoints: 20 } })
     addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
     const T = w.t
@@ -415,7 +418,7 @@ describe('toxin bomb', () => {
       expect(v.toxinUntilTick, guard).toBe(0)
     }
     // 中毒后被别处给了泡泡（不是施放，不解毒）：泡泡期内不掉毒血，节拍照走、到期照清。
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
     const T = w.t
@@ -443,6 +446,17 @@ describe('toxin bomb', () => {
     expect(evs(step(w2), 'PlayerDied')).toHaveLength(1)
     step(w2)
     expect([v2.toxinUntilTick, v2.toxinOwner, v2.toxinBomb, v2.toxinNextTick, v2.shockUntilTick, v2.shockSlowPermille]).toEqual([0, 0, 0, 0, 0, 0])
+  })
+
+  it('default cadence (user 2026-09-28 nerf): −1 point every 30 ticks; L3 poison takes 3 points, so one L3 toxin bomb no longer kills from full', () => {
+    const { w, v } = statusWorld()
+    expect(w.ticks.toxinInterval).toBe(30)
+    addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN(100))
+    step(w)
+    const T = w.t
+    const toxic = evs(run(w, 110), 'DamageApplied').filter((e) => e.proto?.Cause === DeathCause.Toxin)
+    expect(toxic.map((e) => e.Tick)).toEqual([T + 30, T + 60, T + 90])
+    expect(v.health).toBe(6 - 2 - 3)
   })
 })
 

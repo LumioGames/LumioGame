@@ -40,6 +40,12 @@ describe('LocalHost bot lineup and soft targets (ADR 0043)', () => {
     expect(protoConfig(DEFAULT_RULES).mapSize).toBe(DEFAULT_CONFIG.mapSize)
   })
 
+  it("softTargets 'none' (all-bot stats runs such as acceptance E) gives every bot an empty soft-target list", () => {
+    host({ softTargets: 'none' })
+    expect(seen).toHaveLength(7)
+    expect(seen.every((o) => o.softTargets?.length === 0)).toBe(true)
+  })
+
   it('botLineup overrides ai per bot in slot order; a wrong length is rejected', () => {
     const lineup: BotDifficulty[] = lineupFor(7)
     host({ ai: 'hard', botLineup: lineup })
