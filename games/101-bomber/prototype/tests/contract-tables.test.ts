@@ -82,7 +82,7 @@ describe('skills table', () => {
     expect(SKILLS.shockBomb.bombKind).toBe(BombKind.Shock)
   })
 
-  it('stable codes: round-4 codes unchanged, toxin / shock appended at the end (ADR 0033)', () => {
+  it('stable codes: round-4 codes unchanged, toxin / shock appended at the end (ADR 0033), flyKick after them (用户 2026-09-28)', () => {
     expect(SKILL_IDS).toEqual([
       'regen',
       'bubble',
@@ -96,18 +96,27 @@ describe('skills table', () => {
       'glacierBomb',
       'toxinBomb',
       'shockBomb',
+      'flyKick',
     ])
     expect(skillCode('glacierBomb')).toBe(10)
     expect(skillCode('toxinBomb')).toBe(11)
     expect(skillCode('shockBomb')).toBe(12)
+    expect(skillCode('flyKick')).toBe(13)
     // BombKind：契约 0–4 不动，5 / 6 为原型扩值。
     expect(BombKind).toEqual({ Standard: 0, Freeze: 1, Fire: 2, Pierce: 3, Split: 4, Toxin: 5, Shock: 6 })
     expect(DeathCause).toEqual({ Bomb: 0, Drown: 1, Burn: 2, Poison: 3, Toxin: 4 })
   })
 
-  it('candy pool = the eight base skills; bomb-type weight 2, the rest 1 (ADR 0033, replaces RESOLUTIONS #2)', () => {
+  it('candy pool = the eight base skills; ADR 0033 weights × 3 except kick (用户 2026-09-28: bomb-type 6, bubble / blink / aura 3, kick 1)', () => {
     expect(candyPool(SKILLS)).toEqual(['bubble', 'blink', 'fireAura', 'kick', 'freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
-    expect(candyPool(SKILLS).map((id) => SKILLS[id].candyWeight)).toEqual([1, 1, 1, 1, 2, 2, 2, 2])
+    expect(candyPool(SKILLS).map((id) => SKILLS[id].candyWeight)).toEqual([3, 3, 3, 1, 6, 6, 6, 6])
+    // 踢弹 1 / 34 ≈ 2.9%（「约 3%」）。
+    const total = candyPool(SKILLS).reduce((a, id) => a + SKILLS[id].candyWeight, 0)
+    expect(total).toBe(34)
+    expect(SKILLS.kick.candyWeight / total).toBeCloseTo(0.03, 2)
+    // 飞踢只属于飞腿袋鼠（同回春）：不进池。
+    expect(SKILLS.flyKick.candyWeight).toBe(0)
+    expect(candyPool(SKILLS)).not.toContain('flyKick')
     expect(bombCandyPool(SKILLS)).toEqual(['freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
     for (const id of bombCandyPool(SKILLS)) expect(SKILLS[id].slot).toBe('bomb')
     expect(SKILLS.regen.candyWeight).toBe(0)
@@ -122,7 +131,7 @@ describe('skills table', () => {
     expect(col('toxinBomb', 'slowPermille')).toEqual([0, 0, 0])
     expect(col('freezeBomb', 'slowPermille')).toEqual([0, 0, 0])
     for (const id of ['toxinBomb', 'shockBomb'] as const) {
-      expect(SKILLS[id]).toMatchObject({ slot: 'bomb', combo: false, candyWeight: 2, endsProtection: false })
+      expect(SKILLS[id]).toMatchObject({ slot: 'bomb', combo: false, candyWeight: 6, endsProtection: false })
       expect(SKILLS[id].src).toMatch(/^推断待验证/)
     }
     expect(SKILLS.toxinBomb.name).toBe('中毒弹')
@@ -216,22 +225,24 @@ describe('combos', () => {
 })
 
 describe('characters', () => {
-  it('four characters with their exclusive skills; bot names are globally unique', () => {
-    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].name)).toEqual(['棉花兔', '泡泡鸭', '闪电猫', '火焰熊'])
-    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).toEqual(['regen', 'bubble', 'blink', 'fireAura'])
+  it('five characters with their exclusive skills; bot names are globally unique', () => {
+    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].name)).toEqual(['棉花兔', '泡泡鸭', '闪电猫', '火焰熊', '飞腿袋鼠'])
+    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).toEqual(['regen', 'bubble', 'blink', 'fireAura', 'flyKick'])
     expect(SKILLS[CHARACTERS.rabbit.skill].slot).toBe('passive')
-    for (const c of ['duck', 'cat', 'bear'] as const) expect(SKILLS[CHARACTERS[c].skill].slot).toBe('active')
+    for (const c of ['duck', 'cat', 'bear', 'kangaroo'] as const) expect(SKILLS[CHARACTERS[c].skill].slot).toBe('active')
     const names = CHARACTER_ORDER.flatMap((c) => CHARACTERS[c].botNames)
     expect(new Set(names).size).toBe(names.length)
     for (const c of CHARACTER_ORDER) expect(CHARACTERS[c].animal).toBe(c)
   })
 
   it('codes and parsing', () => {
-    expect(CHARACTER_ORDER.map(characterCode)).toEqual([1, 2, 3, 4])
+    expect(CHARACTER_ORDER.map(characterCode)).toEqual([1, 2, 3, 4, 5])
     expect(characterCode(null)).toBe(0)
     expect(pickCode(null)).toBe(0)
     expect(pickCode('auto')).toBe(9)
     expect(pickCode('bear')).toBe(4)
+    expect(pickCode('kangaroo')).toBe(5)
+    expect(parseCharacterId('Kangaroo')).toBe('kangaroo')
     expect(parseCharacterId('Cat')).toBe('cat')
     expect(parseCharacterId(' duck ')).toBe('duck')
     expect(parseCharacterId('frog')).toBeNull()

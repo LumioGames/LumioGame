@@ -17,7 +17,7 @@ import { DollFactory, TAG_LIFT, type Doll } from '../world/dolls'
  * 全部用真几何 / 真材质实测，不做解析估算。占地预算的逐帧走路采样见 doll-fit.test。
  */
 
-const ANIMALS: readonly AnimalId[] = ['duck', 'rabbit', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog']
+const ANIMALS: readonly AnimalId[] = ['duck', 'rabbit', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog', 'kangaroo']
 const layout = dollLayout(DEFAULT_RULES)
 const mats = createSharedMaterials()
 const factory = new DollFactory(mats, layout.scale)
@@ -349,5 +349,51 @@ describe('species silhouettes (front projection of the head)', () => {
     // 实测 24 格不同（猫耳尖高出头顶两格、熊耳在头的斜上方外侧）。
     expect(diff).toBeGreaterThanOrEqual(20)
     expect(pairs.find((p) => p.a === 'bear' && p.b === 'cat')!.v).toBeLessThan(IOU_MAX)
+  })
+  it('the kangaroo (用户 2026-09-28) reads apart from the other four characters: V-splayed long ears vs rabbit / cat / bear / duck', () => {
+    const k = sil.get('kangaroo')!
+    // 2026-09-28 实测：与猫差 46 格（IoU 0.83）、兔 84、熊 62、鸭 68——都远低于 IOU_MAX；这里留余量钉住「一眼可分」。
+    for (const other of ['rabbit', 'duck', 'cat', 'bear'] as const) {
+      const o = sil.get(other)!
+      let diff = 0
+      for (let i = 0; i < k.length; i++) if (k[i] !== o[i]) diff++
+      expect(diff, `kangaroo vs ${other}`).toBeGreaterThanOrEqual(40)
+      expect(iou(k, o), `kangaroo vs ${other}`).toBeLessThanOrEqual(0.85)
+    }
+  })
+})
+
+describe('kangaroo body cues (用户 2026-09-28): thick tail behind, long feet, pouch — all inside the ADR 0032 budget', () => {
+  const size = (g: BufferGeometry) => {
+    g.computeBoundingBox()
+    return g.boundingBox!
+  }
+  it('only the kangaroo has a tail that drags on the ground behind it (tripod stance), and it sticks out at least as far as any tail', () => {
+    // 身体几何以身体中心为原点：地面在 y = −bodyY。「身后贴地」= 身体背面之后（z < −rz）还有离地 < 0.03 的顶点。
+    const dragging = (a: AnimalId) => {
+      const p = dollGeometries(a).body.getAttribute('position')
+      for (let i = 0; i < p.count; i++) if (p.getZ(i) < -DOLL.bodyR[2] && p.getY(i) < -DOLL.bodyY + 0.03) return true
+      return false
+    }
+    for (const a of ANIMALS) expect(dragging(a), a).toBe(a === 'kangaroo')
+    const back = (a: AnimalId) => -size(dollGeometries(a).body).min.z
+    for (const a of ANIMALS) expect(back('kangaroo'), a).toBeGreaterThanOrEqual(back(a) - 0.015)
+  })
+  it('the feet are ≥ 20% longer than the other animals’ (the foot that does the fly kick)', () => {
+    const len = (a: AnimalId) => {
+      const b = size(dollGeometries(a).foot)
+      return b.max.z - b.min.z
+    }
+    for (const a of ANIMALS) if (a !== 'kangaroo') expect(len('kangaroo'), a).toBeGreaterThan(len(a) * 1.2)
+  })
+  it('the pouch rim and the foot tips carry the mint mark colour', () => {
+    const g = dollGeometries('kangaroo')
+    const has = (geo: BufferGeometry, hex: number) => {
+      const col = geo.getAttribute('color')
+      for (let i = 0; i < col.count; i++) if (isHex(col.getX(i), col.getY(i), col.getZ(i), hex)) return true
+      return false
+    }
+    expect(has(g.body, ANIMAL_COLORS.kangaroo.mark)).toBe(true)
+    expect(has(g.foot, ANIMAL_COLORS.kangaroo.mark)).toBe(true)
   })
 })

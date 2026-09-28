@@ -2006,7 +2006,8 @@
 }
 .sel-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, calc(200px * var(--u))));
+  /* 列数 = 卡片数（character-select.ts 写 --sel-n；五选一时每张收窄到 176，一行放得下） */
+  grid-template-columns: repeat(var(--sel-n, 4), minmax(0, calc(176px * var(--u))));
   gap: calc(12px * var(--u));
   justify-content: center;
 }
@@ -2094,7 +2095,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: calc(10px * var(--u));
-  width: min(calc(840px * var(--u)), 100%);
+  width: min(calc(928px * var(--u)), 100%);
   margin: 0 auto;
 }
 .sel-info {
@@ -2108,7 +2109,7 @@
   gap: calc(10px * var(--u));
 }
 .md-card.md-character {
-  width: min(calc(900px * var(--u)), 100%);
+  width: min(calc(980px * var(--u)), 100%);
 }
 @media (max-width: 760px) {
   .sel-cards {

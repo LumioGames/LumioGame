@@ -90,6 +90,7 @@ export const ANIMAL_COLOR: Readonly<Record<string, string>> = {
   penguin: '#24375E',
   pig: '#FF86AE',
   dog: '#F28A2E',
+  kangaroo: '#CA3AD0',
 }
 
 export const ANIMAL_NAME: Readonly<Record<string, string>> = {
@@ -101,6 +102,7 @@ export const ANIMAL_NAME: Readonly<Record<string, string>> = {
   penguin: '企鹅',
   pig: '猪',
   dog: '狗',
+  kangaroo: '袋鼠',
 }
 
 /** 脚圈 / 炸弹色带颜色，按 slot（与 view 一致）。 */

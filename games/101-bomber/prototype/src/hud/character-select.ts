@@ -50,6 +50,8 @@ export class CharacterSelect {
       o.mode === 'start' ? '每个角色带一个专属技能 · 之后在暂停或结算里还能换' : '下一局开局生效，本局不变'
     const row = el('div', 'sel-cards', this.root)
     row.setAttribute('role', 'radiogroup')
+    // 一行放下全部卡片（五选一，用户 2026-09-28）：列数交给 CSS 变量，窄屏的两列布局仍由 hud.css 的媒体查询决定。
+    row.style.setProperty('--sel-n', String(o.cards.length))
     o.cards.forEach((c, i) => this.cardEls.push(this.buildCard(row, c, i)))
     const foot = el('div', 'sel-foot', this.root)
     const info = el('div', 'sel-info', foot)

@@ -16,14 +16,14 @@ import {
   SUN_OFFSET,
 } from '../logic/doll-fit'
 import { createSharedMaterials } from '../materials'
-import { DollFactory, type Doll } from '../world/dolls'
+import { DollFactory, KICK_POSE, kickCurve, type Doll } from '../world/dolls'
 
 /**
  * 玩偶占地（ADR 0032，RESOLUTIONS #12）：用真网格的顶点在走路动画中逐帧采样（movement 蓝图的方法），
  * 而不是解析估算——改了 geo/doll.ts 的零件或 dolls.ts 的步幅，这里会直接报出超出多少。
  */
 
-const ANIMALS: readonly AnimalId[] = ['duck', 'rabbit', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog']
+const ANIMALS: readonly AnimalId[] = ['duck', 'rabbit', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog', 'kangaroo']
 const layout = dollLayout(DEFAULT_RULES)
 const REACH = DEFAULT_RULES.dollReachMilli / 1000
 /** 积木 / 木箱 / 铁皮的近侧面离格心约 0.44（geo/blocks.ts）。 */
@@ -166,6 +166,82 @@ describe('doll footprint (vertex sampling over the walk animation)', () => {
     const old = { x: -9, y: 12, z: 6 }
     const worst = Math.max(...ANIMALS.map((a) => walk(a, 1, 3, old).shadowAhead))
     expect(worst).toBeGreaterThanOrEqual(BLOCK_FACE)
+  })
+})
+
+describe('飞踢姿势（飞腿袋鼠，用户 2026-09-28）：蹬腿也守 ADR 0032 的前伸 / 侧向 / 脚圈', () => {
+  it('kickCurve goes 0 → 1 → 0', () => {
+    expect(kickCurve(0)).toBe(0)
+    expect(kickCurve(KICK_POSE.outFrac)).toBeCloseTo(1, 9)
+    expect(kickCurve(1)).toBeCloseTo(0, 9)
+    expect(kickCurve(-1)).toBe(0)
+    for (let u = 0; u < 1; u += 0.05) {
+      expect(kickCurve(u)).toBeGreaterThanOrEqual(0)
+      expect(kickCurve(u)).toBeLessThanOrEqual(1 + 1e-9)
+    }
+  })
+
+  for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    it(`kangaroo kicking toward yaw ${yaw.toFixed(2)}: forward / backward ≤ ${REACH}, side < block face, feet inside the 0.7 ring; turns to the kick`, () => {
+      const dirX = Math.sin(yaw)
+      const dirZ = Math.cos(yaw)
+      let forward = -Infinity
+      let backward = -Infinity
+      let side = 0
+      let lifted = 0
+      let sunk = 0
+      for (const stage of [3, 1]) {
+        for (let k = 0; k <= 20; k++) {
+          const d = factory.create(10 + k, 'kangaroo', 0)
+          d.update(4.5, 7.5, 16, 1 / FPS, stage, false)
+          d.update(4.5, 7.5, 32, 1 / FPS, stage, false)
+          d.kickPose(k / 20, yaw)
+          expect(d.yaw).toBe(yaw)
+          eachVertex(d, false, (v) => {
+            const ax = v.x - 4.5
+            const az = v.z - 7.5
+            const ahead = ax * dirX + az * dirZ
+            forward = Math.max(forward, ahead)
+            backward = Math.max(backward, -ahead)
+            side = Math.max(side, Math.abs(ax * dirZ - az * dirX))
+          })
+          const foot = dollGeometries('kangaroo').foot
+          const box = new Box3()
+          d.root.traverse((o) => {
+            if (o instanceof Mesh && o.geometry === foot) box.expandByObject(o)
+          })
+          const size = box.getSize(new Vector3())
+          expect(Math.max(size.x, size.z)).toBeLessThanOrEqual(layout.ringOuter)
+          lifted = Math.max(lifted, box.getCenter(new Vector3()).y)
+          sunk = Math.min(sunk, box.min.y)
+          d.dispose()
+        }
+      }
+      expect(forward).toBeLessThanOrEqual(REACH + 1e-3)
+      expect(forward / layout.scale).toBeLessThanOrEqual(DOLL_MODEL_REACH)
+      expect(backward).toBeLessThanOrEqual(REACH + 1e-3)
+      expect(side).toBeLessThan(BLOCK_FACE)
+      // 真的踢了：脚心抬离地面一截；脚跟也不比站着时（鞋底描边本就压进地面 ≈ 0.019）更往地里扎。
+      expect(lifted).toBeGreaterThan(0.12)
+      expect(sunk).toBeGreaterThan(-0.02 - 0.005)
+    })
+  }
+
+  it('the next plain update clears the kick (feet back on the ground, no leftover tilt)', () => {
+    const d = factory.create(40, 'kangaroo', 0)
+    d.update(4.5, 7.5, 16, 1 / FPS, 3, false)
+    d.kickPose(0.3, 0)
+    d.update(4.5, 7.5, 32, 1 / FPS, 3, false)
+    const feet: Mesh[] = []
+    d.root.traverse((o) => {
+      if (o instanceof Mesh && o.geometry === dollGeometries('kangaroo').foot) feet.push(o)
+    })
+    expect(feet).toHaveLength(2)
+    for (const f of feet) {
+      expect(f.rotation.x).toBe(0)
+      expect(f.position.y).toBeCloseTo(0, 6)
+    }
+    d.dispose()
   })
 })
 

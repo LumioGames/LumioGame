@@ -62,28 +62,38 @@ describe('candy sources', () => {
     expect(evs(f, 'PickupSpawned')[0].Skill).toBe(refRoll(replay, w.rules.skills, candyPool(w.rules.skills)))
   })
 
-  it('pool weights (ADR 0033): bomb-type 2 each, the other four 1 each; ~2/3 of crate candies are bomb-type', () => {
+  it('pool weights (ADR 0033 × 3, 用户 2026-09-28 踢弹改罕见): bomb-type 6 each, bubble / blink / aura 3, kick 1 (≈ 3%); ~70% bomb-type; no flyKick', () => {
     const w = makeWorld()
     const pool = candyPool(w.rules.skills)
     expect(pool.map((id) => [id, w.rules.skills[id].candyWeight])).toEqual([
-      ['bubble', 1],
-      ['blink', 1],
-      ['fireAura', 1],
+      ['bubble', 3],
+      ['blink', 3],
+      ['fireAura', 3],
       ['kick', 1],
-      ['freezeBomb', 2],
-      ['pierceBomb', 2],
-      ['toxinBomb', 2],
-      ['shockBomb', 2],
+      ['freezeBomb', 6],
+      ['pierceBomb', 6],
+      ['toxinBomb', 6],
+      ['shockBomb', 6],
     ])
+    expect(pool).not.toContain('flyKick')
+    expect(pool).not.toContain('regen')
     const counts = new Map<SkillId, number>()
-    const n = 12000
+    const n = 34000
     for (let i = 0; i < n; i++) {
       const id = rollSkillCandy(w)!
       counts.set(id, (counts.get(id) ?? 0) + 1)
     }
+    // 24 / 34 ≈ 70.6% 炸弹类；踢弹 1 / 34 ≈ 2.9%；其余技能之间的相对比例不变（炸弹类各 ≈ 2 × 泡泡 / 闪现 / 光环）。
     const bomb = bombCandyPool(w.rules.skills).reduce((a, id) => a + (counts.get(id) ?? 0), 0)
-    expect(bomb / n).toBeGreaterThan(0.63)
-    expect(bomb / n).toBeLessThan(0.70)
+    expect(bomb / n).toBeGreaterThan(0.68)
+    expect(bomb / n).toBeLessThan(0.73)
+    const kick = (counts.get('kick') ?? 0) / n
+    expect(kick).toBeGreaterThan(0.02)
+    expect(kick).toBeLessThan(0.04)
+    const per = (id: SkillId) => (counts.get(id) ?? 0) / n
+    for (const id of ['bubble', 'blink', 'fireAura'] as const) expect(per(id), id).toBeGreaterThan(0.07)
+    expect(per('freezeBomb') / per('blink')).toBeGreaterThan(1.7)
+    expect(per('freezeBomb') / per('blink')).toBeLessThan(2.3)
     for (const id of pool) expect(counts.get(id) ?? 0, id).toBeGreaterThan(0)
   })
 

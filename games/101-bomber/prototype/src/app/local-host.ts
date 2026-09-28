@@ -48,7 +48,8 @@ export interface LocalHostOptions {
   localAutopilot?: { profile: BotProfileId; personality?: BotPersonality }
 }
 
-const ANIMALS: readonly AnimalId[] = ['rabbit', 'duck', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog']
+/** Bot 占位动物（'none' 模式照此轮换；'auto' 模式开局由 sim/roster.ts 按角色重抽）。袋鼠（用户 2026-09-28）追加在末尾，≤ 7 个 Bot 的旧阵容不变。 */
+const ANIMALS: readonly AnimalId[] = ['rabbit', 'duck', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog', 'kangaroo']
 const NAMES: Readonly<Record<AnimalId, string>> = {
   duck: '小黄鸭',
   rabbit: '棉花兔',
@@ -58,6 +59,7 @@ const NAMES: Readonly<Record<AnimalId, string>> = {
   penguin: '企鹅团子',
   pig: '粉粉猪',
   dog: '旺财',
+  kangaroo: '跳跳袋鼠',
 }
 const PERSONALITIES: readonly BotPersonality[] = ['farmer', 'hunter', 'collector', 'roamer', 'farmer', 'hunter', 'roamer']
 /** 单次 rAF 最多补跑的 Tick 数；标签页切回来时不追历史。 */

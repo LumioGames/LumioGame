@@ -57,6 +57,15 @@ describe('rule card (ADR 0028 / 0031)', () => {
     expect(lines).not.toMatch(/90 秒|帽子最多者赢/)
   })
 
+  it('help lists all five characters incl. the kangaroo’s Shift fly kick, and says kick candy is rare (用户 2026-09-28)', () => {
+    const lines = helpRuleLines(DEFAULT_RULES)
+    expect(lines[1]).toBe('五个角色各带一个专属技能：棉花兔（被动 回春）、泡泡鸭（Shift 泡泡）、闪电猫（Shift 闪现）、火焰熊（Shift 火焰光环）、飞腿袋鼠（Shift 飞踢）。')
+    expect(lines[2]).toBe('木箱和宝箱会掉技能糖：3 个技能槽（炸弹 / 主动 / 被动），同技能再吃升级，最高 Lv3；踢弹糖很少见。')
+    // 踢弹权重回到与别的技能同档时不再说「很少见」（文案跟表走）。
+    const even = { ...DEFAULT_RULES, skills: { ...DEFAULT_RULES.skills, kick: { ...DEFAULT_RULES.skills.kick, candyWeight: 3 } } }
+    expect(helpRuleLines(even)[2]).not.toContain('很少见')
+  })
+
   it('help explains the ADR 0033 bomb candies (from the pool) and the chest bomb-candy guarantee', () => {
     const lines = helpRuleLines(DEFAULT_RULES)
     const bombs = lines.find((l) => l.includes('中毒弹'))

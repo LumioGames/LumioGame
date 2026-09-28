@@ -104,22 +104,25 @@ describe('ADR 0031 / ADR 0035 · 4-min cap, 115 s final circle (design §4 / §4
 })
 
 describe('ADR 0030 · characters, skills, combos (design §8)', () => {
-  it('four characters, each with exactly one exclusive skill in its slot; identical base stats', () => {
-    // design §8.0 角色表：棉花兔 回春（被动）/ 泡泡鸭 泡泡（主动）/ 闪电猫 闪现（主动）/ 火焰熊 火焰光环（主动）。
-    expect(CHARACTER_ORDER).toEqual(['rabbit', 'duck', 'cat', 'bear'])
+  it('five characters, each with exactly one exclusive skill in its slot; identical base stats', () => {
+    // design §8.0 角色表：棉花兔 回春（被动）/ 泡泡鸭 泡泡（主动）/ 闪电猫 闪现（主动）/ 火焰熊 火焰光环（主动）；
+    // 飞腿袋鼠 飞踢（主动）= 用户 2026-09-28 追加（设计文档由主 loop 同步）。
+    expect(CHARACTER_ORDER).toEqual(['rabbit', 'duck', 'cat', 'bear', 'kangaroo'])
     const table = CHARACTER_ORDER.map((c) => [c, CHARACTERS[c].animal, CHARACTERS[c].name, CHARACTERS[c].skill, SKILLS[CHARACTERS[c].skill].slot])
     expect(table).toEqual([
       ['rabbit', 'rabbit', '棉花兔', 'regen', 'passive'],
       ['duck', 'duck', '泡泡鸭', 'bubble', 'active'],
       ['cat', 'cat', '闪电猫', 'blink', 'active'],
       ['bear', 'bear', '火焰熊', 'fireAura', 'active'],
+      ['kangaroo', 'kangaroo', '飞腿袋鼠', 'flyKick', 'active'],
     ])
     expect(R.characters).toBe(CHARACTERS)
     // design §8.0「基础属性完全相同」：角色表没有任何属性字段，只差一个专属技能。
     for (const c of CHARACTER_ORDER) expect(Object.keys(CHARACTERS[c]).sort()).toEqual(['animal', 'botNames', 'id', 'name', 'skill', 'src', 'tagline'])
-    // 专属技能互不相同；回春只属于棉花兔、不进池（design §8.2 / §8.4）。
-    expect(new Set(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).size).toBe(4)
+    // 专属技能互不相同；回春只属于棉花兔、飞踢只属于飞腿袋鼠，都不进池（design §8.2 / §8.4；用户 2026-09-28）。
+    expect(new Set(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).size).toBe(5)
     expect(SKILLS.regen.candyWeight).toBe(0)
+    expect(SKILLS.flyKick.candyWeight).toBe(0)
   })
 
   it('three slots, base skills 3 levels, combos 1 level (design §8.1 / §8.3)', () => {
@@ -140,6 +143,7 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
       glacierBomb: 'bomb',
       toxinBomb: 'bomb',
       shockBomb: 'bomb',
+      flyKick: 'active',
     })
   })
 
@@ -162,6 +166,10 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     // 踢弹：3 格 / 5 格 / 直到障碍，8 格 / 秒（design §8.4 ★ 踢弹）。
     expect(col('kick', 'rangeCells')).toEqual([3, 5, UNTIL_BLOCKED])
     expect(R.kickSpeedMilli).toBe(8000)
+    // 飞踢（飞腿袋鼠，用户 2026-09-28）：一直滑到被挡住，滑速同踢弹；CD 4 / 3.5 / 3 s。
+    expect(col('flyKick', 'rangeCells')).toEqual([UNTIL_BLOCKED, UNTIL_BLOCKED, UNTIL_BLOCKED])
+    expect(col('flyKick', 'cdMs')).toEqual([4000, 3500, 3000])
+    expect(SKILLS.flyKick.src).toMatch(/用户 2026-09-28/)
     // 冰冻弹：冻结 1.5 / 2.0 / 2.5 s，上限 2.5 s（用户 2026-09-28「冰冻僵直有点弱」，原 0.8 / 1.0 / 1.2），之后 1 秒控制免疫；照常扣血（ADR 0030 Q1 裁定）。
     expect(col('freezeBomb', 'freezeMs')).toEqual([1500, 2000, 2500])
     expect(SKILLS.freezeBomb.bombKind).toBe(BombKind.Freeze)
@@ -209,24 +217,27 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     expect(SKILLS.glacierBomb.bombKind).toBe(BombKind.Freeze)
   })
 
-  it('skill candy: eight-skill pool, bomb-type weight 2 / others 1, no regen; crates half skill candy; death drops 50 %', () => {
-    // design §8.2 技能糖池：闪现、火焰光环、泡泡、踢弹各 1，冰冻弹、穿透弹、中毒弹、麻痹弹各 2（ADR 0033 修订 0030 的等权）；回春不进池。
+  it('skill candy: eight-skill pool, ADR 0033 weights × 3 except kick (rare), no regen / flyKick; crates half skill candy; death drops 50 %', () => {
+    // design §8.2 技能糖池：ADR 0033 修订 0030 的等权（炸弹类 2、其余 1）；用户 2026-09-28 拍板踢弹改罕见掉落——
+    // 其余技能整体 ×3（炸弹类各 6、闪现 / 火焰光环 / 泡泡各 3），踢弹保持 1；回春 / 飞踢不进池。
     const pool = candyPool(SKILLS)
     expect([...pool].sort()).toEqual(['blink', 'bubble', 'fireAura', 'freezeBomb', 'kick', 'pierceBomb', 'shockBomb', 'toxinBomb'])
     expect(pool).not.toContain('regen')
+    expect(pool).not.toContain('flyKick')
     expect(Object.fromEntries(pool.map((id) => [id, SKILLS[id].candyWeight]))).toEqual({
-      bubble: 1,
-      blink: 1,
-      fireAura: 1,
+      bubble: 3,
+      blink: 3,
+      fireAura: 3,
       kick: 1,
-      freezeBomb: 2,
-      pierceBomb: 2,
-      toxinBomb: 2,
-      shockBomb: 2,
+      freezeBomb: 6,
+      pierceBomb: 6,
+      toxinBomb: 6,
+      shockBomb: 6,
     })
-    // design §8.2：炸弹类约 2/3（8 / 12）。
+    // 炸弹类 24 / 34 ≈ 70.6%（原 2/3）；踢弹 1 / 34 ≈ 3%。
     const total = pool.reduce((a, id) => a + SKILLS[id].candyWeight, 0)
-    expect(bombCandyPool(SKILLS).reduce((a, id) => a + SKILLS[id].candyWeight, 0) / total).toBeCloseTo(2 / 3)
+    expect(bombCandyPool(SKILLS).reduce((a, id) => a + SKILLS[id].candyWeight, 0) / total).toBeCloseTo(24 / 34)
+    expect(SKILLS.kick.candyWeight / total).toBeCloseTo(0.03, 2)
     // design §8.2 木箱：必掉 1 个，50% 技能糖（Lv1）（RESOLUTIONS #1）。
     expect(R.crateSkillCandyPermille).toBe(500)
     // design §8.2 死亡掉落：拾取的技能每个 50% 落地。

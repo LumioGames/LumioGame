@@ -19,7 +19,8 @@ import type { CharacterId, SkillId, SkillSlot } from './skills'
  * 快照是**纯数据**（无 class、无 Map），发布后不可变；表现层只读。
  */
 
-export type AnimalId = 'duck' | 'rabbit' | 'bear' | 'cat' | 'frog' | 'penguin' | 'pig' | 'dog'
+/** 原型扩展（NON-CONTRACT）：kangaroo = 飞腿袋鼠（用户 2026-09-28），追加在末尾。 */
+export type AnimalId = 'duck' | 'rabbit' | 'bear' | 'cat' | 'frog' | 'penguin' | 'pig' | 'dog' | 'kangaroo'
 
 export interface EntityView {
   NetEntityIdRaw: U64

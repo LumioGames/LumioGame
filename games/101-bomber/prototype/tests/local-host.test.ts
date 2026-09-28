@@ -52,16 +52,28 @@ describe('LocalHost characters and AI', () => {
     expect(me.meta.animal).toBe('rabbit')
   })
 
-  it("localCharacter 'cat' → 2/2/2/2 with unique names; animals follow characters", () => {
+  it("localCharacter 'cat' → balanced over five characters (1–2 each) with unique names; animals follow characters", () => {
     const { h, frames } = host({ localCharacter: 'cat', ai: 'easy' })
     expect(h.ai).toBe('easy')
     const s = last(frames)
     const count = new Map<CharacterId, number>()
     for (const p of s.Players) count.set(p.skills!.character!, (count.get(p.skills!.character!) ?? 0) + 1)
-    for (const c of CHARACTER_ORDER) expect(count.get(c)).toBe(2)
+    // 8 人 × 五个角色（飞腿袋鼠 = 用户 2026-09-28）：每个角色 1–2 个。
+    for (const c of CHARACTER_ORDER) {
+      expect(count.get(c) ?? 0, c).toBeGreaterThanOrEqual(1)
+      expect(count.get(c) ?? 0, c).toBeLessThanOrEqual(2)
+    }
     expect(new Set(s.Players.map((p) => p.meta.name)).size).toBe(8)
     for (const p of s.Players) expect(p.meta.animal).toBe(p.skills!.character)
     expect(s.Players.find((p) => p.NetEntityIdRaw === h.localPlayerId)!.skills!.character).toBe('cat')
+  })
+
+  it("localCharacter 'kangaroo' → the local doll is a kangaroo with flyKick bound in the active slot", () => {
+    const { h, frames } = host({ localCharacter: 'kangaroo' })
+    const me = last(frames).Players.find((p) => p.NetEntityIdRaw === h.localPlayerId)!
+    expect(me.meta.animal).toBe('kangaroo')
+    expect(me.skills?.character).toBe('kangaroo')
+    expect(me.skills?.slots.active).toEqual({ skill: 'flyKick', level: 1, bound: true })
   })
 
   it("botCharacters 'none' keeps the round-3 animals and names for bots", () => {

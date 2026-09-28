@@ -105,7 +105,8 @@ export function skillFailText(
       return own && own.slot !== 'active' ? `${own.name}是被动技能，自动生效` : '还没有主动技能'
     }
     case 'noLanding':
-      return '前方没有落脚点'
+      // 飞踢（飞腿袋鼠，用户 2026-09-28）复用这个失败原因：面前没有可踢的炸弹。
+      return skill === 'flyKick' ? '面前没有能踢的炸弹' : '前方没有落脚点'
     case 'frozen':
       return '被冻住了，放不了技能'
   }
