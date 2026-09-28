@@ -13,7 +13,7 @@ const E_AVG_MAX_MIN = 4
 defineStatsSuite({
   name: 'E · 20 种子 · 全员 normal',
   ai: 'normal',
-  map: envMap(27),
+  map: envMap(23),
   softTargets: 'none',
   local: 'normal',
   seeds: envSeeds(20),

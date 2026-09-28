@@ -10,7 +10,8 @@ import { ACCEPT_ON, HIGHLIGHT_PROBE, MATCH_TIMEOUT_MS, describeRun } from './har
  * 种子固定为 1..6，永不更换；阈值不得放宽。时间到的存活中位与 M1 报告项只报告。
  */
 const SEEDS = [1, 2, 3, 4, 5, 6] as const
-const MAP: MapTierId = 27
+// 页面默认档（用户 2026-09-28 改为 12 人 · 23×23）。
+const MAP: MapTierId = 23
 /** ADR 0035：局时上限 4 分钟（原 ADR 0031 的 7 分钟）——逐局不得超过。 */
 const CAP_MS = DEFAULT_RULES.matchCapMs
 /** ADR 0043 验收 E：平均局长 ≤ 4 分钟、唯一存活 ≥ 85%（写死，封顶改了门槛也不跟着松）。 */
