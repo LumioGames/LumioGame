@@ -67,7 +67,8 @@
 | [0037](0037-bomber-hat-tower-capped-at-four-with-count-badge.md) | 炸弹人帽子塔封顶 4 顶:最多画 4 顶逐层缩小,超出用「×N」徽章,帽王皇冠戴在塔顶 | 生效 |
 | [0038](0038-bomber-direction-b-growth-brawl-pillars.md) | 炸弹人定调方向 B「成长爽局」:北极星五条、新人六概念、威胁全可见、人人有高光,支柱 2 改为全员同一条成长规则 | 生效 |
 | [0039](0039-bomber-hats-give-hearts-and-gold-hearts.md) | 炸弹人成长与 Boss:帽子给心、金心,心数封顶 8 心,毒圈按上限等比 | 生效 |
-| [0040](0040-bomber-27-map-16-players-tiered-rings-supply.md) | 炸弹人原型默认 16 人 · 27×27,资源按三圈三级越靠中心越好,中央大补给与狂暴糖进原型 | 生效 |
-| [0041](0041-bomber-one-special-bomb-slot-five-kinds-favorite-bomb.md) | 炸弹人特殊炸弹一个槽、踩到就换、五种各有形状;每个角色一个最爱炸弹;人人默认会踢弹 | 生效 |
+| [0040](0040-bomber-27-map-16-players-tiered-rings-supply.md) | 炸弹人原型默认 16 人 · 27×27,资源按三圈三级越靠中心越好,中央大补给与狂暴糖进原型 | 生效（默认档被 0044 修订） |
+| [0041](0041-bomber-one-special-bomb-slot-five-kinds-favorite-bomb.md) | 炸弹人特殊炸弹一个槽、踩到就换、五种各有形状;每个角色一个最爱炸弹;人人默认会踢弹 | 生效（删除中毒弹 / 人人默认会踢 / 冰冻 1 秒被 0044 取代） |
 | [0042](0042-bomber-moat-and-explosive-barrels.md) | 炸弹人地形重做:护城河(防火线 + 桥作卡点 + 冰桥)取代池塘并取消溺水,爆炸桶取代鞭炮,不做草丛 | 生效 |
-| [0043](0043-bomber-bot-tiers-kill-juice-highlights-new-acceptance.md) | 炸弹人 Bot 分层(菜鸟档、不围剿真人)、击杀手感与成就感,新验收 D / E 改为 16 人 · 27×27 | 生效 |
+| [0043](0043-bomber-bot-tiers-kill-juice-highlights-new-acceptance.md) | 炸弹人 Bot 分层(菜鸟档、不围剿真人)、击杀手感与成就感,新验收 D / E 改为 16 人 · 27×27 | 生效（验收地图与 D 门槛被 0044 修订） |
+| [0044](0044-bomber-m1-playtest-adjustments.md) | 炸弹人 M1 试玩修订:默认 12 人 · 23×23、中毒保留并削弱、冰冻加强、别人的连杀也播横幅、新角色飞腿袋鼠(飞踢)取代人人默认会踢 | 生效 |
