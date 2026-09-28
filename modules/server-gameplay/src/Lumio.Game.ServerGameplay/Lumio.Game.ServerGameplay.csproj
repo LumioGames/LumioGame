@@ -19,5 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="$(LumioRuntimeEcsProject)" />
     <ProjectReference Include="$(LumioRuntimeReplicationProject)" />
+    <!-- 生成的注册表按 World 注册 GAS 类型（GasWorldContext / GasTypeRegistry），没有 Ability / Effect 声明时也生成。 -->
+    <ProjectReference Include="$(LumioRuntimeGasProject)" />
   </ItemGroup>
 </Project>
