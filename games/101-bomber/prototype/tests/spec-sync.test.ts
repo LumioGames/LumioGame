@@ -327,10 +327,11 @@ describe('ADR 0039 · hats give hearts, gold hearts, cap 8 hearts, poison scales
 })
 
 describe('ADR 0040 · 27×27 · 16 players, three rings / three box tiers, central supply, frenzy (design §4.2 / §5.0 / §8.5 / §8.6)', () => {
-  it('prototype default = you + 15 bots on 27×27 (?map=19|23|27 default 27, ?bots=0–15 default 15); 16 spawns on the outer ring ≥ 6 apart', () => {
+  it('page default = you + 11 bots on 23×23 (user 2026-09-28「人太多了有点乱」, revises ADR 0040); ?map=27 = you + 15 bots; 16 spawns on the 27 outer ring ≥ 6 apart', () => {
     const p = parseAppParams('', false)
-    expect([p.map, p.bots]).toEqual([27, 15])
-    expect(appRules(p)).toMatchObject({ playerCount: 16, map: { id: 27, size: 27 } })
+    expect([p.map, p.bots]).toEqual([23, 11])
+    expect(appRules(p)).toMatchObject({ playerCount: 12, map: { id: 23, size: 23 } })
+    expect(appRules(parseAppParams('?map=27', false))).toMatchObject({ playerCount: 16, map: { id: 27, size: 27 } })
     expect([maxBotsFor(19), maxBotsFor(23), maxBotsFor(27)]).toEqual([7, 11, 15])
     expect(MAX_PLAYERS).toBe(16)
     const z = spawnZones(27)
@@ -381,12 +382,12 @@ describe('ADR 0040 · 27×27 · 16 players, three rings / three box tiers, centr
     })
   })
 
-  it('central supply (27 only, 3×3 plaza): announce at 0:50, open at 1:00; loot 5 candies + 2 packs + 1 frenzy + 2 special bombs + 1 gold heart', () => {
+  it('central supply (23 and 27 tiers, 3×3 plaza; 23 added when the page default became 12 players · 23×23, user 2026-09-28): announce at 0:50, open at 1:00; loot 5 candies + 2 packs + 1 frenzy + 2 special bombs + 1 gold heart', () => {
     expect(R.supplyAnnounceMs).toBe(50_000)
     expect(R.supplyOpenMs).toBe(60_000)
     expect(R.supplyLoot).toEqual({ candies: 5, healthPacks: 2, frenzy: 1, specialBombs: 2, goldHearts: 1 })
-    expect([MAP_TIERS[19].centralSupply, MAP_TIERS[23].centralSupply, MAP_TIERS[27].centralSupply]).toEqual([false, false, true])
-    expect(MAP_TIERS[27].plazaSide).toBe(3)
+    expect([MAP_TIERS[19].centralSupply, MAP_TIERS[23].centralSupply, MAP_TIERS[27].centralSupply]).toEqual([false, true, true])
+    expect([MAP_TIERS[19].plazaSide, MAP_TIERS[23].plazaSide, MAP_TIERS[27].plazaSide]).toEqual([0, 3, 3])
   })
 
   it('frenzy: 6 s, 1.2 s fuse, 6 extra bombs, ≤ 4 bombs per second (5 ticks apart at 20 Hz)', () => {

@@ -91,7 +91,7 @@ function checkTierMap(size: MapTierId, seed: number): void {
   expect(open / players).toBeGreaterThanOrEqual(9)
   expect(water * 100).toBeLessThanOrEqual(5 * S * S)
 
-  // 1×1 可进入：中心格不是铁皮、不是水、在连通图里；27 档核心 3×3 广场开局全空地。
+  // 1×1 可进入：中心格不是铁皮、不是水、在连通图里；23 / 27 档核心 3×3 广场开局全空地。
   const center = mid * S + mid
   expect(walk(center)).toBe(true)
   expect(m.ground[center]).toBe(BlockType.地面)
@@ -151,8 +151,8 @@ describe('27×27 tier (ADR 0040, prototype default 16 players)', () => {
 })
 
 describe('23×23 tier', () => {
-  it('seeds 1..30: 12 outer spawns, boxes 12 / 8 / 4 by ring, all generator asserts', () => {
-    for (let seed = 1; seed <= 30; seed++) checkTierMap(23, seed)
+  it('seeds 1..100 (page default since user 2026-09-28): 12 outer spawns, boxes 12 / 8 / 4 by ring, 3×3 plaza, all generator asserts', () => {
+    for (let seed = 1; seed <= 100; seed++) checkTierMap(23, seed)
   })
 })
 

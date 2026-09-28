@@ -48,8 +48,11 @@ export interface AppParams {
   dev: ReadonlySet<DevFlag>
 }
 
-/** 原型扩展（NON-CONTRACT，ADR 0040）：页面默认地图档——原型默认 16 人 · 27×27。`DEFAULT_RULES` 仍是 19 档（旧测试的规则对象）。 */
-export const DEFAULT_PAGE_MAP: MapTierId = 27
+/**
+ * 原型扩展（NON-CONTRACT）：页面默认地图档——12 人 · 23×23（用户 2026-09-28 试玩反馈「人太多了有点乱」，修订 ADR 0040 的 16 人 · 27×27；
+ * `?map=27` 仍是 16 人）。`DEFAULT_RULES` 仍是 19 档（旧测试的规则对象）。
+ */
+export const DEFAULT_PAGE_MAP: MapTierId = 23
 /** 某档的 Bot 上限 = 该档默认人数（= 出生候选数）− 你（19 → 7、23 → 11、27 → 15）。 */
 export function maxBotsFor(map: MapTierId): number {
   return MAP_TIERS[map].defaultPlayers - 1

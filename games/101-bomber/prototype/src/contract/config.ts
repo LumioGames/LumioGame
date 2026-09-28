@@ -377,9 +377,10 @@ export const MAP_TIERS: Readonly<Record<MapTierId, MapTierRules>> = {
     regenBoxOneIn: 6,
     ringStages: [stage(10000, 15), stage(30000, 11), stage(50000, 7), stage(75000, 5), stage(95000, 3), stage(110000, 1)],
     powerChests: 5,
-    centralSupply: false,
-    plazaSide: 0,
-    src: '引用 ADR 0040：段表 +10/30/50/75/95/110 s → 15/11/7/5/3/1、再生 3 组、约 1/6 长箱；三圈 ≤3 / 4–6 / ≥7、箱数 12 / 8 / 4、默认 12 人推断待验证（按 design §5.0 面积缩放派生）',
+    // 用户 2026-09-28 把页面默认改为 12 人 · 23×23：23 档也要中央 3×3 广场与大补给（否则默认局没有补给与狂暴糖）。
+    centralSupply: true,
+    plazaSide: 3,
+    src: '引用 ADR 0040：段表 +10/30/50/75/95/110 s → 15/11/7/5/3/1、再生 3 组、约 1/6 长箱；三圈 ≤3 / 4–6 / ≥7、箱数 12 / 8 / 4、默认 12 人推断待验证（按 design §5.0 面积缩放派生）；中央 3×3 广场与大补给 = 用户 2026-09-28 改默认 23 档',
   },
   27: {
     id: 27,
@@ -400,7 +401,7 @@ export const MAP_TIERS: Readonly<Record<MapTierId, MapTierRules>> = {
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0040）：`DEFAULT_RULES` 的档（19，旧测试的规则对象）与 {@link parseMapTier} 的缺省回退。
- * 页面默认是 27 档 16 人（ADR 0040），由 app/params.ts 的 DEFAULT_PAGE_MAP 传给 parseMapTier。
+ * 页面默认是 23 档 12 人（用户 2026-09-28，修订 ADR 0040 的 27 档 16 人），由 app/params.ts 的 DEFAULT_PAGE_MAP 传给 parseMapTier。
  */
 export const DEFAULT_MAP_TIER: MapTierId = 19
 

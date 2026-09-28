@@ -105,6 +105,18 @@ describe('central supply (27 tier)', () => {
     }
   })
 
+  it('23 tier (page default since user 2026-09-28): the plaza and the supply sit at the center (11, 11) with the same loot', () => {
+    const w = makeWorld(tierOpts(23, 2))
+    put(w, 1, 1, 1)
+    put(w, 2, 21, 21)
+    expect(w.supply).toMatchObject({ state: 'pending' })
+    const frames = runTo(w, w.supply!.openTick)
+    expect(evs(frames, 'SupplyAnnounced')).toMatchObject([{ Cell: { X: 11, Y: 11 } }])
+    expect(evs(frames, 'SupplyOpened')).toMatchObject([{ Cell: { X: 11, Y: 11 } }])
+    const loot = evs(frames, 'PickupSpawned').filter((p) => p.Source === 'supply')
+    expect(lootCount(loot)).toEqual({ candies: 5, healthPacks: 2, frenzy: 1, specialBombs: 2, goldHearts: 1 })
+  })
+
   it('reschedules for every new match; the 19 tier has none', () => {
     const w = world27()
     startMatch(w, 1)

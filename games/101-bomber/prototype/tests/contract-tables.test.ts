@@ -395,8 +395,9 @@ describe('map tiers (ADR 0040, design §4.2 / §5.0)', () => {
       for (const k of ['wood', 'iron', 'gold'] as const) expect(t.boxes[k].count % 4).toBe(0)
       expect(t.zones.coreMaxD).toBeLessThan(t.zones.midMaxD)
       expect(t.zones.midMaxD).toBeLessThan((id - 1) / 2)
-      expect(t.centralSupply).toBe(id === 27)
-      expect(t.plazaSide).toBe(id === 27 ? 3 : 0)
+      // 23 档也开广场与补给（用户 2026-09-28 改页面默认 12 人 · 23×23）。
+      expect(t.centralSupply).toBe(id !== 19)
+      expect(t.plazaSide).toBe(id === 19 ? 0 : 3)
       expect(TAG.test(t.src)).toBe(true)
     }
     expect(ZONE_BOX).toEqual({ outer: 'wood', mid: 'iron', core: 'gold' })

@@ -59,17 +59,18 @@ function stuffArmChest(w: World): void {
  * 5×5 / 3×3 / 1×1 内非铁皮格数的上限：19×19 铁皮柱在偶数行列交点；27×27（ADR 0040）核心 3×3 广场去掉了中心四根柱，
  * 5×5 / 3×3 内一根柱都没有。
  */
-const MAX_CLEARED: Readonly<Record<19 | 27, Readonly<Record<number, number>>>> = { 19: { 5: 21, 3: 5, 1: 1 }, 27: { 5: 25, 3: 9, 1: 1 } }
+const MAX_CLEARED: Readonly<Record<19 | 23 | 27, Readonly<Record<number, number>>>> = { 19: { 5: 21, 3: 5, 1: 1 }, 23: { 5: 25, 3: 9, 1: 1 }, 27: { 5: 25, 3: 9, 1: 1 } }
 
 describe('final 1×1 cell is always enterable', () => {
   for (const [label, tierSize, rules] of [
     ['default rules', 19, {}],
     ['no chest loot', 19, { chestLoot: [], chestSkillCandies: 0 }],
+    ['23 tier (page default since user 2026-09-28: 6 stages, 5 power chests, plaza)', 23, {}],
     ['27 tier (ADR 0040: 7 stages, 6 power chests, plaza)', 27, {}],
   ] as const) {
     it(`${label}: seeds 1..100, real maps, adversarial bricks and a keep-out-compliant arm chest: every clearing stage empties its ring of bricks, leaves chests alone, and the 1×1 is enterable`, () => {
       for (let seed = 1; seed <= 100; seed++) {
-        const w = tierSize === 27 ? makeWorld({ seed, clear: false, ...tierOpts(27, 16, rules) }) : makeWorld({ seed, players: 8, clear: false, rules })
+        const w = tierSize !== 19 ? makeWorld({ seed, clear: false, ...tierOpts(tierSize, tierSize === 27 ? 16 : 12, rules) }) : makeWorld({ seed, players: 8, clear: false, rules })
         startFinalCircle(w, 'time')
         const fc = w.finalCircle!
         const stages = w.ticks.ringStages
