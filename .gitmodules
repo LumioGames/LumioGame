@@ -1,0 +1,4 @@
+[submodule "games/101-bomber/Engine"]
+	path = games/101-bomber/Engine
+	url = https://github.com/LumioGames/LumioEngineRelease
+	shallow = true
