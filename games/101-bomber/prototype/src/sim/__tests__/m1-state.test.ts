@@ -33,7 +33,7 @@ describe('uncounted bombs', () => {
 })
 
 describe('hash and snapshot cover the new fields', () => {
-  it('goldHearts / frenzyUntilTick / uncounted / resource boxes / supply all change the hash; defaults leave it as before', () => {
+  it('goldHearts / frenzyUntilTick / frenzyLastPlaceTick / uncounted / resource boxes / supply all change the hash; defaults leave it as before', () => {
     const a = makeWorld()
     const b = makeWorld()
     expect(hashWorld(a)).toBe(hashWorld(b))
@@ -44,6 +44,11 @@ describe('hash and snapshot cover the new fields', () => {
     player(b, 1).frenzyUntilTick = 99
     expect(hashWorld(b)).not.toBe(hashWorld(a))
     player(b, 1).frenzyUntilTick = 0
+    // M1-2（ADR 0040）：狂暴期最近放弹 Tick 也进哈希。
+    player(b, 1).frenzyLastPlaceTick = 5
+    expect(hashWorld(b)).not.toBe(hashWorld(a))
+    player(b, 1).frenzyLastPlaceTick = 0
+    expect(hashWorld(b)).toBe(hashWorld(a))
     const bomb = makeBomb({ id: 500, owner: 1, cell: cell(b, 3, 3), bornTick: 0, fuseEndTick: 40, power: 2 })
     const c = makeWorld()
     b.bombs.push(bomb)

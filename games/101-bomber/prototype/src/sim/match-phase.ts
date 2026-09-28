@@ -8,6 +8,7 @@ import { placeAtMatchStart } from './respawn'
 import { simMatchResults } from './results'
 import { mixSeed, Sfc32 } from './rng'
 import { assignRoster } from './roster'
+import { setupSupply } from './supply'
 import { tickTable } from './ticks'
 import { countResource, emit, emptySlots, resetAbilityFields, resetAttributes, type SimPlayer, type World } from './world'
 
@@ -19,8 +20,11 @@ import { countResource, emit, emptySlots, resetAbilityFields, resetAttributes, t
  * 阶段机在 Tick 末（地形提交与伤害单结算之后）推进，所以触发判定看到的是本 Tick 提交后的地形。
  */
 
-/** 原型只有 8 个出生候选（design §5 ≤12 人档的 19×19，本原型固定 ≤ 8 人）。 */
-export const MAX_PLAYERS = 8
+/**
+ * 人数上限 = 最大档的出生候选数（原型扩展 NON-CONTRACT，ADR 0040：27 档 16 个；19 档 8 个、23 档 12 个，
+ * 超过该档出生候选数时地图断言失败）。design §5：13–20 人 → 27×27。
+ */
+export const MAX_PLAYERS = 16
 
 export function createWorld(opts: LocalSimOptions): World {
   const { config: cfg, rules } = opts
@@ -78,6 +82,7 @@ export function createWorld(opts: LocalSimOptions): World {
       shockSlowPermille: 0,
       goldHearts: 0,
       frenzyUntilTick: 0,
+      frenzyLastPlaceTick: 0,
     }
     resetAttributes(p, cfg)
     return p
@@ -118,6 +123,7 @@ export function createWorld(opts: LocalSimOptions): World {
 /**
  * 开一局：新地图、清场、玩家复位、分配角色（原型扩展 ADR 0030，roster.ts）并摆到出生候选。
  * 在构造时与上一局结算结束的 Tick 调用。
+ * 原型扩展（NON-CONTRACT，ADR 0040）：登记地图布下的分级资源箱（命中数取该档 boxes[等级].hits），开局 StartTick 定下后排中央补给。
  */
 export function startMatch(w: World, index: number): void {
   const matchSeed = mixSeed(w.seed, index)
@@ -126,6 +132,10 @@ export function startMatch(w: World, index: number): void {
   w.ground = map.ground
   w.brick = map.brick
   w.spawns = map.spawns
+  w.resourceBoxes = map.boxes.map((b) => {
+    const hits = Math.max(1, w.rules.map.boxes[b.tier].hits)
+    return { cell: b.cell, tier: b.tier, hitsRequired: hits, hitsLeft: hits, hitBy: [] }
+  })
   w.rev++
   w.bombs = []
   w.pickups = []
@@ -151,6 +161,7 @@ export function startMatch(w: World, index: number): void {
   const prevKing = w.match.hatKing
   const startTick = w.t + w.ticks.warmup
   w.match = { index, startTick, endTick: startTick + w.ticks.match, phase: MatchPhase.Warmup, hatKing: 0 }
+  setupSupply(w)
   if (prevKing !== 0) emit(w, { type: 'HatKingChanged', PreviousHatKingNetEntityIdRaw: prevKing, NewHatKingNetEntityIdRaw: 0, Tick: w.t })
   emit(w, { type: 'MatchStarted', presentationOnly: true, MatchIndex: index, Tick: w.t })
 }

@@ -1,5 +1,7 @@
 import { BlockType, MATERIALS, PickupKind, type PickupKindName, type SkillId } from '../contract'
+import { resourceBoxAt, spawnBoxLoot } from './chest'
 import { maxHealthOf } from './death-drops'
+import { cellZone } from './mapgen'
 import { canTakeSkill, rollCrateSkill, takeSkillCandy } from './skill-candy'
 import {
   CELL_MILLI,
@@ -22,6 +24,8 @@ import {
  * 拾取竞争：站在同一格的活人里离格心最近者得，再比 id；恰好一人成功。达上限者不参与，物品留地。
  * 原型扩展（NON-CONTRACT，ADR 0039）：血包回到的是本人当前心数上限；拾取让上限上涨（帽子跨阈值 / 金心）时当前血量同增
  * （新心是满的）并发 PlayerHealed { Source: 'boss' }。
+ * 原型扩展（NON-CONTRACT，ADR 0040）：狂暴糖——吃到即回满血（到本人上限；同血包不另发 PlayerHealed）并把
+ * frenzyUntilTick 设为 t + ticks.frenzy（已在狂暴中则刷新）；狂暴期放弹见 place-bomb.ts。
  */
 
 const KIND_ORDER: readonly (readonly [PickupKindName, PickupKind])[] = [
@@ -79,15 +83,25 @@ function rollKind(w: World): PickupKind {
 }
 
 /**
- * 本 Tick 写批里的爆炸砖（此时写批里只有爆炸下的单）按材质掉落：积木掷 dropRatePermille，木箱必掉。
- * 原型扩展（NON-CONTRACT，ADR 0030）：木箱照旧先在 rng.drop 上掷强化种类（drop 流序列不变），再在 rng.skill 上掷
- * crateSkillCandyPermille，中了就改掉一颗 skillCandyLevel 级技能糖；积木从不掉技能糖。
+ * 本 Tick 写批里的爆炸砖（此时写批里只有爆炸下的单）按材质掉落：积木按所在圈的掉率掷，木箱必掉。
+ * 原型扩展（NON-CONTRACT，ADR 0040，design §5.0）：积木的掉率取 `rules.map.brickDropPermille[所在圈]`（外 25 / 中 35 / 核心 45%，
+ * 取代单一的契约 `dropRatePermille`），仍在 rng.drop 上掷、每块一次，drop 流的消耗次序不变。登记过的资源箱按等级开箱
+ * （chest.ts spawnBoxLoot，走自己的随机流）。
+ * 原型扩展（NON-CONTRACT，ADR 0030）：没登记的木箱（19 档旧地图）照旧先在 rng.drop 上掷强化种类（drop 流序列不变），再在
+ * rng.skill 上掷 crateSkillCandyPermille，中了就改掉一颗 skillCandyLevel 级技能糖；积木从不掉技能糖。
  */
 export function spawnDrops(w: World): void {
   for (const wr of w.batch.values()) {
     const drop = MATERIALS[wr.block].drop
     if (drop === 'none') continue
-    if (drop === 'roll' && w.rng.drop.NextInt(0, 1000) >= w.cfg.dropRatePermille) continue
+    if (wr.block === BlockType.木箱) {
+      const box = resourceBoxAt(w, wr.cell)
+      if (box) {
+        spawnBoxLoot(w, box)
+        continue
+      }
+    }
+    if (drop === 'roll' && w.rng.drop.NextInt(0, 1000) >= brickDropPermille(w, wr.cell)) continue
     const crate = wr.block === BlockType.木箱
     const kind = rollKind(w)
     const origin: PickupOrigin = { source: crate ? 'crate' : 'brick', droppedBy: 0, fromCell: wr.cell }
@@ -95,6 +109,12 @@ export function spawnDrops(w: World): void {
     if (skill !== null) createPickup(w, wr.cell, PickupKind.SkillCandy, origin, { skill, level: w.rules.skillCandyLevel })
     else createPickup(w, wr.cell, kind, origin)
   }
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040）：积木所在圈的掉率（‰）。 */
+export function brickDropPermille(w: World, cell: number): number {
+  const map = w.rules.map
+  return map.brickDropPermille[cellZone(w.size, map.zones, cell)]
 }
 
 /** 场上未爆、计入炸弹数的炸弹（原型扩展 NON-CONTRACT，ADR 0040 / 0041：uncounted 的狂暴炸弹 / 集束子弹不算，帽数也就不算）。 */
@@ -122,8 +142,8 @@ function canTake(w: World, p: SimPlayer, it: SimPickup): boolean {
       // 原型扩展（NON-CONTRACT，ADR 0039）：金心满 maxGoldHearts 颗拾不起、留在地上。
       return p.goldHearts < w.rules.maxGoldHearts
     case PickupKind.Frenzy:
-      // 原型扩展（NON-CONTRACT，ADR 0040）：狂暴糖的拾取规则归 M1-2；在那之前谁也拾不起（本卡不产生它）。
-      return false
+      // 原型扩展（NON-CONTRACT，ADR 0040）：狂暴糖任何活人都能吃（已在狂暴中 = 刷新时长）。
+      return true
   }
 }
 
@@ -154,6 +174,9 @@ function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
       p.goldHearts = Math.min(w.rules.maxGoldHearts, p.goldHearts + 1)
       break
     case PickupKind.Frenzy:
+      // 原型扩展（NON-CONTRACT，ADR 0040，design §8.5）：回满血 + 6 秒狂暴。
+      p.health = Math.max(p.health, capBefore)
+      p.frenzyUntilTick = w.t + w.ticks.frenzy
       break
   }
   // 原型扩展（NON-CONTRACT，ADR 0039）：上限上涨（帽子跨 heartsPerHats 阈值 / 金心）——新心是满的。

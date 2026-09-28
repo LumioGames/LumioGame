@@ -107,8 +107,13 @@ export interface SimPlayer {
   // ---- 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：方向 B 成长与狂暴。开局清零（resetAttributes）；非缺省时进哈希。----
   /** 身上的金心数（0–maxGoldHearts）：不算帽子，死亡 / 出局 / 退出时全掉（death-drops.ts dropPowerups）。 */
   goldHearts: number
-  /** 狂暴到此 Tick（不含）；0 = 不在狂暴。规则归 M1-2。 */
+  /**
+   * 狂暴到此 Tick（不含）；0 = 不在狂暴。吃狂暴糖时设（pickup.ts），死亡 / 重生 / 开局清零（{@link resetAbilityFields}：
+   * 死亡即结束狂暴）。狂暴期放弹规则见 place-bomb.ts。
+   */
   frenzyUntilTick: number
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：狂暴期间最近一次放弹的 Tick（两次放弹间隔 ≥ frenzyMinIntervalTicks）；0 = 本次狂暴还没放过。 */
+  frenzyLastPlaceTick: number
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：技能槽里的一个技能（或组合技的一半）。 */
@@ -186,7 +191,8 @@ export interface SimBomb {
   kickedBy: number
   /**
    * 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：不计炸弹数与帽数的额外炸弹（狂暴炸弹、集束子弹）。
-   * pickup.ts liveBombsOf 跳过它（帽数 / 炸弹+ 上限都不算）；爆炸时不回手——生成与回手规则归 M1-2。
+   * pickup.ts liveBombsOf 跳过它（帽数 / 炸弹+ 上限都不算）；爆炸 / 踢进水熄灭时都不回手（explosion.ts / kick.ts）。
+   * M1 只有狂暴炸弹带它（place-bomb.ts），主人免疫自己的 uncounted 炸弹（explosion.ts dangerPass）。
    */
   uncounted: boolean
 }
@@ -425,7 +431,7 @@ export function aliveCount(w: World): number {
 }
 
 /**
- * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时 / 中毒 / 麻痹（ADR 0033）随之结束；
+ * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时 / 中毒 / 麻痹（ADR 0033）/ 狂暴（ADR 0040）随之结束；
  * 冷却不清（CD 跨死亡保留，开局由 {@link resetSkillsForMatch} 清）。闪现不得调用它。
  */
 export function resetAbilityFields(p: SimPlayer): void {
@@ -449,6 +455,9 @@ export function resetAbilityFields(p: SimPlayer): void {
   clearToxin(p)
   p.shockUntilTick = 0
   p.shockSlowPermille = 0
+  // 原型扩展（NON-CONTRACT，ADR 0040）：死亡即结束狂暴（死人不挂狂暴、重生不续狂暴）。
+  p.frenzyUntilTick = 0
+  p.frenzyLastPlaceTick = 0
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0033）：解毒 / 到期——四个中毒字段归零。 */
@@ -467,6 +476,7 @@ export function resetAttributes(p: SimPlayer, cfg: BomberConfig): void {
   p.capacity = cfg.initialBombCapacity
   p.goldHearts = 0
   p.frenzyUntilTick = 0
+  p.frenzyLastPlaceTick = 0
 }
 
 /** ADR 0029：死者掉出的强化在落地后 deathDropProtect 内免疫爆炸；其余掉落物为 0（随时可被炸毁）。 */

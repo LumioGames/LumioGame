@@ -196,13 +196,14 @@ export function hashWorld(w: World): string {
 }
 
 /**
- * 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：方向 B · M1 的新状态——玩家金心 / 狂暴、uncounted 炸弹、资源箱、中央补给。
+ * 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：方向 B · M1 的新状态——玩家金心 / 狂暴（截止 Tick 与最近放弹 Tick）、uncounted 炸弹、资源箱、中央补给。
  * **全部为缺省值时整段不写**：旧对局（没有金心、狂暴、资源箱、补给）的 StateHash 与改动前逐位相同，便于同种子回归比对；
  * 任何一项非缺省即写入带标记的整段（各子列表带长度前缀，仍是规范数列）。
  */
 function hashM1(h: Fnv2, w: World): void {
   const boss: number[] = []
-  for (const p of w.players) if (p.goldHearts !== 0 || p.frenzyUntilTick !== 0) boss.push(p.id, p.goldHearts, p.frenzyUntilTick)
+  for (const p of w.players)
+    if (p.goldHearts !== 0 || p.frenzyUntilTick !== 0 || p.frenzyLastPlaceTick !== 0) boss.push(p.id, p.goldHearts, p.frenzyUntilTick, p.frenzyLastPlaceTick)
   const extra: number[] = []
   for (const b of w.bombs) if (b.uncounted) extra.push(b.id)
   const boxes = w.resourceBoxes ?? []

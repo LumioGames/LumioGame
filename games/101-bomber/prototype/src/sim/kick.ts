@@ -96,14 +96,15 @@ export function advanceKickedBombs(w: World): void {
 
 /**
  * 踢进水里 = 拆弹（design §8.4，RESOLUTIONS #9）：炸弹实体移除、不爆炸；主人的炸弹数照爆炸回手一样归还
- * （先抵 capacityDebt，同 explosion.ts 的回手口径）；发 BombExtinguished（Cell = 熄灭格）。
+ * （先抵 capacityDebt，同 explosion.ts 的回手口径；uncounted 的狂暴炸弹不回手，ADR 0040）；发 BombExtinguished（Cell = 熄灭格）。
  */
 function extinguish(w: World, b: SimBomb): void {
   w.bombs = w.bombs.filter((o) => o !== b)
   b.kickDir = 方向.停
   b.kickCellsLeft = 0
   b.kickAcc = 0
-  const owner = findPlayer(w, b.owner)
+  // 原型扩展（NON-CONTRACT，ADR 0040）：uncounted 的狂暴炸弹放下时没扣炸弹数，熄灭也不回手。
+  const owner = b.uncounted ? undefined : findPlayer(w, b.owner)
   if (owner) {
     if (owner.capacityDebt > 0) owner.capacityDebt--
     else owner.capacity++
