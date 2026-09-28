@@ -1,5 +1,6 @@
 import { Color, MeshBasicMaterial, SphereGeometry, TorusGeometry, type Object3D } from 'three'
 import { PickupKind, SKILL_IDS, type PickupView, type SkillId } from '../../contract'
+import { KILL_JUICE } from '../../present/kill-juice'
 import { SKILL_COLOR } from '../../present/skill-style'
 import { Batch, M, trs } from '../batch'
 import { candyGeometry, candyRingGeometry } from '../geo/candy'
@@ -12,7 +13,8 @@ import type { GroundMarks } from './ground-marks'
  * 糖果：悬浮 0.5 ±0.06、1.5 rad/s 自转，外面一圈面朝镜头的金环（参考图同款）；
  * 出现时弹出，消失时（被捡 / 被炸）缩没。每种糖果一个实例批。
  * 死者掉出的强化（PickupView.droppedBy ≠ 0，design §9.6）多一圈死者脚圈色的光环 + 同色地圈；
- * 死者掉落 / 宝箱喷出的糖果从来源格沿抛物线弹出（0.35 s），落地后才开始悬浮。
+ * 死者掉落 / 宝箱喷出的糖果从来源格沿抛物线弹出（宝箱 0.35 s），落地后才开始悬浮；
+ * 死者掉落是「爆装喷泉」（design §3.1，ADR 0043）：弧线更高、逐颗错开喷出、半空略放大，死者 ≥ 6 帽时更高更大。
  * 保护期内（renderTick < protectedUntilTick，ADR 0029：炸不掉）罩一层淡金色泡泡，最后 0.8 s 闪烁提示即将失效。
  * 原型扩展（NON-CONTRACT，ADR 0030）：技能糖（Kind = SkillCandy）按 PickupView.skill 画各自的糖球 + 技能色光环
  * （代替金环，一眼分得出「帽子糖」和「技能糖」）+ 糖下 1–3 颗等级金豆；skill 缺席时退回普通糖果。
@@ -32,6 +34,8 @@ interface PickupVis {
   arc: boolean
   /** 死者脚圈色；−1 = 普通糖果。 */
   halo: number
+  /** 弹出弧线。 */
+  flight: PickupArc
   /** 免疫爆炸截止 Tick（0 = 无保护）。 */
   protUntil: number
   /** 技能糖里的技能与等级（其余糖果为 null / 0）。 */
@@ -39,12 +43,20 @@ interface PickupVis {
   level: number
 }
 
-/** 新糖果的来源：弹出起点、延迟（等死者散架 / 开箱）与光环色。 */
+/** 新糖果的来源：弹出起点、延迟（等死者散架 / 开箱）、光环色与弧线（缺省 = 宝箱喷出的普通弧线）。 */
 export interface PickupOrigin {
   fromX: number
   fromZ: number
   delayMs: number
   halo: number
+  arc?: PickupArc
+}
+
+/** 抛物线弹出：飞行时长、弧顶高度（格）、半空额外放大。 */
+export interface PickupArc {
+  ms: number
+  height: number
+  pop: number
 }
 
 const KINDS = [PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack] as const
@@ -55,6 +67,27 @@ const SKILL_CANDY_CAP = 32
 const PIP_DROP = 0.24
 const PIP_GAP = 0.1
 export const PICKUP_ARC_MS = 350
+/** 宝箱喷出 / 缺省弧线。 */
+export const CHEST_ARC: PickupArc = { ms: PICKUP_ARC_MS, height: 1.3, pop: 0 }
+/** 死者爆装喷泉（原型取值，推断待验证）。 */
+export const DEATH_FOUNTAIN: PickupArc = { ms: 520, height: 2.2, pop: 0.15 }
+/** 死者 ≥ 6 帽的大号喷泉（design §3.1「死者 ≥ 6 帽更大」）。 */
+export const BIG_FOUNTAIN: PickupArc = { ms: 680, height: 3.3, pop: 0.4 }
+/** 同一死者的掉落逐颗错开喷出的间隔（毫秒）与上限（颗）。 */
+export const FOUNTAIN_STAGGER_MS = 45
+export const FOUNTAIN_STAGGER_MAX = 12
+
+/** 死者死前帽数 → 喷泉弧线。 */
+export function fountainFor(hatsBefore: number): PickupArc {
+  return hatsBefore >= KILL_JUICE.bigDropHats ? BIG_FOUNTAIN : DEATH_FOUNTAIN
+}
+
+/** 弹出途中（u = 0..1）的离地抬高与缩放：水平线性、竖直抛物线；途中略小，喷泉在弧顶附近额外放大。 */
+export function pickupArcPose(u: number, arc: PickupArc): { lift: number; scale: number } {
+  const k = Math.max(0, Math.min(1, u))
+  const hump = 4 * k * (1 - k)
+  return { lift: arc.height * hump + 0.4 * (1 - k), scale: 0.7 + 0.3 * k + arc.pop * hump }
+}
 
 export class PickupLayer {
   private readonly candies: Batch[]
@@ -111,6 +144,7 @@ export class PickupLayer {
           fromZ: o ? o.fromZ : z,
           arc: !!o && (o.fromX !== x || o.fromZ !== z || o.delayMs > 0),
           halo: o ? o.halo : -1,
+          flight: o?.arc ?? CHEST_ARC,
           protUntil: p.protectedUntilTick ?? 0,
           skill: null,
           level: 0,
@@ -156,15 +190,16 @@ export class PickupLayer {
           continue
         }
         s = 1 - u
-      } else if (v.arc && now - v.born < PICKUP_ARC_MS) {
-        // 从来源格抛出：水平线性、竖直抛物线，途中略小。
-        const u = (now - v.born) / PICKUP_ARC_MS
+      } else if (v.arc && now - v.born < v.flight.ms) {
+        // 从来源格抛出：水平线性、竖直抛物线（死者掉落是更高的喷泉，ADR 0043）。
+        const u = (now - v.born) / v.flight.ms
         px = v.fromX + (v.x - v.fromX) * u
         pz = v.fromZ + (v.z - v.fromZ) * u
-        lift = 1.3 * 4 * u * (1 - u) + 0.4 * (1 - u)
-        s = 0.7 + 0.3 * u
+        const pose = pickupArcPose(u, v.flight)
+        lift = pose.lift
+        s = pose.scale
       } else {
-        const since = now - v.born - (v.arc ? PICKUP_ARC_MS : 0)
+        const since = now - v.born - (v.arc ? v.flight.ms : 0)
         s = v.arc ? 1 + 0.18 * Math.sin(Math.PI * clamp01(since / 200)) : 0.2 + 0.8 * easeOutBack(clamp01(since / 260))
       }
       const bob = Math.sin(t * 2.4 + v.id) * 0.06

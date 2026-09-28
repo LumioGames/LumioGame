@@ -11,8 +11,9 @@ import {
 } from '../contract'
 import { BombStatusWatch } from '../present/bomb-status'
 import type { FeedSample } from '../present/feed'
+import { KillJuice, killPitchRatio, settleHoldTicks, type JuiceResult, type KillInfo } from '../present/kill-juice'
 import { cellCenter } from '../shared/grid'
-import { CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localIsWinner, SkillCueWatch } from './cues'
+import { coinCascadeCount, CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localBombHits, localIsWinner, SkillCueWatch } from './cues'
 import { chainDelaySec, RateLimiter, spatialize } from './mixing'
 import { musicMode, MusicSequencer } from './music'
 import * as sfx from './sounds'
@@ -75,6 +76,19 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
   let lastBrick: Uint8Array | null = null
   let lastRev = -1
   let lastMatch = -1
+  /** 击杀手感（ADR 0043）：击杀音音高级数、整局最后一杀。静音时也照常吃事件，解除静音后音高接得上。 */
+  let juice: KillJuice | null = null
+  let juiceMatch = -1
+
+  const trackJuice = (sample: FeedSample, me: U64): JuiceResult | null => {
+    const snap = sample.curr
+    juice ??= new KillJuice({ localId: me, tickRateHz: snap.match.tickRateHz })
+    if (snap.match.matchIndex !== juiceMatch) {
+      juiceMatch = snap.match.matchIndex
+      juice.reset()
+    }
+    return sample.dueEvents.length ? juice.consume(sample.dueEvents) : null
+  }
 
   const posOf = (snap: WorldSnapshot, id: U64): { x: number; z: number } | null => {
     const p = snap.Players.find((q) => q.NetEntityIdRaw === id)
@@ -99,9 +113,12 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     return null
   }
 
-  const run = (s: Synth, sample: FeedSample, me: U64): void => {
+  const run = (s: Synth, sample: FeedSample, me: U64, jr: JuiceResult | null): void => {
     const t0 = s.now() + 0.01
     const snap = sample.curr
+    const rate = snap.match.tickRateHz
+    const kills = new Map<string, KillInfo>()
+    for (const k of jr?.kills ?? []) kills.set(`${k.tick}:${k.victim}`, k)
     const listener = posOf(snap, me) ?? { x: snap.Terrain.size / 2, z: snap.Terrain.size / 2 }
     const at = (x: number, z: number, scale = 1, delay = 0): sfx.Placement => {
       const sp = spatialize(x - listener.x, z - listener.z)
@@ -143,6 +160,8 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       }
       lastHit.set(v, cues.reduce((m, c) => Math.max(m, c.delay), 0))
     }
+    // 命中音（design §3.1 命中）：自己的炸弹打到别人，跟那一击的连锁节奏。
+    for (const h of localBombHits(sample.dueEvents, me)) sfx.hitConfirm(s, here(0.7, h.delay))
 
     // ---- 一次性事件 ----
     const chains = new Map<U64, BombExploded[]>()
@@ -170,6 +189,12 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           // 倒台：死的是帽王、且死前帽塔够光柱阈值（与 HUD 倒台横幅同口径）。
           const hats = sample.prev.Players.find((p) => p.NetEntityIdRaw === e.VictimNetEntityIdRaw)?.BomberPlayerState.HatCount ?? 0
           if (prevKing !== 0 && e.VictimNetEntityIdRaw === prevKing && hats >= minHats) sfx.kingFall(s, here(0.8, 0.15))
+          // 本人击杀的专属音：8 秒内连杀音高递增（ADR 0043）。
+          const ki = kills.get(`${e.Tick}:${e.VictimNetEntityIdRaw}`)
+          if (ki && ki.killer === me) sfx.killConfirm(s, here(1, d + 0.02), killPitchRatio(ki.pitchStep))
+          // 大爆装（死者 ≥ 6 帽）：掉落喷出时一串金币声。
+          const coins = coinCascadeCount(hats, e.proto?.HatsLost)
+          if (coins > 0) sfx.coinCascade(s, e.VictimNetEntityIdRaw === me ? here(0.8, d + 0.2) : cellAt(e.Cell.X, e.Cell.Y, 1, d + 0.2), coins)
           break
         }
         case 'PlayerRespawned':
@@ -261,12 +286,16 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           sfx.cureChime(s, e.NetEntityIdRaw === me ? here(0.8, 0.1) : p ? at(p.x, p.z, 0.35, 0.1) : here(0.2, 0.1))
           break
         }
-        case 'MatchEnded':
+        case 'MatchEnded': {
           // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
-          matchEndedTick = e.Tick
-          sfx.victoryFanfare(s, t0 + 0.05, localIsWinner(snap, me))
-          sfx.applause(s, t0 + APPLAUSE_AFTER_SEC, () => Math.random())
+          // 局是被一记击杀终结的：领奖台晚一个慢镜时长开（ADR 0043），号角与音乐同样顺延。
+          const holdTicks = jr?.finalKill ? settleHoldTicks(rate) : 0
+          const hold = holdTicks / rate
+          matchEndedTick = e.Tick + holdTicks
+          sfx.victoryFanfare(s, t0 + 0.05 + hold, localIsWinner(snap, me))
+          sfx.applause(s, t0 + APPLAUSE_AFTER_SEC + hold, () => Math.random())
           break
+        }
         default:
           break
       }
@@ -325,7 +354,6 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     }
 
     // ---- 持续音：引信嘶嘶、危险提示、心跳、倒计时 ----
-    const rate = snap.match.tickRateHz
     const dangerTicks = Math.ceil(0.4 * rate)
     let hiss = 0
     const alive = new Set<U64>()
@@ -427,6 +455,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       if (!on) seq.setMode('silent')
     },
     update(sample: FeedSample, localPlayerId: U64) {
+      const jr = trackJuice(sample, localPlayerId)
       if (!synth || sample.frozen) return
       if (muted) {
         synth.setHiss(0)
@@ -436,7 +465,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         lastRev = -1
         return
       }
-      run(synth, sample, localPlayerId)
+      run(synth, sample, localPlayerId, jr)
     },
     ui(kind: 'select' | 'confirm') {
       if (!synth || muted) return

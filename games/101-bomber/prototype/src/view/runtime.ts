@@ -2,6 +2,7 @@ import { BoxGeometry, Color, Group, IcosahedronGeometry, Mesh, Quaternion, Vecto
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import {
   BlockType,
+  DeathCause,
   MatchPhase,
   msToTicks,
   skillParams,
@@ -13,6 +14,7 @@ import {
   type WorldSnapshot,
 } from '../contract'
 import type { FeedSample } from '../present/feed'
+import { juiceEnabled, KILL_JUICE, KillJuice, settleHoldTicks } from '../present/kill-juice'
 import { COMBO_FORM, SKILL_COLOR } from '../present/skill-style'
 import { cellOf } from '../shared/grid'
 import { CameraRig } from './camera'
@@ -58,7 +60,7 @@ import { Doll, DollFactory, type DollFx } from './world/dolls'
 import { FireCellLayer, type FireOwner } from './world/fire-cells'
 import { GroundMarks } from './world/ground-marks'
 import { HatRenderer } from './world/hat-stack'
-import { PickupLayer, type PickupOrigin } from './world/pickups'
+import { FOUNTAIN_STAGGER_MAX, FOUNTAIN_STAGGER_MS, fountainFor, PickupLayer, type PickupOrigin } from './world/pickups'
 import { PODIUM_ORDER, PodiumStage } from './world/podium'
 import { BombPreview } from './world/preview'
 import { RingFog } from './world/ring-fog'
@@ -76,6 +78,9 @@ import { TerrainView3D, type RemovedBrick } from './world/terrain'
  * 原型扩展（NON-CONTRACT，ADR 0030 / 0031 / 0032）：角色技能（泡泡 / 冰块 / 组合技形态 / 闪现拖尾 / 火焰光环与火墙 /
  * 被踢炸弹 / 冰冻穿透弹 / 技能糖）、领奖台按 match.results（D2 活到最后者赢）、1×1 决赛圈正中辉光、玩偶脚印 0.7 格。
  * 这些都只读快照里的可选字段，缺席时退化为第 3 轮的表现。
+ * 击杀手感（ADR 0043，present/kill-juice）：本人击杀 → 玩偶散架那一刻定帧 70 ms + 镜头冲击；自己的炸弹打到别人 → 受害者头顶「−1」心形飘字；
+ * 死者掉落是逐颗错开的爆装喷泉（≥ 6 帽更高更大）；整局最后一杀 → 本地慢镜 0.6 秒（0.3×，只缩放表现时钟），领奖台晚同样时长再开。
+ * 定帧与慢镜受震动强度设置控制（为 0 时关掉），镜头冲击由镜头按强度缩放。
  */
 
 interface PendingBlast {
@@ -106,6 +111,12 @@ interface HitRecord {
   bomb: number
   chain: number
   tick: number
+  /** 投弹者（命中飘字只给本机炸弹打到别人的那一击）。 */
+  owner: number
+  /** 扣了几个半心点。 */
+  points: number
+  /** 是炸弹的爆炸命中（毒圈 / 燃烧 / 中毒弹毒发 / 溺水不是）。 */
+  bombHit: boolean
 }
 
 interface DeathRecord {
@@ -114,6 +125,8 @@ interface DeathRecord {
   z: number
   tick: number
   burstAt: number
+  /** 死前帽数（爆装喷泉大小，ADR 0043）。 */
+  hats: number
 }
 
 const FRAG_COLORS_CRATE = [0xc98f5a, 0x9e6a3c, 0xd49c66]
@@ -128,6 +141,10 @@ const HEAL_TEXT = (hearts: number): string => `+${hearts} 心`
 /** 中招飘字（原型扩展 NON-CONTRACT，ADR 0033）。 */
 const TOXIN_TEXT = '中毒'
 const SHOCK_TEXT = '麻痹'
+/** 命中飘字（design §3.1 命中，ADR 0043）：心形图标 +「−1」。 */
+const HURT_TEXT = (hearts: number): string => `−${hearts}`
+/** 本人击杀等不到玩偶散架时刻时，最多等这么久（毫秒）就地演定帧与冲击。 */
+const KILL_JUICE_WAIT_MS = 250
 
 interface PodiumActor extends PodiumSpot {
   doll: Doll
@@ -278,12 +295,21 @@ export class ViewRuntime {
   private readonly towerH = new Map<number, number>()
   private kingX = 0
   private kingZ = 0
+  /** 击杀手感（ADR 0043）：与 HUD / 音频同一套连杀与最后一杀判定。 */
+  private readonly juice: KillJuice
+  /** 本人刚击杀、等玩偶散架时刻再演定帧与冲击的死者。 */
+  private pendingKills: { victim: number; since: number }[] = []
+  /** 本帧新出现的死者掉落：每位死者已排了几颗（喷泉逐颗错开）。 */
+  private readonly dropSeq = new Map<number, number>()
+  /** 整局最后一杀后领奖台延后开场的 Tick 数（= 慢镜时长）；其余局为 0。 */
+  private ceremonyHold = 0
 
   constructor(private readonly opts: ViewOptions) {
     const { config } = opts
     this.size = config.mapSize
     this.tickMs = 1000 / config.tickRateHz
     this.perHeart = config.healthPointsPerHeart
+    this.juice = new KillJuice({ localId: opts.localPlayerId, tickRateHz: config.tickRateHz })
     this.host = new RendererHost(opts.container)
     this.rig = createSceneRig(this.host.renderer, this.size / 2)
     this.cam = new CameraRig(this.size)
@@ -405,7 +431,9 @@ export class ViewRuntime {
 
     if (s.curr !== this.lastCurr) this.onFrame(s.prev, s.curr, now)
     this.onEvents(s.dueEvents, now)
+    this.onJuice(s, now)
     this.triggerDue(s.renderTick, now, s.curr)
+    this.flushKillJuice(now)
     this.updateCeremonyState(s, now, realDt)
     this.timeline.run(now)
 
@@ -516,6 +544,7 @@ export class ViewRuntime {
       })
     }
 
+    this.dropSeq.clear()
     this.pickups.sync(curr.Pickups, now, silent ? undefined : this.pickupOrigin)
     // 死者新掉出的强化（快照 droppedBy）：死亡飞帽的落点。
     const known = new Set<number>()
@@ -551,7 +580,8 @@ export class ViewRuntime {
         const died = hp <= 0 && prevHp > 0
         this.pendingHits.push({ id, tick: curr.Tick, died })
         if (died) {
-          this.deaths.push({ id, x: p.LogicTransform.WorldPosition.x, z: p.LogicTransform.WorldPosition.z, tick: curr.Tick, burstAt: Number.POSITIVE_INFINITY })
+          const hats = Math.max(p.BomberPlayerState.HatCount, this.prevMap.get(id)?.BomberPlayerState.HatCount ?? 0, this.lastHats.get(id) ?? 0)
+          this.deaths.push({ id, x: p.LogicTransform.WorldPosition.x, z: p.LogicTransform.WorldPosition.z, tick: curr.Tick, burstAt: Number.POSITIVE_INFINITY, hats })
         }
       }
       if (prevHp === undefined && (hp <= 0 || p.eliminated)) doll.hide()
@@ -615,7 +645,10 @@ export class ViewRuntime {
     if (this.chainHints.size > 512) this.chainHints.clear()
   }
 
-  /** 新糖果从哪来：死者掉落 → 从死者身上沿抛物线弹出 + 死者颜色光环；宝箱喷出 → 从刚开的宝箱弹出。 */
+  /**
+   * 新糖果从哪来：死者掉落 → 从死者身上沿抛物线喷出（爆装喷泉：逐颗错开，死者 ≥ 6 帽更高更大，ADR 0043）+ 死者颜色光环；
+   * 宝箱喷出 → 从刚开的宝箱弹出。
+   */
   private readonly pickupOrigin = (p: PickupView): PickupOrigin | null => {
     const x = p.LogicTransform.WorldPosition.x
     const z = p.LogicTransform.WorldPosition.z
@@ -627,7 +660,17 @@ export class ViewRuntime {
       const fromX = death ? death.x : victim ? victim.LogicTransform.WorldPosition.x : x
       const fromZ = death ? death.z : victim ? victim.LogicTransform.WorldPosition.z : z
       const burst = death && Number.isFinite(death.burstAt) ? death.burstAt : this.lastViewNow + 150
-      return { fromX, fromZ, delayMs: Math.max(0, burst - this.lastViewNow) + 40, halo: victim ? slotColor(victim.meta.slot) : 0xffffff }
+      const seq = this.dropSeq.get(by) ?? 0
+      this.dropSeq.set(by, seq + 1)
+      const stagger = Math.min(seq, FOUNTAIN_STAGGER_MAX) * FOUNTAIN_STAGGER_MS
+      const hats = death?.hats ?? this.lastHats.get(by) ?? 0
+      return {
+        fromX,
+        fromZ,
+        delayMs: Math.max(0, burst - this.lastViewNow) + 40 + stagger,
+        halo: victim ? slotColor(victim.meta.slot) : 0xffffff,
+        arc: fountainFor(hats),
+      }
     }
     for (const c of this.chestDiff.opened) {
       if (Math.abs(c.x - x) + Math.abs(c.z - z) <= 3.01) return { fromX: c.x, fromZ: c.z, delayMs: 60 + 180, halo: -1 }
@@ -672,6 +715,10 @@ export class ViewRuntime {
     this.localLanding = null
     this.fire.clear()
     this.skillFx.clear()
+    this.juice.reset()
+    this.pendingKills = []
+    this.dropSeq.clear()
+    this.ceremonyHold = 0
   }
 
   private addDropCell(victim: number, x: number, z: number): void {
@@ -688,9 +735,19 @@ export class ViewRuntime {
         case 'BombExploded':
           if (e.proto) this.chainHints.set(e.proto.BombNetEntityIdRaw, e.proto.IndexInChain)
           break
-        case 'DamageApplied':
-          this.hitRecords.push({ victim: e.VictimNetEntityIdRaw, bomb: e.SourceBombNetEntityIdRaw, chain: e.ChainId, tick: e.Tick })
+        case 'DamageApplied': {
+          const cause = e.proto?.Cause
+          this.hitRecords.push({
+            victim: e.VictimNetEntityIdRaw,
+            bomb: e.SourceBombNetEntityIdRaw,
+            chain: e.ChainId,
+            tick: e.Tick,
+            owner: e.SourceBombOwnerNetEntityIdRaw,
+            points: e.proto?.Points ?? this.perHeart,
+            bombHit: e.SourceBombNetEntityIdRaw !== 0 && (cause === undefined || cause === DeathCause.Bomb),
+          })
           break
+        }
         case 'PickupSpawned':
           // 死者掉出的强化：飞帽落点（与快照 droppedBy 推出的同格会去重）。
           if (e.Source === 'death' && e.DroppedByNetEntityIdRaw !== 0) this.addDropCell(e.DroppedByNetEntityIdRaw, e.Cell.X + 0.5, e.Cell.Y + 0.5)
@@ -747,6 +804,41 @@ export class ViewRuntime {
           break
       }
     }
+  }
+
+  // ---------------------------------------------------------------- 击杀手感（ADR 0043）
+
+  /**
+   * 到期事件里的击杀：本人击杀排进「等散架时刻」；整局最后一杀 → 本地慢镜（震动强度为 0 时不慢放）+ 领奖台延后同样时长。
+   */
+  private onJuice(s: FeedSample, now: number): void {
+    if (s.dueEvents.length === 0) return
+    const jr = this.juice.consume(s.dueEvents)
+    const localId = this.opts.localPlayerId
+    for (const k of jr.kills) if (k.killer === localId && k.victim !== localId) this.pendingKills.push({ victim: k.victim, since: now })
+    if (jr.finalKill) {
+      this.ceremonyHold = settleHoldTicks(this.opts.config.tickRateHz)
+      if (juiceEnabled(this.opts.settings.shake)) s.slowMo(KILL_JUICE.slowMoMs, KILL_JUICE.slowMoScale)
+    }
+  }
+
+  /** 本人击杀：在死者玩偶散架那一刻定帧 70 ms + 镜头冲击（找不到散架时刻就在稍后就地演）。 */
+  private flushKillJuice(now: number): void {
+    if (this.pendingKills.length === 0) return
+    let keep = 0
+    for (const k of this.pendingKills) {
+      let at = Number.NaN
+      for (const d of this.deaths) if (d.id === k.victim && Number.isFinite(d.burstAt)) at = d.burstAt
+      if (Number.isNaN(at) && now - k.since < KILL_JUICE_WAIT_MS) {
+        this.pendingKills[keep++] = k
+        continue
+      }
+      this.timeline.add(Number.isNaN(at) ? now : at, () => {
+        this.cam.shake(KILL_JUICE.shake)
+        if (juiceEnabled(this.opts.settings.shake)) this.opts.requestHitstop(KILL_JUICE.hitstopMs)
+      })
+    }
+    this.pendingKills.length = keep
   }
 
   // ---------------------------------------------------------------- 按 renderTick 触发
@@ -810,7 +902,8 @@ export class ViewRuntime {
           }
           if (!involved && !near) continue
           const amp = chainShakeAmplitude(sum.n) * (involved ? 1 : 0.5)
-          const stop = involved ? chainHitstopMs(sum.n) : 0
+          // 定帧受震动强度设置控制（为 0 时关掉，design §9.6）。
+          const stop = involved && juiceEnabled(this.opts.settings.shake) ? chainHitstopMs(sum.n) : 0
           this.timeline.add(now + sum.maxDelay, () => {
             this.cam.shake(amp)
             if (stop > 0) this.opts.requestHitstop(stop)
@@ -854,6 +947,11 @@ export class ViewRuntime {
             const d = this.bombDelay.get(r.bomb) ?? 0
             maxDelay = Math.max(maxDelay, d)
             this.scheduleHit(doll, now + d)
+            // 命中（design §3.1）：自己的炸弹打到别人 → 受害者头顶「−1」心形飘字。
+            if (r.bombHit && r.owner === localId && r.victim !== localId) {
+              const text = HURT_TEXT(Math.round((r.points / this.perHeart) * 10) / 10)
+              this.timeline.add(now + d, () => this.addFloat(r.victim, 'heal', text))
+            }
           }
           if (!any) this.scheduleHit(doll, now)
           if (h.died) {
@@ -1254,7 +1352,8 @@ export class ViewRuntime {
   private updateCeremonyState(s: FeedSample, now: number, realDt: number): void {
     const curr = s.curr
     const ms = curr.BomberMatchState
-    const settling = ms.Phase === MatchPhase.Settlement && s.renderTick + 1e-6 >= ms.EndTick
+    // 整局最后一杀：领奖台晚 ceremonyHold 个 Tick 再开，让慢镜里的最后一杀演完（ADR 0043）。
+    const settling = ms.Phase === MatchPhase.Settlement && s.renderTick + 1e-6 >= ms.EndTick + this.ceremonyHold
     if (this.ceremony && (!settling || this.ceremony.matchIndex !== curr.match.matchIndex)) this.endCeremony()
     if (!this.ceremony && settling && this.lastCeremonyMatch !== curr.match.matchIndex && curr.Players.length > 0) {
       this.beginCeremony(curr, s.renderTick, now)
@@ -1279,7 +1378,7 @@ export class ViewRuntime {
   }
 
   private beginCeremony(curr: WorldSnapshot, renderTick: number, now: number): void {
-    const t0 = Math.max(0, ((renderTick - curr.BomberMatchState.EndTick) * this.tickMs) / 1000)
+    const t0 = Math.max(0, ((renderTick - curr.BomberMatchState.EndTick - this.ceremonyHold) * this.tickMs) / 1000)
     this.ceremony = { matchIndex: curr.match.matchIndex, startNow: now - t0 * 1000, actors: [], sig: '', nextConfetti: 0, popper: 0, rainSlot: -1 }
     this.castCeremony(this.ceremony, curr, t0)
     this.lastCeremonyMatch = curr.match.matchIndex
