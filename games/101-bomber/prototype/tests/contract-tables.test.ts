@@ -136,7 +136,7 @@ describe('skills table', () => {
     expect(skillParams(SKILLS, 'regen', 1)).toMatchObject({ intervalMs: 20000, points: 1 })
     expect(skillParams(SKILLS, 'fireDash', 1)).toMatchObject({ rangeCells: 3, cdMs: 12000, durationMs: 2000 })
     expect(skillParams(SKILLS, 'bounceBubble', 1)).toMatchObject({ durationMs: 3000, cdMs: 18000, rangeCells: 5 })
-    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 1000, pierceLayers: 1 })
+    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 2000, pierceLayers: 1 })
   })
 
   it('L1–L3 table is the contract table (RESOLUTIONS #8)', () => {
@@ -150,7 +150,7 @@ describe('skills table', () => {
     expect(col('regen', 'intervalMs')).toEqual([20000, 16000, 12000])
     expect(col('regen', 'points')).toEqual([1, 1, 1])
     expect(col('kick', 'rangeCells')).toEqual([3, 5, 99])
-    expect(col('freezeBomb', 'freezeMs')).toEqual([800, 1000, 1200])
+    expect(col('freezeBomb', 'freezeMs')).toEqual([1500, 2000, 2500])
     expect(col('pierceBomb', 'pierceLayers')).toEqual([1, 2, 99])
     // 等级夹到 [1, 表长]。
     expect(skillParams(SKILLS, 'bubble', 0)).toBe(skillParams(SKILLS, 'bubble', 1))
@@ -179,7 +179,7 @@ describe('skills table', () => {
     expect(describeSkill(r, cfg, 'kick', 3)).toContain('直到被挡')
     expect(describeSkill(r, cfg, 'regen', 1)).toBe('受伤后 20 秒没再挨打回 0.5 心，之后每 20 秒再回，满血为止')
     expect(describeSkill(r, cfg, 'fireAura', 1)).toContain('−1 心')
-    expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('1')
+    expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('2 秒')
     for (const id of SKILL_IDS) for (let l = 1; l <= 3; l++) expect(describeSkill(r, cfg, id, l)).not.toMatch(/\{\w+\}/)
     // ADR 0033：中毒节拍来自 rules（没给则退化为「持续掉血」）；麻痹写百分比。
     const rt = { ...r, toxinIntervalMs: 1000, toxinPointsPerInterval: 1 }
@@ -283,7 +283,7 @@ describe('skill rules data (ADR 0030)', () => {
     expect(DEFAULT_RULES.skillCandyLevel).toBe(1)
     expect(DEFAULT_RULES.burnIntervalMs).toBe(1000)
     expect(DEFAULT_RULES.burnPointsPerInterval).toBe(2)
-    expect(DEFAULT_RULES.freezeCapMs).toBe(1200)
+    expect(DEFAULT_RULES.freezeCapMs).toBe(2500)
     expect(DEFAULT_RULES.freezeBombDamages).toBe(true)
     // ADR 0033：宝箱技能糖保底炸弹类；中毒每 2000 ms −1 点（用户 2026-09-28 两次削弱，原 1000 ms）。
     expect(DEFAULT_RULES.chestSkillCandyPool).toBe('bomb')

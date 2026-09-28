@@ -162,10 +162,10 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     // 踢弹：3 格 / 5 格 / 直到障碍，8 格 / 秒（design §8.4 ★ 踢弹）。
     expect(col('kick', 'rangeCells')).toEqual([3, 5, UNTIL_BLOCKED])
     expect(R.kickSpeedMilli).toBe(8000)
-    // 冰冻弹：冻结 0.8 / 1.0 / 1.2 s，上限 1.2 s，之后 1 秒控制免疫；照常扣血（ADR 0030 Q1 裁定，design §8.4 ★ 冰冻弹）。
-    expect(col('freezeBomb', 'freezeMs')).toEqual([800, 1000, 1200])
+    // 冰冻弹：冻结 1.5 / 2.0 / 2.5 s，上限 2.5 s（用户 2026-09-28「冰冻僵直有点弱」，原 0.8 / 1.0 / 1.2），之后 1 秒控制免疫；照常扣血（ADR 0030 Q1 裁定）。
+    expect(col('freezeBomb', 'freezeMs')).toEqual([1500, 2000, 2500])
     expect(SKILLS.freezeBomb.bombKind).toBe(BombKind.Freeze)
-    expect(R.freezeCapMs).toBe(1200)
+    expect(R.freezeCapMs).toBe(2500)
     expect(R.freezeImmuneMs).toBe(1000)
     expect(R.freezeBombDamages).toBe(true)
     // 穿透弹：多穿 1 层 / 2 层 / 全线（design §8.4 ★ 穿透弹）。
@@ -204,8 +204,8 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     expect(skillParams(SKILLS, 'fireDash', 1)).toMatchObject({ rangeCells: 3, durationMs: 2000, cdMs: 12_000 })
     // 弹射泡泡：持续 3 s；踢 5 格；CD 18 s。
     expect(skillParams(SKILLS, 'bounceBubble', 1)).toMatchObject({ durationMs: 3000, rangeCells: 5, cdMs: 18_000 })
-    // 冰川弹：冻结 1 s；穿 1 层；契约 BombKind = 1（Freeze）。
-    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 1000, pierceLayers: 1 })
+    // 冰川弹：冻结 2 s（随冰冻弹加强，用户 2026-09-28，原 1 s）；穿 1 层；契约 BombKind = 1（Freeze）。
+    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 2000, pierceLayers: 1 })
     expect(SKILLS.glacierBomb.bombKind).toBe(BombKind.Freeze)
   })
 

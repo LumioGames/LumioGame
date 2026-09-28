@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MatchPhase, PickupKind, type BomberEvent } from '../../contract'
 import { PersonalBestStore, type BestStorage } from '../../present/personal-best'
-import { HudBrain, knockoutText, streakBanner, type HudMoment, type SettlementResults } from '../hud-brain'
+import { HudBrain, knockoutText, othersStreakBanner, streakBanner, type HudMoment, type SettlementResults } from '../hud-brain'
 import { batch, died, exploded, ME, snap } from './fixtures'
 
 /** 击杀手感在 HUD 上的落点（design §3.1 单杀 / 连杀 / 连锁，§13 高光卡 / 个人最佳，ADR 0043）。 */
@@ -46,6 +46,14 @@ describe('knockoutText / streakBanner', () => {
     expect(streakBanner([{ ...k, rapidLabel: '三杀', spreeLabel: null }])).toEqual({ title: '三杀！', sub: '8 秒内击飞 3 人' })
     expect(streakBanner([{ ...k, rapid: 1, rapidLabel: null, spreeLabel: '大杀特杀' }])).toEqual({ title: '大杀特杀！', sub: '不死连杀 3 人' })
     expect(streakBanner([{ ...k, rapidLabel: null, spreeLabel: null }])).toBeNull()
+  })
+
+  it('others: 三杀+ window streaks and every spree get a named banner; 双杀 stays a kill-feed badge only (user 2026-09-28)', () => {
+    const k = { tick: 1, killer: 7, victim: 2, chainId: 1, rapid: 3, spree: 3, pitchStep: 2 }
+    expect(othersStreakBanner({ ...k, rapidLabel: '三杀', spreeLabel: '大杀特杀' }, '火焰熊')).toEqual({ title: '火焰熊 大杀特杀！', sub: '不死连杀 3 人' })
+    expect(othersStreakBanner({ ...k, rapidLabel: '三杀', spreeLabel: null }, '火焰熊')).toEqual({ title: '火焰熊 三杀！', sub: '8 秒内击飞 3 人' })
+    expect(othersStreakBanner({ ...k, rapid: 2, spree: 2, rapidLabel: '双杀', spreeLabel: null }, '火焰熊')).toBeNull()
+    expect(othersStreakBanner({ ...k, rapidLabel: null, spreeLabel: null }, '火焰熊')).toBeNull()
   })
 })
 
@@ -96,7 +104,7 @@ describe('HudBrain · 连杀横幅与击杀栏', () => {
     expect(b.killFeed.entries()[0].badge).toBe('双杀')
   })
 
-  it('不死连杀 3 → 大杀特杀 even when the kills are far apart; others get the feed badge but no banner', () => {
+  it('不死连杀 3 → 大杀特杀 even when the kills are far apart; others get the feed badge and a named banner (user 2026-09-28)', () => {
     const b = newBrain()
     started(b)
     b.consume(batch(5, [died(5, 3, ME, 40, 0)]))
@@ -108,7 +116,9 @@ describe('HudBrain · 连杀横幅与击杀栏', () => {
     o.consume(batch(5, [died(5, 3, 6, 40, 0)]))
     o.consume(batch(400, [died(400, 4, 6, 41, 0)]))
     const om = o.consume(batch(800, [died(800, 5, 6, 42, 0)]))
-    expect(streaks(om)).toEqual([])
+    expect(streaks(om)).toHaveLength(1)
+    expect(streaks(om)[0]).toMatchObject({ mine: false, sub: '不死连杀 3 人' })
+    expect(streaks(om)[0].title).toMatch(/ 大杀特杀！$/)
     expect(o.killFeed.entries()[0].badge).toBe('大杀特杀')
   })
 

@@ -196,7 +196,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     bombKind: BombKind.Freeze,
     candyWeight: 2,
     endsProtection: false,
-    levels: [lv({ freezeMs: 800 }), lv({ freezeMs: 1000 }), lv({ freezeMs: 1200 })],
+    // 用户 2026-09-28 试玩反馈「冰冻僵直有点弱」：0.8 / 1.0 / 1.2 → 1.5 / 2.0 / 2.5 秒（推断待验证）。
+    levels: [lv({ freezeMs: 1500 }), lv({ freezeMs: 2000 }), lv({ freezeMs: 2500 })],
     desc: '炸到的对手还会被冻住 {freeze} 秒',
     src: '引用 design §8.4 冰冻弹（0.8 / 1.0 / 1.2 秒）；照常伤害 = 第 4 轮 Q1 裁定（freezeBombDamages，推断待验证）；糖池权重 2 = ADR 0033（推断待验证）',
   },
@@ -242,7 +243,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     bombKind: BombKind.Freeze,
     candyWeight: 0,
     endsProtection: false,
-    levels: [lv({ freezeMs: 1000, pierceLayers: 1 })],
+    // 冰川弹冻结随冰冻弹加强：1.0 → 2.0 秒（用户 2026-09-28）。
+    levels: [lv({ freezeMs: 2000, pierceLayers: 1 })],
     desc: '火焰多穿透 {layers}，炸到的对手还会被冻住 {freeze} 秒',
     src: '推断待验证：用户第 4 轮（冰冻弹 + 穿透弹）',
   },

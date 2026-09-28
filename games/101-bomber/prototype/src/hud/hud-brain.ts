@@ -194,6 +194,17 @@ export function streakBanner(kills: readonly KillInfo[]): { title: string; sub: 
   return null
 }
 
+/**
+ * 别人的连杀横幅（用户 2026-09-28 反馈「没看到有连杀」：只给本人看、击杀栏标签又太小）。
+ * 播三杀及以上的窗口连杀与大杀特杀 / 主宰 / 超神；双杀只留击杀栏标签，免得横幅刷屏。
+ * 同一击杀者同批只播最后一条；不死连杀称号优先。本人的由 {@link streakBanner} 负责。
+ */
+export function othersStreakBanner(k: KillInfo, killerName: string): { title: string; sub: string } | null {
+  if (k.spreeLabel) return { title: `${killerName} ${k.spreeLabel}！`, sub: `不死连杀 ${k.spree} 人` }
+  if (k.rapidLabel && k.rapid >= 3) return { title: `${killerName} ${k.rapidLabel}！`, sub: `8 秒内击飞 ${k.rapid} 人` }
+  return null
+}
+
 /** 多杀文案（design §3.1）。 */
 export function multiKillLabel(kills: number): string | null {
   if (kills >= 4) return '一锅端'
@@ -582,6 +593,12 @@ export class HudBrain {
     for (const m of juice.chainMilestones) this.popup(out, `milestone:${m.bombs}`, 'milestone', m.label, 4)
     const streak = streakBanner(juice.kills.filter((k) => k.killer === me))
     if (streak) out.push({ kind: 'banner', tone: 'streak', mine: true, ...streak })
+    const othersLast = new Map<U64, KillInfo>()
+    for (const k of juice.kills) if (k.killer !== me && (k.spreeLabel || k.rapidLabel)) othersLast.set(k.killer, k)
+    for (const [killer, k] of othersLast) {
+      const b = othersStreakBanner(k, this.nameOf(killer))
+      if (b) out.push({ kind: 'banner', tone: 'streak', mine: false, ...b })
+    }
 
     // ---- 4. 快照规则 ----
     const snap = batch.snapshot

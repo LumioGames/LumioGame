@@ -23,16 +23,16 @@ function freezeWorld(rules = {}) {
 }
 
 describe('freeze bomb', () => {
-  it('BOMB with freezeBomb L1 in the bomb slot places a Freeze bomb with 16 freeze ticks; the snapshot shows it', () => {
+  it('BOMB with freezeBomb L1 in the bomb slot places a Freeze bomb with 30 freeze ticks (1.5 s, user 2026-09-28); the snapshot shows it', () => {
     const w = makeWorld()
     put(w, 1, 5, 5)
     put(w, 2, 13, 13)
     giveSkill(w, 1, 'freezeBomb', 1)
     const f = step(w, { 1: [BOMB] })
-    expect(w.bombs[0]).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 16, pierceLayers: 0 })
+    expect(w.bombs[0]).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 30, pierceLayers: 0 })
     expect(f.snapshot.Bombs[0].BomberBombState).toMatchObject({ BombKind: BombKind.Freeze, PierceLayers: 0 })
     giveSkill(w, 1, 'freezeBomb', 3)
-    expect(w.ticks.skills.freezeBomb[2].freeze).toBe(24)
+    expect(w.ticks.skills.freezeBomb[2].freeze).toBe(50)
   })
 
   it('damages, then freezes the survivor: inputs of T+1..T+16 ignored, moves again at T+17', () => {
@@ -257,7 +257,7 @@ describe('pierce bomb', () => {
 })
 
 describe('glacier bomb', () => {
-  it('freezes 20 ticks, pierces 1 layer, and (Q1) deals damage', () => {
+  it('freezes 40 ticks (2 s, user 2026-09-28), pierces 1 layer, and (Q1) deals damage', () => {
     const w = makeWorld({ players: 3 })
     put(w, 1, 1, 17)
     const v = put(w, 2, 5, 1)
@@ -268,14 +268,14 @@ describe('glacier bomb', () => {
     ])
     step(w, { 1: [BOMB] })
     const b = w.bombs[0]
-    expect(b).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 20, pierceLayers: 1 })
+    expect(b).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 40, pierceLayers: 1 })
     setBrick(w, 3, 1, BlockType.积木)
     Object.assign(b, { cell: cell(w, 1, 1), power: 4, fuseEndTick: w.t + 1 })
     const f = step(w)
     expect(b.covered).toContain(cell(w, 3, 1))
     expect(evs(f, 'DamageApplied')).toMatchObject([{ VictimNetEntityIdRaw: 2 }])
-    expect(evs(f, 'PlayerFrozen')).toMatchObject([{ VictimNetEntityIdRaw: 2, UntilTick: w.t + 21 }])
-    expect(v.frozenUntilTick).toBe(w.t + 21)
+    expect(evs(f, 'PlayerFrozen')).toMatchObject([{ VictimNetEntityIdRaw: 2, UntilTick: w.t + 41 }])
+    expect(v.frozenUntilTick).toBe(w.t + 41)
     expect(player(w, 1).frozenUntilTick).toBe(0)
   })
 })

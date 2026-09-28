@@ -459,7 +459,8 @@ export const DEFAULT_RULES: ProtoRules = {
   skillDeathDropPermille: 500,
   burnIntervalMs: 1000,
   burnPointsPerInterval: 2,
-  freezeCapMs: 1200,
+  // 随冰冻弹加强（用户 2026-09-28）：1200 → 2500 ms。
+  freezeCapMs: 2500,
   freezeImmuneMs: 1000,
   freezeBombDamages: true,
   kickSpeedMilli: 8000,
