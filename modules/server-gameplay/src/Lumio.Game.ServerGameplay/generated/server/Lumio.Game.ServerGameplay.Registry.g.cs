@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Ecs.Annotations;
+using Lumio.GameRuntime.Gas;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
 using Lumio.Game.ServerGameplay;
 using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
@@ -19,8 +20,17 @@ public sealed class GeneratedRegistry : EcsRegistry
     static GeneratedRegistry()
     {
         WireCodec.RegisterCommandMapping("chat.input", payload => WireCodec.TryReadUtf8Payload(payload, out string text) && WireCodec.StrictUtf8.GetByteCount(text) <= 512);
-        GeneratedAbilityRegistry.RegisterAll();
     }
+
+    /// <summary>Registers gameplay GAS declarations into one World-local owner.</summary>
+    public static void RegisterGasTypes(GasWorldContext context)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+        GeneratedAbilityRegistry.RegisterAll(context.Types);
+        GeneratedEffectRegistry.RegisterAll(context.Types);
+    }
+
+    public override void CreateWorldServices(World world) => RegisterGasTypes(new GasWorldContext(world));
 
     private GeneratedRegistry()
     {
@@ -80,6 +90,13 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     /// <inheritdoc />
     public override IReadOnlyList<FieldAttributeDeclaration> AttributeDeclarations { get; } = BuildAttributes();
+
+    /// <inheritdoc />
+    public override bool IsLethalAttribute(Type entityType, string attributeName)
+    {
+        if (entityType is null || attributeName is null) return false;
+        return false;
+    }
 
     /// <inheritdoc />
     public override IReadOnlyList<EcsSystemDescriptor> Systems { get; } = BuildSystems();
