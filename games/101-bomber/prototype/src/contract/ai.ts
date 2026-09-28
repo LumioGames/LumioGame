@@ -1,3 +1,4 @@
+import type { ResourceBoxTier } from './config'
 import type { SourceNote } from './skills'
 
 /**
@@ -44,16 +45,22 @@ export interface BotProfile {
    */
   ringEntry: 'late' | 'onTime'
   /**
-   * 原型扩展（NON-CONTRACT，ADR 0043）：路线进出危险格两端留的逃生余量（Tick；= bots/path-search.ts 的 margin 缺省 2）。
-   * rookie 为 0（Bot 的失误会致命）；其余档 = 现值 2，行为不变。接线归 M1-3。
+   * 原型扩展（NON-CONTRACT，ADR 0043）：Bot 给自己算路线 / 落脚时留的逃生余量（Tick）：路径搜索进出危险格两端的余量
+   * （bots/path-search.ts `margin`）、放弹自检、「到达后能待」（bots/danger-map.ts `restsAt`）与沿路复核。
+   * rookie 为 0（估计差一点就走进火里——失误会致命）；其余档 = 2，行为不变。
    */
   escapeMarginTicks: number
   /**
-   * 原型扩展（NON-CONTRACT，ADR 0043）：每颗敌方炸弹把火力看小 1 格的概率（‰）；0 = 不掷（现行为）。
-   * 随机数走新随机流（easy / normal / hard 序列不变）。接线归 M1-3。
+   * 原型扩展（NON-CONTRACT，ADR 0043）：每颗敌方炸弹在第一次看见时掷一次、把它的火力看小 1 格的概率（‰）；
+   * 只改这个 Bot 自己的危险判断（bots/perception.ts `BlastMisperception`）。0 = 不掷（现行为）。
+   * 随机数走第三随机流 rng3（easy / normal / hard 不抽，主流与 rng2 序列不变）。
    */
   misperceivePermille: number
-  /** 原型扩展（NON-CONTRACT，ADR 0043）：冒险穿危险区捡糖的概率（‰）；0 = 不掷（现行为）。接线归 M1-3。 */
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：冒险穿危险区捡糖的概率（‰）：常规拾取找不到目标时，以余量 0 的路线、
+   * 「火还要至少 BotTactics.greedyFireSlackTicks 才到」的落脚口径重跑拾取搜索；每颗糖第一次成为冒险候选时掷一次（rng3）。
+   * 0 = 不掷（现行为）。
+   */
   greedyPickupPermille: number
   src: SourceNote
 }
@@ -138,7 +145,7 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     escapeMarginTicks: 0,
     misperceivePermille: 250,
     greedyPickupPermille: 300,
-    src: '引用 ADR 0043：反应 10–16 Tick、决策间隔 3、噪声 30%、放弃进攻 50%、不用技能、逃生余量 0、25% 看小火力、30% 冒险捡糖；其余字段照抄 easy（M1-3 可调）；推断待验证',
+    src: '引用 ADR 0043：反应 10–16 Tick、决策间隔 3、噪声 30%、放弃进攻 50%、不用技能（含踢弹）、逃生余量 0、25% 看小火力、30% 冒险捡糖；其余字段照抄 easy（M1-3 维持）；推断待验证',
   },
   player: {
     reactMinTicks: 3,
@@ -238,6 +245,44 @@ export interface BotTactics {
   rabbitHurtHuntPermille: number
   /** 决赛圈内任何掉血都去找血包的最远步数。 */
   healReachSteps: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）「不围剿真人」：宿主传入的软目标（BotOptions.softTargets，真人 id）作为追击 /
+   * 近身开打目标时加的步数惩罚。
+   */
+  softTargetPenaltySteps: number
+  /** 只有离软目标最近（格曼哈顿距离，id 小者优先）的这么多个 Bot 能选他；各 Bot 从同一快照算出同一结论（无状态）。 */
+  softTargetHunters: number
+  /** 软目标离本 Bot 曼哈顿 ≤ 该格数时例外（不限、不罚）；软目标是帽王同样例外。 */
+  softTargetCloseCells: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）冒险捡糖（BotProfile.greedyPickupPermille）：糖所在格「火至少还要这么多 Tick 才到」
+   * 就算能去（常规拾取 = 永不着火；抢死者掉落 = 24）。
+   */
+  greedyFireSlackTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0039 / 0043）价值表：金心（+1 心上限、新心是满的）比强化多追的步数与同距离优先分。 */
+  goldHeartBonusSteps: number
+  goldHeartScore: number
+  /** 原型扩展（NON-CONTRACT，ADR 0040 / 0043）价值表：狂暴糖（回满血 + 6 秒有界狂暴）多追的步数与同距离优先分。 */
+  frenzyCandyBonusSteps: number
+  frenzyCandyScore: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040 / 0043）价值表：资源箱整箱的发育价值（积木 = 1、决赛圈宝箱每击 2.5）；
+   * 需要多次命中的箱按 HitsRequired 均摊到每一击。砖层是木箱却不在快照 ResourceBoxes 里的格按 wood。
+   */
+  boxValue: Readonly<Record<ResourceBoxTier, number>>
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040 / 0043）价值表：中央补给已预告（SupplyView.state 'announced'）时，路程 ≤ 该步数的 Bot
+   * 去开启点守着（开启点切比雪夫 ≤ supplyHoldCells 的可待格），开启后战利品按拾取价值抢。
+   */
+  supplyReachSteps: number
+  supplyHoldCells: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040 / 0043）价值表：狂暴中的对手 = 高威胁——追击打分加该步数、近身开打不选他；
+   * 离自己曼哈顿 ≤ frenzyFleeCells 时先去 frenzyFleeSteps 步内离他最远的可待格。
+   */
+  frenzyHuntPenaltySteps: number
+  frenzyFleeCells: number
+  frenzyFleeSteps: number
   src: SourceNote
 }
 
@@ -258,5 +303,19 @@ export const BOT_TACTICS: BotTactics = {
   candyBonusSteps: { evolve: 8, levelUp: 4, equip: 3 },
   rabbitHurtHuntPermille: 500,
   healReachSteps: 8,
-  src: '推断待验证：第 4 轮 Bot 设计 §3.1（摊牌、技能施放、技能糖价值）；lateEntryTicks 40→20、showdownRingSide 5→7 = 验收 E 调参阶梯第 3–4 级（20 种子 19/20 → 40 种子 40/40 唯一存活）；auraCastRange 1 → 2 = 第 4 轮平衡（D 验收，ADR 0034，光环持续变长后隔一格就开）',
+  softTargetPenaltySteps: 6,
+  softTargetHunters: 2,
+  softTargetCloseCells: 3,
+  greedyFireSlackTicks: 10,
+  goldHeartBonusSteps: 10,
+  goldHeartScore: 3,
+  frenzyCandyBonusSteps: 12,
+  frenzyCandyScore: 4,
+  boxValue: { wood: 1.5, iron: 3, gold: 6 },
+  supplyReachSteps: 24,
+  supplyHoldCells: 1,
+  frenzyHuntPenaltySteps: 12,
+  frenzyFleeCells: 4,
+  frenzyFleeSteps: 8,
+  src: '推断待验证：第 4 轮 Bot 设计 §3.1（摊牌、技能施放、技能糖价值）；lateEntryTicks 40→20、showdownRingSide 5→7 = 验收 E 调参阶梯第 3–4 级（20 种子 19/20 → 40 种子 40/40 唯一存活）；auraCastRange 1 → 2 = 第 4 轮平衡（D 验收，ADR 0034，光环持续变长后隔一格就开）；softTarget* 引用 ADR 0043（+6 / 最近 2 个 / 3 格）；greedyFireSlackTicks、价值表（金心 / 狂暴糖 / 资源箱 / 补给 / 狂暴威胁）= M1-3 首轮取值，boxValue.wood 1.5 = 原木箱权重',
 }
