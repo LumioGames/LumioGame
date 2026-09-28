@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BlockType } from '../../contract'
-import { createPickup } from '../pickup'
+import { brickDropPermille, createPickup } from '../pickup'
 import { addBomb, cell, evs, makeWorld, put, setBrick, setGround, step } from './helpers'
 
 /** 设计 §7 第 4、5 项：连锁 ChainId、地形阻断、Reach、帧末写入（矩阵 1.1–1.3 / 1.7 / 1.8 / 6.8）。 */
@@ -48,7 +48,8 @@ describe('explosion propagation', () => {
     const a = addBomb(w, 1, 3, 1, 1)
     const c = addBomb(w, 2, 5, 1, 1)
     const expected = w.rng.drop.clone()
-    if (expected.NextInt(0, 1000) < w.cfg.dropRatePermille) expected.NextInt(0, 100)
+    // ADR 0040：积木按所在圈的掉率掷（仍是 rng.drop 上每块一次）。
+    if (expected.NextInt(0, 1000) < brickDropPermille(w, cell(w, 4, 1))) expected.NextInt(0, 100)
     const rev = w.rev
     expect(w.brick[cell(w, 4, 1)]).toBe(BlockType.积木)
     const f = step(w)

@@ -1,4 +1,5 @@
 import { BlockType } from '../contract'
+import { maxHealthOf } from './death-drops'
 import { flameCells } from './explosion'
 import { inRect } from './final-circle'
 import { addBrickWrite } from './terrain-commit'
@@ -121,7 +122,8 @@ export function processRespawns(w: World): void {
     const choice = findRespawnCell(w, p)
     for (const c of choice.clears) addBrickWrite(w, c, w.brick[c] as BlockType, 0, 0)
     p.awaitingRespawn = false
-    p.health = w.cfg.maxHealthPoints
+    // 原型扩展（NON-CONTRACT，ADR 0039）：满血 = 本人当前心数上限（死亡掉落已在前面的 Tick 扣完）。
+    p.health = maxHealthOf(w, p)
     p.protectedUntilTick = t + w.ticks.protection
     placePlayerAt(w, p, choice.cell)
     emit(w, { type: 'PlayerRespawned', NetEntityIdRaw: p.id, Cell: cellOfIdx(w, choice.cell), Tick: t })

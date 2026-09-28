@@ -23,16 +23,16 @@ function freezeWorld(rules = {}) {
 }
 
 describe('freeze bomb', () => {
-  it('BOMB with freezeBomb L1 in the bomb slot places a Freeze bomb with 16 freeze ticks; the snapshot shows it', () => {
+  it('BOMB with freezeBomb L1 in the bomb slot places a Freeze bomb with 30 freeze ticks (1.5 s, user 2026-09-28); the snapshot shows it', () => {
     const w = makeWorld()
     put(w, 1, 5, 5)
     put(w, 2, 13, 13)
     giveSkill(w, 1, 'freezeBomb', 1)
     const f = step(w, { 1: [BOMB] })
-    expect(w.bombs[0]).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 16, pierceLayers: 0 })
+    expect(w.bombs[0]).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 30, pierceLayers: 0 })
     expect(f.snapshot.Bombs[0].BomberBombState).toMatchObject({ BombKind: BombKind.Freeze, PierceLayers: 0 })
     giveSkill(w, 1, 'freezeBomb', 3)
-    expect(w.ticks.skills.freezeBomb[2].freeze).toBe(24)
+    expect(w.ticks.skills.freezeBomb[2].freeze).toBe(50)
   })
 
   it('damages, then freezes the survivor: inputs of T+1..T+16 ignored, moves again at T+17', () => {
@@ -257,7 +257,7 @@ describe('pierce bomb', () => {
 })
 
 describe('glacier bomb', () => {
-  it('freezes 20 ticks, pierces 1 layer, and (Q1) deals damage', () => {
+  it('freezes 40 ticks (2 s, user 2026-09-28), pierces 1 layer, and (Q1) deals damage', () => {
     const w = makeWorld({ players: 3 })
     put(w, 1, 1, 17)
     const v = put(w, 2, 5, 1)
@@ -268,14 +268,14 @@ describe('glacier bomb', () => {
     ])
     step(w, { 1: [BOMB] })
     const b = w.bombs[0]
-    expect(b).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 20, pierceLayers: 1 })
+    expect(b).toMatchObject({ kind: BombKind.Freeze, freezeTicks: 40, pierceLayers: 1 })
     setBrick(w, 3, 1, BlockType.积木)
     Object.assign(b, { cell: cell(w, 1, 1), power: 4, fuseEndTick: w.t + 1 })
     const f = step(w)
     expect(b.covered).toContain(cell(w, 3, 1))
     expect(evs(f, 'DamageApplied')).toMatchObject([{ VictimNetEntityIdRaw: 2 }])
-    expect(evs(f, 'PlayerFrozen')).toMatchObject([{ VictimNetEntityIdRaw: 2, UntilTick: w.t + 21 }])
-    expect(v.frozenUntilTick).toBe(w.t + 21)
+    expect(evs(f, 'PlayerFrozen')).toMatchObject([{ VictimNetEntityIdRaw: 2, UntilTick: w.t + 41 }])
+    expect(v.frozenUntilTick).toBe(w.t + 41)
     expect(player(w, 1).frozenUntilTick).toBe(0)
   })
 })
@@ -294,6 +294,9 @@ function statusWorld(opts: { rules?: Partial<ProtoRules>; cfg?: Partial<BomberCo
 }
 
 describe('toxin bomb', () => {
+  // 这些用例验证中毒的节拍机制，按 1000 ms（20 Tick）节拍写；默认数值 2000 ms（用户 2026-09-28 两次削弱）由 spec-sync 钉住、见本组最后一例。
+  const MECH = { rules: { toxinIntervalMs: 1000 } } as const
+
   it('BOMB with toxinBomb L1 / L3 places a Toxin bomb with 60 / 100 toxin ticks; the snapshot shows BombKind 5', () => {
     const w = makeWorld()
     put(w, 1, 5, 5)
@@ -306,7 +309,7 @@ describe('toxin bomb', () => {
   })
 
   it('damages 2 points, then poisons the survivor: −1 point every 20 ticks for 3 s, killer = thrower, then clears', () => {
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     const b = addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     const f = step(w)
     const T = w.t
@@ -327,7 +330,7 @@ describe('toxin bomb', () => {
   })
 
   it('is lethal: the poison tick that empties the hearts kills with Cause Toxin, credited to the thrower', () => {
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     v.health = 3
     const b = addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
@@ -342,7 +345,7 @@ describe('toxin bomb', () => {
   })
 
   it('a second hit refreshes the duration without stacking the rate; the kill credit moves to the latest thrower', () => {
-    const { w, v } = statusWorld({ cfg: { maxHealthPoints: 20 } })
+    const { w, v } = statusWorld({ ...MECH, cfg: { maxHealthPoints: 20 } })
     addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
     const T = w.t
@@ -415,7 +418,7 @@ describe('toxin bomb', () => {
       expect(v.toxinUntilTick, guard).toBe(0)
     }
     // 中毒后被别处给了泡泡（不是施放，不解毒）：泡泡期内不掉毒血，节拍照走、到期照清。
-    const { w, v } = statusWorld()
+    const { w, v } = statusWorld(MECH)
     addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN())
     step(w)
     const T = w.t
@@ -443,6 +446,17 @@ describe('toxin bomb', () => {
     expect(evs(step(w2), 'PlayerDied')).toHaveLength(1)
     step(w2)
     expect([v2.toxinUntilTick, v2.toxinOwner, v2.toxinBomb, v2.toxinNextTick, v2.shockUntilTick, v2.shockSlowPermille]).toEqual([0, 0, 0, 0, 0, 0])
+  })
+
+  it('default cadence (user 2026-09-28 nerf): −1 point every 40 ticks; L3 poison takes 2 points, so one L3 toxin bomb no longer kills from full', () => {
+    const { w, v } = statusWorld()
+    expect(w.ticks.toxinInterval).toBe(40)
+    addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN(100))
+    step(w)
+    const T = w.t
+    const toxic = evs(run(w, 110), 'DamageApplied').filter((e) => e.proto?.Cause === DeathCause.Toxin)
+    expect(toxic.map((e) => e.Tick)).toEqual([T + 40, T + 80])
+    expect(v.health).toBe(6 - 2 - 2)
   })
 })
 

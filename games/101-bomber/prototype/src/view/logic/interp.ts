@@ -86,6 +86,15 @@ export function easeInOutCubic(t: number): number {
 }
 
 /** 血量阶段（design §12 三档）：按整心向上取整；≤0 为 0（死亡）。 */
+/**
+ * 他人玩偶的破损三档（design §12 残血表现，ADR 0039）：按当前血量占本人上限的比例——> 2/3 完好（3）、> 1/3 露线（2）、
+ * 其余露棉花（1），倒下为 0。3 心上限时与旧的整心口径逐点一致。
+ */
+export function damageStage(points: number, maxPoints: number): number {
+  if (points <= 0) return 0
+  return Math.max(1, Math.min(3, Math.ceil((3 * points) / Math.max(1, maxPoints) - 1e-9)))
+}
+
 export function heartStage(points: number, pointsPerHeart: number): number {
   if (points <= 0) return 0
   return Math.ceil(points / Math.max(1, pointsPerHeart))

@@ -61,13 +61,16 @@ export interface BomberHatPile {
 /**
  * 0–2 为契约值；3 血包是**原型扩展**（design §8.5 Stage 1，契约 Kind 只到 2）。
  * 4 SkillCandy 是**原型扩展（NON-CONTRACT，ADR 0030）**：技能糖，具体技能与等级在 `PickupView.skill`。
+ * 5 GoldHeart 金心是**原型扩展（NON-CONTRACT，ADR 0039，design §8.5）**：心数上限 +1 心并回满这一心，最多
+ * `maxGoldHearts` 颗；不算帽子、死亡全掉。6 Frenzy 狂暴糖是**原型扩展（NON-CONTRACT，ADR 0040，design §8.5）**：
+ * 只出自中央大补给，拾取规则归 M1-2。两者都不是强化（{@link isPowerupKind} 为假）。
  */
-export const PickupKind = { FirePlus: 0, BombPlus: 1, SpeedPlus: 2, HealthPack: 3, SkillCandy: 4 } as const
+export const PickupKind = { FirePlus: 0, BombPlus: 1, SpeedPlus: 2, HealthPack: 3, SkillCandy: 4, GoldHeart: 5, Frenzy: 6 } as const
 export type PickupKind = (typeof PickupKind)[keyof typeof PickupKind]
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030 / 0028）：是不是强化（火力 / 炸弹 / 速度）。帽数 = 强化级数，
- * 血包与技能糖都不算帽子（D5）——凡是「除血包以外都是强化」的旧写法一律改用它。
+ * 血包与技能糖都不算帽子（D5），金心 / 狂暴糖也不算（ADR 0039 / 0040）——凡是「除血包以外都是强化」的旧写法一律改用它。
  */
 export function isPowerupKind(k: PickupKind): boolean {
   return k === PickupKind.FirePlus || k === PickupKind.BombPlus || k === PickupKind.SpeedPlus

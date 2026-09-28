@@ -1,6 +1,7 @@
 import {
   SKILL_SLOTS,
   describeSkill,
+  maxHealthOfView,
   skillParams,
   type BomberConfig,
   type CharacterId,
@@ -160,7 +161,7 @@ export function skillHudModel(
   const passive = sk.slots.passive
   const span = sk.regenNextTick - sk.regenFromTick
   const regen: RegenRingModel =
-    passive?.skill === 'regen' && hp > 0 && hp < cfg.maxHealthPoints && span > 0
+    passive?.skill === 'regen' && hp > 0 && hp < maxHealthOfView(p, cfg) && span > 0
       ? { visible: true, frac: clamp01((renderTick - sk.regenFromTick) / span), secLeft: Math.max(0, (sk.regenNextTick - renderTick) / rate) }
       : HIDDEN_REGEN
   return {

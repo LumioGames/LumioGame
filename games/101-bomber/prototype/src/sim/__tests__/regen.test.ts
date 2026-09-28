@@ -26,11 +26,12 @@ describe('soft brick regen', () => {
         const i = c.Y * w.size + c.X
         expect(reserved.has(i)).toBe(false)
         expect(w.ground[i]).not.toBe(BlockType.水)
-        // 四象限镜像同步。
+        // 四象限镜像同步（ADR 0040：一组约 1/6 长成资源箱，砖层是木箱，整组一致）。
         const mx = w.size - 1 - c.X
         const my = w.size - 1 - c.Y
-        expect(w.brick[c.Y * w.size + mx]).toBe(BlockType.积木)
-        expect(w.brick[my * w.size + c.X]).toBe(BlockType.积木)
+        expect([BlockType.积木, BlockType.木箱]).toContain(w.brick[i])
+        expect(w.brick[c.Y * w.size + mx]).toBe(w.brick[i])
+        expect(w.brick[my * w.size + c.X]).toBe(w.brick[i])
       }
     }
     expect(countResource(w)).toBeGreaterThan(0)

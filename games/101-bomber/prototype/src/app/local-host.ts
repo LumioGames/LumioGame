@@ -34,11 +34,22 @@ export interface LocalHostOptions {
   botCharacters?: 'auto' | 'none'
   /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：Bot 难度；缺省 'normal'。 */
   ai?: BotDifficulty
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：逐个 Bot 的难度，下标 i = 第 i 个 Bot（slot i + 1）；默认阵容用 contract `lineupFor(botCount)`。
+   * 给了就覆盖 `ai`（长度须 = botCount）；缺省 = 全员 `ai`（现行为；`?ai=` 整体覆盖即不传它）。
+   */
+  botLineup?: readonly BotDifficulty[]
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：「不围剿真人」的软目标。'local'（缺省）= 本机 slot 0 是真人；
+   * 'none' = 全员 Bot 的统计 / 验收局（如验收 E），没有真人需要照顾。
+   */
+  softTargets?: 'local' | 'none'
   /** 测试 / 开发用：由一个 BotBrain 驾驶本机玩家（sendInput 被忽略）。 */
   localAutopilot?: { profile: BotProfileId; personality?: BotPersonality }
 }
 
-const ANIMALS: readonly AnimalId[] = ['rabbit', 'duck', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog']
+/** Bot 占位动物（'none' 模式照此轮换；'auto' 模式开局由 sim/roster.ts 按角色重抽）。袋鼠（用户 2026-09-28）追加在末尾，≤ 7 个 Bot 的旧阵容不变。 */
+const ANIMALS: readonly AnimalId[] = ['rabbit', 'duck', 'bear', 'cat', 'frog', 'penguin', 'pig', 'dog', 'kangaroo']
 const NAMES: Readonly<Record<AnimalId, string>> = {
   duck: '小黄鸭',
   rabbit: '棉花兔',
@@ -48,6 +59,7 @@ const NAMES: Readonly<Record<AnimalId, string>> = {
   penguin: '企鹅团子',
   pig: '粉粉猪',
   dog: '旺财',
+  kangaroo: '跳跳袋鼠',
 }
 const PERSONALITIES: readonly BotPersonality[] = ['farmer', 'hunter', 'collector', 'roamer', 'farmer', 'hunter', 'roamer']
 /** 单次 rAF 最多补跑的 Tick 数；标签页切回来时不追历史。 */
@@ -98,7 +110,10 @@ export class LocalHost implements GameSource {
     }
     this.sim = new LocalSim({ seed: opts.seed, config: opts.config, rules: opts.rules, players })
     this.localPlayerId = this.sim.playerIdForSlot(0)
-    const profile = BOT_PROFILES[this.ai]
+    const lineup = opts.botLineup
+    if (lineup && lineup.length !== opts.botCount) throw new Error(`LocalHost: botLineup has ${lineup.length} entries for ${opts.botCount} bots`)
+    // 原型扩展（NON-CONTRACT，ADR 0043）：真人（本机 slot 0，自动驾驶时亦然）作为「不围剿」软目标交给每个 Bot，不让 Bot 从快照猜。
+    const softTargets: readonly U64[] = (opts.softTargets ?? 'local') === 'none' ? [] : [this.localPlayerId]
     for (let i = 0; i < opts.botCount; i++) {
       const id = this.sim.playerIdForSlot(i + 1)
       const brain = new BotBrain({
@@ -107,7 +122,8 @@ export class LocalHost implements GameSource {
         personality: PERSONALITIES[i % PERSONALITIES.length],
         config: opts.config,
         rules: opts.rules,
-        profile,
+        profile: BOT_PROFILES[lineup ? lineup[i] : this.ai],
+        softTargets,
       })
       this.bots.push({ id, brain })
     }

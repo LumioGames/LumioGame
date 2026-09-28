@@ -9,11 +9,32 @@ export const LEAF = 0x6cc551
 export const CREAM = 0xfff3dc
 export const BACKGROUND = 0xddf1f7
 
-/** 脚圈 / 炸弹色带：slot 0 是本机（蓝，与参考图一致）。 */
-export const SLOT_COLORS: readonly number[] = [SKY, TANGERINE, SUNSHINE, LEAF, 0xb57bff, 0xff6fa8, 0xffffff, INK]
+/**
+ * 脚圈 / 炸弹色带：slot 0 是本机（蓝，与参考图一致）。16 个槽（ADR 0040：16 人 · 27×27），前 8 个不变；
+ * 颜色不是唯一的识别手段（名牌、击杀栏还有名字与动物色点）。HUD 的 icons.SLOT_COLOR 逐槽同值（growth-look.test 守护）。
+ */
+export const SLOT_COLORS: readonly number[] = [
+  SKY,
+  TANGERINE,
+  SUNSHINE,
+  LEAF,
+  0xb57bff,
+  0xff6fa8,
+  0xffffff,
+  INK,
+  0x2ec4b6,
+  0xe63946,
+  0x3a5bd9,
+  0xb8e04a,
+  0x8d5a3b,
+  0xd33fc6,
+  0x9aa3ad,
+  0x1b7f5a,
+]
 
 export function slotColor(slot: number): number {
-  return SLOT_COLORS[((slot % 8) + 8) % 8]
+  const n = SLOT_COLORS.length
+  return SLOT_COLORS[((slot % n) + n) % n]
 }
 
 export const SOFT_BLOCK_COLORS: readonly number[] = [0xf9d98a, 0xf7b48a, 0x9fd3e2, 0xb3dc9c]
@@ -45,6 +66,9 @@ export const ANIMAL_COLORS: Readonly<Record<AnimalId, AnimalColors>> = {
   penguin: { body: 0x24375e, accent: 0xffa51f, feet: 0xffa51f, light: 0xffffff, mark: 0x3e5a92, blush: 0xff9cb5 },
   pig: { body: 0xff86ae, accent: 0xff5f93, feet: 0xe86a95, light: 0xffc6da, mark: 0xc2446f, blush: 0xff4f86 },
   dog: { body: 0xf28a2e, accent: 0xff7f9e, feet: 0xd9741f, light: 0xfff3e0, mark: 0x7a3e1c, blush: 0xff5e7a },
+  // 飞腿袋鼠（用户 2026-09-28）：洋红毛绒（离最近的猫 ΔE ≈ 39、离地形 ≥ 80）+ 奶粉肚兜口袋；mark = 薄荷青（口袋沿、脚底、
+  // 与技能色飞踢同色系），accent = 深梅色鼻头与内耳。表现取值，推断待验证。
+  kangaroo: { body: 0xca3ad0, accent: 0x5c1a5a, feet: 0xa62cad, light: 0xffe3f6, mark: 0x33e0b8, blush: 0xffa3dc },
 }
 
 /** 玩偶描边（暖可可墨色，不用纯黑）。 */
@@ -59,6 +83,7 @@ export const FACE_INK = 0x3a2824
  * 那边改了色，这里要跟着改（不反向依赖，避免测试牵动地形模块）。
  */
 export const TERRAIN_REFERENCE_COLORS: Readonly<Record<string, number>> = {
+  // 水不在这里：用户 2026-09-28 反馈后水面是全场唯一的饱和色地形，见 WATER_REFERENCE_COLORS。
   /** 积木四色（SOFT_BLOCK_COLORS）。 */
   brickHoney: 0xf9d98a,
   brickPeach: 0xf7b48a,
@@ -73,10 +98,18 @@ export const TERRAIN_REFERENCE_COLORS: Readonly<Record<string, number>> = {
   /** 铁皮两色（blocks.ts 侧面 / 顶面）。 */
   tinSide: 0x7f95b2,
   tinTop: 0x95aac4,
-  /** 水（terrain.ts uShallow）。 */
-  water: 0x3db8da,
   /** 围边（terrain.ts rims）。 */
   rim: 0xf6ead3,
+}
+
+/**
+ * 水面参考色（只给测试用；照抄 logic/water WATER_COLORS 的浅水 / 深水）。用户 2026-09-28 反馈「水一坨绿色」后，
+ * 水改成饱和的蓝，彩度高于其余哑光地形，所以不参与「玩偶彩度要高于地形」的纪律；改成要求每只玩偶离两种水色 ΔE ≥ 30
+ * （玩偶站在水心时仍分得清，推断待验证）。
+ */
+export const WATER_REFERENCE_COLORS: Readonly<Record<string, number>> = {
+  waterShallow: 0x44a0ff,
+  waterDeep: 0x2f7ce6,
 }
 
 function srgbToLinear(c: number): number {

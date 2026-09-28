@@ -107,10 +107,17 @@ export function helpRuleLines(rules: HelpRules): string[] {
   // 「大多是它们」只在炸弹糖的池权重过半时才说（ADR 0033：炸弹类各 2、其余各 1）。
   const mostly = weight(bombPool) * 2 > weight(candyPool(rules.skills)) ? '——木箱开出的技能糖大多是它们' : ''
   const chestCandy = rules.chestSkillCandyPool === 'bomb' ? '一颗炸弹糖' : '技能糖'
+  // 用户 2026-09-28：踢弹糖改罕见掉落。只在它的池权重不到其余每个技能的一半时才这么说（数值仍从表里读）。
+  const others = candyPool(rules.skills)
+    .filter((id) => id !== 'kick')
+    .map((id) => rules.skills[id].candyWeight)
+  const kickW = rules.skills.kick.candyWeight
+  const rareKick = kickW > 0 && others.length > 0 && kickW * 2 <= Math.min(...others) ? `；${rules.skills.kick.name}糖很少见` : ''
+  const count = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][chars.length] ?? String(chars.length)
   return [
     '3 颗心；每颗炸弹 −1 心，连锁能一口气秒杀。',
-    `四个角色各带一个专属技能：${chars.join('、')}。`,
-    '木箱和宝箱会掉技能糖：3 个技能槽（炸弹 / 主动 / 被动），同技能再吃升级，最高 Lv3。',
+    `${count}个角色各带一个专属技能：${chars.join('、')}。`,
+    `木箱和宝箱会掉技能糖：3 个技能槽（炸弹 / 主动 / 被动），同技能再吃升级，最高 Lv3${rareKick}。`,
     `两个不同技能在身上会自动进化：${combos.join('；')}。`,
     ...(bombs.length ? [`炸弹糖让炸弹带效果：${bombs.join('、')}${mostly}。`] : []),
     '炸开积木会掉糖：火力、炸弹、速度、血包。头顶的帽子 = 强化数，血包和技能都不算。',

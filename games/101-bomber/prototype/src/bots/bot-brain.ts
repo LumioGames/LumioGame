@@ -11,7 +11,7 @@ import type {
   U64,
   WorldSnapshot,
 } from '../contract'
-import { BOT_PROFILES, BOT_TACTICS, BombKind, MatchPhase, msToTicks, 方向 } from '../contract'
+import { BOT_PROFILES, BOT_TACTICS, BombKind, MatchPhase, maxHealthOfView, msToTicks, 方向 } from '../contract'
 import { cellOf, idx, inBounds } from '../shared/grid'
 import {
   brickValue,
@@ -25,12 +25,15 @@ import {
   nearestEnemyWithin,
   pickEscape,
   pickFarm,
+  pickFrenzyFlee,
   pickHuntTarget,
   pickInward,
   pickPickup,
   pickRandomNeighbor,
   pickRoamCell,
+  pickSupply,
   reachesRest,
+  softTargetVerdict,
   STRICT_REST,
   type Goal,
   type ThinkContext,
@@ -40,7 +43,7 @@ import { bombSkillEscape, evaluateBomb, type BombEvaluation } from './bomb-gate'
 import { BotRng } from './bot-rng'
 import { buildDangerMap, conflicts, isSafe, restsAt, type DangerMap } from './danger-map'
 import { exitTicks, pathTo, searchPaths, type PathField } from './path-search'
-import { BombPerception } from './perception'
+import { BlastMisperception, BombPerception } from './perception'
 import { evaluateTrade, isShowdown, lateEntryHorizon, poisonRate } from './showdown'
 import {
   activeReady,
@@ -78,10 +81,19 @@ export interface BotOptions {
   profile?: BotProfile
   /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：技能 / 摊牌战术常量；缺省 BOT_TACTICS（测试可覆写）。 */
   tactics?: BotTactics
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：宿主传入的「不围剿」软目标（真人玩家 id，不从快照猜）。作为追击 / 近身开打目标
+   * + BotTactics.softTargetPenaltySteps、只有离他最近的 softTargetHunters 个 Bot 能选他（真人是帽王或在 softTargetCloseCells
+   * 格内除外；见 behaviors.ts softTargetVerdict）。缺省 = 无（旧行为）。
+   */
+  softTargets?: readonly U64[]
 }
 
-/** 'trade' / 'skill' 为原型扩展（NON-CONTRACT，ADR 0030 / 0031）：摊牌期换血放弹、施放主动技能 / 踢弹。 */
-export type BotMode = 'idle' | 'escape' | 'noise' | 'pickup' | 'farm' | 'hunt' | 'roam' | 'wait' | 'bomb' | 'trade' | 'skill'
+/**
+ * 'trade' / 'skill' 为原型扩展（NON-CONTRACT，ADR 0030 / 0031）：摊牌期换血放弹、施放主动技能 / 踢弹。
+ * 'flee' 为原型扩展（NON-CONTRACT，ADR 0043）：离狂暴中的对手远一点。
+ */
+export type BotMode = 'idle' | 'escape' | 'noise' | 'pickup' | 'farm' | 'hunt' | 'roam' | 'wait' | 'bomb' | 'trade' | 'skill' | 'flee'
 
 export type BotBehaviour = 'farm' | 'hunt' | 'collect' | 'roam'
 
@@ -100,6 +112,10 @@ export interface BotDebugState {
   rng2Draws: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：最近一次按下的技能（踢弹记 'kick'）；没有为 null。 */
   lastCast: SkillId | null
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：第三随机流已抽次数（misperceive / greedy 都为 0 的档恒为 0）。 */
+  rng3Draws: number
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：本 Tick 棋盘上被看小火力的别人的炸弹数。 */
+  misreadBombs: number
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：本 Tick 要发的技能键（skill = null：踢弹，只发移动）。 */
@@ -114,6 +130,13 @@ interface PendingSkill {
   skill: SkillId
   /** 过了这个 Tick 还没等到弹出现就作废。 */
   until: number
+}
+
+/** 选出的普通目标；field 缺省 = 本次思考的常规路线场（冒险捡糖可能带回零余量场）。 */
+interface Choice {
+  mode: BotMode
+  goal: Goal
+  field?: PathField
 }
 
 interface Plan {
@@ -186,6 +209,8 @@ const WEAK_WEIGHT = 1.5
 const SKILL_PRESS_GAP = 3
 /** 第二随机流的种子扰动（与主流错开）。 */
 const RNG2_SALT = 0x5bd1e995
+/** 原型扩展（NON-CONTRACT，ADR 0043）：第三随机流（看小火力 / 冒险捡糖）的种子扰动（与主流、rng2、宿主的扰动都错开）。 */
+const RNG3_SALT = 0x27d4eb2f
 /** 放弹再闪：闪现落点在这么多 Tick 内不进毒圈。 */
 const BLINK_POISON_TICKS = 40
 
@@ -207,9 +232,24 @@ export class BotBrain {
   private readonly rng: BotRng
   /** 原型扩展（NON-CONTRACT，design §15）：第二随机流——新增的一切随机（逐弹反应、进攻跳过、技能、换血）都走它。 */
   private readonly rng2: BotRng
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：第三随机流——菜鸟的看小火力与冒险捡糖只走它；档位的对应字段为 0 时一次都不抽，
+   * 主流与 rng2 的抽样序列因此与 M1-3 之前逐位相同。
+   */
+  private readonly rng3: BotRng
   private readonly profile: BotProfile
   private readonly tactics: BotTactics
   private readonly perception: BombPerception | null
+  private readonly misperception: BlastMisperception | null
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：本 Bot 算自己路线 / 落脚的逃生余量（= profile.escapeMarginTicks）。 */
+  private readonly margin: number
+  private readonly softTargets: readonly U64[]
+  /** 冒险捡糖：糖 id → 这颗糖第一次成为冒险候选时掷的结果（插入序遍历，确定性；糖离场即忘）。 */
+  private readonly greedyVerdict = new Map<U64, boolean>()
+  /** 本次思考的零余量路线场（冒险捡糖用；余量本来就是 0 时即常规场）。 */
+  private zeroMarginField: (() => PathField) | null = null
+  private mainField: PathField | null = null
+  private misreadBombs = 0
   private hiddenBombs = 0
   private showdown = false
   private castNow: Cast | null = null
@@ -277,9 +317,13 @@ export class BotBrain {
     this.rules = opts.rules
     this.rng = new BotRng(opts.seed)
     this.rng2 = new BotRng((opts.seed ^ RNG2_SALT) >>> 0)
+    this.rng3 = new BotRng((opts.seed ^ RNG3_SALT) >>> 0)
     this.profile = opts.profile ?? BOT_PROFILES.hard
     this.tactics = opts.tactics ?? BOT_TACTICS
     this.perception = this.profile.reactMode === 'perBomb' ? new BombPerception(this.rng2, this.profile.reactMinTicks, this.profile.reactMaxTicks) : null
+    this.misperception = this.profile.misperceivePermille > 0 ? new BlastMisperception(this.rng3, this.profile.misperceivePermille) : null
+    this.margin = this.profile.escapeMarginTicks
+    this.softTargets = opts.softTargets ?? []
     this.hz = opts.config.tickRateHz
     this.fuseTicks = msToTicks(opts.config.fuseMs, this.hz)
     this.dangerTicks = msToTicks(opts.config.dangerWindowMs, this.hz)
@@ -308,12 +352,18 @@ export class BotBrain {
       this.castNow = null
       this.perception?.reset()
       this.hiddenBombs = 0
+      this.misperception?.reset()
+      this.misreadBombs = 0
+      this.greedyVerdict.clear()
       if (phase !== MatchPhase.Running && phase !== MatchPhase.Endgame) this.behaviourUntil = 0
       return [this.move(方向.停)]
     }
     const zoneVisible = this.perception?.zones(snapshot, this.self)
     const board = buildBoard(snapshot, { self: this.self, burnPad: this.tactics.burnPadCells, ...(zoneVisible ? { zoneVisible } : {}) })
     this.hiddenBombs = this.perception ? this.perception.observe(board, this.self) : 0
+    // 原型扩展（NON-CONTRACT，ADR 0043）：菜鸟把部分别人的弹看小 1 格火力（只改本 Bot 的棋盘，在危险图之前）。
+    this.misreadBombs = this.misperception ? this.misperception.observe(board, this.self) : 0
+    if (this.greedyVerdict.size > 0) this.forgetGreedy(snapshot)
     this.size = board.size
     this.observeMatch(snapshot, board)
     this.showdown = isShowdown(board.finalCircle, this.tactics)
@@ -441,7 +491,26 @@ export class BotBrain {
       showdown: this.showdown,
       rng2Draws: this.rng2.draws,
       lastCast: this.lastCast,
+      rng3Draws: this.rng3.draws,
+      misreadBombs: this.misreadBombs,
     }
+  }
+
+  /** 冒险捡糖：糖第一次成为冒险候选时从 rng3 掷一次（greedyPickupPermille），之后这颗糖一直按这个结论。 */
+  private greedyRoll(id: U64): boolean {
+    let v = this.greedyVerdict.get(id)
+    if (v === undefined) {
+      v = this.rng3.nextDouble() < this.profile.greedyPickupPermille / 1000
+      this.greedyVerdict.set(id, v)
+    }
+    return v
+  }
+
+  /** 已被捡走 / 炸掉的糖忘掉它的冒险结论。 */
+  private forgetGreedy(snap: WorldSnapshot): void {
+    const live = new Set<U64>()
+    for (const p of snap.Pickups) live.add(p.NetEntityIdRaw)
+    for (const id of this.greedyVerdict.keys()) if (!live.has(id)) this.greedyVerdict.delete(id)
   }
 
   /**
@@ -465,7 +534,8 @@ export class BotBrain {
       live.add(b.id)
       if (!this.ownSeen.has(b.id)) {
         this.ownSeen.add(b.id)
-        if (this.pressIsAttack && this.pressUntil >= 0) this.attackBombs.add(b.id)
+        // 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：不计数的弹（狂暴弹 / 集束子弹）不占进攻弹上限。
+        if (this.pressIsAttack && this.pressUntil >= 0 && !b.uncounted) this.attackBombs.add(b.id)
       }
     }
     for (const id of this.ownSeen) if (!live.has(id)) this.ownSeen.delete(id)
@@ -477,6 +547,8 @@ export class BotBrain {
     if (now - this.skillPressAt < SKILL_PRESS_GAP) return false
     const p = this.profile.skillUsePermille
     if (p >= 1000) return true
+    // 原型扩展（NON-CONTRACT，ADR 0043）：不用技能的档（菜鸟）不掷——也不白抽 rng2。
+    if (p <= 0) return false
     if (now < this.skillRollAt) return false
     if (this.rng2.nextDouble() < p / 1000) return true
     this.skillRollAt = now + this.tactics.skillRetryTicks
@@ -539,7 +611,7 @@ export class BotBrain {
     if (!isOpen(board, n)) return -2
     const water = isWater(board, n)
     if (water && !plan.allowWater) return -2
-    if (validate && conflicts(dm, n, board.now, board.now + tpcLand + (water ? tpcWater : tpcLand))) return -2
+    if (validate && conflicts(dm, n, board.now, board.now + tpcLand + (water ? tpcWater : tpcLand), this.margin)) return -2
     return n
   }
 
@@ -581,7 +653,8 @@ export class BotBrain {
     this.pressIsAttack = false
     const pos = me.LogicTransform.WorldPosition
     const fc = board.finalCircle
-    const rate = poisonRate(this.rules, fc)
+    // 原型扩展（NON-CONTRACT，ADR 0039）：毒速按本人心数上限等比（与规则层同式）。
+    const rate = poisonRate(this.rules, fc, { cfg: this.config, maxHealth: maxHealthOfView(me, this.config) })
     // 原型扩展（NON-CONTRACT，ADR 0036）：晚进圈只是 Bot 的战术；ringEntry 'onTime'（验收 D 的脚本普通玩家）
     // 摊牌期也按 STRICT_REST 选落脚点——下一圈一预告就走进去，不在将要变毒的格子上逗留。
     const lateHorizon = this.showdown && this.profile.ringEntry === 'late' ? lateEntryHorizon(fc, this.tactics, board.now) : null
@@ -589,7 +662,7 @@ export class BotBrain {
     const water = this.waterBudget(me.玩家属性.血量当前, false)
     const waterSurvive = this.waterBudget(me.玩家属性.血量当前, true)
     // 普通目标只走陆路（人在水里时允许先涉水上岸）；只有逃生才可以借道水格。
-    const field = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: inWater, startExit, ...water, immuneUntil: immune })
+    const field = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: inWater, startExit, ...water, immuneUntil: immune, margin: this.margin })
     const ctx: ThinkContext = {
       snap,
       board,
@@ -611,34 +684,40 @@ export class BotBrain {
       poisonRate: rate,
       tactics: this.tactics,
       ringEntry: this.profile.ringEntry,
+      escapeMargin: this.margin,
+      ...(this.softTargets.length > 0 ? { soft: softTargetVerdict(snap, this.self, this.softTargets, this.tactics) } : {}),
     }
+    this.mainField = field
+    let zero: PathField | null = this.margin === 0 ? field : null
+    this.zeroMarginField = () =>
+      (zero ??= searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: inWater, startExit, ...water, immuneUntil: immune, margin: 0 }))
     const escape = (): void => {
       const landSlack = 2 * tpcLand + URGENT_SLACK + 1
-      let wide = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...water, immuneUntil: immune })
+      let wide = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...water, immuneUntil: immune, margin: this.margin })
       let goal = pickEscape({ ...ctx, field: wide }, landSlack)
-      if (!reachesRest(wide, dm, goal.cell, immune) && inWater) {
+      if (!reachesRest(wide, dm, goal.cell, immune, this.margin) && inWater) {
         // 泡在水里：宁可再挨一次溺水，也要涉水到安全处。
-        const wading = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...waterSurvive, immuneUntil: immune })
+        const wading = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...waterSurvive, immuneUntil: immune, margin: this.margin })
         const g = pickEscape({ ...ctx, field: wading }, landSlack)
-        if (g.cell !== here && reachesRest(wading, dm, g.cell, immune)) {
+        if (g.cell !== here && reachesRest(wading, dm, g.cell, immune, this.margin)) {
           wide = wading
           goal = g
         }
       }
       // 原型扩展（NON-CONTRACT，ADR 0030）：走不到能待的格、火又近在眼前：闪现 / 泡泡 / 踢弹解围。
-      if (!reachesRest(wide, dm, goal.cell, immune) && this.defensiveSkill(ctx, dm, startExit, tpcLand, tpcWater, water)) {
+      if (!reachesRest(wide, dm, goal.cell, immune, this.margin) && this.defensiveSkill(ctx, dm, startExit, tpcLand, tpcWater, water)) {
         return
       }
-      if (!reachesRest(wide, dm, goal.cell, immune)) {
+      if (!reachesRest(wide, dm, goal.cell, immune, this.margin)) {
         // 按常规余量无路可逃时，赌一条零余量的路线，也好过原地等炸。
         const tight = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...water, margin: 0, immuneUntil: immune })
         const g = pickEscape({ ...ctx, field: tight }, landSlack)
-        if (g.cell !== here && reachesRest(tight, dm, g.cell, immune)) {
+        if (g.cell !== here && reachesRest(tight, dm, g.cell, immune, this.margin)) {
           wide = tight
           goal = g
         }
       }
-      if ((goal.cell === here || !reachesRest(wide, dm, goal.cell, immune)) && this.canWaitOut(board, dm, here, tpcLand, tpcWater, startExit, waterSurvive, me.玩家属性.血量当前, rate)) {
+      if ((goal.cell === here || !reachesRest(wide, dm, goal.cell, immune, this.margin)) && this.canWaitOut(board, dm, here, tpcLand, tpcWater, startExit, waterSurvive, me.玩家属性.血量当前, rate)) {
         // 出路要等别处的火灭了才通：原地等，每 Tick 重算，路线一通就走。
         this.setPlan('escape', { cell: here, bombOnArrival: false }, wide, true)
         return
@@ -678,6 +757,7 @@ export class BotBrain {
         tpcWater,
         slowPerCell: GATE_SLOW_PER_CELL,
         pierce: ctx.pierce,
+        margin: this.margin,
       })
       return evaluation
     }
@@ -722,10 +802,10 @@ export class BotBrain {
     }
     if (!chosen) {
       // 常规路线哪儿也去不了（被水 + 砖围在小角落里 / 泡在水里、常规预算上不了岸）：允许涉水出去，别原地干等。
-      const wet = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...(inWater ? waterSurvive : water) })
+      const wet = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater, allowWater: true, startExit, ...(inWater ? waterSurvive : water), margin: this.margin })
       const wade = this.chooseAtAnyHorizon({ ...ctx, field: wet })
       if (wade && wade.goal.cell !== here) {
-        this.setPlan(wade.mode, wade.goal, wet, true)
+        this.setPlan(wade.mode, wade.goal, wade.field ?? wet, true)
         return false
       }
     }
@@ -734,7 +814,7 @@ export class BotBrain {
       else this.setPlan('wait', { cell: here, bombOnArrival: false }, field, false)
       return false
     }
-    this.setPlan(chosen.mode, chosen.goal, field, inWater)
+    this.setPlan(chosen.mode, chosen.goal, chosen.field ?? field, inWater)
     return false
   }
 
@@ -761,6 +841,8 @@ export class BotBrain {
     }
     if (p.trapPermille > 0) {
       for (const e of near) {
+        // 原型扩展（NON-CONTRACT，ADR 0043）：困杀是有目标的进攻——轮不到本 Bot 的软目标不设陷阱（十字罩住照常按概率放）。
+        if (ctx.soft?.blocked.has(e.NetEntityIdRaw)) continue
         if (!enemyCanEscape(ev.board, ev.dm, e, ctx)) {
           if (frenzy || this.rng.nextDouble() < p.trapPermille / 1000) return this.armSkill(via)
           break
@@ -849,9 +931,9 @@ export class BotBrain {
           }
         } else {
           // 泡泡撑不到本格火灭：带着护体走一段，看能不能在护体结束前走到能待的格。
-          const f = searchPaths(ctx.board, dm, ctx.here, now, { tpcLand, tpcWater, allowWater: true, startExit, ...water, immuneUntil: until })
+          const f = searchPaths(ctx.board, dm, ctx.here, now, { tpcLand, tpcWater, allowWater: true, startExit, ...water, immuneUntil: until, margin: this.margin })
           for (const c of f.reached) {
-            if (c !== ctx.here && restsAt(dm, c, Math.max(f.enter[c], until))) {
+            if (c !== ctx.here && restsAt(dm, c, Math.max(f.enter[c], until), this.margin)) {
               if (!this.rollSkill(now)) break
               this.castNow = { dir: 方向.停, skill: a.id }
               this.setPlan('escape', { cell: c, bombOnArrival: false }, f, true)
@@ -936,7 +1018,7 @@ export class BotBrain {
       farm = Math.max(farm, w.farm * 0.6)
     }
     // 原型扩展（NON-CONTRACT，ADR 0030）：棉花兔不满血时先回春，少追人（摊牌期除外）。
-    if (!this.showdown && skills.passive?.id === 'regen' && me.玩家属性.血量当前 < this.config.maxHealthPoints) {
+    if (!this.showdown && skills.passive?.id === 'regen' && me.玩家属性.血量当前 < maxHealthOfView(me, this.config)) {
       hunt = scaled(hunt, this.tactics.rabbitHurtHuntPermille)
     }
     const total = farm + hunt + collect + roam
@@ -968,7 +1050,7 @@ export class BotBrain {
    * 原型扩展（NON-CONTRACT，ADR 0036）：ringEntry 'onTime' 在放宽毒圈之前先守在最近的圈内落脚格（没事做就在圈里待着），
    * 再不行就按 pickInward 走回圈里最近的格子；只有这些都没有才走放宽毒圈那几档——不为了找事做主动站进将要变毒的格子。
    */
-  private chooseAtAnyHorizon(ctx: ThinkContext): { mode: BotMode; goal: Goal } | null {
+  private chooseAtAnyHorizon(ctx: ThinkContext): Choice | null {
     const g = this.chooseGoal(ctx)
     const fc = ctx.board.finalCircle
     if (g || !fc) return g
@@ -989,11 +1071,14 @@ export class BotBrain {
     return open ? { mode: 'farm', goal: open } : null
   }
 
-  private chooseGoal(ctx: ThinkContext): { mode: BotMode; goal: Goal } | null {
+  private chooseGoal(ctx: ThinkContext): Choice | null {
     const now = ctx.board.now
     // 原型扩展（NON-CONTRACT，ADR 0030）：光环开着就贴上去烧。
     const aura = auraChaseGoal(ctx, (c) => isRestCell(ctx, c))
     if (aura) return { mode: 'hunt', goal: aura }
+    // 原型扩展（NON-CONTRACT，ADR 0043 价值表）：狂暴中的对手近在眼前：先拉开距离。
+    const flee = pickFrenzyFlee(ctx)
+    if (flee) return { mode: 'flee', goal: flee }
     // 帽子 = 强化数（ADR 0028）：死者掉出的强化既是分也是实力，collector 看见新鲜掉落立刻改行去抢。
     if (this.personality === 'collector' && this.behaviour !== 'collect' && this.freshDropWithin(ctx, FRESH_RUSH_STEPS)) {
       this.setBehaviour('collect', this.rng.nextInt(60, 120), now)
@@ -1005,7 +1090,13 @@ export class BotBrain {
     if (ctx.fireSlack === undefined || ctx.fireSlack === null) {
       const grab = pickPickup({ ...ctx, fireSlack: GRAB_SLACK }, collecting ? 16 : 7, collecting ? 10 : 8, this.freshDrops, true)
       if (grab) return { mode: 'pickup', goal: grab }
+      // 原型扩展（NON-CONTRACT，ADR 0043）：菜鸟冒险捡糖——零余量路线、火还要 greedyFireSlackTicks 才到就去（每颗糖掷一次）。
+      const greedy = this.greedyPickup(ctx, collecting)
+      if (greedy) return greedy
     }
+    // 原型扩展（NON-CONTRACT，ADR 0043 价值表）：中央补给已预告，够得着就去开启点守着。
+    const supply = pickSupply(ctx)
+    if (supply) return { mode: 'pickup', goal: supply }
     const avoid = now < this.badBombUntil ? this.badBombCell : -1
 
     const fc = ctx.board.finalCircle
@@ -1057,6 +1148,26 @@ export class BotBrain {
     return r ? { mode: 'roam', goal: r } : null
   }
 
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：冒险捡糖（profile.greedyPickupPermille > 0 才做）。常规拾取与抢掉落都没有目标时，
+   * 以零余量的路线场、「火至少还要 greedyFireSlackTicks 才到」的落脚口径重跑拾取搜索；每颗候选糖第一次出现时从 rng3 掷一次，
+   * 掷中的才去。余量本来就是 0（菜鸟）时路线场即常规场；否则只在常规场上思考时换零余量场，并随结果带回。
+   */
+  private greedyPickup(ctx: ThinkContext, collecting: boolean): Choice | null {
+    if (this.profile.greedyPickupPermille <= 0) return null
+    const field = this.margin !== 0 && ctx.field === this.mainField && this.zeroMarginField ? this.zeroMarginField() : ctx.field
+    const g = pickPickup(
+      { ...ctx, field, fireSlack: this.tactics.greedyFireSlackTicks },
+      collecting ? 16 : 7,
+      collecting ? 10 : 8,
+      this.freshDrops,
+      false,
+      (p) => this.greedyRoll(p.NetEntityIdRaw),
+    )
+    if (!g) return null
+    return field === ctx.field ? { mode: 'pickup', goal: g } : { mode: 'pickup', goal: g, field }
+  }
+
   /** 发育目标一经选定就保持（直到放过弹 / 自检失败 / 不再值得 / 超时），不被其他候选逐 Tick 抢走。 */
   private farm(ctx: ThinkContext, avoid: number): Goal | null {
     const now = ctx.board.now
@@ -1094,7 +1205,7 @@ export class BotBrain {
     const wet = isWater(board, here)
     for (let d = WAIT_STEP; d <= MAX_WAIT; d += WAIT_STEP) {
       const t = board.now + d
-      if (conflicts(dm, here, board.now, t + tpcLand)) return false
+      if (conflicts(dm, here, board.now, t + tpcLand, this.margin)) return false
       if (wet && water.startWaterTicks + d >= water.maxWaterTicks) return false
       if (dm.poison[here] <= t && d > maxPoisonWait) return false
       const f = searchPaths(board, dm, here, t, {
@@ -1103,9 +1214,10 @@ export class BotBrain {
         allowWater: true,
         startExit,
         maxWaterTicks: water.maxWaterTicks,
+        margin: this.margin,
         startWaterTicks: water.startWaterTicks + (wet ? d : 0),
       })
-      for (const c of f.reached) if (c !== here && reachesRest(f, dm, c)) return true
+      for (const c of f.reached) if (c !== here && reachesRest(f, dm, c, -1, this.margin)) return true
     }
     return false
   }

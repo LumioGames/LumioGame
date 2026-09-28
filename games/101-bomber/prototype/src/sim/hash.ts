@@ -43,6 +43,13 @@ class Fnv2 {
   }
 }
 
+/** 原型扩展（NON-CONTRACT，ADR 0040）：资源箱等级码（只在末尾追加）。 */
+const BOX_TIER_CODE = { wood: 1, iron: 2, gold: 3 } as const
+/** 原型扩展（NON-CONTRACT，ADR 0040）：补给状态码。 */
+const SUPPLY_STATE_CODE = { pending: 1, announced: 2, opened: 3 } as const
+/** 方向 B · M1 扩展段的标记（'M1'）。 */
+const M1_SECTION = 0x4d31
+
 /** 技能槽的规范数列：空槽 [0]；否则 [技能码, 等级, 绑定, 两半数, 每半 (技能码, 等级, 绑定)…]。 */
 function slotNums(s: SimSkillSlot | null): number[] {
   if (!s) return [0]
@@ -184,5 +191,31 @@ export function hashWorld(w: World): string {
     h.list(d.dropKinds)
     h.list(d.dropSkills.flatMap((s) => [SKILL_SLOTS.indexOf(s.slot), skillCode(s.skill), s.level, ...slotNums(s.keep)]))
   }
+  hashM1(h, w)
   return h.hex()
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：方向 B · M1 的新状态——玩家金心 / 狂暴（截止 Tick 与最近放弹 Tick）、uncounted 炸弹、资源箱、中央补给。
+ * **全部为缺省值时整段不写**：旧对局（没有金心、狂暴、资源箱、补给）的 StateHash 与改动前逐位相同，便于同种子回归比对；
+ * 任何一项非缺省即写入带标记的整段（各子列表带长度前缀，仍是规范数列）。
+ */
+function hashM1(h: Fnv2, w: World): void {
+  const boss: number[] = []
+  for (const p of w.players)
+    if (p.goldHearts !== 0 || p.frenzyUntilTick !== 0 || p.frenzyLastPlaceTick !== 0) boss.push(p.id, p.goldHearts, p.frenzyUntilTick, p.frenzyLastPlaceTick)
+  const extra: number[] = []
+  for (const b of w.bombs) if (b.uncounted) extra.push(b.id)
+  const boxes = w.resourceBoxes ?? []
+  const supply = w.supply ?? null
+  if (boss.length === 0 && extra.length === 0 && boxes.length === 0 && supply === null) return
+  h.n(M1_SECTION)
+  h.list(boss)
+  h.list(extra)
+  h.n(boxes.length)
+  for (const b of boxes) {
+    h.list([b.cell, BOX_TIER_CODE[b.tier], b.hitsRequired, b.hitsLeft])
+    h.list(b.hitBy)
+  }
+  h.list(supply ? [supply.cell, supply.announceTick, supply.openTick, SUPPLY_STATE_CODE[supply.state]] : [0])
 }

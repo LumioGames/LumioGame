@@ -331,13 +331,14 @@ describe('toxin (ADR 0033)', () => {
   })
 
   it('a poisoned duck bubbles to cure itself when the poison would still cost ≥ 3 points', () => {
-    const out = drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 180 }), 100, 4)
+    // 默认中毒节拍 40 Tick（用户 2026-09-28 削弱到每 2 秒半心）：剩 120 Tick = 3 点。
+    const out = drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 220 }), 100, 4)
     expect(out.some((o) => casts(o) === 1)).toBe(true)
   })
 
   it('no cure bubble for a poison tail that barely hurts, nor while on cooldown', () => {
     expect(drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 118 }), 100, 4).every((o) => casts(o) === 0)).toBe(true)
-    expect(drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 180, cdUntilTick: 500 }), 100, 4).every((o) => casts(o) === 0)).toBe(true)
+    expect(drive(brain('farmer'), poisoned({ active: ['bubble', 1], toxinUntilTick: 220, cdUntilTick: 500 }), 100, 4).every((o) => casts(o) === 0)).toBe(true)
   })
 
   it('a health pack cures poison: sought at full HP only while poisoned', () => {

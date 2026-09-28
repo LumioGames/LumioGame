@@ -5,14 +5,18 @@ import { AI_LABEL, characterLine, initialIndex, selectCards, selectKey, selectKe
 describe('select-model (选角界面)', () => {
   const cards = selectCards(DEFAULT_RULES, DEFAULT_CONFIG)
 
-  it('four cards in CHARACTER_ORDER with names, skills and key hints', () => {
+  it('five cards in CHARACTER_ORDER with names, skills and key hints (飞腿袋鼠 = 用户 2026-09-28)', () => {
     expect(cards.map((c) => [c.id, c.name, c.skill, c.kind, c.keyHint])).toEqual([
       ['rabbit', '棉花兔', 'regen', '被动', '自动生效'],
       ['duck', '泡泡鸭', 'bubble', '主动', 'Shift / 副按钮'],
       ['cat', '闪电猫', 'blink', '主动', 'Shift / 副按钮'],
       ['bear', '火焰熊', 'fireAura', '主动', 'Shift / 副按钮'],
+      ['kangaroo', '飞腿袋鼠', 'flyKick', '主动', 'Shift / 副按钮'],
     ])
-    expect(cards.map((c) => c.animal)).toEqual(['rabbit', 'duck', 'cat', 'bear'])
+    expect(cards.map((c) => c.animal)).toEqual(['rabbit', 'duck', 'cat', 'bear', 'kangaroo'])
+    // 袋鼠卡一句话 = 用户原话。
+    expect(cards[4].tagline).toBe('按 Shift 把面前的炸弹一脚踢出去，一直滑到被挡住（冷却 4 秒）')
+    expect(cards[4].skillName).toBe('飞踢')
   })
 
   it('descriptions carry the Lv1 numbers from the table', () => {
@@ -25,6 +29,9 @@ describe('select-model (选角界面)', () => {
     expect(cards[2].desc).toContain('10 秒')
     expect(cards[3].desc).toContain('5.5 秒')
     expect(cards[3].desc).toContain('16 秒')
+    // 飞踢 Lv1：冷却 4 秒、一直滑到被挡住。
+    expect(cards[4].desc).toContain('冷却 4 秒')
+    expect(cards[4].desc).toContain('一直滑到被挡住')
     for (const c of cards) expect(c.desc).not.toMatch(/\{\w+\}/)
   })
 
@@ -46,6 +53,12 @@ describe('select-model (选角界面)', () => {
     expect(selectKey('KeyD')).toEqual({ t: 'move', d: 1 })
     expect(selectKey('Digit3')).toEqual({ t: 'pick', i: 2 })
     expect(selectKey('Numpad1')).toEqual({ t: 'pick', i: 0 })
+    // 五选一：5 直选袋鼠；6 不映射。
+    expect(selectKey('Digit5')).toEqual({ t: 'pick', i: 4 })
+    expect(selectKey('Numpad5')).toEqual({ t: 'pick', i: 4 })
+    expect(selectKey('Digit6')).toBeNull()
+    expect(selectReduce({ index: 0, done: null }, { t: 'pick', i: 4 }, cards.length, 'start')).toEqual({ index: 4, done: null })
+    expect(selectReduce({ index: 4, done: null }, { t: 'move', d: 1 }, cards.length, 'start').index).toBe(0)
     expect(selectKey('Enter')).toEqual({ t: 'confirm' })
     expect(selectKey('Space')).toEqual({ t: 'confirm' })
     // Esc 不被选角卡吃掉：全局暂停键把它当「继续游戏」（换角色卡随之关闭）。
@@ -61,6 +74,7 @@ describe('select-model (选角界面)', () => {
 
   it('initial index from the remembered pick', () => {
     expect(initialIndex('bear')).toBe(3)
+    expect(initialIndex('kangaroo')).toBe(4)
     expect(initialIndex('x')).toBe(0)
     expect(initialIndex(null)).toBe(0)
   })
@@ -68,7 +82,8 @@ describe('select-model (选角界面)', () => {
   it('character line and AI labels', () => {
     expect(characterLine(cards[2])).toBe('你是 闪电猫 · Shift 闪现')
     expect(characterLine(cards[0])).toBe('你是 棉花兔 · 被动 回春')
-    expect(Object.keys(AI_LABEL).sort()).toEqual(['easy', 'hard', 'normal'])
+    expect(characterLine(cards[4])).toBe('你是 飞腿袋鼠 · Shift 飞踢')
+    expect(Object.keys(AI_LABEL).sort()).toEqual(['easy', 'hard', 'normal', 'rookie'])
     expect(AI_LABEL.normal).toBe('普通')
   })
 })

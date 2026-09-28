@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BlockType, 方向 } from '../../contract'
-import { auraCells, blinkScan, kickOutcome, slideStop, type GridProbe } from '../skill-geometry'
+import { auraCells, blinkScan, flyKickTarget, kickOutcome, slideStop, type GridProbe } from '../skill-geometry'
 
 /** D12 闪现落点 / D13 光环范围 / 踢弹滑行（纯几何）。 */
 const N = 9
@@ -92,5 +92,57 @@ describe('slideStop / kickOutcome', () => {
     expect(kickOutcome(g, at(1, 4), 方向.左, 5)).toEqual({ stop: at(0, 4), cells: 1, water: false })
     g.brick[at(2, 4)] = BlockType.积木
     expect(kickOutcome(g, at(1, 4), 方向.右, 5)).toEqual({ stop: at(1, 4), cells: 0, water: false })
+  })
+})
+
+describe('flyKickTarget (飞腿袋鼠 飞踢，用户 2026-09-28)', () => {
+  /** 静止炸弹 = occ 里、且不在 sliding 里的格。 */
+  function withBombs(...cells: number[]) {
+    const g = grid()
+    const statics = new Set(cells)
+    for (const c of cells) g.occ.add(c)
+    return { g, isStatic: (ci: number) => statics.has(ci), statics }
+  }
+
+  it('adjacent static bomb → kicked, slides until blocked (range 99)', () => {
+    const { g, isStatic } = withBombs(at(3, 4))
+    expect(flyKickTarget(g, at(2, 4), 方向.右, 99, isStatic)).toEqual({ bomb: at(3, 4), stop: at(8, 4), cells: 5, water: false })
+  })
+
+  it('open ground in front, static bomb one cell further → that bomb; a candy / player on the gap is not occupancy', () => {
+    const { g, isStatic } = withBombs(at(4, 4))
+    expect(flyKickTarget(g, at(2, 4), 方向.右, 99, isStatic)).toMatchObject({ bomb: at(4, 4), stop: at(8, 4), cells: 4 })
+    // 空地可以是水。
+    g.ground[at(3, 4)] = BlockType.水
+    expect(flyKickTarget(g, at(2, 4), 方向.右, 99, isStatic)?.bomb).toBe(at(4, 4))
+  })
+
+  it('the gap must be open: a brick / chest / moving bomb in front blocks the look-through', () => {
+    for (const block of ['brick', 'chest', 'moving'] as const) {
+      const { g, isStatic } = withBombs(at(4, 4))
+      if (block === 'brick') g.brick[at(3, 4)] = BlockType.积木
+      else g.occ.add(at(3, 4)) // 宝箱，或一颗正在滑行的弹（占格但不静止）
+      expect(flyKickTarget(g, at(2, 4), 方向.右, 99, isStatic), block).toBeNull()
+    }
+  })
+
+  it('a moving bomb is never a target; two cells away is too far; the border / 停 → null', () => {
+    const g = grid()
+    g.occ.add(at(3, 4))
+    expect(flyKickTarget(g, at(2, 4), 方向.右, 99, () => false)).toBeNull()
+    const far = withBombs(at(5, 4))
+    expect(flyKickTarget(far.g, at(2, 4), 方向.右, 99, far.isStatic)).toBeNull()
+    const edge = withBombs(at(0, 4))
+    expect(flyKickTarget(edge.g, at(0, 4), 方向.左, 99, edge.isStatic)).toBeNull()
+    expect(flyKickTarget(edge.g, at(1, 4), 方向.停, 99, edge.isStatic)).toBeNull()
+  })
+
+  it('a bomb that cannot move one cell counts as nothing to kick; water behind = extinguished at the first water cell', () => {
+    const { g, isStatic } = withBombs(at(3, 4), at(4, 4))
+    // 相邻那颗被后面那颗顶住；不会越过它去踢后面那颗。
+    expect(flyKickTarget(g, at(2, 4), 方向.右, 99, isStatic)).toBeNull()
+    const w = withBombs(at(3, 4))
+    w.g.ground[at(6, 4)] = BlockType.水
+    expect(flyKickTarget(w.g, at(2, 4), 方向.右, 99, w.isStatic)).toEqual({ bomb: at(3, 4), stop: at(6, 4), cells: 3, water: true })
   })
 })
