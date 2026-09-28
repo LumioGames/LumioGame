@@ -314,3 +314,38 @@ export function cureChime(s: Synth, p: Placement): void {
   const v = s.voice(p.at, 0.6, p.gain, p.pan)
   ;[523.25, 783.99, 1046.5].forEach((f, i) => s.tone(v, { type: 'triangle', f0: f, at: p.at + i * 0.07, dur: 0.22, peak: 0.2, attack: 0.01 }))
 }
+
+// ---- 方向 B：击杀手感（ADR 0043；音色为表现取值，推断待验证） ----
+
+/**
+ * 本人击杀的专属音：一记闷响 + 上跳的两音「叮——锵」。`pitch` 为频率倍率（8 秒内连杀逐级升高，present/kill-juice）。
+ */
+export function killConfirm(s: Synth, p: Placement, pitch: number): void {
+  const v = s.voice(p.at, 0.55, p.gain, p.pan)
+  s.tone(v, { f0: 150, f1: 60, at: p.at, dur: 0.12, peak: 0.6, attack: 0.002 })
+  s.noiseBurst(v, { filter: 'bandpass', f0: 2400, f1: 1200, at: p.at, dur: 0.05, peak: 0.3, q: 1.1 })
+  const base = 659.25 * pitch
+  s.tone(v, { type: 'square', f0: base, at: p.at + 0.03, dur: 0.07, peak: 0.12 })
+  s.tone(v, { type: 'triangle', f0: base * 1.5, at: p.at + 0.09, dur: 0.3, peak: 0.3, attack: 0.004 })
+  s.tone(v, { type: 'sine', f0: base * 3, at: p.at + 0.09, dur: 0.22, peak: 0.07 })
+}
+
+/** 命中音：自己的炸弹打到别人——短促清脆的「嗒」，与受击吱声区分。 */
+export function hitConfirm(s: Synth, p: Placement): void {
+  const v = s.voice(p.at, 0.14, p.gain, p.pan)
+  s.tone(v, { type: 'triangle', f0: 1760, f1: 1320, at: p.at, dur: 0.06, peak: 0.28, attack: 0.002 })
+  s.tone(v, { type: 'square', f0: 880, at: p.at, dur: 0.03, peak: 0.06, attack: 0.002 })
+}
+
+/** 金币串：大爆装（死者 ≥ 6 帽）时一串金币「叮叮叮」，每枚略升、间隔略缩。 */
+export function coinCascade(s: Synth, p: Placement, count: number): void {
+  const n = Math.max(1, Math.min(12, count))
+  const v = s.voice(p.at, 0.25 + n * 0.055, p.gain, p.pan)
+  let t = p.at
+  for (let i = 0; i < n; i++) {
+    const f = 1318.51 * 2 ** (Math.min(i, 7) / 24)
+    s.tone(v, { type: 'square', f0: f, at: t, dur: 0.05, peak: 0.08, attack: 0.002 })
+    s.tone(v, { type: 'triangle', f0: f * 1.5, at: t + 0.02, dur: 0.12, peak: 0.16, attack: 0.002 })
+    t += Math.max(0.035, 0.06 - i * 0.003)
+  }
+}

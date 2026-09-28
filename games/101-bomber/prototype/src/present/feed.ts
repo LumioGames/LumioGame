@@ -5,7 +5,8 @@ import type { WorldSnapshot } from '../contract/snapshot'
 /**
  * 表现时钟：缓存最近两帧快照，渲染落后一帧做插值；事件排队到 `renderTick ≥ e.Tick` 才派发，
  * 保证特效与插值后的实体位置对齐。本地替身与将来的引擎 Replica 都调 `push()`，表现层只读 `sample()`。
- * 定帧（hitstop）只冻结渲染时钟，不影响规则层与输入。
+ * 定帧（hitstop）只冻结渲染时钟，不影响规则层与输入；慢镜（slowMo，design §3.1 整局最后一杀）只缩放表现时钟 viewNow，
+ * renderTick、事件派发、规则层与输入照常按真实时间走。
  */
 export interface FeedSample {
   /** 插值起点（上一帧）。 */
@@ -24,6 +25,13 @@ export interface FeedSample {
   realNow: number
   /** 该 sample 是否处于定帧中。 */
   frozen: boolean
+  /** 表现时钟此刻的倍率：1 = 正常，慢镜中 < 1，定帧中 0。 */
+  timeScale: number
+  /**
+   * 请求本机慢镜：真实时间 ms 毫秒内 viewNow 按 scale 倍走（design §3.1：整局最后一杀 0.6 秒 · 0.3×）。
+   * 由 feed 注入，表现层不必持有 feed；与定帧一样只是本机表现，不影响规则与输入。
+   */
+  slowMo(ms: number, scale: number): void
 }
 
 interface Received {
@@ -36,6 +44,8 @@ export class PresentationFeed {
   private b: Received | null = null
   private queue: BomberEvent[] = []
   private frozenUntil = 0
+  private slowUntil = 0
+  private slowScale = 1
   private viewClock = 0
   private lastReal = -1
   private last: FeedSample | null = null
@@ -59,11 +69,26 @@ export class PresentationFeed {
     this.frozenUntil = Math.max(this.frozenUntil, realNow + ms)
   }
 
+  /**
+   * 慢镜：从 realNow 起 ms 毫秒（真实时间）内表现时钟按 scale 倍走；重叠的请求取更晚的结束时刻。
+   * 只缩放 viewNow（动画相位、粒子、玩偶散架与掉落弧线），renderTick 与事件派发不变。
+   */
+  slowMo(ms: number, scale: number, realNow: number): void {
+    if (!(ms > 0)) return
+    this.slowUntil = Math.max(this.slowUntil, realNow + ms)
+    this.slowScale = Math.max(0, Math.min(1, scale))
+  }
+
+  private readonly requestSlowMo = (ms: number, scale: number): void => {
+    this.slowMo(ms, scale, Math.max(0, this.lastReal))
+  }
+
   /** 新局 / 重连时清空。 */
   reset(): void {
     this.a = this.b = null
     this.queue = []
     this.last = null
+    this.slowUntil = 0
   }
 
   sample(realNow: number): FeedSample | null {
@@ -72,9 +97,12 @@ export class PresentationFeed {
     this.lastReal = realNow
     const frozen = realNow < this.frozenUntil
     if (frozen && this.last) {
-      return { ...this.last, dueEvents: [], realNow, frozen: true }
+      return { ...this.last, dueEvents: [], realNow, frozen: true, timeScale: 0 }
     }
-    this.viewClock += dt
+    // 慢镜：本帧落在慢镜窗口里的那一段按倍率走，其余照常。
+    const slowPart = Math.min(dt, Math.max(0, Math.min(realNow, this.slowUntil) - (realNow - dt)))
+    const timeScale = realNow < this.slowUntil ? this.slowScale : 1
+    this.viewClock += dt - slowPart + slowPart * this.slowScale
     const prev = this.a.snapshot
     const curr = this.b.snapshot
     const span = curr.Tick - prev.Tick
@@ -87,7 +115,18 @@ export class PresentationFeed {
       else this.queue[keep++] = e
     }
     this.queue.length = keep
-    const s: FeedSample = { prev, curr, alpha, renderTick, dueEvents: due, viewNow: this.viewClock, realNow, frozen: false }
+    const s: FeedSample = {
+      prev,
+      curr,
+      alpha,
+      renderTick,
+      dueEvents: due,
+      viewNow: this.viewClock,
+      realNow,
+      frozen: false,
+      timeScale,
+      slowMo: this.requestSlowMo,
+    }
     this.last = s
     return s
   }

@@ -1,9 +1,11 @@
-import { MatchPhase, type CharacterId, type SkillId, type U64 } from '../contract'
+import { MatchPhase, type CharacterId, type SkillId, type U64, type WorldSnapshot } from '../contract'
+import type { HighlightStats } from '../present/highlight-cards'
 import type { ChainLedger } from './chain-ledger'
 import type { TickBatch } from './timeline'
 
 /**
  * 本人本局统计（design §13 结算页）：全部从事件 + 快照推出，matchIndex 变化时清零。
+ * 另按人累计全场的高光卡统计（design §13 高光卡，ADR 0043）：最长连锁、击杀、帽王时长、拆迁、拾取、1 心逃生。
  */
 export interface MatchStats {
   matchIndex: number
@@ -49,14 +51,65 @@ function empty(matchIndex: number): MatchStats {
   }
 }
 
+/** 一位玩家本局的高光统计（全场每人一份）。 */
+interface PlayerTally {
+  bestChain: number
+  hatKingTicks: number
+  eventBricks: number
+  derivedBricks: number
+  pickups: number
+  clutch: number
+  /** 此刻正处在 1 心（> 0 且 ≤ 1 心）。 */
+  low: boolean
+}
+
 export class StatsTracker {
   private s: MatchStats
   private eventBricks = 0
   private derivedBricks = 0
   private lastSnapTick = -1
+  private readonly board = new Map<U64, PlayerTally>()
+  private sawBrickEvents = false
 
-  constructor(private readonly localId: U64, matchIndex = 0) {
+  constructor(
+    private readonly localId: U64,
+    matchIndex = 0,
+    private readonly pointsPerHeart = 2,
+  ) {
     this.s = empty(matchIndex)
+  }
+
+  private tally(id: U64): PlayerTally {
+    let t = this.board.get(id)
+    if (!t) {
+      t = { bestChain: 0, hatKingTicks: 0, eventBricks: 0, derivedBricks: 0, pickups: 0, clutch: 0, low: false }
+      this.board.set(id, t)
+    }
+    return t
+  }
+
+  /** 高光卡输入（Boss 猎人 / 金心收藏家的数据要等规则层有心数上限与金心，这里先不带 → 这两类不参与分配）。 */
+  highlightStats(id: U64): HighlightStats {
+    const t = this.board.get(id)
+    return {
+      id,
+      bestChain: t?.bestChain ?? 0,
+      kills: this.s.killsById.get(id) ?? 0,
+      hatKingTicks: t?.hatKingTicks ?? 0,
+      bricks: t ? (this.sawBrickEvents ? t.eventBricks : t.derivedBricks) : 0,
+      clutch: t?.clutch ?? 0,
+      pickups: t?.pickups ?? 0,
+    }
+  }
+
+  /** 局终：1 心活到最后也算一次绝境逃生（design §13「绝境逃生（1 心活下来）」）。每局调用一次。 */
+  finalizeClutch(snap: WorldSnapshot): void {
+    for (const p of snap.Players) {
+      const t = this.board.get(p.NetEntityIdRaw)
+      if (!t || !t.low) continue
+      t.low = false
+      if (p.玩家属性.血量当前 > 0 && !p.eliminated) t.clutch++
+    }
   }
 
   get stats(): Readonly<MatchStats> {
@@ -73,6 +126,7 @@ export class StatsTracker {
     this.eventBricks = 0
     this.derivedBricks = 0
     this.lastSnapTick = -1
+    this.board.clear()
   }
 
   /** 事件部分；`ledger` 须已先吃过同一批事件。 */
@@ -93,9 +147,11 @@ export class StatsTracker {
           break
         case 'PickupTaken':
           if (e.PickerNetEntityIdRaw === me) this.s.pickups++
+          this.tally(e.PickerNetEntityIdRaw).pickups++
           break
         case 'BrickDestroyed':
           if (e.OwnerNetEntityIdRaw === me) this.eventBricks++
+          if (e.OwnerNetEntityIdRaw !== 0) this.tally(e.OwnerNetEntityIdRaw).eventBricks++
           break
         case 'SkillActivated':
           if (e.PlayerNetEntityIdRaw === me) this.s.skillCasts++
@@ -114,10 +170,20 @@ export class StatsTracker {
           break
       }
     }
-    for (const b of batch.derivedBricks) if (b.OwnerNetEntityIdRaw === me) this.derivedBricks++
+    for (const b of batch.derivedBricks) {
+      if (b.OwnerNetEntityIdRaw === me) this.derivedBricks++
+      if (b.OwnerNetEntityIdRaw !== 0) this.tally(b.OwnerNetEntityIdRaw).derivedBricks++
+    }
+    this.sawBrickEvents = ledger.sawBrickEvents
     this.s.bricksDestroyed = ledger.sawBrickEvents ? this.eventBricks : this.derivedBricks
     for (const c of touched) {
-      if (ledger.involves(c, me)) this.s.bestChain = Math.max(this.s.bestChain, ledger.bombs(c))
+      const n = ledger.bombs(c)
+      if (ledger.involves(c, me)) this.s.bestChain = Math.max(this.s.bestChain, n)
+      for (const o of ledger.owners(c)) {
+        if (o === 0) continue
+        const t = this.tally(o)
+        t.bestChain = Math.max(t.bestChain, n)
+      }
     }
   }
 
@@ -137,9 +203,27 @@ export class StatsTracker {
     }
     const phase = snap.BomberMatchState.Phase
     const live = phase === MatchPhase.Running || phase === MatchPhase.Endgame
-    if (live && this.lastSnapTick >= 0 && snap.BomberMatchState.HatKingNetEntityIdRaw === this.localId) {
-      this.s.hatKingTicks += snap.Tick - this.lastSnapTick
+    const king = snap.BomberMatchState.HatKingNetEntityIdRaw
+    if (live && this.lastSnapTick >= 0 && king !== 0) {
+      const dt = snap.Tick - this.lastSnapTick
+      this.tally(king).hatKingTicks += dt
+      if (king === this.localId) this.s.hatKingTicks += dt
     }
     this.lastSnapTick = snap.Tick
+    if (live) this.trackClutch(snap)
+  }
+
+  /** 1 心逃生：掉到 1 心（活着）之后回到 1 心以上算一次；中途倒下不算。 */
+  private trackClutch(snap: WorldSnapshot): void {
+    for (const p of snap.Players) {
+      const hp = p.玩家属性.血量当前
+      const t = this.tally(p.NetEntityIdRaw)
+      if (hp <= 0 || p.eliminated) t.low = false
+      else if (hp <= this.pointsPerHeart) t.low = true
+      else if (t.low) {
+        t.low = false
+        t.clutch++
+      }
+    }
   }
 }
