@@ -1,11 +1,12 @@
 import { BlockType, BombKind, MATERIALS, 方向 } from '../contract'
 import { hitChest } from './chest'
+import { maxHealthOf } from './death-drops'
 import { addBrickWrite } from './terrain-commit'
 import { cellOfIdx, chestAt, emit, findPlayer, isAlive, pickupProtectedUntil, playerCell, type SimBomb, type SimChest, type World } from './world'
 
 /**
  * 爆炸系统（契约 §2.2 / design §7.2 / §7.5）：帧初照片 → 到期炸弹入队、连锁同帧排空 → 十字传播写 Reach →
- * 软砖 / 木箱入写批 → 危险窗内按覆盖格下伤害单（同弹同人一次、同链同人累计 ≤ maxHealthPoints）。
+ * 软砖 / 木箱入写批 → 危险窗内按覆盖格下伤害单（同弹同人一次、同链同人累计 ≤ 受害者当前心数上限，ADR 0039）。
  */
 
 /** 与 ReachUp / ReachDown / ReachLeft / ReachRight 同序；上 = 游戏 −Y。 */
@@ -259,7 +260,6 @@ function dangerPass(w: World): void {
   if (active.length === 0) return
   const alive = w.players.filter(isAlive).map((p) => ({ p, cell: playerCell(w, p) }))
   const dmgPts = w.rules.bombDamagePoints
-  const cap = w.cfg.maxHealthPoints
   for (const b of active) {
     const freeze = b.kind === BombKind.Freeze
     const status = freeze || b.kind === BombKind.Toxin || b.kind === BombKind.Shock
@@ -276,7 +276,7 @@ function dangerPass(w: World): void {
             w.chainDmg.set(b.chainId, perChain)
           }
           const got = perChain.get(p.id) ?? 0
-          const pts = Math.min(dmgPts, cap - got)
+          const pts = Math.min(dmgPts, maxHealthOf(w, p) - got)
           if (pts > 0) {
             perChain.set(p.id, got + pts)
             w.effects.push({ target: p.id, points: pts, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })

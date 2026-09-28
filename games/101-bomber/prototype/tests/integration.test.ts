@@ -114,9 +114,11 @@ describe('LocalHost + bots, full matches', () => {
     expect(selfBombDeaths.length).toBeLessThanOrEqual(Math.max(2, deaths.length * 0.4))
 
     // 每个死亡、未出局的玩家都在重生窗口内复活（决赛圈内死亡即出局，不再复活）。
+    // 死亡晚一帧（契约 §2.2）：死在最后一帧的人要到下一 Tick 才定重生 / 出局，不在此列。
     const last = frames[frames.length - 1].snapshot
+    const diedOnLast = new Set(frames[frames.length - 1].events.flatMap((e) => (e.type === 'PlayerDied' ? [e.VictimNetEntityIdRaw] : [])))
     for (const p of last.Players) {
-      if (p.玩家属性.血量当前 <= 0 && !p.eliminated) {
+      if (p.玩家属性.血量当前 <= 0 && !p.eliminated && !diedOnLast.has(p.NetEntityIdRaw)) {
         expect(p.BomberPlayerState.RespawnAtTick).toBeGreaterThan(0)
         expect(p.BomberPlayerState.RespawnAtTick - last.Tick).toBeLessThanOrEqual(msTicks(config.respawnMs, config.tickRateHz) + 1)
       }

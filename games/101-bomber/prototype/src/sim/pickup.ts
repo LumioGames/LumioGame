@@ -1,4 +1,5 @@
 import { BlockType, MATERIALS, PickupKind, type PickupKindName, type SkillId } from '../contract'
+import { maxHealthOf } from './death-drops'
 import { canTakeSkill, rollCrateSkill, takeSkillCandy } from './skill-candy'
 import {
   CELL_MILLI,
@@ -19,6 +20,8 @@ import {
 /**
  * 掉落系统（design §7.4）与拾取系统（design §8.5 / §9.1，矩阵 4.4 / 5.x）。吃到强化帽数自动 +1（派生值，ADR 0028）。
  * 拾取竞争：站在同一格的活人里离格心最近者得，再比 id；恰好一人成功。达上限者不参与，物品留地。
+ * 原型扩展（NON-CONTRACT，ADR 0039）：血包回到的是本人当前心数上限；拾取让上限上涨（帽子跨阈值 / 金心）时当前血量同增
+ * （新心是满的）并发 PlayerHealed { Source: 'boss' }。
  */
 
 const KIND_ORDER: readonly (readonly [PickupKindName, PickupKind])[] = [
@@ -111,18 +114,21 @@ function canTake(w: World, p: SimPlayer, it: SimPickup): boolean {
     case PickupKind.SpeedPlus:
       return p.speed < w.rules.speedCapMilli
     case PickupKind.HealthPack:
-      // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时满血也能吃（为了解毒）。
-      return p.health < w.cfg.maxHealthPoints || isPoisoned(p, w.t)
+      // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时满血也能吃（为了解毒）。ADR 0039：「满血」= 本人当前上限。
+      return p.health < maxHealthOf(w, p) || isPoisoned(p, w.t)
     case PickupKind.SkillCandy:
       return canTakeSkill(w, p, it)
     case PickupKind.GoldHeart:
+      // 原型扩展（NON-CONTRACT，ADR 0039）：金心满 maxGoldHearts 颗拾不起、留在地上。
+      return p.goldHearts < w.rules.maxGoldHearts
     case PickupKind.Frenzy:
-      // 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：金心 / 狂暴糖的拾取规则随后接入；在那之前谁也拾不起。
+      // 原型扩展（NON-CONTRACT，ADR 0040）：狂暴糖的拾取规则归 M1-2；在那之前谁也拾不起（本卡不产生它）。
       return false
   }
 }
 
 function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
+  const capBefore = maxHealthOf(w, p)
   switch (it.kind) {
     case PickupKind.FirePlus:
       p.power = Math.min(w.rules.powerCap, p.power + 1)
@@ -134,7 +140,7 @@ function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
       p.speed = Math.min(w.rules.speedCapMilli, p.speed + w.rules.speedStepMilli)
       break
     case PickupKind.HealthPack:
-      p.health = Math.min(w.cfg.maxHealthPoints, p.health + w.rules.healthPackPoints)
+      p.health = Math.min(capBefore, p.health + w.rules.healthPackPoints)
       // 原型扩展（NON-CONTRACT，ADR 0033）：血包解中毒弹的毒（PickupTaken 之后发 PlayerCured）。
       if (isPoisoned(p, w.t)) {
         clearToxin(p)
@@ -145,8 +151,17 @@ function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
       takeSkillCandy(w, p, it)
       break
     case PickupKind.GoldHeart:
+      p.goldHearts = Math.min(w.rules.maxGoldHearts, p.goldHearts + 1)
+      break
     case PickupKind.Frenzy:
       break
+  }
+  // 原型扩展（NON-CONTRACT，ADR 0039）：上限上涨（帽子跨 heartsPerHats 阈值 / 金心）——新心是满的。
+  const capAfter = maxHealthOf(w, p)
+  if (capAfter > capBefore) {
+    const before = p.health
+    p.health = Math.min(capAfter, p.health + (capAfter - capBefore))
+    emit(w, { type: 'PlayerHealed', presentationOnly: true, NetEntityIdRaw: p.id, Points: p.health - before, HealthPointsLeft: p.health, Source: 'boss', Tick: w.t })
   }
 }
 
