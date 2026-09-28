@@ -7,7 +7,7 @@ import { createSharedMaterials } from '../materials'
 import { DollFactory } from '../world/dolls'
 import { FireCellLayer } from '../world/fire-cells'
 import type { GroundMarks } from '../world/ground-marks'
-import { SkillFxLayer } from '../world/skill-fx'
+import { facingYaw, FLY_KICK_FX, flyKickPhase, SkillFxLayer } from '../world/skill-fx'
 
 /**
  * 技能表现层（three 实例批）的几何守护：用真实例矩阵 × 真几何顶点采样，而不是解析估算。
@@ -204,5 +204,105 @@ describe('toxin bubbles and shock arcs stay clear of the walls (ADR 0033)', () =
   it('expired or missing status draws nothing', () => {
     expect(sample(sk({ toxinUntilTick: 100, shockUntilTick: 50 })).drawn).toBe(0)
     expect(sample(sk()).drawn).toBe(0)
+  })
+})
+
+describe('fly kick cast (飞腿袋鼠，用户 2026-09-28): read from the snapshot, played once per cast', () => {
+  const kickSk = (over: Partial<PlayerSkillsView> = {}) =>
+    sk({
+      character: 'kangaroo',
+      facing: 方向.右,
+      slots: { active: { skill: 'flyKick', level: 1, bound: true }, passive: null, bomb: null },
+      cdFromTick: 100,
+      cdUntilTick: 180,
+      ...over,
+    })
+
+  it('flyKickPhase: only the flyKick active slot, only within poseMs after the cast tick', () => {
+    const win = (FLY_KICK_FX.poseMs / 1000) * RATE
+    expect(flyKickPhase(kickSk(), 100, RATE)).toBe(0)
+    expect(flyKickPhase(kickSk(), 100 + win / 2, RATE)).toBeCloseTo(0.5, 9)
+    expect(flyKickPhase(kickSk(), 100 + win + 0.01, RATE)).toBe(-1)
+    expect(flyKickPhase(kickSk(), 99.5, RATE)).toBe(-1)
+    // 别的主动技能（闪现同样写 cdFromTick）不演踢腿；没施放过（cdFromTick 0）也不演。
+    expect(flyKickPhase(kickSk({ slots: { active: slot('blink'), passive: null, bomb: null } }), 101, RATE)).toBe(-1)
+    expect(flyKickPhase(kickSk({ cdFromTick: 0 }), 1, RATE)).toBe(-1)
+  })
+
+  it('facingYaw matches the doll yaw convention (atan2(dx, dz), world z = cell Y)', () => {
+    expect(facingYaw(方向.下)).toBeCloseTo(0, 9)
+    expect(facingYaw(方向.右)).toBeCloseTo(Math.PI / 2, 9)
+    expect(facingYaw(方向.左)).toBeCloseTo(-Math.PI / 2, 9)
+    expect(Math.abs(facingYaw(方向.上)!)).toBeCloseTo(Math.PI, 9)
+    expect(facingYaw(方向.停)).toBeNull()
+  })
+
+  it('the kangaroo turns to the kick, a mint flash pops ahead of the foot, one ground burst + one speed streak per cast', () => {
+    const root = new Group()
+    const fx = new SkillFxLayer(root, mats, DEFAULT_RULES.skills)
+    const doll = factory.create(1, 'kangaroo', 0)
+    const rings: number[] = []
+    const glows: [number, number][] = []
+    const marks = {
+      ring() {},
+      glowAt(x: number, z: number) {
+        glows.push([x, z])
+      },
+      dashedRing(_x: number, _z: number, d: number) {
+        rings.push(d)
+      },
+    } as unknown as GroundMarks
+    const s = kickSk()
+    let flashes = 0
+    let aheadMax = -Infinity
+    for (let f = 0; f < 12; f++) {
+      const now = 5000 + f * 16
+      const renderTick = 100 + (f * 16 * RATE) / 1000
+      doll.update(4.5, 6.5, now, 1 / 60, 3, false)
+      fx.begin()
+      fx.player(doll, s, renderTick, RATE, now)
+      fx.end(now, marks)
+      expect(doll.yaw).toBeCloseTo(Math.PI / 2, 9)
+      eachInstanceVertex(root, (v) => {
+        flashes++
+        aheadMax = Math.max(aheadMax, v.x - 4.5)
+      })
+    }
+    // 脚尖闪光在袋鼠身前（+x），不越过前方格子中心。
+    expect(flashes).toBeGreaterThan(0)
+    expect(aheadMax).toBeGreaterThan(0.3)
+    expect(aheadMax).toBeLessThan(1)
+    // 冲击环逐帧扩大、只有一圈（同一次施放不重复起）；速度线沿 +x。
+    expect(rings.length).toBeGreaterThan(3)
+    for (let i = 1; i < rings.length; i++) expect(rings[i]).toBeGreaterThan(rings[i - 1])
+    expect(glows.some(([x]) => x > 4.5 + 1.5)).toBe(true)
+    expect(glows.every(([, z]) => Math.abs(z - 6.5) < 1e-6)).toBe(true)
+    doll.dispose()
+  })
+
+  it('nothing is kicked outside the pose window or while frozen', () => {
+    for (const [s, t] of [
+      [kickSk(), 140],
+      [kickSk({ frozenUntilTick: 200 }), 101],
+    ] as const) {
+      const root = new Group()
+      const fx = new SkillFxLayer(root, mats, DEFAULT_RULES.skills)
+      const doll = factory.create(2, 'kangaroo', 0)
+      let rings = 0
+      const marks = { ring() {}, glowAt() {}, dashedRing: () => void rings++ } as unknown as GroundMarks
+      doll.update(4.5, 6.5, 5000, 1 / 60, 3, false)
+      const yaw = doll.yaw
+      fx.begin()
+      fx.player(doll, s, t, RATE, 5000)
+      fx.end(5000, marks)
+      let glow = 0
+      eachInstanceVertex(root, (_v, mesh) => {
+        if (mesh.material === mats.glowAdd) glow++
+      })
+      expect(glow).toBe(0)
+      expect(rings).toBe(0)
+      expect(doll.yaw).toBe(yaw)
+      doll.dispose()
+    }
   })
 })

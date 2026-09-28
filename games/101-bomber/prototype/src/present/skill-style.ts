@@ -73,6 +73,18 @@ export const SKILL_ICON: Readonly<Record<SkillId, string>> = {
       '<path fill="currentColor" d="M20.4 1.4 14.6 8.6h3.2l-1.7 5.2 6.1-7.6h-3.3z"/>' +
       '<path d="m6.4 11.6 3 2.1-2 1.6 3.9 2.6" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>',
   ),
+  // 飞踢（原型扩展 NON-CONTRACT，用户 2026-09-28，飞腿袋鼠专属）：斜向上踢出的长脚掌（袋鼠脚印：长足跟 + 三个趾垫）
+  // + 身后三道速度线 + 脚尖一颗冲击星。与踢弹的「靴子 + 小弹」不共用剪影。
+  flyKick: svg(
+    '<g transform="rotate(-32 13 13)">' +
+      '<path fill="currentColor" d="M5.2 13c0-1.7 2.9-2.6 7.4-2.6 3.1 0 5.1.9 5.1 2.6s-2 2.6-5.1 2.6c-4.5 0-7.4-.9-7.4-2.6z"/>' +
+      '<ellipse cx="20" cy="13" rx="1.9" ry="1.6" fill="currentColor"/>' +
+      '<ellipse cx="18.7" cy="10" rx="1.2" ry="1" fill="currentColor"/>' +
+      '<ellipse cx="18.7" cy="16" rx="1.2" ry="1" fill="currentColor"/>' +
+      '</g>' +
+      '<path d="M1.8 15.6h3.6M2.6 19.2h4.6M4.8 22.4h3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".8"/>' +
+      '<path fill="currentColor" d="m20.6 1.2.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/>',
+  ),
 }
 
 /** 技能主色（0xRRGGBB）：技能糖外壳、技能条光环、组合技光环、闪现拖尾。表现取值（推断待验证）。 */
@@ -90,6 +102,8 @@ export const SKILL_COLOR: Readonly<Record<SkillId, number>> = {
   // 原型扩展（NON-CONTRACT，ADR 0033）：毒绿 / 电黄（电黄偏柠檬，与闪现的金黄分开；推断待验证）。
   toxinBomb: 0x8ee04a,
   shockBomb: 0xf0ff7a,
+  // 飞踢（用户 2026-09-28）：薄荷青——与袋鼠的洋红毛色互补，也和其他技能色都拉得开（推断待验证）。
+  flyKick: 0x33e0b8,
 }
 
 /** SKILL_COLOR → CSS 颜色串（'#rrggbb'）。 */

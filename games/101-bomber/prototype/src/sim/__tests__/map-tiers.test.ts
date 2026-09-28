@@ -213,10 +213,15 @@ describe('createWorld on the 27 tier', () => {
     expect(() => createWorld({ seed: 3, config: cfg, rules: { ...rules, playerCount: 17 }, players: specs(17) })).toThrow(/player count 17/)
   })
 
-  it('roster: 16 auto players → 4 per character', () => {
+  it('roster: 16 auto players → 3–4 per character (five characters since 用户 2026-09-28)', () => {
     const { rules, cfg } = tier(27)
     const w = createWorld({ seed: 11, config: cfg, rules, players: specs(16, Array(16).fill('auto')) })
-    for (const c of CHARACTER_ORDER) expect(w.players.filter((p) => p.character === c)).toHaveLength(4)
+    for (const c of CHARACTER_ORDER) {
+      const n = w.players.filter((p) => p.character === c).length
+      expect(n, c).toBeGreaterThanOrEqual(3)
+      expect(n, c).toBeLessThanOrEqual(4)
+    }
+    expect(w.players.filter((p) => p.character !== null)).toHaveLength(16)
   })
 
   it('the 19 tier registers no resource boxes and schedules no supply', () => {

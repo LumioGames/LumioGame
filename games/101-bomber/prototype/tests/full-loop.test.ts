@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CHARACTER_ORDER,
   CHARACTERS,
   DEFAULT_RULES,
   MatchPhase,
@@ -197,15 +198,22 @@ describe('full loop: pick → match → 1×1 → end → podium', () => {
     const run = runLoop(host, 4000)
     const me = host.localPlayerId
 
-    // 开局：本人闪电猫；四个角色各 2 人（D15 均衡）；名字互不相同。
+    // 开局：本人闪电猫；五个角色（飞腿袋鼠 = 用户 2026-09-28）按 D15 均衡各 1–2 人；名字互不相同。
     const chars = (s: WorldSnapshot): Record<CharacterId, number> => {
-      const n = { rabbit: 0, duck: 0, cat: 0, bear: 0 } as Record<CharacterId, number>
+      const n = { rabbit: 0, duck: 0, cat: 0, bear: 0, kangaroo: 0 } as Record<CharacterId, number>
       for (const p of s.Players) if (p.skills?.character) n[p.skills.character]++
       return n
     }
+    const balanced = (n: Record<CharacterId, number>): void => {
+      for (const c of CHARACTER_ORDER) {
+        expect(n[c], c).toBeGreaterThanOrEqual(1)
+        expect(n[c], c).toBeLessThanOrEqual(2)
+      }
+      expect(Object.values(n).reduce((a, b) => a + b, 0)).toBe(8)
+    }
     expect(run.first.Players).toHaveLength(8)
     expect(run.first.Players.find((p) => p.NetEntityIdRaw === me)?.skills?.character).toBe('cat')
-    expect(chars(run.first)).toEqual({ rabbit: 2, duck: 2, cat: 2, bear: 2 })
+    balanced(chars(run.first))
     expect(new Set(run.first.Players.map((p) => p.meta.name)).size).toBe(8)
     for (const p of run.first.Players) {
       const c = p.skills?.character
@@ -283,7 +291,7 @@ describe('full loop: pick → match → 1×1 → end → podium', () => {
     const bear = next.Players.find((p) => p.NetEntityIdRaw === me)
     expect(bear?.meta.animal).toBe('bear')
     expect(bear?.skills?.slots.active).toEqual({ skill: 'fireAura', level: 1, bound: true })
-    expect(chars(next)).toEqual({ rabbit: 2, duck: 2, cat: 2, bear: 2 })
+    balanced(chars(next))
     expect(new Set(next.Players.map((p) => p.meta.name)).size).toBe(8)
   })
 })

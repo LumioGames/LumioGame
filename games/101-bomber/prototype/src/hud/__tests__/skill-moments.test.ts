@@ -71,6 +71,9 @@ describe('skill texts', () => {
     expect(skillFailText('noSkill', null, 0, 'rabbit', R)).toBe('回春是被动技能，自动生效')
     expect(skillFailText('noSkill', null, 0, null, R)).toBe('还没有主动技能')
     expect(skillFailText('noLanding', 'blink', 0, 'cat', R)).toBe('前方没有落脚点')
+    // 飞踢（飞腿袋鼠，用户 2026-09-28）复用 noLanding：面前没有可踢的炸弹。
+    expect(skillFailText('noLanding', 'flyKick', 0, 'kangaroo', R)).toBe('面前没有能踢的炸弹')
+    expect(skillFailText('cooldown', 'flyKick', 2.3, 'kangaroo', R)).toBe('飞踢 冷却中 · 2.3 秒')
     expect(skillFailText('frozen', 'blink', 0, 'cat', R)).toBe('被冻住了，放不了技能')
   })
 

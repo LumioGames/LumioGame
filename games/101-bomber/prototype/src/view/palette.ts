@@ -66,6 +66,9 @@ export const ANIMAL_COLORS: Readonly<Record<AnimalId, AnimalColors>> = {
   penguin: { body: 0x24375e, accent: 0xffa51f, feet: 0xffa51f, light: 0xffffff, mark: 0x3e5a92, blush: 0xff9cb5 },
   pig: { body: 0xff86ae, accent: 0xff5f93, feet: 0xe86a95, light: 0xffc6da, mark: 0xc2446f, blush: 0xff4f86 },
   dog: { body: 0xf28a2e, accent: 0xff7f9e, feet: 0xd9741f, light: 0xfff3e0, mark: 0x7a3e1c, blush: 0xff5e7a },
+  // 飞腿袋鼠（用户 2026-09-28）：洋红毛绒（离最近的猫 ΔE ≈ 39、离地形 ≥ 80）+ 奶粉肚兜口袋；mark = 薄荷青（口袋沿、脚底、
+  // 与技能色飞踢同色系），accent = 深梅色鼻头与内耳。表现取值，推断待验证。
+  kangaroo: { body: 0xca3ad0, accent: 0x5c1a5a, feet: 0xa62cad, light: 0xffe3f6, mark: 0x33e0b8, blush: 0xffa3dc },
 }
 
 /** 玩偶描边（暖可可墨色，不用纯黑）。 */
