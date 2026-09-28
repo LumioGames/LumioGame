@@ -1,4 +1,5 @@
 import {
+  BOT_TACTICS,
   BlockType,
   BombKind,
   DEFAULT_CONFIG,
@@ -15,9 +16,18 @@ import {
   type SkillId,
   type PickupView,
   type PlayerView,
+  type ResourceBoxTier,
+  type ResourceBoxView,
+  type SupplyView,
   type U64,
   type WorldSnapshot,
 } from '../contract'
+import { cellIndexOf, STRICT_REST, type ThinkContext } from './behaviors'
+import { buildBoard } from './board'
+import { BotRng } from './bot-rng'
+import { buildDangerMap } from './danger-map'
+import { searchPaths } from './path-search'
+import { readSkills } from './skill-state'
 
 /**
  * 手搭 WorldSnapshot（Bot 测试不能 import sim）。地图用字符画，每行一个游戏 Y：
@@ -64,6 +74,10 @@ export interface PlayerSpec {
   eliminated?: boolean
   /** 原型扩展（NON-CONTRACT，ADR 0030）：技能状态（缺省 = 快照不带 skills，第 3 轮形状）。 */
   skills?: Partial<Omit<PlayerSkillsView, 'slots'>> & { active?: [SkillId, number]; passive?: [SkillId, number]; bomb?: [SkillId, number] }
+  /** 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：只在给了时写进快照（缺省 = 旧形状）。 */
+  maxHealth?: number
+  goldHearts?: number
+  frenzyUntil?: number
 }
 
 export interface BombSpec {
@@ -79,6 +93,8 @@ export interface BombSpec {
   kind?: BombKind
   pierce?: number
   kick?: { dir: 方向; progressMilli: number; cellsLeft: number; speedMilli?: number }
+  /** 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：不计数的炸弹（狂暴弹 / 集束子弹）。 */
+  uncounted?: boolean
 }
 
 export interface SnapSpec {
@@ -94,6 +110,10 @@ export interface SnapSpec {
   resource?: { initial: number; remaining: number }
   /** 原型扩展（NON-CONTRACT，ADR 0030）。 */
   fireZones?: FireZoneView[]
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：资源箱（砖层须是 `c` 木箱）；缺省不写 WorldSnapshot.ResourceBoxes。 */
+  resourceBoxes?: { X: number; Y: number; tier: ResourceBoxTier; hitsLeft?: number; hitsRequired?: number }[]
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：中央补给；缺省不写 MatchMeta.supply。 */
+  supply?: SupplyView | null
 }
 
 const center = (X: number, Y: number, ox = 0, oy = 0): { x: number; y: number; z: number } => ({
@@ -132,6 +152,9 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
     meta: { name: `p${p.id}`, isBot: true, animal: 'duck', slot: k },
     eliminated: p.eliminated ?? false,
     ...(p.skills ? { skills: skillsView(p.skills) } : {}),
+    ...(p.maxHealth !== undefined ? { maxHealth: p.maxHealth } : {}),
+    ...(p.goldHearts !== undefined ? { goldHearts: p.goldHearts } : {}),
+    ...(p.frenzyUntil !== undefined ? { frenzyUntilTick: p.frenzyUntil } : {}),
   }))
   const bombs: BombView[] = (s.bombs ?? []).map((b) => ({
     NetEntityIdRaw: b.id,
@@ -153,6 +176,7 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
       ReachRight: b.exploded?.reach[3] ?? 0,
     },
     kick: b.kick ? { ...b.kick, speedMilli: b.kick.speedMilli ?? rules.kickSpeedMilli } : null,
+    ...(b.uncounted ? { uncounted: true as const } : {}),
   }))
   const pickups: PickupView[] = (s.pickups ?? []).map((p) => ({
     NetEntityIdRaw: p.id,
@@ -192,9 +216,17 @@ export function makeSnapshot(s: SnapSpec): WorldSnapshot {
       resourceInitial: s.resource?.initial ?? 0,
       resourceRemaining: s.resource?.remaining ?? 0,
       finalCircle: s.finalCircle ?? null,
+      ...(s.supply !== undefined ? { supply: s.supply } : {}),
     },
     ...(s.fireZones ? { FireZones: s.fireZones } : {}),
+    ...(s.resourceBoxes ? { ResourceBoxes: s.resourceBoxes.map(resourceBoxView) } : {}),
   }
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040）：手搭资源箱视图（缺省命中数按 MAP_TIERS 口径：金 2、其余 1）。 */
+function resourceBoxView(b: NonNullable<SnapSpec['resourceBoxes']>[number]): ResourceBoxView {
+  const req = b.hitsRequired ?? (b.tier === 'gold' ? 2 : 1)
+  return { Cell: { X: b.X, Y: b.Y }, tier: b.tier, HitsLeft: b.hitsLeft ?? req, HitsRequired: req }
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：手搭技能视图；槽给 [技能, 等级]。 */
@@ -374,4 +406,40 @@ export function carved(open: readonly (readonly [number, number])[], extra: read
   for (const [x, y] of open) map = setCell(map, x, y, '.')
   for (const [x, y, ch] of extra) map = setCell(map, x, y, ch)
   return map
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：给行为函数单测搭一个思考上下文（与 BotBrain.think 同口径：真实棋盘 / 危险图 /
+ * 路线场；陆路、每格按真实移速、余量缺省）。`over` 覆写任意字段（soft / tactics / escapeMargin …）。
+ */
+export function ctxFor(spec: SnapSpec, self: U64, over: Partial<ThinkContext> = {}): ThinkContext {
+  const snap = makeSnapshot(spec)
+  const board = buildBoard(snap, { self })
+  const dm = buildDangerMap(board, Math.ceil((config.dangerWindowMs * config.tickRateHz) / 1000))
+  const me = snap.Players.find((p) => p.NetEntityIdRaw === self)
+  if (!me) throw new Error(`ctxFor: no player ${self}`)
+  const here = cellIndexOf(board, me.LogicTransform.WorldPosition)
+  const tpcLand = (1000 * config.tickRateHz) / me.玩家属性.移速当前
+  const field = searchPaths(board, dm, here, board.now, { tpcLand, tpcWater: tpcLand * 2, allowWater: false })
+  return {
+    snap,
+    board,
+    dm,
+    field,
+    me,
+    self,
+    here,
+    config,
+    rules,
+    rng: new BotRng(1),
+    restHorizon: STRICT_REST,
+    fuseTicks: Math.ceil((config.fuseMs * config.tickRateHz) / 1000),
+    skills: readSkills(me),
+    immuneUntil: -1,
+    pierce: 0,
+    showdown: false,
+    poisonRate: rules.poisonPointsPerInterval,
+    tactics: BOT_TACTICS,
+    ...over,
+  }
 }

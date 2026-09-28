@@ -64,3 +64,45 @@ export class BombPerception {
 }
 
 const zoneKey = (z: FireZoneView): string => `${z.owner}:${z.source}:${z.untilTick}`
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：菜鸟「看小火力」（BotProfile.misperceivePermille）。别人的每颗炸弹第一次出现在快照里时
+ * 从第三随机流 rng3 掷一次（快照序，确定性）：中了就在这个 Bot 自己的棋盘上把它的火力看小 1 格（最小 0 = 只烧本格），
+ * 直到这颗弹离场。只改本 Bot 的危险判断（危险图、连锁、放弹自检），不碰快照；自己的弹从不看错。
+ * permille = 0 时宿主不建本对象，rng3 一次都不抽。
+ */
+export class BlastMisperception {
+  /** 弹 id → 是否看小（插入序遍历，确定性）。 */
+  private readonly misread = new Map<U64, boolean>()
+
+  constructor(
+    private readonly rng: BotRng,
+    private readonly permille: number,
+  ) {}
+
+  /** 每次决策调用一次（buildBoard 之后、buildDangerMap 之前）：改写看错的弹的 power，返回看小的弹数。 */
+  observe(board: Board, self: U64): number {
+    const live = new Set<U64>()
+    let n = 0
+    for (const b of board.pending) {
+      if (b.owner === self) continue
+      live.add(b.id)
+      let m = this.misread.get(b.id)
+      if (m === undefined) {
+        m = this.rng.nextU32() % 1000 < this.permille
+        this.misread.set(b.id, m)
+      }
+      if (m) {
+        b.power = Math.max(0, b.power - 1)
+        n++
+      }
+    }
+    for (const id of this.misread.keys()) if (!live.has(id)) this.misread.delete(id)
+    return n
+  }
+
+  /** 死亡 / 不在对局中时清空（重生后重新看场上的弹）。 */
+  reset(): void {
+    this.misread.clear()
+  }
+}

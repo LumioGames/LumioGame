@@ -118,6 +118,7 @@ export function buildDangerMap(board: Board, dangerTicks: number, virtual?: Virt
       moving: false,
       doused: false,
       hidden: false,
+      uncounted: false,
     })
     chainAt = chainAt.slice()
     chainAt[cell] = bombs.length - 1
@@ -192,12 +193,13 @@ export function poisonFreeAfter(dm: DangerMap, c: number, t: number): boolean {
 }
 
 /**
- * 在 t 时刻到达后能否一直待着：永不危险，或所有危险在 t 之前（留 2 Tick）已结束。
+ * 在 t 时刻到达后能否一直待着：永不危险，或所有危险在 t 之前（留 margin Tick，缺省 2）已结束。
  * from/until 是合并后的窗口（until 取 max），所以窗口结束后不会再有危险。
  * 原型扩展（NON-CONTRACT，ADR 0030）：别人的光环 / 火墙在 t 时仍在烧也不能待。
+ * 原型扩展（NON-CONTRACT，ADR 0043）：margin = 难度档 BotProfile.escapeMarginTicks（rookie 0）。
  */
-export function restsAt(dm: DangerMap, c: number, t: number): boolean {
-  return (dm.from[c] === NEVER || dm.until[c] + 2 <= t) && (dm.burn === undefined || dm.burn[c] <= t)
+export function restsAt(dm: DangerMap, c: number, t: number, margin = 2): boolean {
+  return (dm.from[c] === NEVER || dm.until[c] + margin <= t) && (dm.burn === undefined || dm.burn[c] <= t)
 }
 
 /**
