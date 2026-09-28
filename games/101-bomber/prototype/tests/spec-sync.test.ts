@@ -7,15 +7,21 @@ import {
   COMBOS,
   DEFAULT_CONFIG,
   DEFAULT_RULES,
+  MAP_TIERS,
   PickupKind,
   SKILL_IDS,
   SKILLS,
   UNTIL_BLOCKED,
   bombCandyPool,
   candyPool,
+  isBoss,
   isPowerupKind,
+  lineupFor,
+  maxHealthCeiling,
+  maxHealthFor,
   msToTicks,
   poisonPointsAt,
+  poisonPointsFor,
   protoConfig,
   skillParams,
   type SkillId,
@@ -281,5 +287,117 @@ describe('design §15 · Bot 难度分档（原型工具）', () => {
       expect(BOT_PROFILES[k].skillUsePermille).toBeGreaterThan(0)
       expect(BOT_PROFILES[k].showdownTradePermille).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('ADR 0039 · hats give hearts, gold hearts, cap 8 hearts, poison scales with the cap (design §8.5 / §9.1 / §12 / §4.2)', () => {
+  it('cap = 6 + 2·min(2, ⌊hats/4⌋) + 2·min(3, gold) half-heart points: every 4 hats +1 heart (max +2), gold +1 each (max +3), 8 hearts max', () => {
+    // design §12「心数上限」/ ADR 0039：帽子每 4 顶 +1 心、最多 +2；金心每颗 +1 心、最多 +3；封顶 8 心（16 点）。
+    expect(R).toMatchObject({ heartsPerHats: 4, maxHatHearts: 2, maxGoldHearts: 3 })
+    expect(DEFAULT_CONFIG).toMatchObject({ maxHealthPoints: 6, healthPointsPerHeart: 2 })
+    expect([0, 4, 8, 12].map((h) => maxHealthFor(DEFAULT_CONFIG, R, h, 0))).toEqual([6, 8, 10, 10])
+    expect([0, 1, 2, 3].map((g) => maxHealthFor(DEFAULT_CONFIG, R, 12, g))).toEqual([10, 12, 14, 16])
+    expect(maxHealthCeiling(DEFAULT_CONFIG, R)).toBe(16)
+  })
+
+  it('Boss = cap ≥ 6 hearts; gold heart sources: gold box 20 %, power chest 20 %, central supply exactly 1', () => {
+    expect(R.bossMinHearts).toBe(6)
+    expect(isBoss(DEFAULT_CONFIG, R, 12)).toBe(true)
+    expect(isBoss(DEFAULT_CONFIG, R, 10)).toBe(false)
+    expect(R.goldBoxGoldHeartPermille).toBe(200)
+    expect(R.powerChestGoldHeartPermille).toBe(200)
+    expect(R.supplyLoot.goldHearts).toBe(1)
+    // 金心不是帽子（design §9.5）。
+    expect(isPowerupKind(PickupKind.GoldHeart)).toBe(false)
+  })
+
+  it('poison: ⌈stage points × cap / 6⌉ per second — 3 hearts unchanged (1 / 2), any cap dies from full in ≈ 6 s / 3 s', () => {
+    for (let cap = 6; cap <= 16; cap += 2) {
+      const pre = poisonPointsFor(DEFAULT_CONFIG, 1, cap)
+      const post = poisonPointsFor(DEFAULT_CONFIG, 2, cap)
+      expect(Math.ceil(cap / pre)).toBeLessThanOrEqual(6)
+      expect(Math.ceil(cap / post)).toBeLessThanOrEqual(3)
+    }
+    expect([poisonPointsFor(DEFAULT_CONFIG, 1, 6), poisonPointsFor(DEFAULT_CONFIG, 2, 6)]).toEqual([1, 2])
+    expect([poisonPointsFor(DEFAULT_CONFIG, 1, 16), poisonPointsFor(DEFAULT_CONFIG, 2, 16)]).toEqual([3, 6])
+  })
+})
+
+describe('ADR 0040 · 27×27 · 16 players, three rings / three box tiers, central supply, frenzy (design §4.2 / §5.0 / §8.5 / §8.6)', () => {
+  it('27 tier: 16 players, rings ≤ 4 / 5–8 / ≥ 9, wood 16 / iron 12 / gold 4 with 1 / 1 / 2 hits, brick drops 25 / 35 / 45 %, regen 4 groups, ≈ 1/6 boxes', () => {
+    const t = MAP_TIERS[27]
+    expect(t).toMatchObject({ size: 27, defaultPlayers: 16, zones: { coreMaxD: 4, midMaxD: 8 }, regenOrbitsPerInterval: 4, regenBoxOneIn: 6 })
+    expect(t.boxes).toEqual({ wood: { count: 16, hits: 1 }, iron: { count: 12, hits: 1 }, gold: { count: 4, hits: 2 } })
+    expect(t.brickDropPermille).toEqual({ outer: 250, mid: 350, core: 450 })
+    // 19 档按比例保留三圈 ≤ 2 / 3–5 / ≥ 6，仍 2 组再生；23 档 3 组。
+    expect(MAP_TIERS[19]).toMatchObject({ zones: { coreMaxD: 2, midMaxD: 5 }, regenOrbitsPerInterval: 2, defaultPlayers: 8 })
+    expect(MAP_TIERS[23].regenOrbitsPerInterval).toBe(3)
+  })
+
+  it('final-circle stage tables: 27 → +10/30/45/60/75/95/110 s 19/13/9/7/5/3/1 (6 power chests); 23 → +10/30/50/75/95/110 s 15/11/7/5/3/1; 19 unchanged', () => {
+    const table = (id: 19 | 23 | 27) => MAP_TIERS[id].ringStages.map((s) => [s.atMs / 1000, s.size])
+    expect(table(27)).toEqual([
+      [10, 19],
+      [30, 13],
+      [45, 9],
+      [60, 7],
+      [75, 5],
+      [95, 3],
+      [110, 1],
+    ])
+    expect(MAP_TIERS[27].powerChests).toBe(6)
+    expect(table(23)).toEqual([
+      [10, 15],
+      [30, 11],
+      [50, 7],
+      [75, 5],
+      [95, 3],
+      [110, 1],
+    ])
+    expect(MAP_TIERS[19].ringStages).toEqual(R.ringStages)
+    expect(MAP_TIERS[19].powerChests).toBe(5)
+  })
+
+  it('box loot: iron 50 % special bomb + 1 candy; gold 1 special bomb + 2 candies; wood 1 candy', () => {
+    expect(R.boxLoot).toEqual({
+      wood: { candies: 1, specialBombPermille: 0 },
+      iron: { candies: 1, specialBombPermille: 500 },
+      gold: { candies: 2, specialBombPermille: 1000 },
+    })
+  })
+
+  it('central supply (27 only, 3×3 plaza): announce at 0:50, open at 1:00; loot 5 candies + 2 packs + 1 frenzy + 2 special bombs + 1 gold heart', () => {
+    expect(R.supplyAnnounceMs).toBe(50_000)
+    expect(R.supplyOpenMs).toBe(60_000)
+    expect(R.supplyLoot).toEqual({ candies: 5, healthPacks: 2, frenzy: 1, specialBombs: 2, goldHearts: 1 })
+    expect([MAP_TIERS[19].centralSupply, MAP_TIERS[23].centralSupply, MAP_TIERS[27].centralSupply]).toEqual([false, false, true])
+    expect(MAP_TIERS[27].plazaSide).toBe(3)
+  })
+
+  it('frenzy: 6 s, 1.2 s fuse, 6 extra bombs, ≤ 4 bombs per second (5 ticks apart at 20 Hz)', () => {
+    expect(R).toMatchObject({ frenzyMs: 6000, frenzyFuseMs: 1200, frenzyExtraBombs: 6, frenzyMinIntervalTicks: 5 })
+    expect(hz / R.frenzyMinIntervalTicks).toBe(4)
+    expect(isPowerupKind(PickupKind.Frenzy)).toBe(false)
+  })
+})
+
+describe('ADR 0043 · rookie tier and the default lineup (design §15)', () => {
+  it('rookie: react 10–16, think every 3, 30 % noise, 50 % attack skip, no skills, 0 escape margin, 25 % misread, 30 % greedy pickups', () => {
+    expect(BOT_PROFILES.rookie).toMatchObject({
+      reactMinTicks: 10,
+      reactMaxTicks: 16,
+      thinkEveryTicks: 3,
+      noisePermille: 300,
+      attackSkipPermille: 500,
+      skillUsePermille: 0,
+      escapeMarginTicks: 0,
+      misperceivePermille: 250,
+      greedyPickupPermille: 300,
+    })
+  })
+
+  it('default lineup for 15 bots: rookie 7 / normal 6 / hard 2', () => {
+    const l = lineupFor(15)
+    expect(['rookie', 'normal', 'hard'].map((d) => l.filter((x) => x === d).length)).toEqual([7, 6, 2])
   })
 })

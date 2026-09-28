@@ -154,8 +154,11 @@ export interface PickupSpawned {
   Cell: BomberCell
   Kind: PickupKind
   Tick: U64
-  /** 来源：砖块掉落 / 木箱必掉 / 死者掉出的强化 / 强力宝箱喷出。 */
-  Source: 'brick' | 'crate' | 'death' | 'chest'
+  /**
+   * 来源：砖块掉落 / 木箱必掉（方向 B 起 = 任一级资源箱开箱）/ 死者掉出的强化（方向 B 起含金心，ADR 0039）/ 强力宝箱喷出 /
+   * 中央大补给喷发（'supply'，原型扩展 NON-CONTRACT，ADR 0040）。
+   */
+  Source: 'brick' | 'crate' | 'death' | 'chest' | 'supply'
   /** Source = 'death' 时为死者；否则 0。 */
   DroppedByNetEntityIdRaw: U64
   /** 喷出起点（死亡格 / 宝箱格）；砖块掉落时等于 Cell。 */
@@ -377,14 +380,18 @@ export interface SkillsDropped {
   Tick: U64
 }
 
-/** 原型扩展（NON-CONTRACT，ADR 0030）：回血（棉花兔回春，design §12 的角色例外）。 */
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0030）：回血（棉花兔回春，design §12 的角色例外）。
+ * Source 'boss'（原型扩展 NON-CONTRACT，ADR 0039）：心数上限上涨（帽子跨过 heartsPerHats 阈值或吃到金心），新心是满的——
+ * Points = 上限涨幅，与同 Tick 的 PickupTaken 成对、排在它后面。血包回血不发本事件（看 PickupTaken）。
+ */
 export interface PlayerHealed {
   type: 'PlayerHealed'
   presentationOnly: true
   NetEntityIdRaw: U64
   Points: number
   HealthPointsLeft: number
-  Source: 'regen'
+  Source: 'regen' | 'boss'
   Tick: U64
 }
 
@@ -447,6 +454,31 @@ export interface PlayerCured {
   Tick: U64
 }
 
+// ---- 以下为方向 B · M1 表现事件（原型扩展 NON-CONTRACT，ADR 0040，presentationOnly）----
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040，design §8.6）：中央大补给全场预告（开局后 supplyAnnounceMs）。
+ * Cell = 落点（核心中央广场的中心格），AtTick = 开启喷发的 Tick（同 RingShrinkAnnounced.AtTick 口径）。
+ */
+export interface SupplyAnnounced {
+  type: 'SupplyAnnounced'
+  presentationOnly: true
+  Cell: BomberCell
+  AtTick: U64
+  Tick: U64
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040，design §8.6）：中央大补给开启喷发（开局后 supplyOpenMs，每局 1 次）。
+ * 战利品随后每件一条 PickupSpawned（Source = 'supply'，FromCell = Cell）。
+ */
+export interface SupplyOpened {
+  type: 'SupplyOpened'
+  presentationOnly: true
+  Cell: BomberCell
+  Tick: U64
+}
+
 export type ContractEvent =
   | BombPlaced
   | BombExploded
@@ -488,6 +520,8 @@ export type PresentationEvent =
   | PlayerPoisoned
   | PlayerShocked
   | PlayerCured
+  | SupplyAnnounced
+  | SupplyOpened
 
 export type BomberEvent = ContractEvent | PresentationEvent
 export type BomberEventType = BomberEvent['type']

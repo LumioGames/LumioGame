@@ -29,7 +29,8 @@ const KIND_ORDER: readonly (readonly [PickupKindName, PickupKind])[] = [
 ]
 
 export interface PickupOrigin {
-  source: 'brick' | 'crate' | 'death' | 'chest'
+  /** 'supply' = 中央大补给喷发（原型扩展 NON-CONTRACT，ADR 0040；流程归 M1-2）。 */
+  source: 'brick' | 'crate' | 'death' | 'chest' | 'supply'
   /** Source = 'death' 时为死者，其余 0。 */
   droppedBy: number
   /** 喷出起点格；砖块掉落为物品所在格。 */
@@ -93,9 +94,10 @@ export function spawnDrops(w: World): void {
   }
 }
 
+/** 场上未爆、计入炸弹数的炸弹（原型扩展 NON-CONTRACT，ADR 0040 / 0041：uncounted 的狂暴炸弹 / 集束子弹不算，帽数也就不算）。 */
 export function liveBombsOf(w: World, id: number): number {
   let n = 0
-  for (const b of w.bombs) if (b.owner === id && b.explodedAtTick === 0) n++
+  for (const b of w.bombs) if (b.owner === id && b.explodedAtTick === 0 && !b.uncounted) n++
   return n
 }
 
@@ -113,6 +115,10 @@ function canTake(w: World, p: SimPlayer, it: SimPickup): boolean {
       return p.health < w.cfg.maxHealthPoints || isPoisoned(p, w.t)
     case PickupKind.SkillCandy:
       return canTakeSkill(w, p, it)
+    case PickupKind.GoldHeart:
+    case PickupKind.Frenzy:
+      // 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：金心 / 狂暴糖的拾取规则随后接入；在那之前谁也拾不起。
+      return false
   }
 }
 
@@ -137,6 +143,9 @@ function applyPickup(w: World, p: SimPlayer, it: SimPickup): void {
       break
     case PickupKind.SkillCandy:
       takeSkillCandy(w, p, it)
+      break
+    case PickupKind.GoldHeart:
+    case PickupKind.Frenzy:
       break
   }
 }

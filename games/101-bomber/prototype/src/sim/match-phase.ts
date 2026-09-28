@@ -76,6 +76,8 @@ export function createWorld(opts: LocalSimOptions): World {
       toxinNextTick: 0,
       shockUntilTick: 0,
       shockSlowPermille: 0,
+      goldHearts: 0,
+      frenzyUntilTick: 0,
     }
     resetAttributes(p, cfg)
     return p

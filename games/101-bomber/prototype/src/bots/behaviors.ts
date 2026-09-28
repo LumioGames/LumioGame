@@ -227,6 +227,10 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         const o = candyOutcome(ctx, p)
         return o ? [ctx.tactics.candyBonusSteps[o.kind], CANDY_SCORE[o.kind]] : null
       }
+      // 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：金心 / 狂暴糖暂不追（估值归 M1-3）。
+      case PickupKind.GoldHeart:
+      case PickupKind.Frenzy:
+        return null
     }
   }
   let best: Goal | null = null

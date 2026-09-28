@@ -78,6 +78,11 @@ export interface BotOptions {
   profile?: BotProfile
   /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：技能 / 摊牌战术常量；缺省 BOT_TACTICS（测试可覆写）。 */
   tactics?: BotTactics
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：宿主传入的「不围剿」软目标（真人玩家 id，不从快照猜）。作为目标 +6 分惩罚、
+   * 只有离他最近的 2 个 Bot 能选他（真人是帽王或在 3 格内除外）。缺省 = 无；接线归 M1-3。
+   */
+  softTargets?: readonly U64[]
 }
 
 /** 'trade' / 'skill' 为原型扩展（NON-CONTRACT，ADR 0030 / 0031）：摊牌期换血放弹、施放主动技能 / 踢弹。 */

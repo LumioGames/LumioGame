@@ -1,4 +1,4 @@
-import { PickupKind } from '../contract'
+import { maxHealthFor, PickupKind } from '../contract'
 import { freeCellsNear } from './chest'
 import { createPickup, liveBombsOf } from './pickup'
 import { cellOfIdx, emit, type SimPlayer, type World } from './world'
@@ -34,6 +34,14 @@ export function powerupLevels(w: World, p: SimPlayer): PowerupLevels {
 export function hatCountOf(w: World, p: SimPlayer): number {
   const l = powerupLevels(w, p)
   return l.fire + l.bomb + l.speed
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0039，design §12）：每人心数上限（半心点）= contract `maxHealthFor`(帽数, 金心数)。
+ * 帽数与金心只在死亡 / 退出时减少，所以存活期间只升不降；跨阈值时 pickup.ts 让当前血量同增（新心是满的）。
+ */
+export function maxHealthOf(w: World, p: SimPlayer): number {
+  return maxHealthFor(w.cfg, w.rules, hatCountOf(w, p), p.goldHearts)
 }
 
 /** 身上每一级强化各一件（出局 / 退出时全部掉落），序：火力 → 炸弹 → 速度。 */

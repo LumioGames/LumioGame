@@ -68,7 +68,7 @@ describe('select-model (选角界面)', () => {
   it('character line and AI labels', () => {
     expect(characterLine(cards[2])).toBe('你是 闪电猫 · Shift 闪现')
     expect(characterLine(cards[0])).toBe('你是 棉花兔 · 被动 回春')
-    expect(Object.keys(AI_LABEL).sort()).toEqual(['easy', 'hard', 'normal'])
+    expect(Object.keys(AI_LABEL).sort()).toEqual(['easy', 'hard', 'normal', 'rookie'])
     expect(AI_LABEL.normal).toBe('普通')
   })
 })
