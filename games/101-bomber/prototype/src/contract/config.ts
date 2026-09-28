@@ -446,8 +446,8 @@ export const DEFAULT_RULES: ProtoRules = {
   crateSkillCandyPermille: 500,
   chestSkillCandies: 1,
   chestSkillCandyPool: 'bomb',
-  // 用户 2026-09-28 试玩反馈「中毒太强了，掉血太猛」→ 削弱：1000 → 1500 ms（1–3 级中毒掉 0.5 / 1 / 1.5 心，满血挨一颗不再被毒死；推断待验证）。
-  toxinIntervalMs: 1500,
+  // 用户 2026-09-28 试玩反馈「中毒太强了，掉血太猛」→ 两次削弱：1000 → 1500 → 2000 ms（每 2 秒掉半心；1–3 级中毒掉 0.5 / 1 / 1 心，满血挨一颗不再被毒死；推断待验证）。
+  toxinIntervalMs: 2000,
   toxinPointsPerInterval: 1,
   skillDeathDropPermille: 500,
   burnIntervalMs: 1000,

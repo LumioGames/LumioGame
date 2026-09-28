@@ -116,7 +116,7 @@ describe('skillHudModel', () => {
   it('ADR 0033 bomb chips: exact describeSkill text with the toxin cadence and the slow percentage', () => {
     const toxin = model(me(skills({ slots: { bomb: slot('toxinBomb', 2), active: null, passive: null } })), 0).chips[0]
     expect([toxin.skill, toxin.name, toxin.key]).toEqual(['toxinBomb', '中毒弹', '放弹时'])
-    expect(toxin.desc).toBe('炸到的对手还会中毒 4 秒，每 1.5 秒 −0.5 心，可致死')
+    expect(toxin.desc).toBe('炸到的对手还会中毒 4 秒，每 2 秒 −0.5 心，可致死')
     const shock = model(me(skills({ slots: { bomb: slot('shockBomb', 3), active: null, passive: null } })), 0).chips[0]
     expect(shock.desc).toBe('炸到的对手还会麻痹 3 秒，移速降到 30%')
   })

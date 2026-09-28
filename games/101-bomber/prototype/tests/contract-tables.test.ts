@@ -285,9 +285,9 @@ describe('skill rules data (ADR 0030)', () => {
     expect(DEFAULT_RULES.burnPointsPerInterval).toBe(2)
     expect(DEFAULT_RULES.freezeCapMs).toBe(1200)
     expect(DEFAULT_RULES.freezeBombDamages).toBe(true)
-    // ADR 0033：宝箱技能糖保底炸弹类；中毒每 1500 ms −1 点（用户 2026-09-28 削弱，原 1000 ms）。
+    // ADR 0033：宝箱技能糖保底炸弹类；中毒每 2000 ms −1 点（用户 2026-09-28 两次削弱，原 1000 ms）。
     expect(DEFAULT_RULES.chestSkillCandyPool).toBe('bomb')
-    expect(DEFAULT_RULES.toxinIntervalMs).toBe(1500)
+    expect(DEFAULT_RULES.toxinIntervalMs).toBe(2000)
     expect(DEFAULT_RULES.toxinPointsPerInterval).toBe(1)
     expect(DEFAULT_RULES.skills).toBe(SKILLS)
     expect(DEFAULT_RULES.combos).toBe(COMBOS)

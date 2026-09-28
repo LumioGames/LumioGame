@@ -168,10 +168,10 @@ describe('ADR 0030 · characters, skills, combos (design §8)', () => {
     // 穿透弹：多穿 1 层 / 2 层 / 全线（design §8.4 ★ 穿透弹）。
     expect(col('pierceBomb', 'pierceLayers')).toEqual([1, 2, UNTIL_BLOCKED])
     expect(SKILLS.pierceBomb.bombKind).toBe(BombKind.Pierce)
-    // 中毒弹：直击照常 −1 心，中毒 3 / 4 / 5 s，每 1500 ms −1 点（用户 2026-09-28「中毒太强」削弱，原 1000 ms），可致死（design §8.4 ★ 中毒弹 / §12，ADR 0033）。
+    // 中毒弹：直击照常 −1 心，中毒 3 / 4 / 5 s，每 2000 ms −1 点（用户 2026-09-28「中毒太强」两次削弱，原 1000 ms），可致死（design §8.4 ★ 中毒弹 / §12，ADR 0033）。
     expect(col('toxinBomb', 'durationMs')).toEqual([3000, 4000, 5000])
     expect(SKILLS.toxinBomb.bombKind).toBe(BombKind.Toxin)
-    expect(R.toxinIntervalMs).toBe(1500)
+    expect(R.toxinIntervalMs).toBe(2000)
     expect(R.toxinPointsPerInterval).toBe(1)
     // 麻痹弹：直击照常 −1 心，移速降到 30%，持续 2 / 2.5 / 3 s（design §8.4 ★ 麻痹弹，ADR 0033）。
     expect(col('shockBomb', 'durationMs')).toEqual([2000, 2500, 3000])

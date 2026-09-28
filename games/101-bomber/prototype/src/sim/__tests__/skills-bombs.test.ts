@@ -294,7 +294,7 @@ function statusWorld(opts: { rules?: Partial<ProtoRules>; cfg?: Partial<BomberCo
 }
 
 describe('toxin bomb', () => {
-  // 这些用例验证中毒的节拍机制，按 1000 ms（20 Tick）节拍写；默认数值 1500 ms（用户 2026-09-28 削弱）由 spec-sync 钉住、见本组最后一例。
+  // 这些用例验证中毒的节拍机制，按 1000 ms（20 Tick）节拍写；默认数值 2000 ms（用户 2026-09-28 两次削弱）由 spec-sync 钉住、见本组最后一例。
   const MECH = { rules: { toxinIntervalMs: 1000 } } as const
 
   it('BOMB with toxinBomb L1 / L3 places a Toxin bomb with 60 / 100 toxin ticks; the snapshot shows BombKind 5', () => {
@@ -448,15 +448,15 @@ describe('toxin bomb', () => {
     expect([v2.toxinUntilTick, v2.toxinOwner, v2.toxinBomb, v2.toxinNextTick, v2.shockUntilTick, v2.shockSlowPermille]).toEqual([0, 0, 0, 0, 0, 0])
   })
 
-  it('default cadence (user 2026-09-28 nerf): −1 point every 30 ticks; L3 poison takes 3 points, so one L3 toxin bomb no longer kills from full', () => {
+  it('default cadence (user 2026-09-28 nerf): −1 point every 40 ticks; L3 poison takes 2 points, so one L3 toxin bomb no longer kills from full', () => {
     const { w, v } = statusWorld()
-    expect(w.ticks.toxinInterval).toBe(30)
+    expect(w.ticks.toxinInterval).toBe(40)
     addSkillBomb(w, 1, 5, 5, 1, 2, TOXIN(100))
     step(w)
     const T = w.t
     const toxic = evs(run(w, 110), 'DamageApplied').filter((e) => e.proto?.Cause === DeathCause.Toxin)
-    expect(toxic.map((e) => e.Tick)).toEqual([T + 30, T + 60, T + 90])
-    expect(v.health).toBe(6 - 2 - 3)
+    expect(toxic.map((e) => e.Tick)).toEqual([T + 40, T + 80])
+    expect(v.health).toBe(6 - 2 - 2)
   })
 })
 
