@@ -80,6 +80,7 @@ export const FACE_INK = 0x3a2824
  * 那边改了色，这里要跟着改（不反向依赖，避免测试牵动地形模块）。
  */
 export const TERRAIN_REFERENCE_COLORS: Readonly<Record<string, number>> = {
+  // 水不在这里：用户 2026-09-28 反馈后水面是全场唯一的饱和色地形，见 WATER_REFERENCE_COLORS。
   /** 积木四色（SOFT_BLOCK_COLORS）。 */
   brickHoney: 0xf9d98a,
   brickPeach: 0xf7b48a,
@@ -94,10 +95,18 @@ export const TERRAIN_REFERENCE_COLORS: Readonly<Record<string, number>> = {
   /** 铁皮两色（blocks.ts 侧面 / 顶面）。 */
   tinSide: 0x7f95b2,
   tinTop: 0x95aac4,
-  /** 水（terrain.ts uShallow）。 */
-  water: 0x3db8da,
   /** 围边（terrain.ts rims）。 */
   rim: 0xf6ead3,
+}
+
+/**
+ * 水面参考色（只给测试用；照抄 logic/water WATER_COLORS 的浅水 / 深水）。用户 2026-09-28 反馈「水一坨绿色」后，
+ * 水改成饱和的蓝，彩度高于其余哑光地形，所以不参与「玩偶彩度要高于地形」的纪律；改成要求每只玩偶离两种水色 ΔE ≥ 30
+ * （玩偶站在水心时仍分得清，推断待验证）。
+ */
+export const WATER_REFERENCE_COLORS: Readonly<Record<string, number>> = {
+  waterShallow: 0x44a0ff,
+  waterDeep: 0x2f7ce6,
 }
 
 function srgbToLinear(c: number): number {

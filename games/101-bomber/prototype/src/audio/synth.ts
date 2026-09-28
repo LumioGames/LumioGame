@@ -1,16 +1,28 @@
-import { VoiceBook } from './mixing'
+import { dbToGain, DUCK, LOWPASS_OPEN_HZ, MIX, VoiceBook, type Bus } from './mixing'
 import { MUSIC_BUS_GAIN, type MusicNote, type MusicVoice } from './music'
 
 /**
- * WebAudio 合成器：master（压缩器）← SFX 总线 0.8 ← 每个音效一个声部（增益 + 声像）；
- *                              ← 音乐总线 0.18 ← 每个音符一对振荡器 + 包络（不占 SFX 声部上限）。
+ * WebAudio 合成器：master（压缩器）← 音效总汇 0.8 ← 本人 / 世界（再过一级压低节点）/ UI 三条总线 ← 每个音效一个声部
+ *                                                   （增益 → 可选距离低通 → 声像）；
+ *                              ← 音乐总线 0.18 ← 每个音符一对振荡器 + 包络（不占音效声部上限）。
+ * 分层混音（用户 2026-09-28 反馈，mixing.MIX / DUCK）：世界总线比本人低 6 dB，大事件时再压低 6 dB 约 0.4 秒。
  * 全部程序合成，无音频资源文件。
  */
 interface Voice {
   out: GainNode
   pan: StereoPannerNode
+  filter: BiquadFilterNode | null
   sources: AudioScheduledSourceNode[]
 }
+
+/** 声部的去向：总线（缺省 world）与距离低通。 */
+export interface VoiceRoute {
+  bus?: Bus
+  lowpassHz?: number
+}
+
+/** 增益低于它的声部直接不开（远处按距离衰减到听不见的，不占声部上限）。 */
+const MIN_AUDIBLE = 0.004
 
 export interface ToneSpec {
   type?: OscillatorType
@@ -37,6 +49,8 @@ export class Synth {
   readonly ctx: AudioContext
   private readonly master: GainNode
   private readonly sfx: GainNode
+  private readonly buses: Record<Bus, GainNode>
+  private readonly worldDuck: GainNode
   private readonly noise: AudioBuffer
   private readonly voices = new VoiceBook<Voice>(24)
   private readonly hissGain: GainNode
@@ -56,8 +70,16 @@ export class Synth {
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.9
     this.sfx = this.ctx.createGain()
-    this.sfx.gain.value = 0.8
+    this.sfx.gain.value = MIX.sfxMaster
     this.sfx.connect(comp)
+    const bus = (g: number, to: AudioNode): GainNode => {
+      const n = this.ctx.createGain()
+      n.gain.value = g
+      n.connect(to)
+      return n
+    }
+    this.worldDuck = bus(1, this.sfx)
+    this.buses = { self: bus(MIX.self, this.sfx), world: bus(MIX.world, this.worldDuck), ui: bus(MIX.ui, this.sfx) }
     this.music = this.ctx.createGain()
     this.music.gain.value = MUSIC_BUS_GAIN
     this.music.connect(comp)
@@ -140,22 +162,57 @@ export class Synth {
     this.hissGain.gain.setTargetAtTime(this.muted ? 0 : level, this.ctx.currentTime, 0.08)
   }
 
-  /** 开一个声部；`end` 之后自动断开。 */
-  voice(at: number, dur: number, gain: number, pan: number): Voice {
+  /**
+   * 开一个声部；`end` 之后自动断开。route：进哪条总线（缺省 world）、要不要按距离加低通。
+   * 增益太小（远到听不见）时返回 null，后续 tone / noiseBurst 自动跳过。
+   */
+  voice(at: number, dur: number, gain: number, pan: number, route?: VoiceRoute): Voice | null {
+    if (gain < MIN_AUDIBLE) return null
     const out = this.ctx.createGain()
     out.gain.value = gain
     const p = this.ctx.createStereoPanner()
     p.pan.value = pan
-    out.connect(p)
-    p.connect(this.sfx)
-    const v: Voice = { out, pan: p, sources: [] }
+    let filter: BiquadFilterNode | null = null
+    const lp = route?.lowpassHz
+    if (lp !== undefined && lp < LOWPASS_OPEN_HZ * 0.9) {
+      filter = this.ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = lp
+      filter.Q.value = 0.6
+      out.connect(filter)
+      filter.connect(p)
+    } else {
+      out.connect(p)
+    }
+    p.connect(this.buses[route?.bus ?? 'world'])
+    const v: Voice = { out, pan: p, filter, sources: [] }
     const end = at + dur + 0.05
     for (const s of this.voices.add(v, end, this.ctx.currentTime)) this.kill(s)
     setTimeout(() => this.disconnect(v), Math.max(0, (end - this.ctx.currentTime) * 1000 + 100))
     return v
   }
 
-  tone(v: Voice, s: ToneSpec): void {
+  /**
+   * 大事件（本人击杀、击倒 Boss、补给开启）：世界总线在 at 起 attack 内降 6 dB、保持 holdSec、再 release 回来
+   * （与 mixing.duckGainAt 同一包络）。连着来就从当前值接着压。
+   */
+  duck(at: number): void {
+    const g = this.worldDuck.gain
+    const low = dbToGain(DUCK.db)
+    const t = Math.max(at, this.ctx.currentTime)
+    const holdable = g as AudioParam & { cancelAndHoldAtTime?: (t: number) => AudioParam }
+    if (holdable.cancelAndHoldAtTime) holdable.cancelAndHoldAtTime(t)
+    else {
+      g.cancelScheduledValues(t)
+      g.setValueAtTime(g.value, t)
+    }
+    g.linearRampToValueAtTime(low, t + DUCK.attackSec)
+    g.setValueAtTime(low, t + DUCK.attackSec + DUCK.holdSec)
+    g.linearRampToValueAtTime(1, t + DUCK.attackSec + DUCK.holdSec + DUCK.releaseSec)
+  }
+
+  tone(v: Voice | null, s: ToneSpec): void {
+    if (!v) return
     const o = this.ctx.createOscillator()
     o.type = s.type ?? 'sine'
     o.frequency.setValueAtTime(s.f0, s.at)
@@ -169,7 +226,8 @@ export class Synth {
     v.sources.push(o)
   }
 
-  noiseBurst(v: Voice, s: NoiseSpec): void {
+  noiseBurst(v: Voice | null, s: NoiseSpec): void {
+    if (!v) return
     const src = this.ctx.createBufferSource()
     src.buffer = this.noise
     const f = this.ctx.createBiquadFilter()
@@ -213,6 +271,7 @@ export class Synth {
   private disconnect(v: Voice): void {
     try {
       v.out.disconnect()
+      v.filter?.disconnect()
       v.pan.disconnect()
     } catch {
       // 已断开。
