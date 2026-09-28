@@ -1,13 +1,15 @@
 import { BombKind, skillParams, 方向, type SkillId } from '../contract'
-import { blinkScan } from '../shared/skill-geometry'
+import { blinkScan, flyKickTarget } from '../shared/skill-geometry'
+import { kickBomb, staticBombAt } from './kick'
 import type { SkillTickRow } from './ticks'
 import { cellOfIdx, centerMilli, clearToxin, emit, gridProbe, isPoisoned, newId, playerCell, type SimPlayer, type World } from './world'
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030）：技能槽的规则层（design §8.1 / §8.4，D11–D13）。
- * - 主动槽（Shift / 副按钮）：泡泡 / 弹射泡泡、闪现 / 火焰冲刺、火焰光环；冷却从施放 Tick 起算，CD 跨死亡保留、开局清。
+ * - 主动槽（Shift / 副按钮）：泡泡 / 弹射泡泡、闪现 / 火焰冲刺、火焰光环、飞踢（飞腿袋鼠，用户 2026-09-28）；
+ *   冷却从施放 Tick 起算，CD 跨死亡保留、开局清。
  * - 炸弹槽：放弹时决定炸弹种类 / 穿透层数 / 冻结时长 / 中毒与麻痹参数（{@link bombLoadout}；后两者 ADR 0033）。
- * - 被动槽：踢弹距离（{@link kickRange}，kick.ts 用）；回春在 recovery.ts。
+ * - 被动槽：踢弹距离（kickRange，在 kick.ts，这里转导出）；回春在 recovery.ts。
  * 冻结门在 step.ts（冻结中按技能键发 SkillFailed 'frozen'，不会走到 {@link applySkill}）。
  */
 
@@ -54,18 +56,7 @@ export function bombLoadout(w: World, p: SimPlayer): BombLoadout {
   }
 }
 
-/**
- * 可踢距离（格）：被动槽踢弹按等级（3 / 5 / 99 = 直到被挡）；弹射泡泡只在泡泡期内（t < bubbleUntilTick）按它的 rangeCells；
- * 两者取大；0 = 不能踢。
- */
-export function kickRange(w: World, p: SimPlayer): number {
-  let r = 0
-  const passive = p.slots.passive
-  if (passive?.skill === 'kick') r = skillParams(w.rules.skills, 'kick', passive.level).rangeCells
-  const active = p.slots.active
-  if (active?.skill === 'bounceBubble' && w.t < p.bubbleUntilTick) r = Math.max(r, skillParams(w.rules.skills, 'bounceBubble', active.level).rangeCells)
-  return r
-}
+export { kickRange } from './kick'
 
 /**
  * 闪现落地：瞬移到落点格心，只清在途移动（缓冲转向 / 接续 / 累计量）。**不调用 resetAbilityFields**——
@@ -84,12 +75,15 @@ function blinkTo(w: World, p: SimPlayer, landing: number): void {
 
 /**
  * 主动槽（Shift / 副按钮）。按序：空槽 → SkillFailed('noSkill')；冷却中 → SkillFailed('cooldown')；
- * 闪现 / 冲刺没有落点 → SkillFailed('noLanding')（不耗 CD、不动）。成功则：
+ * 闪现 / 冲刺没有落点、飞踢面前没有可踢的炸弹 → SkillFailed('noLanding')（不耗 CD、不动）。成功则：
  * - 泡泡 / 弹射泡泡：bubbleUntilTick = t + duration（[t, t+duration) 内不受炸弹 / 烧伤 / 冻结 / 溺水伤害、不能放弹；毒圈照扣）；
  *   施放即解中毒弹的毒（ADR 0033，先发 PlayerCured 再发 SkillActivated）；麻痹不解；
  * - 火焰光环：auraUntilTick = t + duration（零写入：不改地形、不引爆、不毁糖果；烧伤见 burn.ts）；
  * - 闪现：朝 facing 落到 blinkScan 的最远落点；
  * - 火焰冲刺：同闪现，另把 blinkScan.path（起点 + 途经的空格，不含落点）留成火墙，存续 [t, t+duration)。
+ * - 飞踢（原型扩展 NON-CONTRACT，用户 2026-09-28）：从所在格沿 facing 由 shared `flyKickTarget` 选目标（相邻格的静止炸弹；
+ *   相邻格是空地时隔一格的静止炸弹），经 kick.ts `kickBomb` 按 rangeCells（直到被挡）踢出——滑行 / 停下 / 入水熄灭与被动踢弹
+ *   完全一致，kickedBy = 施放者，击杀仍归炸弹主人；本人不动，SkillActivated.ToCell = Cell、UntilTick = 0。
  * SkillDef.endsProtection 的技能（光环 / 冲刺）施放即解除重生保护。CD = [t, t+cd)。
  */
 export function applySkill(w: World, p: SimPlayer, pressed: boolean): void {
@@ -135,6 +129,16 @@ export function applySkill(w: World, p: SimPlayer, pressed: boolean): void {
       if (s.skill === 'fireDash') {
         until = t + tk.duration
         w.fireWalls.push({ id: newId(w), owner: p.id, cells: scan.path, bornTick: t, untilTick: until })
+      }
+      break
+    }
+    case 'flyKick': {
+      const range = skillParams(w.rules.skills, s.skill, s.level).rangeCells
+      const target = flyKickTarget(gridProbe(w), from, p.facing, range, (ci) => staticBombAt(w, ci) !== undefined)
+      const bomb = target ? staticBombAt(w, target.bomb) : undefined
+      if (!bomb || !kickBomb(w, p, bomb, p.facing, range)) {
+        emit(w, { type: 'SkillFailed', presentationOnly: true, PlayerNetEntityIdRaw: p.id, Skill: s.skill, Reason: 'noLanding', Tick: t })
+        return
       }
       break
     }

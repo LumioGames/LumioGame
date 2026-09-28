@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BlockType, PickupKind } from '../../contract'
-import { createPickup } from '../pickup'
+import { brickDropPermille, createPickup } from '../pickup'
 import type { SimPlayer } from '../world'
 import { addBomb, cell, evs, makeWorld, put, setBrick, step } from './helpers'
 
@@ -63,7 +63,7 @@ describe('pickups', () => {
     expect(f.snapshot.Pickups).toHaveLength(1)
   })
 
-  it('soft-brick drops follow the seeded drop stream (5.1)', () => {
+  it('soft-brick drops follow the seeded drop stream at the ring rate of each brick (5.1; ADR 0040 按圈掉率)', () => {
     const w = makeWorld()
     put(w, 1, 15, 15)
     put(w, 2, 15, 13)
@@ -77,8 +77,8 @@ describe('pickups', () => {
     addBomb(w, 1, 3, 3, 1)
     const r = w.rng.drop.clone()
     const expected: number[] = []
-    for (let i = 0; i < 4; i++) {
-      if (r.NextInt(0, 1000) >= w.cfg.dropRatePermille) continue
+    for (const [x, y] of bricks) {
+      if (r.NextInt(0, 1000) >= brickDropPermille(w, cell(w, x, y))) continue
       const k = r.NextInt(0, 100)
       expected.push(k < 30 ? 0 : k < 60 ? 1 : k < 85 ? 2 : 3)
     }

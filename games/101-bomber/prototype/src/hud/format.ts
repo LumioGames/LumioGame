@@ -46,6 +46,16 @@ export function heartFills(points: number, maxPoints: number, pointsPerHeart: nu
   return out
 }
 
+/**
+ * 金色心格（design §12 残血表现，ADR 0039）：本人上限里最上面 goldHearts 颗是金心带来的，画成金色；
+ * 长度 = 上限心数（与 {@link heartFills} 对齐）。
+ */
+export function goldHeartMask(maxPoints: number, pointsPerHeart: number, goldHearts: number): boolean[] {
+  const hearts = Math.max(1, Math.ceil(maxPoints / pointsPerHeart))
+  const gold = Math.max(0, Math.min(hearts, Math.floor(goldHearts)))
+  return Array.from({ length: hearts }, (_, i) => i >= hearts - gold)
+}
+
 /** 心数文案（半心精度），给无障碍标签用：`2.5 / 3 心`。 */
 export function heartsLabel(points: number, maxPoints: number, pointsPerHeart: number): string {
   const cur = Math.max(0, points) / pointsPerHeart

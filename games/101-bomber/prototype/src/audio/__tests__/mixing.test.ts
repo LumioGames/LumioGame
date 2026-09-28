@@ -1,10 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { chainDelaySec, pentatonicHz, RateLimiter, spatialize, VoiceBook } from '../mixing'
+import { chainDelaySec, distanceGain, pentatonicHz, RateLimiter, SPATIAL, spatialize, VoiceBook } from '../mixing'
 
-describe('spatialize', () => {
-  it('attenuates 1/(1 + d/6) and pans by Δx/8 clamped to ±1', () => {
+/** 用户试玩反馈（2026-09-28）：有世界位置的音效按离本机距离衰减——约 4 格内满音量、约 14 格外接近静音；左右声像。 */
+describe('distanceGain / spatialize', () => {
+  it('is full volume within 4 cells and silent from 14 cells, smooth and monotonic in between', () => {
+    expect(SPATIAL.fullCells).toBe(4)
+    expect(SPATIAL.silentCells).toBe(14)
+    expect(distanceGain(0)).toBe(1)
+    expect(distanceGain(4)).toBe(1)
+    expect(distanceGain(14)).toBe(0)
+    expect(distanceGain(30)).toBe(0)
+    expect(distanceGain(9)).toBeCloseTo(0.5)
+    let last = 1
+    for (let d = 4; d <= 14; d += 0.25) {
+      const g = distanceGain(d)
+      expect(g).toBeLessThanOrEqual(last + 1e-12)
+      last = g
+    }
+    // 平滑：两端斜率为 0（进出衰减区不突变）。
+    expect(1 - distanceGain(4.1)).toBeLessThan(0.002)
+    expect(distanceGain(13.9)).toBeLessThan(0.002)
+  })
+
+  it('attenuates by distance and pans by left–right offset (Δx / 8, clamped to ±1)', () => {
     expect(spatialize(0, 0)).toEqual({ gain: 1, pan: 0 })
-    expect(spatialize(6, 0).gain).toBeCloseTo(0.5)
+    expect(spatialize(3, 2).gain).toBe(1)
+    expect(spatialize(0, 20).gain).toBe(0)
+    expect(spatialize(6, 0).gain).toBeCloseTo(distanceGain(6))
     expect(spatialize(4, 0).pan).toBeCloseTo(0.5)
     expect(spatialize(-20, 0).pan).toBe(-1)
   })

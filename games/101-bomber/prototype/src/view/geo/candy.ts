@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  ConeGeometry,
   CylinderGeometry,
   ExtrudeGeometry,
   LatheGeometry,
@@ -80,6 +81,57 @@ function heart(): BufferGeometry {
   return b.build()
 }
 
+function heartShape(scale: number): Shape {
+  const k = scale
+  const s = new Shape()
+  s.moveTo(0, -0.14 * k)
+  s.bezierCurveTo(-0.05 * k, -0.09 * k, -0.16 * k, -0.03 * k, -0.15 * k, 0.05 * k)
+  s.bezierCurveTo(-0.14 * k, 0.13 * k, -0.04 * k, 0.15 * k, 0, 0.08 * k)
+  s.bezierCurveTo(0.04 * k, 0.15 * k, 0.14 * k, 0.13 * k, 0.15 * k, 0.05 * k)
+  s.bezierCurveTo(0.16 * k, -0.03 * k, 0.05 * k, -0.09 * k, 0, -0.14 * k)
+  return s
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0039）：金心——比血包大一号的金色心 + 白色四角星闪光（没有缝线，与血包区分）。 */
+function goldHeart(): BufferGeometry {
+  const g = new ExtrudeGeometry(heartShape(1.15), { depth: 0.08, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 3, curveSegments: 16 })
+  g.translate(0, 0, -0.04)
+  const b = new GeoBuilder()
+  b.add(g, (_nx, _ny, nz) => (Math.abs(nz) > 0.7 ? 0xffd24a : 0xe6a91f))
+  // 闪光：两片交叉的细长菱形
+  for (const rz of [0, Math.PI / 2]) b.add(new BoxGeometry(0.1, 0.022, 0.012), 0xffffff, mat(0.07, 0.07, 0.075, 0, 0, rz + Math.PI / 4))
+  return b.build()
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040）：狂暴糖——带尖刺的红色糖球 + 顶上一簇火苗（只出自中央补给）。 */
+function frenzyCandy(): BufferGeometry {
+  const b = new GeoBuilder()
+  b.add(new SphereGeometry(0.11, 18, 14), 0xff3b2f)
+  const dirs: [number, number, number][] = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+    [0.7, -0.7, 0],
+    [-0.7, -0.7, 0],
+  ]
+  for (const [x, y, z] of dirs) {
+    const rz = Math.atan2(-x, y)
+    const rx = Math.atan2(z, Math.hypot(x, y))
+    b.add(new ConeGeometry(0.035, 0.08, 8), 0x9e1b12, mat(x * 0.12, y * 0.12, z * 0.12, rx, 0, rz))
+  }
+  b.add(new ConeGeometry(0.05, 0.12, 10), 0xffc93c, mat(0, 0.15, 0))
+  b.add(new ConeGeometry(0.03, 0.08, 8), 0xff7a3d, mat(0, 0.14, 0.012))
+  return b.build()
+}
+
+/** 玩偶身边环绕的小金心（ADR 0039；配金色金属材质，不带顶点色）。 */
+export function orbitHeartGeometry(): BufferGeometry {
+  const g = new ExtrudeGeometry(heartShape(0.8), { depth: 0.05, bevelEnabled: true, bevelSize: 0.015, bevelThickness: 0.015, bevelSegments: 2, curveSegments: 12 })
+  g.translate(0, 0, -0.025)
+  return g
+}
+
 export function candyGeometry(kind: PickupKind): BufferGeometry {
   switch (kind) {
     case PickupKind.FirePlus:
@@ -90,6 +142,10 @@ export function candyGeometry(kind: PickupKind): BufferGeometry {
       return bolt()
     case PickupKind.HealthPack:
       return heart()
+    case PickupKind.GoldHeart:
+      return goldHeart()
+    case PickupKind.Frenzy:
+      return frenzyCandy()
     default:
       return miniBomb()
   }

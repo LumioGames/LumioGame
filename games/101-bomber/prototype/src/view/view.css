@@ -260,3 +260,65 @@
   width: 17px;
   height: 17px;
 }
+
+/* =====================================================================
+ * 方向 B（ADR 0039 / 0040 / 0043）：命中「−1♥」、心条（金心格 / Boss 常驻放大）、中央补给名牌
+ * ===================================================================== */
+.bv-float-hurt {
+  color: #ff3b4f;
+  font-size: 19px;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-hurt svg {
+  width: 17px;
+  height: 16px;
+}
+
+.bv-pips i.gold {
+  background: rgba(255, 201, 60, 0.35);
+}
+
+.bv-pips i.on.gold {
+  background: #ffc93c;
+}
+
+/* Boss：心条常驻，格子更大，外面一圈暗底，一眼看出「这是一个 N 心的大家伙」。 */
+.bv-boss .bv-pips {
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: rgba(43, 35, 32, 0.55);
+}
+
+.bv-boss .bv-pips i {
+  width: 11px;
+  height: 7px;
+}
+
+.bv-beacon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform;
+  translate: -50% -100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 5px;
+  border-radius: 999px;
+  background: rgba(43, 35, 32, 0.62);
+  color: #5ee0c8;
+  font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.bv-beacon svg {
+  width: 20px;
+  height: 20px;
+}

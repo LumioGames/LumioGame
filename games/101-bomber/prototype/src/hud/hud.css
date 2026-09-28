@@ -2006,7 +2006,8 @@
 }
 .sel-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, calc(200px * var(--u))));
+  /* 列数 = 卡片数（character-select.ts 写 --sel-n；五选一时每张收窄到 176，一行放得下） */
+  grid-template-columns: repeat(var(--sel-n, 4), minmax(0, calc(176px * var(--u))));
   gap: calc(12px * var(--u));
   justify-content: center;
 }
@@ -2094,7 +2095,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: calc(10px * var(--u));
-  width: min(calc(840px * var(--u)), 100%);
+  width: min(calc(928px * var(--u)), 100%);
   margin: 0 auto;
 }
 .sel-info {
@@ -2108,7 +2109,7 @@
   gap: calc(10px * var(--u));
 }
 .md-card.md-character {
-  width: min(calc(900px * var(--u)), 100%);
+  width: min(calc(980px * var(--u)), 100%);
 }
 @media (max-width: 760px) {
   .sel-cards {
@@ -2158,4 +2159,179 @@
 }
 .st-status[data-kind='both'] {
   background: linear-gradient(90deg, var(--toxin, #8ee04a), var(--shock, #f0ff7a));
+}
+
+/* =====================================================================
+ * 方向 B · 击杀手感与成就感（ADR 0043）：单杀弹字、首次连锁、连杀横幅、击杀栏称号、高光卡、个人最佳
+ * ===================================================================== */
+/* 单杀「击飞 XX！+N」：比连锁弹字更红一点。 */
+.popup[data-tone='knockout'] {
+  color: #ff6a4a;
+}
+/* 首次 ×5 / ×8 连锁：金字 + 暖光。 */
+.popup[data-tone='milestone'] {
+  color: #ffe27a;
+  filter: drop-shadow(0 0 calc(10px * var(--u)) rgba(255, 201, 60, 0.75));
+}
+/* 本人连杀横幅（只给本人看；图标为火苗）。 */
+.hud-banner[data-tone='streak'] .bn-ico,
+.hud-banner[data-tone='streak'] .bn-title,
+.hud-banner[data-tone='streak'].is-mine .bn-title {
+  color: #ff6a4a;
+}
+/* 击杀栏的连杀称号。 */
+.kf-badge {
+  padding: 0 calc(6px * var(--u));
+  border-radius: 999px;
+  background: #ff6a4a;
+  color: #fff;
+  font-size: calc(10px * var(--u));
+  white-space: nowrap;
+}
+
+/* 结算页：新纪录 */
+.rs-new {
+  display: inline-block;
+  padding: calc(1px * var(--u)) calc(8px * var(--u));
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--ink);
+  font-size: calc(11px * var(--u));
+  font-weight: 900;
+  white-space: nowrap;
+}
+.rs-record {
+  display: none;
+  align-self: center;
+  font-size: calc(14px * var(--u));
+  animation: hud-pop 0.5s ease-out;
+}
+.rs-record.is-on {
+  display: inline-block;
+}
+.rs-stat.is-record {
+  position: relative;
+  outline: 2px solid var(--sun);
+}
+.rs-stat.is-record .rs-new {
+  position: absolute;
+  top: calc(-9px * var(--u));
+  right: calc(-6px * var(--u));
+}
+.rs-best {
+  margin-top: calc(8px * var(--u));
+  font-size: calc(12px * var(--u));
+  color: var(--muted);
+}
+
+/* 结算页：高光卡（领奖台之后、结算表之前） */
+.rs-hl {
+  display: grid;
+  gap: calc(8px * var(--u));
+  margin-bottom: calc(16px * var(--u));
+}
+.rs-hl.is-empty {
+  display: none;
+}
+.rs-hl-me {
+  display: none;
+  align-items: center;
+  gap: calc(12px * var(--u));
+  padding: calc(12px * var(--u)) calc(16px * var(--u));
+  border-radius: calc(18px * var(--u));
+  background: linear-gradient(100deg, rgba(255, 201, 60, 0.42), rgba(255, 122, 61, 0.2));
+  border: 1.5px solid rgba(255, 201, 60, 0.7);
+}
+.rs-hl-me.is-on {
+  display: flex;
+}
+.rs-hl-ico {
+  font-size: calc(34px * var(--u));
+  color: var(--sun);
+  filter: drop-shadow(0 2px 0 var(--ink));
+}
+.rs-hl-kicker {
+  font-size: calc(12px * var(--u));
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.rs-hl-title {
+  font-size: calc(26px * var(--u));
+  font-weight: 900;
+  color: var(--sun);
+  -webkit-text-stroke: 4px var(--ink);
+  paint-order: stroke fill;
+}
+.rs-hl-detail {
+  font-size: calc(15px * var(--u));
+}
+.rs-hl-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(5px * var(--u));
+}
+.rs-hl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(5px * var(--u));
+  padding: calc(3px * var(--u)) calc(9px * var(--u));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: calc(12px * var(--u));
+  white-space: nowrap;
+}
+.rs-hl-chip .lb-dot {
+  width: calc(10px * var(--u));
+  height: calc(10px * var(--u));
+}
+.rs-hl-name {
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rs-hl-kind {
+  color: var(--sun);
+}
+/* 高光卡先弹出，结算表随后淡入。 */
+.rs-hl.is-in {
+  animation: hud-pop 0.55s ease-out;
+}
+.rs-body.is-in {
+  animation: hud-fade-in 0.5s ease-out 0.6s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-hl.is-in,
+  .rs-body.is-in,
+  .rs-record {
+    animation: none;
+  }
+}
+
+/* =====================================================================
+ * 方向 B · 心数上限 / 金心 / 击倒 Boss / 中央补给（ADR 0039 / 0040）
+ * ===================================================================== */
+/* 金色心格：金心带来的心（外形同心，金色 + 描一圈暖白，灰度下靠描边也分得出）。 */
+.heart.is-gold .heart-fill {
+  color: var(--sun);
+}
+.heart.is-gold .heart-bg {
+  color: rgba(255, 201, 60, 0.35);
+}
+.heart.is-gold .ico {
+  filter: drop-shadow(0 0 calc(2px * var(--u)) #fff8ec);
+}
+/* 击倒 Boss：玫红心 + 金字；中央补给：青绿礼盒（与帽王的金色皇冠区分）。 */
+.hud-banner[data-tone='boss'] .bn-ico {
+  color: var(--rose);
+}
+.hud-banner[data-tone='boss'] .bn-title {
+  color: var(--sun);
+}
+.hud-banner[data-tone='supply'] .bn-ico,
+.hud-banner[data-tone='supply'] .bn-title {
+  color: #5ee0c8;
+}
+.hud-banner[data-tone='boss'].is-on,
+.hud-banner[data-tone='supply'].is-on {
+  animation-duration: 2.2s;
 }

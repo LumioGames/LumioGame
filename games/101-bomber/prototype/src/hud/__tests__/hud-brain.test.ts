@@ -7,8 +7,9 @@ import { TipId } from '../tips'
 import { batch, died, exploded, held, ME, pickup, skillsView, snap } from './fixtures'
 
 const newBrain = (): HudBrain => new HudBrain({ localId: ME, pillarMinHats: 3, tickRateHz: 20, pointsPerHeart: 2 })
-/** 爽感弹字（不含帽子流向的 +N / −N 帽）。 */
-const popups = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'popup' && m.tone !== 'hat' && m.tone !== 'hatloss' ? [m.text] : []))
+/** 爽感弹字（不含帽子流向的 +N / −N 帽，也不含 ADR 0043 的单杀「击飞」与首次连锁里程碑——它们在 kill-juice.test.ts 单独断言）。 */
+const JUICE_TONES = new Set(['hat', 'hatloss', 'knockout', 'milestone'])
+const popups = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'popup' && !JUICE_TONES.has(m.tone) ? [m.text] : []))
 const hatPopups = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'popup' && (m.tone === 'hat' || m.tone === 'hatloss') ? [m.text] : []))
 const banners = (ms: HudMoment[]): string[] => ms.flatMap((m) => (m.kind === 'banner' ? [m.title] : []))
 
@@ -30,7 +31,7 @@ describe('HudBrain popups', () => {
     expect(popups(b.consume(batch(5, [died(5, 3, ME, 77)])))).toEqual(['双杀'])
     const m = b.consume(batch(6, [died(6, 4, ME, 77), died(6, 5, ME, 77)]))
     expect(popups(m)).toEqual(['一锅端'])
-    const p = m.find((x) => x.kind === 'popup')
+    const p = m.find((x) => x.kind === 'popup' && x.tone === 'kill')
     expect(p && p.kind === 'popup' && p.key).toBe('kill:77')
   })
 

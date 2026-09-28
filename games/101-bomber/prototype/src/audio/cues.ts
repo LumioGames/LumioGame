@@ -1,4 +1,5 @@
 import { DeathCause, isPowerupKind, type BomberEvent, type PickupKind, type ProtoRules, type RingRect, type SkillId, type U64, type WorldSnapshot } from '../contract'
+import { KILL_JUICE, type KillJuiceConfig } from '../present/kill-juice'
 import { resultsOf } from '../present/ranking'
 import { chainDelaySec } from './mixing'
 
@@ -68,6 +69,56 @@ export function hitCues(events: readonly BomberEvent[], victimId: U64): LocalHit
     out.push({ delay: bomb ? chainDelaySec(index) : 0, poison, burn, toxin })
   }
   return out.sort((a, b) => a.delay - b.delay)
+}
+
+/**
+ * 命中音（design §3.1 命中：自己的炸弹伤到人，ADR 0043）：本机炸弹打到别人的每一击 → 受害者与延迟，
+ * 与受击音同一连锁节奏（{@link hitCues}）。毒圈 / 燃烧 / 中毒弹毒发 / 溺水不是炸弹命中。
+ */
+export function localBombHits(events: readonly BomberEvent[], localId: U64): { victim: U64; delay: number }[] {
+  const hints = new Map<U64, number>()
+  for (const e of events) if (e.type === 'BombExploded' && e.proto) hints.set(e.proto.BombNetEntityIdRaw, e.proto.IndexInChain)
+  const perChain = new Map<string, number>()
+  const out: { victim: U64; delay: number }[] = []
+  for (const e of events) {
+    if (e.type !== 'DamageApplied' || e.SourceBombOwnerNetEntityIdRaw !== localId || e.VictimNetEntityIdRaw === localId) continue
+    const cause = e.proto?.Cause
+    if (e.SourceBombNetEntityIdRaw === 0 || (cause !== undefined && cause !== DeathCause.Bomb)) continue
+    let index = 0
+    if (e.ChainId !== 0) {
+      const key = `${e.VictimNetEntityIdRaw}:${e.ChainId}`
+      const k = perChain.get(key) ?? 0
+      perChain.set(key, k + 1)
+      index = hints.get(e.SourceBombNetEntityIdRaw) ?? k
+    }
+    out.push({ victim: e.VictimNetEntityIdRaw, delay: chainDelaySec(index) })
+  }
+  return out
+}
+
+/**
+ * 金币串音效（design §3.1：死者 ≥ 6 帽的爆装，ADR 0043）：掉了几个强化就几枚（封顶 12）；
+ * 死前不到阈值或一个都没掉为 0。`hatsLost` 缺席时按「每级 50%」估一半。
+ */
+export function coinCascadeCount(hatsBefore: number, hatsLost: number | undefined, cfg: KillJuiceConfig = KILL_JUICE): number {
+  if (hatsBefore < cfg.bigDropHats) return 0
+  const n = hatsLost ?? Math.ceil(hatsBefore / 2)
+  return Math.max(0, Math.min(12, n))
+}
+
+/**
+ * 大事件压低世界总线（推断待验证（用户 2026-09-28 反馈））：本人击杀别人、任何人击倒 Boss（isBossVictim：死者死前心数上限 ≥ 门槛）、
+ * 中央补给开启。
+ */
+export function duckTrigger(events: readonly BomberEvent[], localId: U64, isBossVictim: (id: U64) => boolean): boolean {
+  for (const e of events) {
+    if (e.type === 'SupplyOpened') return true
+    if (e.type !== 'PlayerDied') continue
+    const victim = e.VictimNetEntityIdRaw
+    if (e.KillerNetEntityIdRaw === localId && victim !== localId) return true
+    if (isBossVictim(victim)) return true
+  }
+  return false
 }
 
 /** 死亡音相对最后一击的额外延迟（与 view 玩偶散架 +90 ms 同口径），秒。 */

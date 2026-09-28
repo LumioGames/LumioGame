@@ -1,4 +1,14 @@
-import { BombKind, MATERIALS, 方向, type FinalCircleView, type FireZoneView, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import {
+  BombKind,
+  MATERIALS,
+  方向,
+  type FinalCircleView,
+  type FireZoneView,
+  type ResourceBoxView,
+  type RingRect,
+  type U64,
+  type WorldSnapshot,
+} from '../contract'
 import { cellOf, idx, inBounds } from '../shared/grid'
 import { kickOutcome, type GridProbe } from '../shared/skill-geometry'
 
@@ -30,6 +40,11 @@ export interface PendingBomb {
    * bots/perception.ts 写）：仍挡路，但不进危险图、不连锁。
    */
   hidden: boolean
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：快照 BombView.uncounted——不计炸弹数与帽数的额外炸弹（狂暴弹 / 集束子弹）。
+   * 照样有火、照样连锁；只是数「谁场上有几颗常规弹」时跳过它。
+   */
+  uncounted: boolean
 }
 
 /** 已爆炸、仍在危险窗内的火焰：覆盖格按快照里的 Reach* 还原。 */
@@ -63,6 +78,11 @@ export interface Board {
   chainAt: Int32Array
   /** 原型扩展（NON-CONTRACT，ADR 0030）：格 → 别人的火（光环 / 火墙）烧到的 Tick（不含）；0 = 不着火。 */
   burnUntil: Int32Array
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040）：格 → 资源箱等级与剩余命中（快照 WorldSnapshot.ResourceBoxes）。砖层是木箱、
+   * 却不在这里的格 = 木箱 1 / 1。
+   */
+  boxes: ReadonlyMap<number, ResourceBoxView>
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：buildBoard 的可选项。 */
@@ -126,6 +146,7 @@ export function buildBoard(snap: WorldSnapshot, opts: BoardOptions = {}): Board 
         moving: k !== null && k.dir !== 方向.停,
         doused: false,
         hidden: false,
+        uncounted: b.uncounted === true,
       })
       continue
     }
@@ -161,6 +182,8 @@ export function buildBoard(snap: WorldSnapshot, opts: BoardOptions = {}): Board 
   }
   const chainAt = kicked.length > 0 ? bombAt.slice() : bombAt
   const burnUntil = new Int32Array(size * size)
+  const boxes = new Map<number, ResourceBoxView>()
+  for (const rb of snap.ResourceBoxes ?? []) if (inBounds(rb.Cell.X, rb.Cell.Y, size)) boxes.set(idx(rb.Cell.X, rb.Cell.Y, size), rb)
   const board: Board = {
     size,
     tick: snap.Tick,
@@ -175,6 +198,7 @@ export function buildBoard(snap: WorldSnapshot, opts: BoardOptions = {}): Board 
     finalCircle: fc,
     chainAt,
     burnUntil,
+    boxes,
   }
   // 滑行弹：按共享几何（kickOutcome：别的弹 / 宝箱 / 砖挡，玩家不挡，第一个水格熄灭）预测停点。
   for (const k of kicked) {

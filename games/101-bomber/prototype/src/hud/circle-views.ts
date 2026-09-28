@@ -124,7 +124,7 @@ export class ElimOverlay {
   }
 }
 
-/** Top-10 下方的紧凑击杀栏（最近 4 条）。 */
+/** Top-10 下方的紧凑击杀栏（最近 4 条；连杀称号另起一个小标签）。 */
 export class KillFeedView {
   private readonly root: HTMLDivElement
   private version = -1
@@ -148,6 +148,8 @@ export class KillFeedView {
         dot.style.borderColor = SLOT_COLOR[c.slot] ?? '#fff'
       }
       el('span', 'kf-text', row).textContent = feedBase(e)
+      // 连杀称号（ADR 0043）：「大杀特杀」等，跟在击杀那一句后面。
+      if (e.badge) el('span', 'kf-badge', row).textContent = e.badge
       const loss = feedLossText(e)
       if (loss) el('span', 'kf-loss', row).textContent = `· ${loss}`
       if (e.eliminated) el('span', 'kf-out', row).textContent = '出局'

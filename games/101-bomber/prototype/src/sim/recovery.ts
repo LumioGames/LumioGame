@@ -1,4 +1,5 @@
 import { skillParams } from '../contract'
+import { maxHealthOf } from './death-drops'
 import { skillTicks } from './skills'
 import { emit, isAlive, type World } from './world'
 
@@ -8,11 +9,12 @@ import { emit, isAlive, type World } from './world'
  * - 被动槽是回春、活着、没满血：regenNextTick = 0 时从本 Tick 起算（[regenFromTick, regenNextTick)），到点回 points、
  *   之后每 interval 再回，满血即停（两个计时归零）。
  * - 任何扣血（炸弹 / 烧伤 / 溺水 / 毒）都在 effects.ts 把 regenNextTick 清零 → 本 Tick 这里重新起算。血包不重置计时。
+ * - 「满血」= 本人当前心数上限（原型扩展 NON-CONTRACT，ADR 0039）。
  */
 export function applyRecovery(w: World): void {
   const t = w.t
-  const max = w.cfg.maxHealthPoints
   for (const p of w.players) {
+    const max = maxHealthOf(w, p)
     const s = p.slots.passive
     if (s?.skill !== 'regen' || !isAlive(p) || p.health >= max) {
       p.regenFromTick = 0

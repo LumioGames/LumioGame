@@ -17,7 +17,7 @@ import { createDollMaterial, type SharedMaterials } from '../materials'
 /**
  * 一只玩偶的表现状态机：走路（颠 + 挤压拉伸 + 摆臂迈脚）、转身、眨眼、受击闪白 + 晃、
  * 受伤三档（完好 / 缝补贴片 / 冒棉花 + 歪头）、保护期闪烁、死亡散架（零件四散、落地弹一次）、
- * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）。
+ * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）；Boss（心数上限 ≥ 6，ADR 0039）竖直加高。
  */
 
 const TAU = Math.PI * 2
@@ -36,6 +36,25 @@ const WHITE = 0xffffff
 export const TAG_LIFT = 0.1
 /** 走路颠簸幅度（模型单位）。 */
 const WALK_BOB = 0.05
+
+/**
+ * 飞踢姿势（飞腿袋鼠，用户 2026-09-28；表现取值，推断待验证）：两只大脚一起向前上方蹬出、脚掌朝前，
+ * 双臂一摆、身子轻轻一蹦再落回。幅度（模型单位 / 弧度）全部收在 ADR 0032 的前伸与脚圈预算里（doll-fit.test 逐帧采样守护）。
+ * outFrac = 蹬出占整段动画的比例，之后慢慢收回。
+ */
+export const KICK_POSE = { reach: 0.1, lift: 0.15, toe: 0.9, hop: 0.035, arm: 0.9, outFrac: 0.28 } as const
+
+/** 飞踢曲线 0 → 1 → 0：前 outFrac 快速蹬出（缓出），余下缓入缓出收回；u 夹到 [0, 1]。 */
+export function kickCurve(u: number): number {
+  const t = Math.max(0, Math.min(1, u))
+  const o = KICK_POSE.outFrac
+  if (t < o) {
+    const k = t / o
+    return 1 - (1 - k) * (1 - k)
+  }
+  const k = (t - o) / (1 - o)
+  return 1 - k * k * (3 - 2 * k)
+}
 
 /** 技能状态给玩偶的外观（ADR 0030，NON-CONTRACT 字段缺席时不传）。 */
 export interface DollFx {
@@ -122,6 +141,8 @@ export class Doll {
   hitBarUntil = -1e9
   hp = 6
   protectedPulse = 0
+  /** Boss 竖直加高（ADR 0039 / 0043，logic/doll-fit bossHeightScale）：只拉高身体 / 头 / 手，脚不动，XZ 不变。 */
+  private height = 1
 
   // 帽塔摇摆（世界空间弹簧）
   swayX = 0
@@ -222,6 +243,15 @@ export class Doll {
     this.lastVZ = 0
     this.speed = 0
     this.swayX = this.swayZ = this.swayVX = this.swayVZ = 0
+  }
+
+  /** Boss 加高系数（1 = 普通）；每帧可调，下一次 update 生效。 */
+  setHeight(k: number): void {
+    this.height = Math.max(1, k)
+  }
+
+  get heightScale(): number {
+    return this.height
   }
 
   hit(now: number): void {
@@ -358,14 +388,17 @@ export class Doll {
     const sy = squash * breathe
     const sxz = 1 / Math.sqrt(sy)
     this.bodyPivot.position.y = bob
-    this.bodyPivot.scale.set(sxz, sy, sxz)
+    // Boss 只在竖直方向拉高（脚留在根节点上不动），XZ 脚印与向前探出不变（ADR 0032）。
+    this.bodyPivot.scale.set(sxz, sy * this.height, sxz)
 
-    // 手脚
+    // 手脚（脚与身体的俯仰只有飞踢姿势会改，每帧先归零，见 kickPose）
     const swing = Math.sin(phi) * w
     this.footL.position.z = this.footZ + swing * DOLL.footSwing
     this.footR.position.z = this.footZ - swing * DOLL.footSwing
     this.footL.position.y = Math.max(0, Math.cos(phi)) * 0.04 * w
     this.footR.position.y = Math.max(0, -Math.cos(phi)) * 0.04 * w
+    this.footL.rotation.x = 0
+    this.footR.rotation.x = 0
     const armSwing = (25 * Math.PI) / 180
     this.armL.rotation.x = -swing * armSwing
     this.armR.rotation.x = swing * armSwing
@@ -427,6 +460,30 @@ export class Doll {
     this.root.rotation.set(0, this.yaw, wobble + (fx?.tremble ?? 0))
     this.root.scale.set(rsXZ * this.scale, rsY * this.scale, rsXZ * this.scale)
 
+    this.root.updateMatrixWorld(true)
+    this.headTop.set(0, this.headTopLocal, 0)
+    this.headPivot.localToWorld(this.headTop)
+    this.headPivot.getWorldQuaternion(this.headQuat)
+  }
+
+  /**
+   * 飞踢姿势（飞腿袋鼠，用户 2026-09-28）：在本帧 {@link update} 之后调用，u = 动画进度 [0, 1)，yaw = 踢的方向。
+   * 玩偶立刻转向踢的方向（之后走路照常转身），两只大脚一起朝前上方蹬出、脚掌朝前，双臂一摆、身子轻轻一蹦。
+   * 只动脚 / 手 / 身体节点的局部变换，改完重算头顶锚点（帽塔、名牌跟着走）；非 alive 时不演（冻住由调用方 skill-fx 跳过）。
+   */
+  kickPose(u: number, yaw: number): void {
+    if (this.visual !== 'alive') return
+    const s = kickCurve(u)
+    this.yaw = yaw
+    this.root.rotation.y = yaw
+    for (const f of [this.footL, this.footR]) {
+      f.position.z = this.footZ + KICK_POSE.reach * s
+      f.position.y = KICK_POSE.lift * s
+      f.rotation.x = -KICK_POSE.toe * s
+    }
+    this.bodyPivot.position.y += KICK_POSE.hop * s
+    this.armL.rotation.x = -KICK_POSE.arm * s
+    this.armR.rotation.x = -KICK_POSE.arm * s
     this.root.updateMatrixWorld(true)
     this.headTop.set(0, this.headTopLocal, 0)
     this.headPivot.localToWorld(this.headTop)

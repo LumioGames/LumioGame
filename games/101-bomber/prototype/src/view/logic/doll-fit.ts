@@ -42,6 +42,20 @@ export const DOLL_FIT = {
   otherRingAlpha: 0.8,
 } as const
 
+/**
+ * Boss 加高（ADR 0039 / 0043，design §12「Boss 表现」）：心数上限 ≥ bossMinHearts 时玩偶只在竖直方向拉高
+ * （身体 / 头 / 帽塔），XZ 脚印与向前探出不变（ADR 0032）。6 心 +18%，每多 1 心再 +6%，封顶 8 心（表现取值，推断待验证）。
+ */
+export const BOSS_LIFT = { base: 0.18, perHeart: 0.06, max: 1.3, capHearts: 8 } as const
+
+/** 竖直加高系数：非 Boss 为 1。 */
+export function bossHeightScale(maxHealthPoints: number, pointsPerHeart: number, bossMinHearts: number): number {
+  const hearts = Math.floor(maxHealthPoints / Math.max(1, pointsPerHeart))
+  if (hearts < bossMinHearts) return 1
+  const k = 1 + BOSS_LIFT.base + BOSS_LIFT.perHeart * (Math.min(hearts, BOSS_LIFT.capHearts) - bossMinHearts)
+  return Math.min(BOSS_LIFT.max, k)
+}
+
 export interface DollLayout {
   /** 场内玩偶缩放。 */
   scale: number

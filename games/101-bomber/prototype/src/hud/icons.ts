@@ -67,6 +67,13 @@ export const ICON = {
     '<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/>' +
       '<path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="2.2" fill="none"/>',
   ),
+  /** 中央补给（ADR 0040）：带蝴蝶结的礼盒——横幅与光柱名牌用，与帽王的皇冠区分。 */
+  gift: svg(
+    '<rect x="3.5" y="9" width="17" height="4" rx="1" fill="currentColor"/>' +
+      '<rect x="5" y="13" width="14" height="8" rx="1.2" fill="currentColor"/>' +
+      '<rect x="10.8" y="9" width="2.4" height="12" fill="#FFF8EC"/>' +
+      '<path d="M12 9c-1.5-3.4-5.6-4.4-5.6-1.8C6.4 8.6 9 9 12 9zm0 0c1.5-3.4 5.6-4.4 5.6-1.8 0 1.4-2.6 1.8-5.6 1.8z" fill="currentColor"/>',
+  ),
   /** 换角色（ADR 0030）。 */
   swap: svg(
     '<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -83,6 +90,7 @@ export const ANIMAL_COLOR: Readonly<Record<string, string>> = {
   penguin: '#24375E',
   pig: '#FF86AE',
   dog: '#F28A2E',
+  kangaroo: '#CA3AD0',
 }
 
 export const ANIMAL_NAME: Readonly<Record<string, string>> = {
@@ -94,7 +102,25 @@ export const ANIMAL_NAME: Readonly<Record<string, string>> = {
   penguin: '企鹅',
   pig: '猪',
   dog: '狗',
+  kangaroo: '袋鼠',
 }
 
 /** 脚圈 / 炸弹色带颜色，按 slot（与 view 一致）。 */
-export const SLOT_COLOR: readonly string[] = ['#3DB8DA', '#FF7A3D', '#FFC93C', '#6CC551', '#B57BFF', '#FF6FA8', '#FFFFFF', '#2B2320']
+export const SLOT_COLOR: readonly string[] = [
+  '#3DB8DA',
+  '#FF7A3D',
+  '#FFC93C',
+  '#6CC551',
+  '#B57BFF',
+  '#FF6FA8',
+  '#FFFFFF',
+  '#2B2320',
+  '#2EC4B6',
+  '#E63946',
+  '#3A5BD9',
+  '#B8E04A',
+  '#8D5A3B',
+  '#D33FC6',
+  '#9AA3AD',
+  '#1B7F5A',
+]

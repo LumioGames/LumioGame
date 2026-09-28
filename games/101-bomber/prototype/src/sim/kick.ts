@@ -1,8 +1,7 @@
-import { BlockType, 方向, type 移动技能输入 } from '../contract'
+import { BlockType, skillParams, 方向, type 移动技能输入 } from '../contract'
 import { DIR_VEC } from '../shared/grid'
 import { kickOutcome, slideStop } from '../shared/skill-geometry'
 import { passableCell, sideDirection } from './move'
-import { kickRange } from './skills'
 import { CELL_MILLI, HALF_MILLI, cellOfIdx, emit, findPlayer, gridProbe, playerCell, type SimBomb, type SimPlayer, type World } from './world'
 
 /**
@@ -17,13 +16,36 @@ import { CELL_MILLI, HALF_MILLI, cellOfIdx, emit, findPlayer, gridProbe, playerC
  * 4. 滑行终点 = shared `kickOutcome(gridProbe, n, dir, r)`：下一格界内、砖层为空、没有未爆弹 / 宝箱才前进，至多 r 格；
  *    **玩家从不挡**；进入的第一个水格即终点并熄灭。cells = 0（紧贴着就被挡）→ 踢不动、不出事件。
  * 5. 踢中即刻前推一格：cell = n + dir，kickCellsLeft = cells − 1，kickAcc = 0，kickedBy = 踢的人，
- *    kickDir = cells > 1 ? dir : 停；发 BombKicked(FromCell = n)。推进的这一格若是水 → 当场熄灭。
+ *    kickDir = cells > 1 ? dir : 停；发 BombKicked(FromCell = n)。推进的这一格若是水 → 当场熄灭。（{@link kickBomb}）
+ *
+ * **飞踢（原型扩展 NON-CONTRACT，用户 2026-09-28）**：飞腿袋鼠的主动技（skills.ts applySkill）不走 1–3 的通道 / 格心判定，
+ * 目标由 shared `flyKickTarget` 从玩家所在格沿面朝方向选（相邻或隔一格空地的静止炸弹），之后同样经 {@link kickBomb} 踢出——
+ * 第 4、5 条与下面的滑行 / 熄灭规则逐字相同，距离 = 飞踢的 rangeCells（直到被挡）。
  *
  * **滑（{@link advanceKickedBombs}，死亡系统之后、爆炸之前）**：每 Tick kickAcc += ticks.kickMilliPerTick（8 格 / 秒 → 400），
  * 满 1000 前进一格（前方临时被挡 → 就地停）；进入水格即熄灭（BombExtinguished，炸弹数照爆炸一样回手，capacityDebt 先抵）；
  * 走完 kickCellsLeft 即停。引信照旧：到期时在当前格爆炸（爆炸时滑行字段清零，见 explosion.ts）。
  * 旧火焰不引爆滑行中的弹；糖果不挡；滑行中的弹不能再踢。
  */
+
+/**
+ * 可踢距离（格）：被动槽踢弹按等级（3 / 5 / 99 = 直到被挡）；弹射泡泡只在泡泡期内（t < bubbleUntilTick）按它的 rangeCells；
+ * 两者取大；0 = 不能踢。（原在 skills.ts，挪到这里免得 kick.ts ↔ skills.ts 循环引用；skills.ts 照旧转导出。）
+ */
+export function kickRange(w: World, p: SimPlayer): number {
+  let r = 0
+  const passive = p.slots.passive
+  if (passive?.skill === 'kick') r = skillParams(w.rules.skills, 'kick', passive.level).rangeCells
+  const active = p.slots.active
+  if (active?.skill === 'bounceBubble' && w.t < p.bubbleUntilTick) r = Math.max(r, skillParams(w.rules.skills, 'bounceBubble', active.level).rangeCells)
+  return r
+}
+
+/** ci 格上一颗静止（没在滑行）的未爆炸弹；没有 → undefined。 */
+export function staticBombAt(w: World, ci: number): SimBomb | undefined {
+  const b = w.bombs.find((o) => o.cell === ci && o.explodedAtTick === 0)
+  return b && b.kickDir === 方向.停 ? b : undefined
+}
 
 /** 玩家推进方向（含副方向）相邻格的静止未爆炸弹被踢出。 */
 export function tryKick(w: World, p: SimPlayer, input: 移动技能输入): void {
@@ -51,11 +73,20 @@ function kickToward(w: World, p: SimPlayer, dir: 方向, r: number): boolean {
   const nx = (cell % w.size) + dx
   const ny = Math.floor(cell / w.size) + dy
   if (nx < 0 || ny < 0 || nx >= w.size || ny >= w.size) return false
-  const n = ny * w.size + nx
-  const b = w.bombs.find((o) => o.cell === n && o.explodedAtTick === 0)
-  if (!b || b.kickDir !== 方向.停) return false
+  const b = staticBombAt(w, ny * w.size + nx)
+  return b ? kickBomb(w, p, b, dir, r) : false
+}
+
+/**
+ * 把 b（静止、未爆）朝 dir 踢出，至多 r 格：滑行终点 = shared `kickOutcome`（玩家不挡、进入的第一个水格熄灭）；
+ * 一格都滑不动 → false（不出事件、不改状态）。踢中即刻前推一格、kickedBy = p、发 BombKicked(FromCell = 原格)，
+ * 推进的这一格是水 → 当场熄灭（炸弹数照爆炸一样回手）。被动踢弹与飞踢共用这一份。
+ */
+export function kickBomb(w: World, p: SimPlayer, b: SimBomb, dir: 方向, r: number): boolean {
+  const n = b.cell
   const out = kickOutcome(gridProbe(w), n, dir, r)
   if (out.cells === 0) return false
+  const { dx, dy } = DIR_VEC[dir]
   b.cell = n + dy * w.size + dx
   b.kickCellsLeft = out.cells - 1
   b.kickAcc = 0
@@ -96,14 +127,15 @@ export function advanceKickedBombs(w: World): void {
 
 /**
  * 踢进水里 = 拆弹（design §8.4，RESOLUTIONS #9）：炸弹实体移除、不爆炸；主人的炸弹数照爆炸回手一样归还
- * （先抵 capacityDebt，同 explosion.ts 的回手口径）；发 BombExtinguished（Cell = 熄灭格）。
+ * （先抵 capacityDebt，同 explosion.ts 的回手口径；uncounted 的狂暴炸弹不回手，ADR 0040）；发 BombExtinguished（Cell = 熄灭格）。
  */
 function extinguish(w: World, b: SimBomb): void {
   w.bombs = w.bombs.filter((o) => o !== b)
   b.kickDir = 方向.停
   b.kickCellsLeft = 0
   b.kickAcc = 0
-  const owner = findPlayer(w, b.owner)
+  // 原型扩展（NON-CONTRACT，ADR 0040）：uncounted 的狂暴炸弹放下时没扣炸弹数，熄灭也不回手。
+  const owner = b.uncounted ? undefined : findPlayer(w, b.owner)
   if (owner) {
     if (owner.capacityDebt > 0) owner.capacityDebt--
     else owner.capacity++

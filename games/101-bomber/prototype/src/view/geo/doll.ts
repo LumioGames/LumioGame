@@ -19,8 +19,9 @@ import { GeoBuilder, mat, type ColorFn } from './merge'
 
 /**
  * 动物毛绒玩偶（大头 Q 版：头高 ≈ 58% 全身、头顶 0.93 模型单位）：椭球身 + 团子头 + 胶囊短四肢分件（可动画）。
- * 八种动物先靠剪影（夸张的标志零件：兔长耳、鸭宽嘴 + 呆毛、猫尖耳 + 闪电纹 + 胡须、熊圆耳 + 浅口鼻、
- * 蛙大眼包、企鹅心形白面罩 + 白肚皮、猪鼻头 + 前垂耳、狗垂耳 + 眼罩）再靠颜色区分。
+ * 九种动物先靠剪影（夸张的标志零件：兔长耳、鸭宽嘴 + 呆毛、猫尖耳 + 闪电纹 + 胡须、熊圆耳 + 浅口鼻、
+ * 蛙大眼包、企鹅心形白面罩 + 白肚皮、猪鼻头 + 前垂耳、狗垂耳 + 眼罩、袋鼠 V 字直立长耳 + 长口鼻 + 肚兜口袋 + 拖地粗尾 + 大长脚）
+ * 再靠颜色区分。
  * 决定剪影的零件另有一层背面外扩的描边外壳（*Shell 几何，materials.dollOutline）。
  * 朝向 +Z（面向镜头）为 0 度。零件原点：身体相对身体中心；头相对头心；眼睛相对眼线高度；手臂相对肩；脚相对脚心地面。
  * 取值见 logic/doll-look.ts；外沿预算（|z| ≤ 0.275、|x| ≤ 0.335，含外壳）由 doll-look.test 顶点实测守护。
@@ -43,6 +44,13 @@ export const DOLL = {
   /** 走路时脚前后迈出的幅度（模型单位）。 */
   footSwing: 0.07,
 } as const
+
+/** 袋鼠长耳（头局部，模型单位）：耳根位置、外张角、半长 / 半宽 / 半厚、往头里沉的量（表现取值，推断待验证）。 */
+const KANGAROO_EAR = { rootX: 0.13, rootY: 0.2, splay: 0.45, len: 0.145, w: 0.072, d: 0.036, sink: 0.035 } as const
+/** 袋鼠粗尾（身体坐标、平移前）：胶囊半径 / 直段长、中心、绕 X 的倾角（正 = 下端朝后）。 */
+const KANGAROO_TAIL = { r: 0.05, len: 0.14, y: 0.115, z: -0.165, tilt: 0.5 } as const
+/** 袋鼠脚的前后半长（别人 0.11）。 */
+const KANGAROO_FOOT_RZ = 0.14
 
 export interface DollGeometries {
   body: BufferGeometry
@@ -90,6 +98,8 @@ export const HEAD_SCALE: Readonly<Record<AnimalId, V3>> = {
   pig: [1.02, 0.96, 1],
   // 狗头收窄：垂耳挂在头外侧还要满足侧向预算。
   dog: [0.9, 1, 1],
+  // 袋鼠头略收窄：两只外张的长耳还要满足侧向预算（用户 2026-09-28）。
+  kangaroo: [0.95, 1, 1],
 }
 
 /** 头椭球半径（已乘头部缩放）。 */
@@ -141,6 +151,20 @@ function euler(rx: number, ry: number, rz: number): Quaternion {
 }
 
 const sphere = (seg = 18, rings = 12): BufferGeometry => new SphereGeometry(1, seg, rings)
+
+/** 袋鼠耳的叶形：单位球的上半边随高度往里收成尖（兔耳是圆头长条，猫耳是矮三角）。 */
+function leafGeometry(seg = 18, rings = 14): BufferGeometry {
+  const g = new SphereGeometry(1, seg, rings)
+  const p = g.getAttribute('position')
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i)
+    const k = y > 0 ? 1 - 0.7 * Math.pow(y, 1.6) : 1
+    p.setX(i, p.getX(i) * k)
+    p.setZ(i, p.getZ(i) * k)
+  }
+  g.computeVertexNormals()
+  return g
+}
 
 /** 零件 + 同形描边外壳。 */
 function withShell(b: GeoBuilder, sh: GeoBuilder, geo: () => BufferGeometry, color: number | ColorFn, m: Matrix4, t: number): void {
@@ -310,6 +334,26 @@ function buildHead(animal: AnimalId): HeadParts {
       mouth = { surfs: face, y: -0.16 }
       break
     }
+    case 'kangaroo': {
+      // 直立长耳（用户 2026-09-28）：椭球叶形、向外张成 V 字（兔耳是几乎竖直的平行长条，猫耳是矮三角），深梅色内耳。
+      // 耳根落在头顶两侧、往里沉；高出第一顶帽子的部分都在帽身半径之外（doll-look.test「不从帽顶戳出」守护）。
+      for (const sx of [-1, 1]) {
+        const q = euler(-0.1, 0, -sx * KANGAROO_EAR.splay)
+        const dir = new Vector3(0, 1, 0).applyQuaternion(q)
+        const ctr = new Vector3(sx * KANGAROO_EAR.rootX, KANGAROO_EAR.rootY, -0.03).addScaledVector(dir, KANGAROO_EAR.len - KANGAROO_EAR.sink)
+        withShell(h, hs, () => leafGeometry(), c.body, compose(ctr, q, [KANGAROO_EAR.w, KANGAROO_EAR.len, KANGAROO_EAR.d]), T)
+        const inner = ctr.clone().add(new Vector3(0, 0.01, KANGAROO_EAR.d * 0.55).applyQuaternion(q))
+        h.add(leafGeometry(14, 10), c.accent, compose(inner, q, [KANGAROO_EAR.w * 0.55, KANGAROO_EAR.len * 0.72, KANGAROO_EAR.d * 0.5]))
+      }
+      // 长口鼻（浅色，略朝下）+ 深梅色鼻头贴在口鼻顶前端
+      const muzzle: Ell = { c: [0, -0.075, 0.19], r: [0.1, 0.08, 0.062] }
+      withShell(h, hs, () => sphere(20, 12), c.light, mat(...muzzle.c, 0, 0, 0, ...muzzle.r), T)
+      const ms = [headE, muzzle]
+      const nose = hit(ms, 0, -0.04)
+      h.add(sphere(14, 10), c.accent, onFace(nose.p, nose.n, 0.016, 0.012, [0.036, 0.024, 0.016]))
+      mouth = { surfs: ms, y: -0.11 }
+      break
+    }
     case 'dog': {
       // 垂耳（花纹色），挂在头外侧
       for (const sx of [-1, 1]) {
@@ -445,6 +489,20 @@ function buildBody(animal: AnimalId): { body: BufferGeometry; shell: BufferGeome
       b.add(new ConeGeometry(0.04, 0.07, 10), c.mark, mat(0, 0.26, 0.186, 0, 0, 0, 1, 1, 0.4))
       break
     }
+    case 'kangaroo': {
+      // 肚兜口袋（用户 2026-09-28）：浅色肚皮下半鼓出一个口袋，袋口一串薄荷青「针脚」贴着表面弯成浅浅的微笑
+      const pouch: Ell = { c: [0, cy - 0.065, 0.13], r: [0.115, 0.085, 0.07] }
+      b.add(sphere(20, 14), c.light, mat(...pouch.c, 0, 0, 0, ...pouch.r))
+      const belly: Ell[] = [{ c: [0, cy, 0], r: [rx, ry, rz] }, pouch]
+      for (let i = 0; i <= 8; i++) {
+        const u = i / 4 - 1
+        const s = hit(belly, u * 0.095, cy - 0.005 - 0.022 * (1 - u * u))
+        b.add(sphere(10, 6), c.mark, onFace(s.p, s.n, 0.01, 0.008, [0.017, 0.014, 0.01]))
+      }
+      // 拖地粗尾巴：从后腰斜着拖到地上（站姿像三脚架），贴着背收住，倒着走也不探出脚印（ADR 0032）
+      withShell(b, sh, () => new CapsuleGeometry(KANGAROO_TAIL.r, KANGAROO_TAIL.len, 6, 12), c.body, mat(0, KANGAROO_TAIL.y, KANGAROO_TAIL.z, KANGAROO_TAIL.tilt, 0, 0), OUTLINE_T.feature)
+      break
+    }
     case 'frog': {
       // 背上 3 个深绿斑点
       for (const [x, y] of [
@@ -494,6 +552,11 @@ function buildFoot(animal: AnimalId): { foot: BufferGeometry; shell: BufferGeome
   if (animal === 'duck' || animal === 'penguin' || animal === 'frog') {
     // 扁平蹼脚
     withShell(b, sh, () => sphere(14, 8), c.feet, mat(0, 0.03, 0.03, 0, 0, 0, 0.09, 0.03, 0.12), t)
+  } else if (animal === 'kangaroo') {
+    // 大长脚（用户 2026-09-28）：比别人长一截、略窄，脚尖一块薄荷青「鞋头」、脚底一道薄荷青——飞踢时踢出去的就是它
+    withShell(b, sh, () => sphere(16, 10), c.feet, mat(0, 0.05, 0.02, 0, 0, 0, 0.075, 0.052, KANGAROO_FOOT_RZ), t)
+    b.add(sphere(12, 8), c.mark, mat(0, 0.04, 0.02 + KANGAROO_FOOT_RZ - 0.04, 0, 0, 0, 0.055, 0.03, 0.045))
+    b.add(sphere(12, 8), c.mark, mat(0, 0.006, 0.02, 0, 0, 0, 0.06, 0.008, KANGAROO_FOOT_RZ * 0.85))
   } else {
     withShell(b, sh, () => sphere(16, 10), c.feet, mat(0, 0.055, 0.02, 0, 0, 0, 0.085, 0.06, 0.11), t)
     // 脚尖浅色垫

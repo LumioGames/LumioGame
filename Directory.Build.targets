@@ -12,6 +12,7 @@
     <_LumioRuntimeRoot Condition="'$(LumioRuntimeRoot.Trim())' != ''">$([System.IO.Path]::GetFullPath('$(LumioRuntimeRoot.Trim())'))</_LumioRuntimeRoot>
     <LumioRuntimeEcsProject>$(_LumioRuntimeRoot)/$(_LumioRuntimeEcsRelative)</LumioRuntimeEcsProject>
     <LumioRuntimeReplicationProject>$(_LumioRuntimeRoot)/modules/replication/src/Lumio.GameRuntime.Replication/Lumio.GameRuntime.Replication.csproj</LumioRuntimeReplicationProject>
+    <LumioRuntimeGasProject>$(_LumioRuntimeRoot)/modules/gas/src/Lumio.GameRuntime.Gas/Lumio.GameRuntime.Gas.csproj</LumioRuntimeGasProject>
     <LumioRuntimeSimulationProject>$(_LumioRuntimeRoot)/modules/simulation/src/Lumio.GameRuntime.Simulation/Lumio.GameRuntime.Simulation.csproj</LumioRuntimeSimulationProject>
     <_LumioEcsToolProject>$(_LumioRuntimeRoot)/tools/gen-declarations/Lumio.Tools.GenDeclarations.csproj</_LumioEcsToolProject>
     <_LumioEcsSide Condition="'$(LumioEcsSide)' != ''">$(LumioEcsSide)</_LumioEcsSide>

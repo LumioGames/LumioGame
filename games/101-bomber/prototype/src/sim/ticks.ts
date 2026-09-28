@@ -39,6 +39,14 @@ export interface TickTable {
   kickMilliPerTick: number
   /** 每个技能按等级（下标 = 等级 − 1）换算好的 Tick 参数。 */
   skills: Readonly<Record<SkillId, readonly SkillTickRow[]>>
+  // ---- 原型扩展（NON-CONTRACT，ADR 0040）：方向 B · M1（规则接线归 M1-2）----
+  /** 狂暴持续（frenzyMs）。 */
+  frenzy: number
+  /** 狂暴炸弹引信（frenzyFuseMs）。 */
+  frenzyFuse: number
+  /** 中央大补给预告 / 开启，相对开局 StartTick（supplyAnnounceMs / supplyOpenMs）。 */
+  supplyAnnounce: number
+  supplyOpen: number
 }
 
 export function tickTable(cfg: BomberConfig, rules: ProtoRules): TickTable {
@@ -72,6 +80,10 @@ export function tickTable(cfg: BomberConfig, rules: ProtoRules): TickTable {
     freezeImmune: msToTicks(rules.freezeImmuneMs, hz),
     kickMilliPerTick: Math.floor(rules.kickSpeedMilli / hz),
     skills: skillTicks(rules, hz),
+    frenzy: msToTicks(rules.frenzyMs, hz),
+    frenzyFuse: Math.max(1, msToTicks(rules.frenzyFuseMs, hz)),
+    supplyAnnounce: msToTicks(rules.supplyAnnounceMs, hz),
+    supplyOpen: msToTicks(rules.supplyOpenMs, hz),
   }
 }
 

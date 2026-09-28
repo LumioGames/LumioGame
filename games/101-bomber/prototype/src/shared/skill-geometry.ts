@@ -83,6 +83,41 @@ export function slideStop(g: GridProbe, from: number, dir: 方向, maxCells: num
   return c
 }
 
+export interface FlyKickTarget {
+  /** 被踢炸弹所在格（相邻格，或隔一格）。 */
+  bomb: number
+  /** 滑行终点（{@link kickOutcome}）；water = 终点是水、会熄灭。 */
+  stop: number
+  /** 滑过的格数（≥ 1）。 */
+  cells: number
+  water: boolean
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，用户 2026-09-28 拍板）：飞腿袋鼠「飞踢」的目标与结果，纯几何——规则层、Bot 与表现层同一口径。
+ * 沿 facing：
+ *   1. 相邻格界外 / 面向为停 → null；
+ *   2. 相邻格有一颗静止的未爆炸弹（isStaticBomb）→ 踢它；
+ *   3. 相邻格是空地（砖层为空、没有未爆弹 / 宝箱；玩家与糖果不算占用，水地面也算空地）且隔一格有静止炸弹 → 踢那颗；
+ *   4. 否则 null。
+ * 选中的炸弹按 {@link kickOutcome}(maxCells) 滑行；一格都滑不动（紧贴着就被挡）也算「没有可踢的炸弹」→ null。
+ * null = 施放失败、不进冷却。isStaticBomb(ci)：该格有一颗未爆且没在滑行的炸弹（规则层：kickDir = 停；快照：BombView.kick 缺席）。
+ */
+export function flyKickTarget(g: GridProbe, from: number, facing: 方向, maxCells: number, isStaticBomb: (ci: number) => boolean): FlyKickTarget | null {
+  if (facing === 方向.停) return null
+  const n1 = stepCell(g.size, from, facing)
+  if (n1 < 0) return null
+  let bomb = -1
+  if (isStaticBomb(n1)) bomb = n1
+  else if (g.brick[n1] === BlockType.Air && !g.occupied(n1)) {
+    const n2 = stepCell(g.size, n1, facing)
+    if (n2 >= 0 && isStaticBomb(n2)) bomb = n2
+  }
+  if (bomb < 0) return null
+  const out = kickOutcome(g, bomb, facing, maxCells)
+  return out.cells > 0 ? { bomb, ...out } : null
+}
+
 /**
  * 一次踢弹的完整结果（给 Bot 预测、给测试对照）：同 {@link slideStop}，但炸弹进入的第一个水格就是终点并熄灭
  * （design §8.4「踢进水里 = 拆弹」，RESOLUTIONS #9）。`cells` = 滑过的格数（0 = 踢不动）。

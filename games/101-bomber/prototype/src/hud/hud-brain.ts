@@ -16,6 +16,9 @@ import {
   type WorldSnapshot,
 } from '../contract'
 import { BombStatusWatch, type StatusCue } from '../present/bomb-status'
+import { assignHighlights, type HighlightCard } from '../present/highlight-cards'
+import { KillJuice, settleHoldTicks, type KillInfo } from '../present/kill-juice'
+import { PersonalBestStore, type PersonalBestResult } from '../present/personal-best'
 import { resultsOf } from '../present/ranking'
 import { cellOf } from '../shared/grid'
 import { ChainLedger } from './chain-ledger'
@@ -49,9 +52,15 @@ import { TIP_HATS_GOAL, TipId } from './tips'
  * 口径：design §3.1 爽感时刻（全场横幅只播加冕、倒台；其余弹字只对本人）、§9.6 死亡可解释、§13 结算。
  * 帽子 = 身上的强化数（ADR 0028）：「+1 帽」跟着本人吃强化走（PickupTaken，缺席时退回快照帽数差），
  * 「掉了 N 个强化」按 proto.HatsLost → PowerupsDropped → 快照帽数差 先到先用（hat-loss.ts）。
+ * 击杀手感（ADR 0043，present/kill-juice）：本人每杀「击飞 XX！+N」（N = 死者掉出的强化数，定下来后原地补上）、
+ * 本人连杀横幅（8 秒窗口 / 不死连杀）与击杀栏称号、首次 ×5 / ×8 连锁弹字；整局最后一杀后结算晚一个慢镜时长再开（让最后一杀演完）。
+ * 局终：每人一张高光卡（present/highlight-cards）与本人个人最佳（present/personal-best）。
+ * 方向 B（ADR 0039 / 0040）：心数上限 ≥ 6 的玩家被击倒 → 全场横幅「XX 击倒了 N 心 Boss！」；中央补给预告 / 开启 → 全场横幅
+ * （SupplyAnnounced / SupplyOpened，缺席时退回快照 match.supply 的状态变化）。
  */
 
-export type PopupTone = 'chain' | 'kill' | 'demolish' | 'harvest' | 'comeback' | 'hat' | 'hatloss' | 'skill'
+/** 'knockout' = 本人单杀「击飞 XX！+N」；'milestone' = 首次 ×5 / ×8 连锁（ADR 0043）。 */
+export type PopupTone = 'chain' | 'kill' | 'demolish' | 'harvest' | 'comeback' | 'hat' | 'hatloss' | 'skill' | 'knockout' | 'milestone'
 
 export interface RecapSource {
   /** 「灰灰猫的炸弹」/「你自己的炸弹」/「溺水」。 */
@@ -103,6 +112,10 @@ export interface SettlementResults {
   percentBeaten: number
   playerCount: number
   stats: MatchStats
+  /** 每人一张高光卡（与 rows 同序，design §13，ADR 0043）。 */
+  highlights: HighlightCard[]
+  /** 本人个人最佳与本局刷新的项（本人不在名单里时为 null）。 */
+  personalBest: PersonalBestResult | null
 }
 
 export type HudMoment =
@@ -124,8 +137,11 @@ export type HudMoment =
   | { kind: 'match-reset'; matchIndex: number }
   | { kind: 'settlement'; results: SettlementResults }
 
-/** 'evolve' = 原型扩展（NON-CONTRACT，ADR 0030）：本人进化横幅，只给本人看。 */
-export type BannerTone = 'crown' | 'fall' | 'final' | 'evolve'
+/**
+ * 'evolve' = 原型扩展（NON-CONTRACT，ADR 0030）：本人进化横幅，只给本人看；'streak' = 本人连杀横幅（ADR 0043）；
+ * 'boss' = 击倒 Boss 全场横幅（ADR 0043）；'supply' = 中央补给预告 / 开启全场横幅（ADR 0040）。
+ */
+export type BannerTone = 'crown' | 'fall' | 'final' | 'evolve' | 'streak' | 'boss' | 'supply'
 
 export interface HudBrainOptions {
   localId: U64
@@ -135,9 +151,59 @@ export interface HudBrainOptions {
   pointsPerHeart: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：技能 / 角色表（技能文案用）；缺省 = DEFAULT_RULES。 */
   rules?: HudBrainRules
+  /** 个人最佳的存储（ADR 0043）；缺省 = 浏览器 localStorage（读写失败退回内存）。 */
+  personalBest?: PersonalBestStore
+  /** 基础心数上限（半心点，= BomberConfig.maxHealthPoints）；缺省 3 心。快照缺 maxHealth 时按它算。 */
+  baseMaxHealth?: number
 }
 
-export type HudBrainRules = Pick<ProtoRules, 'skills' | 'combos' | 'skillMaxLevel' | 'characters' | 'burnPointsPerInterval' | 'burnIntervalMs'>
+export type HudBrainRules = Pick<
+  ProtoRules,
+  'skills' | 'combos' | 'skillMaxLevel' | 'characters' | 'burnPointsPerInterval' | 'burnIntervalMs' | 'bossMinHearts'
+>
+
+/** 击倒 Boss 全场横幅（design §3.1，ADR 0043）：有击杀者 →「XX 击倒了 N 心 Boss！」；毒圈 / 自爆 →「N 心 Boss 倒下了！」。 */
+export function bossDownBanner(killerName: string | null, victimName: string, hearts: number, mine: boolean): { title: string; sub: string } {
+  const sub = victimName === '你' ? '你的装备散落一地 · 快抢回来' : killerName ? `Boss ${victimName} 倒下了 · 冲过去哄抢！` : `${victimName} · 冲过去哄抢！`
+  if (!killerName) return { title: `${hearts} 心 Boss 倒下了！`, sub }
+  return { title: mine ? `你击倒了 ${hearts} 心 Boss！` : `${killerName} 击倒了 ${hearts} 心 Boss！`, sub }
+}
+
+/** 中央补给横幅（ADR 0040）：预告带倒计时，开启喊人去中心。 */
+export function supplyBanner(kind: 'announce' | 'open', sec: number): { title: string; sub: string } {
+  return kind === 'announce'
+    ? { title: `中央补给 ${sec} 秒后开启！`, sub: '看棋盘中心的光柱 · 狂暴糖 · 金心 · 特殊炸弹' }
+    : { title: '中央补给开启！', sub: '冲向中心 · 狂暴糖 · 金心 · 特殊炸弹' }
+}
+
+/** 本人单杀弹字（design §3.1 单杀，ADR 0043）：「击飞 XX！+N」，N = 死者掉出的强化数；还不知道 / 0 时不带「+N」。 */
+export function knockoutText(victimName: string, dropped: number | null): string {
+  return dropped && dropped > 0 ? `击飞 ${victimName}！+${dropped}` : `击飞 ${victimName}！`
+}
+
+/** 本人连杀横幅（ADR 0043）：同一批里既跨上窗口连杀又跨上不死连杀时合成一条，不死连杀做标题。 */
+export function streakBanner(kills: readonly KillInfo[]): { title: string; sub: string } | null {
+  let rapid: KillInfo | null = null
+  let spree: KillInfo | null = null
+  for (const k of kills) {
+    if (k.rapidLabel) rapid = k
+    if (k.spreeLabel) spree = k
+  }
+  if (spree?.spreeLabel) return { title: `${spree.spreeLabel}！`, sub: rapid?.rapidLabel ? `${rapid.rapidLabel} · 不死连杀 ${spree.spree}` : `不死连杀 ${spree.spree} 人` }
+  if (rapid?.rapidLabel) return { title: `${rapid.rapidLabel}！`, sub: `8 秒内击飞 ${rapid.rapid} 人` }
+  return null
+}
+
+/**
+ * 别人的连杀横幅（用户 2026-09-28 反馈「没看到有连杀」：只给本人看、击杀栏标签又太小）。
+ * 播三杀及以上的窗口连杀与大杀特杀 / 主宰 / 超神；双杀只留击杀栏标签，免得横幅刷屏。
+ * 同一击杀者同批只播最后一条；不死连杀称号优先。本人的由 {@link streakBanner} 负责。
+ */
+export function othersStreakBanner(k: KillInfo, killerName: string): { title: string; sub: string } | null {
+  if (k.spreeLabel) return { title: `${killerName} ${k.spreeLabel}！`, sub: `不死连杀 ${k.spree} 人` }
+  if (k.rapidLabel && k.rapid >= 3) return { title: `${killerName} ${k.rapidLabel}！`, sub: `8 秒内击飞 ${k.rapid} 人` }
+  return null
+}
 
 /** 多杀文案（design §3.1）。 */
 export function multiKillLabel(kills: number): string | null {
@@ -164,6 +230,8 @@ const PICKUP_TEXT: Readonly<Record<PickupKind, string>> = {
   [PickupKind.SpeedPlus]: '+1 速度',
   [PickupKind.HealthPack]: '+1 心',
   [PickupKind.SkillCandy]: '+ 技能糖',
+  [PickupKind.GoldHeart]: '金心',
+  [PickupKind.Frenzy]: '狂暴糖',
 }
 
 const DROP_NAME: Readonly<Record<PickupKind, string>> = {
@@ -172,6 +240,8 @@ const DROP_NAME: Readonly<Record<PickupKind, string>> = {
   [PickupKind.SpeedPlus]: '速度',
   [PickupKind.HealthPack]: '血包',
   [PickupKind.SkillCandy]: '技能糖',
+  [PickupKind.GoldHeart]: '金心',
+  [PickupKind.Frenzy]: '狂暴糖',
 }
 
 /** 死亡回顾的掉落行：「火力 ×1、速度 ×2」（按火力 / 炸弹 / 速度排序）；空列表为「无」。 */
@@ -248,11 +318,26 @@ export class HudBrain {
   private readonly statusWatch = new BombStatusWatch()
   private readonly rules: HudBrainRules
   readonly killFeed: KillFeed
+  /** 击杀手感 / 连杀 / 连锁里程碑（ADR 0043）。 */
+  readonly juice: KillJuice
+  /** 本人击杀、死者掉了几个强化还没定下来：定下来后把「+N」补进同一个弹字。 */
+  private readonly pendingKo = new Map<U64, { tick: U64; key: string; name: string; tier: number }>()
+  /** 整局最后一杀：结算（领奖台）晚到这一 Tick 再开，让最后一杀的慢镜演完。 */
+  private settleAt: U64 = 0
+  private readonly best: PersonalBestStore
+  /** 本局中央补给的预告 / 开启横幅是否已播（事件与快照兜底只播一次）。 */
+  private supplyAnnounced = false
+  private supplyOpened = false
 
   constructor(private readonly opts: HudBrainOptions) {
-    this.stats = new StatsTracker(opts.localId)
-    this.killFeed = new KillFeed(opts.localId)
     this.rules = opts.rules ?? DEFAULT_RULES
+    this.stats = new StatsTracker(opts.localId, 0, opts.pointsPerHeart, {
+      bossMinPoints: this.rules.bossMinHearts * opts.pointsPerHeart,
+      baseMaxHealth: opts.baseMaxHealth ?? 3 * opts.pointsPerHeart,
+    })
+    this.killFeed = new KillFeed(opts.localId)
+    this.juice = new KillJuice({ localId: opts.localId, tickRateHz: opts.tickRateHz })
+    this.best = opts.personalBest ?? new PersonalBestStore()
   }
 
   /** 出局 Tick：PlayerEliminated 的 Tick，或快照兜底（第一次看到 eliminated 时的 eliminatedTick / 快照 Tick）。 */
@@ -298,6 +383,10 @@ export class HudBrain {
       if (b.OwnerNetEntityIdRaw === me) out.push({ kind: 'tip', id: TipId.Brick })
     }
     this.stats.consumeEvents(batch, this.ledger)
+    const juice = this.juice.consume(batch.events)
+    const killInfo = new Map<string, KillInfo>()
+    for (const k of juice.kills) killInfo.set(`${k.tick}:${k.victim}`, k)
+    if (juice.finalKill) this.settleAt = juice.finalKill.tick + settleHoldTicks(this.opts.tickRateHz)
 
     // ---- 2. 逐事件规则 ----
     const before = batch.before
@@ -325,7 +414,8 @@ export class HudBrain {
           const hatsBefore = findPlayer(before, victim)?.BomberPlayerState.HatCount ?? 0
           // 炸死的那颗弹：优先 proto，缺席时取本批对死者的最后一张伤害单（ADR 0033 击杀播报写弹种）。
           const killBomb = e.proto?.SourceBombNetEntityIdRaw ?? lastBombOn(batch, victim)
-          this.killFeed.onDied(e, (id) => this.nameOf(id), e.Cause === DeathCause.Bomb ? specialBombName(batch, killBomb) : null)
+          const ki = killInfo.get(`${e.Tick}:${victim}`)
+          this.killFeed.onDied(e, (id) => this.nameOf(id), e.Cause === DeathCause.Bomb ? specialBombName(batch, killBomb) : null, ki ? (ki.spreeLabel ?? ki.rapidLabel) : null)
           if (victim === me) {
             localDied = true
             out.push({ kind: 'death', recap: this.buildRecap(e, batch, e.proto?.HatsLost ?? null), delayMs: deathDelay })
@@ -338,6 +428,8 @@ export class HudBrain {
           // 倒台：死时是帽王且帽塔够光柱阈值；横幅等「掉了几个强化」定下来再播。
           if (beforeKing !== 0 && victim === beforeKing && hatsBefore >= this.opts.pillarMinHats) this.pendingFalls.add(victim)
           const known = this.losses.onDied(victim, e.Tick, e.proto?.HatsLost, hatsBefore)
+          if (killer === me && victim !== me && ki) this.knockout(ki, known ? known.lost : null, out)
+          this.checkBossDown(e, before, out)
           if (known) this.onLossResolved(known, out)
           if (killer === me && victim !== me && beforeKing !== 0 && victim === beforeKing) {
             const myHats = findPlayer(before, me)?.BomberPlayerState.HatCount ?? 0
@@ -452,6 +544,20 @@ export class HudBrain {
         case 'MatchEnded':
           this.matchEndedTick = e.Tick
           break
+        // ---- 原型扩展（NON-CONTRACT，ADR 0040）：中央补给 ----
+        case 'SupplyAnnounced':
+          if (!this.supplyAnnounced) {
+            this.supplyAnnounced = true
+            out.push({ kind: 'banner', tone: 'supply', mine: false, ...supplyBanner('announce', this.secUntil(e.AtTick, e.Tick)) })
+          }
+          break
+        case 'SupplyOpened':
+          this.supplyAnnounced = true
+          if (!this.supplyOpened) {
+            this.supplyOpened = true
+            out.push({ kind: 'banner', tone: 'supply', mine: false, ...supplyBanner('open', 0) })
+          }
+          break
         case 'BombExtinguished':
           if (e.OwnerNetEntityIdRaw === me) out.push({ kind: 'notice', text: '水里放不了炸弹，引信熄灭了' })
           break
@@ -483,6 +589,16 @@ export class HudBrain {
       const label = multiKillLabel(k)
       if (label) this.popup(out, `kill:${c}`, 'kill', label, Math.min(4, k))
     }
+    // 首次 ×5 / ×8 连锁（ADR 0043）；本人连杀横幅（窗口连杀 / 不死连杀合成一条）。
+    for (const m of juice.chainMilestones) this.popup(out, `milestone:${m.bombs}`, 'milestone', m.label, 4)
+    const streak = streakBanner(juice.kills.filter((k) => k.killer === me))
+    if (streak) out.push({ kind: 'banner', tone: 'streak', mine: true, ...streak })
+    const othersLast = new Map<U64, KillInfo>()
+    for (const k of juice.kills) if (k.killer !== me && (k.spreeLabel || k.rapidLabel)) othersLast.set(k.killer, k)
+    for (const [killer, k] of othersLast) {
+      const b = othersStreakBanner(k, this.nameOf(killer))
+      if (b) out.push({ kind: 'banner', tone: 'streak', mine: false, ...b })
+    }
 
     // ---- 4. 快照规则 ----
     const snap = batch.snapshot
@@ -494,6 +610,7 @@ export class HudBrain {
       for (const c of this.statusWatch.check(snap, me)) out.push({ kind: 'notice', text: statusFallbackText(c) })
       this.localHp = findPlayer(snap, me)?.玩家属性.血量当前 ?? this.localHp
       this.checkCrown(snap, out)
+      this.checkSupply(snap, out)
       if (snap.BomberMatchState.Phase === MatchPhase.Endgame && !this.finalCircle) this.startFinalCircle(out)
       for (const p of snap.Players) {
         // 没有 PlayerEliminated 表现事件的数据源：出局顺序退回「快照里第一次看到 eliminated」的先后。
@@ -511,7 +628,7 @@ export class HudBrain {
           this.comebackUntil = -1
         } else if (snap.Tick > this.comebackUntil) this.comebackUntil = -1
       }
-      if (snap.BomberMatchState.Phase === MatchPhase.Settlement && !this.settled) {
+      if (snap.BomberMatchState.Phase === MatchPhase.Settlement && !this.settled && snap.Tick >= this.settleAt) {
         this.settled = true
         out.push({ kind: 'settlement', results: this.buildResults(snap) })
       }
@@ -536,6 +653,11 @@ export class HudBrain {
     this.finalCircle = false
     this.matchEndedTick = null
     this.killFeed.clear()
+    this.juice.reset()
+    this.pendingKo.clear()
+    this.settleAt = 0
+    this.supplyAnnounced = false
+    this.supplyOpened = false
     this.localHp = null
     this.comebackUntil = -1
     this.harvestStart = this.harvestLast = -1
@@ -570,6 +692,40 @@ export class HudBrain {
       title: mine ? '你是帽王！' : `${this.nameOf(king)} 成为帽王`,
       sub: mine ? '全场都在追你' : `${hats} 个强化 · 追光柱去抢`,
     })
+  }
+
+  /** 击倒 Boss（ADR 0039 / 0043）：死者死前（上一份快照）心数上限 ≥ bossMinHearts 心 → 全场横幅。 */
+  private checkBossDown(e: Extract<TickBatch['events'][number], { type: 'PlayerDied' }>, before: WorldSnapshot | null, out: HudMoment[]): void {
+    const per = this.opts.pointsPerHeart
+    const max = findPlayer(before, e.VictimNetEntityIdRaw)?.maxHealth
+    if (max === undefined || max < this.rules.bossMinHearts * per) return
+    const me = this.opts.localId
+    const victim = e.VictimNetEntityIdRaw
+    const killer = e.KillerNetEntityIdRaw
+    const hasKiller = killer !== 0 && killer !== victim
+    const mine = hasKiller && killer === me
+    const killerName = hasKiller ? (mine ? '你' : this.nameOf(killer)) : null
+    out.push({ kind: 'banner', tone: 'boss', mine, ...bossDownBanner(killerName, victim === me ? '你' : this.nameOf(victim), Math.floor(max / per), mine) })
+  }
+
+  /** 没有补给事件的数据源：按快照 match.supply 的状态变化补播（事件已播过的不重播）。 */
+  private checkSupply(snap: WorldSnapshot, out: HudMoment[]): void {
+    const sp = snap.match.supply
+    if (!sp || sp.state === 'pending') return
+    if (sp.state === 'opened') {
+      this.supplyAnnounced = true
+      if (this.supplyOpened) return
+      this.supplyOpened = true
+      out.push({ kind: 'banner', tone: 'supply', mine: false, ...supplyBanner('open', 0) })
+      return
+    }
+    if (this.supplyAnnounced) return
+    this.supplyAnnounced = true
+    out.push({ kind: 'banner', tone: 'supply', mine: false, ...supplyBanner('announce', this.secUntil(sp.openTick, snap.Tick)) })
+  }
+
+  private secUntil(at: U64, now: U64): number {
+    return Math.max(1, Math.ceil((at - now) / this.opts.tickRateHz - 1e-9))
   }
 
   private startFinalCircle(out: HudMoment[]): void {
@@ -648,10 +804,27 @@ export class HudBrain {
     this.standingOn = on
   }
 
-  /** 死者掉了几个强化定下来了：击杀栏补后半句；本人弹「掉了 N 个强化」；帽王死时播倒台横幅。 */
+  /** 本人单杀弹字；死者掉了几个还不知道时先不带「+N」，定下来后原地补上（onLossResolved）。 */
+  private knockout(k: KillInfo, dropped: number | null, out: HudMoment[]): void {
+    const key = `ko:${k.tick}:${k.victim}`
+    const name = this.nameOf(k.victim)
+    const tier = Math.min(4, 1 + k.rapid)
+    if (dropped === null) {
+      this.pendingKo.set(k.victim, { tick: k.tick, key, name, tier })
+      if (this.pendingKo.size > 32) this.pendingKo.delete(this.pendingKo.keys().next().value as U64)
+    }
+    this.popup(out, key, 'knockout', knockoutText(name, dropped), tier)
+  }
+
+  /** 死者掉了几个强化定下来了：击杀栏补后半句；本人弹「掉了 N 个强化」；帽王死时播倒台横幅；本人击杀的弹字补「+N」。 */
   private onLossResolved(r: ResolvedLoss, out: HudMoment[]): void {
     const me = this.opts.localId
     this.killFeed.setLost(r.victim, r.tick, r.lost)
+    const ko = this.pendingKo.get(r.victim)
+    if (ko && ko.tick === r.tick) {
+      this.pendingKo.delete(r.victim)
+      this.popup(out, ko.key, 'knockout', knockoutText(ko.name, r.lost), ko.tier)
+    }
     if (r.victim === me) {
       out.push({ kind: 'hats-lost', count: r.lost })
       if (r.lost > 0) this.popup(out, `hatloss:${r.tick}`, 'hatloss', lossPopupText(r.lost), 2)
@@ -777,8 +950,13 @@ export class HudBrain {
 
   private buildResults(snap: WorldSnapshot): SettlementResults {
     const me = this.opts.localId
+    const rate = this.opts.tickRateHz
     const res = resultsOf(snap, (id) => this.eliminations.get(id)?.tick)
     const rows = rankFinal(snap.Players, this.eliminations, this.finalCircle, snap.BomberMatchState.HatKingNetEntityIdRaw, me, res)
+    this.stats.finalizeClutch(snap)
+    const s = this.stats.stats
+    const local = rows.find((r) => r.isLocal)
+    const personalBest = local ? this.best.record({ bestChain: s.bestChain, kills: s.kills, rank: local.rank, kingSec: s.hatKingTicks / rate }) : null
     return {
       matchIndex: snap.match.matchIndex,
       rows,
@@ -790,6 +968,11 @@ export class HudBrain {
       percentBeaten: percentBeaten(rows, me),
       playerCount: rows.length,
       stats: this.stats.snapshot(),
+      highlights: assignHighlights(
+        rows.map((r) => this.stats.highlightStats(r.id)),
+        rate,
+      ),
+      personalBest,
     }
   }
 

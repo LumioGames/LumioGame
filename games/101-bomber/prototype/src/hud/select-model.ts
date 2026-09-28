@@ -73,19 +73,22 @@ export function selectReduce(s: SelectState, a: SelectAction, n: number, mode: S
   }
 }
 
+/** 数字键直选：1–5（第 5 张 = 飞腿袋鼠，用户 2026-09-28）；超出卡片数的下标由 {@link selectReduce} 忽略。 */
 const PICK_KEYS: Readonly<Record<string, number>> = {
   Digit1: 0,
   Digit2: 1,
   Digit3: 2,
   Digit4: 3,
+  Digit5: 4,
   Numpad1: 0,
   Numpad2: 1,
   Numpad3: 2,
   Numpad4: 3,
+  Numpad5: 4,
 }
 
 /**
- * 键位：←→（及 ↑↓ / WASD）换卡、1–4 直选、Enter / 空格确认。
+ * 键位：←→（及 ↑↓ / WASD）换卡、1–5 直选、Enter / 空格确认。
  * Esc 不在这里映射：它留给全局暂停键（换角色卡开着时 = 继续游戏，与帮助 / 设置卡一致），见 {@link selectKeysHint}。
  * 换角色的「取消」只走卡上的「取消」按钮（回到暂停卡）。
  */
@@ -122,7 +125,7 @@ export function initialIndex(last: string | null): number {
 }
 
 /** Bot 难度的中文名（暂停卡 / 选角页脚）。 */
-export const AI_LABEL: Readonly<Record<BotDifficulty, string>> = { easy: '简单', normal: '普通', hard: '困难' }
+export const AI_LABEL: Readonly<Record<BotDifficulty, string>> = { easy: '简单', normal: '普通', hard: '困难', rookie: '菜鸟' }
 
 /** 开局规则卡上的「你是谁」一行：「你是 闪电猫 · Shift 闪现」/「你是 棉花兔 · 被动 回春」。 */
 export function characterLine(c: SelectCard): string {

@@ -1,4 +1,14 @@
-import { poisonPointsAt, type BomberConfig, type BotTactics, type FinalCircleView, type ProtoRules, type RingRect, type U64 } from '../contract'
+import {
+  maxHealthOfView,
+  poisonPointsAt,
+  poisonPointsFor,
+  type BomberConfig,
+  type BotTactics,
+  type FinalCircleView,
+  type ProtoRules,
+  type RingRect,
+  type U64,
+} from '../contract'
 import { cellIndexOf, enemyCanEscape, isActiveEnemy, protectedAtDetonation, type ThinkContext } from './behaviors'
 import type { BombEvaluation } from './bomb-gate'
 import type { DangerMap } from './danger-map'
@@ -17,11 +27,21 @@ export function isShowdown(fc: FinalCircleView | null, t: Pick<BotTactics, 'show
   return fc !== null && ringSide(fc.ring) <= t.showdownRingSide
 }
 
-/** 圈外每跳毒伤（半心点）：当前段与已预告的下一段取大（缩圈前就按更痛的算）；不在决赛圈 = 基础值。 */
-export function poisonRate(rules: Pick<ProtoRules, 'ringStages' | 'poisonPointsPerInterval'>, fc: FinalCircleView | null): number {
-  if (!fc) return rules.poisonPointsPerInterval
-  const cur = poisonPointsAt(rules, fc.stageIndex)
-  return fc.nextRing ? Math.max(cur, poisonPointsAt(rules, fc.stageIndex + 1)) : cur
+/**
+ * 圈外每跳毒伤（半心点）：当前段与已预告的下一段取大（缩圈前就按更痛的算）；不在决赛圈 = 基础值。
+ * 原型扩展（NON-CONTRACT，ADR 0039）：给了 scale 就按本人心数上限等比（= 规则层 contract `poisonPointsFor` 同式）。
+ */
+export function poisonRate(
+  rules: Pick<ProtoRules, 'ringStages' | 'poisonPointsPerInterval'>,
+  fc: FinalCircleView | null,
+  scale?: { cfg: Pick<BomberConfig, 'maxHealthPoints'>; maxHealth: number },
+): number {
+  const stage = (): number => {
+    if (!fc) return rules.poisonPointsPerInterval
+    const cur = poisonPointsAt(rules, fc.stageIndex)
+    return fc.nextRing ? Math.max(cur, poisonPointsAt(rules, fc.stageIndex + 1)) : cur
+  }
+  return scale ? poisonPointsFor(scale.cfg, stage(), scale.maxHealth) : stage()
 }
 
 /**
@@ -33,11 +53,20 @@ export function lateEntryHorizon(fc: FinalCircleView | null, t: Pick<BotTactics,
   return now + t.lateEntryTicks
 }
 
-/** 站在格 c 的人会被危险图里的炸弹（含假想弹）一共打掉几点血：每颗罩住 c 的弹 bombDamagePoints，封顶满血。 */
-export function hitPoints(dm: DangerMap, c: number, cfg: Pick<BomberConfig, 'maxHealthPoints'>, rules: Pick<ProtoRules, 'bombDamagePoints'>): number {
+/**
+ * 站在格 c 的人会被危险图里的炸弹（含假想弹）一共打掉几点血：每颗罩住 c 的弹 bombDamagePoints，封顶满血。
+ * 原型扩展（NON-CONTRACT，ADR 0039）：封顶 = 那个人的心数上限（maxHealth，缺省全局 maxHealthPoints），同规则层同链上限。
+ */
+export function hitPoints(
+  dm: DangerMap,
+  c: number,
+  cfg: Pick<BomberConfig, 'maxHealthPoints'>,
+  rules: Pick<ProtoRules, 'bombDamagePoints'>,
+  maxHealth: number = cfg.maxHealthPoints,
+): number {
   let n = 0
   for (const cov of dm.cover) if (cov.includes(c)) n++
-  return Math.min(cfg.maxHealthPoints, n * rules.bombDamagePoints)
+  return Math.min(maxHealth, n * rules.bombDamagePoints)
 }
 
 export interface TradeVerdict {
@@ -56,7 +85,7 @@ export interface TradeVerdict {
  */
 export function evaluateTrade(ctx: ThinkContext, ev: BombEvaluation, shielded: boolean): TradeVerdict {
   const no: TradeVerdict = { ok: false, selfPoints: 0, victims: [] }
-  const selfPoints = shielded ? 0 : hitPoints(ev.dm, ctx.here, ctx.config, ctx.rules)
+  const selfPoints = shielded ? 0 : hitPoints(ev.dm, ctx.here, ctx.config, ctx.rules, maxHealthOfView(ctx.me, ctx.config))
   const me = ctx.me.玩家属性.血量当前 - selfPoints
   if (me < 1) return { ...no, selfPoints }
   const mine = ev.dm.cover[ev.dm.cover.length - 1] ?? []
@@ -67,7 +96,7 @@ export function evaluateTrade(ctx: ThinkContext, ev: BombEvaluation, shielded: b
     const c = cellIndexOf(ctx.board, e.LogicTransform.WorldPosition)
     if (c < 0 || !mine.includes(c)) continue
     if (enemyCanEscape(ev.board, ev.dm, e, ctx, true)) continue
-    const v = e.玩家属性.血量当前 - hitPoints(ev.dm, c, ctx.config, ctx.rules)
+    const v = e.玩家属性.血量当前 - hitPoints(ev.dm, c, ctx.config, ctx.rules, maxHealthOfView(e, ctx.config))
     if (v <= 0 || (v < me && me >= ctx.tactics.tradeMinHpLeft) || (v === me && me >= ctx.tactics.tieTradeMinHp)) {
       ok = true
       victims.push(e.NetEntityIdRaw)

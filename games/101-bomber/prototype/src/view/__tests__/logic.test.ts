@@ -6,7 +6,10 @@ import {
   chainShakeAmplitude,
   clampFollow,
   followDistanceForAspect,
+  overviewDistanceFor,
+  visibleCellsAcross,
 } from '../logic/camera-math'
+import { CameraRig } from '../camera'
 import { CHAIN_CAP_MS, computeChainDelays, orderChain, type ChainBomb } from '../logic/chain-stagger'
 import { canPreviewBomb, computeFireCross, forEachCrossCell } from '../logic/fire-preview'
 import { approachAngle, heartStage, interpolateXZ, shortestAngleDelta, smoothDamp } from '../logic/interp'
@@ -55,7 +58,28 @@ describe('angles and damping', () => {
 })
 
 describe('camera math', () => {
-  it('keeps 12.5 on 16:9 and pulls back on narrow screens up to 26', () => {
+  it('user feedback: the 16:9 follow camera sees about 13–15 cells across (local view, closer than before)', () => {
+    const w = visibleCellsAcross(followDistanceForAspect(16 / 9), 16 / 9)
+    expect(w).toBeGreaterThanOrEqual(13)
+    expect(w).toBeLessThanOrEqual(15)
+    // 窄屏自动拉远的逻辑保留：方屏也至少看到 minVisibleCellsX 格（竖屏另受 maxDistance 封顶）。
+    expect(followDistanceForAspect(1)).toBeGreaterThan(CAMERA.followDistance)
+    expect(visibleCellsAcross(followDistanceForAspect(1), 1)).toBeGreaterThanOrEqual(CAMERA.minVisibleCellsX - 1e-9)
+  })
+  it('user feedback: every match starts in the local follow view; V switches to the overview, which scales with the board', () => {
+    const rig = new CameraRig(27)
+    rig.setAspect(16 / 9)
+    rig.toggleOverview()
+    expect(rig.isOverview).toBe(true)
+    for (let i = 0; i < 60; i++) rig.update(1 / 60, 1 / 60, i / 60, 13.5, 13.5, 0, 0, 0)
+    const p = rig.camera.position
+    expect(Math.hypot(p.x - 13.5, p.y, p.z - 13.5)).toBeCloseTo(overviewDistanceFor(27), 3)
+    rig.resetView()
+    expect(rig.isOverview).toBe(false)
+    rig.update(1 / 60, 1 / 60, 1, 13.5, 13.5, 0, 0, 0)
+    expect(Math.hypot(rig.camera.position.x - 13.5, rig.camera.position.y, rig.camera.position.z - 13.5)).toBeCloseTo(CAMERA.followDistance, 3)
+  })
+  it('keeps the follow distance on 16:9 and pulls back on narrow screens up to 26', () => {
     expect(followDistanceForAspect(16 / 9)).toBe(CAMERA.followDistance)
     const portrait = followDistanceForAspect(9 / 19.5)
     expect(portrait).toBeGreaterThan(CAMERA.followDistance)

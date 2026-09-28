@@ -1,11 +1,14 @@
 import { BlockType, BombKind, MATERIALS, 方向 } from '../contract'
-import { hitChest } from './chest'
+import { hitChest, hitResourceBox, resourceBoxAt } from './chest'
+import { maxHealthOf } from './death-drops'
 import { addBrickWrite } from './terrain-commit'
 import { cellOfIdx, chestAt, emit, findPlayer, isAlive, pickupProtectedUntil, playerCell, type SimBomb, type SimChest, type World } from './world'
 
 /**
  * 爆炸系统（契约 §2.2 / design §7.2 / §7.5）：帧初照片 → 到期炸弹入队、连锁同帧排空 → 十字传播写 Reach →
- * 软砖 / 木箱入写批 → 危险窗内按覆盖格下伤害单（同弹同人一次、同链同人累计 ≤ maxHealthPoints）。
+ * 软砖 / 木箱入写批 → 危险窗内按覆盖格下伤害单（同弹同人一次、同链同人累计 ≤ 受害者当前心数上限，ADR 0039）。
+ * 原型扩展（NON-CONTRACT，ADR 0040）：登记过的资源箱每颗弹记一次命中（同链多颗各算一次），命中数没用完（金箱第 1 击）时
+ * 箱子立着、臂停在它前面（不覆盖、不写砖）；uncounted 的狂暴炸弹爆炸不回手，主人免疫自己的 uncounted 炸弹、不免疫别人的。
  */
 
 /** 与 ReachUp / ReachDown / ReachLeft / ReachRight 同序；上 = 游戏 −Y。 */
@@ -138,6 +141,9 @@ export function runExplosions(w: World): void {
         const fire = MATERIALS[block].fire
         if (fire === 'stopBefore') break
         if (fire === 'destroyThenStop') {
+          // 原型扩展（NON-CONTRACT，ADR 0040）：登记的资源箱先记命中；没碎（金箱差一击）就停在它前面，也不穿透。
+          const box = block === BlockType.木箱 ? resourceBoxAt(w, c) : undefined
+          if (box && !hitResourceBox(box, b)) break
           blast.bricks.push({ cell: c, block })
           // 穿透（唯一口径见 contract/skills.ts 文件头）：被穿透的砖照样摧毁，并计入覆盖与 Reach（火焰看得见穿过去）；
           // 穿够了的那块砖摧毁后停、不覆盖（= 标准弹行为）。
@@ -188,7 +194,8 @@ export function runExplosions(w: World): void {
 
   const chains = new Map<number, ChainAcc>()
   for (const { bomb: b, bricks, chests } of blasts) {
-    const owner = findPlayer(w, b.owner)
+    // 原型扩展（NON-CONTRACT，ADR 0040）：uncounted 的狂暴炸弹放下时没扣炸弹数，爆炸也不回手。
+    const owner = b.uncounted ? undefined : findPlayer(w, b.owner)
     if (owner) {
       if (owner.capacityDebt > 0) owner.capacityDebt--
       else owner.capacity++
@@ -252,6 +259,7 @@ function removeBurnedOut(w: World): void {
  * 所以同一颗弹（及同一 Tick 的其他伤害）不会解冻；之后的伤害才解冻。
  * 中毒弹 / 麻痹弹（BombKind.Toxin / Shock，原型扩展 NON-CONTRACT，ADR 0033）同一处、同一口径：照常扣血，再下一张
  * points = 0 的状态单，结算时按弹的 kind 让幸存者中毒 / 麻痹。泡泡 / 重生保护挡下的不扣血，也不中状态。
+ * 狂暴炸弹（uncounted，ADR 0040）对主人同样视而不见：不扣血、不中状态、不记命中。
  */
 function dangerPass(w: World): void {
   const t = w.t
@@ -259,7 +267,6 @@ function dangerPass(w: World): void {
   if (active.length === 0) return
   const alive = w.players.filter(isAlive).map((p) => ({ p, cell: playerCell(w, p) }))
   const dmgPts = w.rules.bombDamagePoints
-  const cap = w.cfg.maxHealthPoints
   for (const b of active) {
     const freeze = b.kind === BombKind.Freeze
     const status = freeze || b.kind === BombKind.Toxin || b.kind === BombKind.Shock
@@ -268,6 +275,8 @@ function dangerPass(w: World): void {
       for (const { p, cell } of alive) {
         if (cell !== c) continue
         if (t < p.protectedUntilTick || t < p.bubbleUntilTick || b.hit.includes(p.id)) continue
+        // 原型扩展（NON-CONTRACT，ADR 0040，design §8.5）：免疫自己的狂暴炸弹（M1 里 uncounted = 狂暴弹；不记命中、不上状态）。
+        if (b.uncounted && b.owner === p.id) continue
         b.hit.push(p.id)
         if (damages) {
           let perChain = w.chainDmg.get(b.chainId)
@@ -276,7 +285,7 @@ function dangerPass(w: World): void {
             w.chainDmg.set(b.chainId, perChain)
           }
           const got = perChain.get(p.id) ?? 0
-          const pts = Math.min(dmgPts, cap - got)
+          const pts = Math.min(dmgPts, maxHealthOf(w, p) - got)
           if (pts > 0) {
             perChain.set(p.id, got + pts)
             w.effects.push({ target: p.id, points: pts, bomb: b.id, owner: b.owner, chainId: b.chainId, cause: 0, killer: b.owner })
