@@ -56,6 +56,7 @@ import {
   TIER_CODE,
 } from './logic/growth-look'
 import { clamp01, damageStage, easeInOutCubic, interpolateXZ, type XZ } from './logic/interp'
+import { WATER_FX, WaterTrail } from './logic/water'
 import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
 import { bombTone, type BombTone } from './logic/bomb-look'
 import { hash01 } from './logic/rand'
@@ -82,7 +83,7 @@ import { BombPreview } from './world/preview'
 import { RingFog } from './world/ring-fog'
 import { SkillFxLayer } from './world/skill-fx'
 import { Spotlight, SUPPLY_BEAM } from './world/spotlight'
-import { TerrainView3D, type RemovedBrick } from './world/terrain'
+import { TerrainView3D, WATER_SINK, type RemovedBrick } from './world/terrain'
 
 /**
  * 视图运行时：每帧 ① 新快照到达时做 id / 地形 diff ② 处理到期事件（只当提示用）③ 按 renderTick 触发爆炸、
@@ -330,6 +331,9 @@ export class ViewRuntime {
   private boxes = new Map<number, ResourceBoxView>()
   private supplyState: string | null = null
   private supplyOrigin: { x: number; z: number; untilTick: number } | null = null
+  /** 水花与涟漪（用户 2026-09-28 反馈）：每位玩家在水里的足迹 + 正在扩散的涟漪。 */
+  private readonly waterTrail = new WaterTrail()
+  private ripples: { x: number; z: number; start: number }[] = []
 
   constructor(private readonly opts: ViewOptions) {
     const { config } = opts
@@ -494,6 +498,7 @@ export class ViewRuntime {
       this.updateSupply(curr, s.renderTick, now, dt)
       this.updatePreview(curr, now, dt)
       this.updateFloats(now)
+      this.updateRipples(now)
     }
     this.fragments.update(dt * 1000)
     this.fragments.render()
@@ -769,6 +774,8 @@ export class ViewRuntime {
     this.ceremonyHold = 0
     this.supplyState = null
     this.supplyOrigin = null
+    this.waterTrail.clear()
+    this.ripples = []
   }
 
   private addDropCell(victim: number, x: number, z: number): void {
@@ -829,25 +836,30 @@ export class ViewRuntime {
           break
         }
         case 'BombExtinguished': {
-          // 水上放弹即熄灭：一小团水汽
-          for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2
+          // 炸弹在水里熄灭：一股往上飘、慢慢散开的白汽 + 两圈涟漪。
+          const cx = e.Cell.X + 0.5
+          const cz = e.Cell.Y + 0.5
+          for (let i = 0; i < 10; i++) {
+            const a = (i / 10) * Math.PI * 2 + hash01(i, e.Cell.X * 31 + e.Cell.Y) * 0.6
+            const r = 0.08 + hash01(i + 5, e.Cell.Y) * 0.12
             this.cotton.spawn({
-              x: e.Cell.X + 0.5 + Math.sin(a) * 0.15,
-              y: 0.1,
-              z: e.Cell.Y + 0.5 + Math.cos(a) * 0.15,
-              vx: Math.sin(a) * 0.5,
-              vy: 1.4,
-              vz: Math.cos(a) * 0.5,
-              size: 0.22,
-              lifeMs: 700,
-              color: 0xdff4fb,
-              gravity: 0.6,
-              drag: 2.5,
+              x: cx + Math.sin(a) * r,
+              y: 0.05,
+              z: cz + Math.cos(a) * r,
+              vx: Math.sin(a) * 0.35,
+              vy: 1.1 + hash01(i, 9) * 0.9,
+              vz: Math.cos(a) * 0.35,
+              size: 0.2 + hash01(i, 13) * 0.12,
+              lifeMs: 1100 + hash01(i, 17) * 500,
+              color: 0xf4fbff,
+              gravity: 0.9,
+              drag: 1.8,
               restitution: 0,
-              growMs: 200,
+              growMs: 380,
             })
           }
+          this.addRipple(cx, cz, now)
+          this.addRipple(cx, cz, now + 180)
           break
         }
         default:
@@ -1288,7 +1300,11 @@ export class ViewRuntime {
       const prevP = this.blinkSnap.has(p.NetEntityIdRaw) ? undefined : this.prevMap.get(p.NetEntityIdRaw)
       interpolateXZ(this.pos, prevP ? xz(prevP) : undefined, xz(p), p.teleportTick, prev.Tick, alpha)
       const inWater = this.terrain.groundAt(Math.floor(this.pos.x), Math.floor(this.pos.z)) === BlockType.水
-      doll.groundY += ((inWater ? -0.1 : 0) - doll.groundY) * Math.min(1, dt * 10)
+      doll.groundY += ((inWater ? WATER_FX.wadeY : 0) - doll.groundY) * Math.min(1, dt * 10)
+      // 走进水：水花 + 涟漪；在水里走：每走一小段泛一圈涟漪（用户 2026-09-28 反馈）。
+      const wet = this.waterTrail.step(p.NetEntityIdRaw, inWater && doll.shown, this.pos.x, this.pos.z)
+      if (wet === 'enter') this.splash(this.pos.x, this.pos.z, now)
+      else if (wet === 'ripple') this.addRipple(this.pos.x, this.pos.z, now)
       const hp = p.玩家属性.血量当前
       const maxHp = maxHealthOfView(p, this.opts.config)
       // 他人破损三档按占上限比例（design §12）；Boss 只竖直加高（ADR 0039 / 0043）。
@@ -1327,13 +1343,15 @@ export class ViewRuntime {
       if (!doll.shown) continue
       // 脚印（ADR 0032）：接触阴影画在插值后的逻辑位置上；脚圈外沿 = 0.7 格，本机只往里呼吸。
       const L = this.layout
-      this.marks.shadow(doll.x, doll.z, L.shadow, doll.airHeight)
+      // 在水里：脚圈与接触阴影画在水面上，不悬在地面高度。
+      const markY = doll.groundY < -0.05 ? -WATER_SINK + 0.013 : undefined
+      this.marks.shadow(doll.x, doll.z, L.shadow, doll.airHeight, 1, markY)
       const color = slotColor(p.meta.slot)
       if (isLocal) {
-        this.marks.ring(doll.x, doll.z, L.ringQuad * localRingPulse(now), color, DOLL_FIT.localRingAlpha)
+        this.marks.ring(doll.x, doll.z, L.ringQuad * localRingPulse(now), color, DOLL_FIT.localRingAlpha, 0, markY)
         if (this.localLanding) this.skillFx.landing(this.localLanding, this.localLandingColor, now, this.marks)
       } else {
-        this.marks.ring(doll.x, doll.z, L.ringQuad, color, DOLL_FIT.otherRingAlpha)
+        this.marks.ring(doll.x, doll.z, L.ringQuad, color, DOLL_FIT.otherRingAlpha, 0, markY)
       }
       if (prot) this.marks.dashedRing(doll.x, doll.z, L.protectRing, 0xffffff, 0.9, now * 0.002)
       if (frenzy) this.marks.glowAt(doll.x, doll.z, 1.3, 0.9, 0.12, 0.08, 0.55 + 0.25 * Math.sin(now * 0.02))
@@ -1412,6 +1430,34 @@ export class ViewRuntime {
     t.z = d.z
     t.dx = d.dirX * k
     t.dz = d.dirZ * k
+  }
+
+  /** 走进水：一圈白蓝水花（棉花粒子）+ 一圈涟漪。 */
+  private splash(x: number, z: number, now: number): void {
+    this.puffCotton(x, -0.05, z, 8, 2.4, 0xd9eeff, 0.13)
+    this.puffCotton(x, -0.05, z, 4, 1.6, 0xffffff, 0.1)
+    this.addRipple(x, z, now)
+  }
+
+  private addRipple(x: number, z: number, start: number): void {
+    if (this.ripples.length >= WATER_FX.maxRipples) this.ripples.shift()
+    this.ripples.push({ x, z, start })
+  }
+
+  /** 涟漪：水面上一圈白环向外扩散、变淡（画在水面高度上，只在水格里出现）。 */
+  private updateRipples(now: number): void {
+    if (this.ripples.length === 0) return
+    let keep = 0
+    for (const r of this.ripples) {
+      const u = (now - r.start) / WATER_FX.rippleMs
+      if (u >= 1) continue
+      this.ripples[keep++] = r
+      if (u < 0) continue
+      const k = 1 - (1 - u) * (1 - u)
+      const d = WATER_FX.rippleFrom + (WATER_FX.rippleTo - WATER_FX.rippleFrom) * k
+      this.marks.ring(r.x, r.z, d, 0xffffff, 0.7 * (1 - u), 0, -WATER_SINK + 0.012)
+    }
+    this.ripples.length = keep
   }
 
   /** 「+N」飘字：跟着人头顶走，1.1 s 上浮淡出。 */

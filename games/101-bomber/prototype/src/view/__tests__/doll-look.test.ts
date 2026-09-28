@@ -8,7 +8,7 @@ import { hatLevelScale } from '../logic/hat-layout'
 import { dollLayout } from '../logic/doll-fit'
 import { DOLL_PROPORTIONS, FACE, headShare, OUTLINE_T, outlinePx, TOON_RAMP_STEPS } from '../logic/doll-look'
 import { createSharedMaterials, DOLL_RIM_UNIFORMS } from '../materials'
-import { ANIMAL_COLORS, chromaOf, deltaE76, EYE_INK, hexCss, labOf, TERRAIN_REFERENCE_COLORS } from '../palette'
+import { ANIMAL_COLORS, chromaOf, deltaE76, EYE_INK, hexCss, labOf, TERRAIN_REFERENCE_COLORS, WATER_REFERENCE_COLORS } from '../palette'
 import { toonRampTexture } from '../textures'
 import { DollFactory, TAG_LIFT, type Doll } from '../world/dolls'
 
@@ -277,6 +277,13 @@ describe('doll palette discipline (CIELAB ΔE76 against the terrain)', () => {
       }
     })
   }
+  it('user feedback 2026-09-28: water is saturated blue now; every doll stays ΔE ≥ 30 from shallow and deep water', () => {
+    for (const animal of ANIMALS) {
+      for (const [name, w] of Object.entries(WATER_REFERENCE_COLORS)) {
+        expect(deltaE76(ANIMAL_COLORS[animal].body, w), `${animal} vs ${name}`).toBeGreaterThanOrEqual(30)
+      }
+    }
+  })
   it('dolls stay ΔE ≥ 30 apart from each other', () => {
     for (let i = 0; i < ANIMALS.length; i++) {
       for (let j = i + 1; j < ANIMALS.length; j++) {

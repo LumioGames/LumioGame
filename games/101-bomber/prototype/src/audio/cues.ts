@@ -106,6 +106,21 @@ export function coinCascadeCount(hatsBefore: number, hatsLost: number | undefine
   return Math.max(0, Math.min(12, n))
 }
 
+/**
+ * 大事件压低世界总线（推断待验证（用户 2026-09-28 反馈））：本人击杀别人、任何人击倒 Boss（isBossVictim：死者死前心数上限 ≥ 门槛）、
+ * 中央补给开启。
+ */
+export function duckTrigger(events: readonly BomberEvent[], localId: U64, isBossVictim: (id: U64) => boolean): boolean {
+  for (const e of events) {
+    if (e.type === 'SupplyOpened') return true
+    if (e.type !== 'PlayerDied') continue
+    const victim = e.VictimNetEntityIdRaw
+    if (e.KillerNetEntityIdRaw === localId && victim !== localId) return true
+    if (isBossVictim(victim)) return true
+  }
+  return false
+}
+
 /** 死亡音相对最后一击的额外延迟（与 view 玩偶散架 +90 ms 同口径），秒。 */
 export const DEATH_AFTER_HIT_SEC = 0.09
 
