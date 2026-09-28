@@ -39,6 +39,11 @@ export interface LocalHostOptions {
    * 给了就覆盖 `ai`（长度须 = botCount）；缺省 = 全员 `ai`（现行为；`?ai=` 整体覆盖即不传它）。
    */
   botLineup?: readonly BotDifficulty[]
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：「不围剿真人」的软目标。'local'（缺省）= 本机 slot 0 是真人；
+   * 'none' = 全员 Bot 的统计 / 验收局（如验收 E），没有真人需要照顾。
+   */
+  softTargets?: 'local' | 'none'
   /** 测试 / 开发用：由一个 BotBrain 驾驶本机玩家（sendInput 被忽略）。 */
   localAutopilot?: { profile: BotProfileId; personality?: BotPersonality }
 }
@@ -106,7 +111,7 @@ export class LocalHost implements GameSource {
     const lineup = opts.botLineup
     if (lineup && lineup.length !== opts.botCount) throw new Error(`LocalHost: botLineup has ${lineup.length} entries for ${opts.botCount} bots`)
     // 原型扩展（NON-CONTRACT，ADR 0043）：真人（本机 slot 0，自动驾驶时亦然）作为「不围剿」软目标交给每个 Bot，不让 Bot 从快照猜。
-    const softTargets: readonly U64[] = [this.localPlayerId]
+    const softTargets: readonly U64[] = (opts.softTargets ?? 'local') === 'none' ? [] : [this.localPlayerId]
     for (let i = 0; i < opts.botCount; i++) {
       const id = this.sim.playerIdForSlot(i + 1)
       const brain = new BotBrain({

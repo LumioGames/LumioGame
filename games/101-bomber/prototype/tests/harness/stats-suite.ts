@@ -71,6 +71,8 @@ export interface StatsSuiteOptions {
   lineup?: readonly BotDifficulty[] | 'default'
   /** 地图档；缺省 = 旧的 19 档。 */
   map?: MapTierId
+  /** 全员 Bot 的口径（如 E）传 'none'：没有真人需要「不围剿」（ADR 0043）。 */
+  softTargets?: 'local' | 'none'
   /** 总人数；缺省 = 地图档默认。 */
   players?: number
   /** 本机自动驾驶档。 */
@@ -103,6 +105,7 @@ export function defineStatsSuite(o: StatsSuiteOptions): void {
             ai: o.ai,
             lineup: o.lineup,
             map: o.map,
+            softTargets: o.softTargets,
             players: o.players,
             local: o.local,
             localCharacter: o.rotate ? 'rotate' : undefined,

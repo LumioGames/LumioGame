@@ -172,8 +172,6 @@ export function lineupOf(o: Pick<MatchRunOptions, 'ai' | 'lineup'>, botCount: nu
 
 /** 跑一局（只跑第一局，看到 MatchEnded 即停）。 */
 export function runMatch(o: MatchRunOptions): MatchStats {
-  if ((o.softTargets ?? 'local') !== 'local')
-    throw new Error(`runMatch: softTargets '${o.softTargets}' is not supported — the frozen LocalHost always passes [localPlayerId] (needs a LocalHostOptions switch, src change)`)
   const rules = rulesOf(o)
   const config = o.config ?? protoConfig(rules)
   if (config.mapSize !== rules.map.size) throw new Error(`runMatch: config.mapSize ${config.mapSize} != map tier ${rules.map.size} (build config with protoConfig(rulesOf(...)))`)
@@ -190,6 +188,7 @@ export function runMatch(o: MatchRunOptions): MatchStats {
     ...(o.lineup !== undefined ? { botLineup: lineup } : {}),
     localCharacter,
     botCharacters: 'auto',
+    softTargets: o.softTargets ?? 'local',
     localAutopilot: { profile: o.local, personality: o.localPersonality ?? (o.local === 'player' ? 'farmer' : 'hunter') },
   })
   const hz = config.tickRateHz
@@ -206,7 +205,7 @@ export function runMatch(o: MatchRunOptions): MatchStats {
   }
   unsub()
   const ai = lineup.length === 0 ? (o.ai ?? 'normal') : lineup.every((d) => d === lineup[0]) ? lineup[0] : 'mixed'
-  return c.finish({ seed: o.seed, ai, local: o.local, map: rules.map.id, playerCount: rules.playerCount, lineup, softTargets: [host.localPlayerId] }, ticks, performance.now() - t0)
+  return c.finish({ seed: o.seed, ai, local: o.local, map: rules.map.id, playerCount: rules.playerCount, lineup, softTargets: (o.softTargets ?? 'local') === 'none' ? [] : [host.localPlayerId] }, ticks, performance.now() - t0)
 }
 
 type RunIdentity = Pick<MatchStats, 'seed' | 'ai' | 'local' | 'map' | 'playerCount' | 'lineup' | 'softTargets'>

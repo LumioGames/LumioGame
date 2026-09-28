@@ -14,6 +14,7 @@ defineStatsSuite({
   name: 'E · 20 种子 · 全员 normal',
   ai: 'normal',
   map: envMap(27),
+  softTargets: 'none',
   local: 'normal',
   seeds: envSeeds(20),
   assert: (s) => {

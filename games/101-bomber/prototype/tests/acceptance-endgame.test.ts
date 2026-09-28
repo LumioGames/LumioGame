@@ -26,7 +26,7 @@ describe.runIf(ACCEPT_ON)(`acceptance E: 6 seeded all-normal matches, 16 players
       `seed ${seed}: ends within the 4-min cap, reaches the final circle, 1×1 stays enterable, ranking holds`,
       () => {
         // runMatch 内部已校验名次不变量（违反即抛错）。
-        const r = runMatch({ seed, ai: 'normal', map: MAP, local: 'normal', highlight: HIGHLIGHT_PROBE })
+        const r = runMatch({ seed, ai: 'normal', map: MAP, local: 'normal', softTargets: 'none', highlight: HIGHLIGHT_PROBE })
         rows.push(r)
         expect(r.players).toHaveLength(MAP_TIERS[MAP].defaultPlayers)
         expect(r.lengthMs).toBeLessThanOrEqual(CAP_MS)
