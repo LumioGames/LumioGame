@@ -4,7 +4,7 @@ import { destructibleInside, finalCellBlocker, gridOfSnapshot, type FinalCellGri
 import { advanceRing, rectView, regenActive, startFinalCircle } from '../final-circle'
 import { LocalSim } from '../local-sim'
 import { chestAt, cellOccupied, newId, type World } from '../world'
-import { evs, makeWorld, specs } from './helpers'
+import { evs, makeWorld, specs, tierOpts } from './helpers'
 
 /**
  * ADR 0031 / design §4.2：最后的 1×1 必须永远可进入。对抗式：真实地图（不清场），每个清场段生效前把「即将清场的那一圈」
@@ -55,17 +55,21 @@ function stuffArmChest(w: World): void {
   }
 }
 
-/** 19×19 上 5×5 / 3×3 / 1×1 内非铁皮格数的上限（铁皮柱在偶数行列交点）。 */
-const MAX_CLEARED: Readonly<Record<number, number>> = { 5: 21, 3: 5, 1: 1 }
+/**
+ * 5×5 / 3×3 / 1×1 内非铁皮格数的上限：19×19 铁皮柱在偶数行列交点；27×27（ADR 0040）核心 3×3 广场去掉了中心四根柱，
+ * 5×5 / 3×3 内一根柱都没有。
+ */
+const MAX_CLEARED: Readonly<Record<19 | 27, Readonly<Record<number, number>>>> = { 19: { 5: 21, 3: 5, 1: 1 }, 27: { 5: 25, 3: 9, 1: 1 } }
 
 describe('final 1×1 cell is always enterable', () => {
-  for (const [label, rules] of [
-    ['default rules', {}],
-    ['no chest loot', { chestLoot: [], chestSkillCandies: 0 }],
+  for (const [label, tierSize, rules] of [
+    ['default rules', 19, {}],
+    ['no chest loot', 19, { chestLoot: [], chestSkillCandies: 0 }],
+    ['27 tier (ADR 0040: 7 stages, 6 power chests, plaza)', 27, {}],
   ] as const) {
     it(`${label}: seeds 1..100, real maps, adversarial bricks and a keep-out-compliant arm chest: every clearing stage empties its ring of bricks, leaves chests alone, and the 1×1 is enterable`, () => {
       for (let seed = 1; seed <= 100; seed++) {
-        const w = makeWorld({ seed, players: 8, clear: false, rules })
+        const w = tierSize === 27 ? makeWorld({ seed, clear: false, ...tierOpts(27, 16, rules) }) : makeWorld({ seed, players: 8, clear: false, rules })
         startFinalCircle(w, 'time')
         const fc = w.finalCircle!
         const stages = w.ticks.ringStages
@@ -98,12 +102,14 @@ describe('final 1×1 cell is always enterable', () => {
           }
           expect(destructibleInside(gridOf(w), ring), `seed ${seed} stage ${i}`).toEqual([])
           expect(destroyed).toHaveLength(before)
-          expect(destroyed.length).toBeLessThanOrEqual(MAX_CLEARED[s.size])
+          expect(destroyed.length).toBeLessThanOrEqual(MAX_CLEARED[tierSize][s.size])
+          // ADR 0040：清场清掉的资源箱也从登记里删掉。
+          for (const b of w.resourceBoxes ?? []) expect(w.brick[b.cell], `seed ${seed} box registry`).toBe(BlockType.木箱)
           expect(destroyed.every((e) => e.ChainId === 0 && e.OwnerNetEntityIdRaw === 0)).toBe(true)
           if (s.size === 5) expect(destroyed.length, `seed ${seed}`).toBeGreaterThan(0)
         }
-        expect(fc.ring).toEqual({ min: 9, max: 9 })
         const mid = (w.size - 1) / 2
+        expect(fc.ring).toEqual({ min: mid, max: mid })
         const armChests = ARMS.filter(([dx, dy]) => chestAt(w, (mid + dy) * w.size + mid + dx))
         expect(armChests.length, `seed ${seed}`).toBeLessThanOrEqual(1)
         expect(finalCellBlocker(gridOf(w)), `seed ${seed}`).toBeNull()

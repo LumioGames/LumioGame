@@ -27,7 +27,10 @@ import {
   type SkillId,
   type SkillParams,
 } from '../src/contract'
+import { appRules, maxBotsFor, parseAppParams } from '../src/app/params'
 import { openChests } from '../src/sim/chest'
+import { spawnZones } from '../src/sim/mapgen'
+import { MAX_PLAYERS } from '../src/sim/match-phase'
 import { cell, makeWorld } from '../src/sim/__tests__/helpers'
 
 /**
@@ -324,6 +327,18 @@ describe('ADR 0039 · hats give hearts, gold hearts, cap 8 hearts, poison scales
 })
 
 describe('ADR 0040 · 27×27 · 16 players, three rings / three box tiers, central supply, frenzy (design §4.2 / §5.0 / §8.5 / §8.6)', () => {
+  it('prototype default = you + 15 bots on 27×27 (?map=19|23|27 default 27, ?bots=0–15 default 15); 16 spawns on the outer ring ≥ 6 apart', () => {
+    const p = parseAppParams('', false)
+    expect([p.map, p.bots]).toEqual([27, 15])
+    expect(appRules(p)).toMatchObject({ playerCount: 16, map: { id: 27, size: 27 } })
+    expect([maxBotsFor(19), maxBotsFor(23), maxBotsFor(27)]).toEqual([7, 11, 15])
+    expect(MAX_PLAYERS).toBe(16)
+    const z = spawnZones(27)
+    expect(z).toHaveLength(16)
+    for (const a of z) for (const b of z) if (a !== b) expect(Math.abs(a.x - b.x) + Math.abs(a.y - b.y)).toBeGreaterThanOrEqual(R.spawnMinDistance)
+    expect(R.spawnMinDistance).toBe(6)
+  })
+
   it('27 tier: 16 players, rings ≤ 4 / 5–8 / ≥ 9, wood 16 / iron 12 / gold 4 with 1 / 1 / 2 hits, brick drops 25 / 35 / 45 %, regen 4 groups, ≈ 1/6 boxes', () => {
     const t = MAP_TIERS[27]
     expect(t).toMatchObject({ size: 27, defaultPlayers: 16, zones: { coreMaxD: 4, midMaxD: 8 }, regenOrbitsPerInterval: 4, regenBoxOneIn: 6 })

@@ -3,9 +3,11 @@ import { resetSkillsForMatch, type World } from './world'
 
 /**
  * 原型扩展（NON-CONTRACT，ADR 0030）：每局开局的角色分配（startMatch 在摆位之前调用）。
- * 1. 先数固定选角；2. 'auto' 的玩家按槽序各取当前人数最少的角色，并列时用 rng.roster 抽（8 人 = 每角色 2 个）；
+ * 1. 先数固定选角；2. 'auto' 的玩家按槽序各取当前人数最少的角色，并列时用 rng.roster 抽（8 人 = 每角色 2 个；
+ *    原型扩展 ADR 0040：默认 16 人 = 每角色 4 个）；
  * 3. pick = null → 无角色（旧夹具，行为与第 3 轮相同）；4. 定动物与名字：真人保留 spec.name，Bot 按同角色出现次序取
- *    botNames[k]（不够则「角色名 + 序号」），无角色沿用 spec；5. 按角色重置技能槽（专属 Lv1 绑定）。
+ *    botNames[k]（每角色只配了 2 个名字，16 人时第 3、4 个同角色 Bot 取「角色名 + 序号」），无角色沿用 spec；
+ *    5. 按角色重置技能槽（专属 Lv1 绑定）。
  * rng.roster 每局由 mixSeed(seed, 局序号) 重播种，所以 Bot 的角色 / 名字每局重抽、同种子可复现。
  */
 export function assignRoster(w: World): void {

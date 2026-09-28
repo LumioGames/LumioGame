@@ -141,7 +141,10 @@ export interface ProtoRules {
   turnBufferTicks: number
   /** design §9.3：帽王光柱阈值 N（待验证）；纯表现阈值，帽王判定本身不看它。 */
   hatKingPillarMinHats: number
-  /** design §5：≤12 人档，本原型固定 8 人（你 + 7 Bot）。 */
+  /**
+   * 本局人数（你 + Bot）。DEFAULT_RULES = 19 档 8 人；原型扩展（NON-CONTRACT，ADR 0040）：页面按 `?map=` / `?bots=` 经
+   * {@link rulesForMap} 写入（默认 27 档 16 人，app/params.ts）。
+   */
   playerCount: number
   /**
    * 原型扩展（NON-CONTRACT，ADR 0031 → ADR 0035）：局时上限。ADR 0031 定 7 分钟（420000）；ADR 0035 改为 4 分钟（240000，
@@ -227,7 +230,7 @@ export interface ProtoRules {
   frenzyMinIntervalTicks: number
   /**
    * 原型扩展（NON-CONTRACT，ADR 0040）：本局地图档（棋盘、三圈、资源箱、再生、段表、补给）。由 {@link rulesForMap} 选档；
-   * {@link protoConfig} 据它写 `mapSize`。`DEFAULT_RULES.map` = 19 档（默认档切 27 归 M1-2）。
+   * {@link protoConfig} 据它写 `mapSize`。`DEFAULT_RULES.map` = 19 档（旧测试的规则对象）；页面默认 27 档见 app/params.ts DEFAULT_PAGE_MAP。
    */
   map: MapTierRules
 }
@@ -286,7 +289,7 @@ export interface MapTierRules {
   zones: ZoneRadii
   /** 每级资源箱的数量（四象限镜像，外圈木 / 中圈铁 / 核心金）与开箱所需的独立炸弹命中数（同链多颗各算一次）。 */
   boxes: Readonly<Record<ResourceBoxTier, { count: number; hits: number }>>
-  /** 各圈积木掉率（‰）；取代单一的契约 `dropRatePermille`（规则接线归 M1-2）。 */
+  /** 各圈积木掉率（‰）；取代单一的契约 `dropRatePermille`（sim/pickup.ts spawnDrops 按积木所在圈取）。 */
   brickDropPermille: Readonly<Record<RingZone, number>>
   /** 每次再生补回的镜像组数（= 生效时的 `ProtoRules.regenOrbitsPerInterval`）。 */
   regenOrbitsPerInterval: number
@@ -395,7 +398,10 @@ export const MAP_TIERS: Readonly<Record<MapTierId, MapTierRules>> = {
   },
 }
 
-/** 原型扩展（NON-CONTRACT，ADR 0040）：现行默认档。ADR 0040 的原型默认是 27，切换归 M1-2。 */
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040）：`DEFAULT_RULES` 的档（19，旧测试的规则对象）与 {@link parseMapTier} 的缺省回退。
+ * 页面默认是 27 档 16 人（ADR 0040），由 app/params.ts 的 DEFAULT_PAGE_MAP 传给 parseMapTier。
+ */
 export const DEFAULT_MAP_TIER: MapTierId = 19
 
 export const DEFAULT_RULES: ProtoRules = {
