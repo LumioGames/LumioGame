@@ -34,6 +34,11 @@ export interface LocalHostOptions {
   botCharacters?: 'auto' | 'none'
   /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：Bot 难度；缺省 'normal'。 */
   ai?: BotDifficulty
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：逐个 Bot 的难度，下标 i = 第 i 个 Bot（slot i + 1）；默认阵容用 contract `lineupFor(botCount)`。
+   * 给了就覆盖 `ai`（长度须 = botCount）；缺省 = 全员 `ai`（现行为；`?ai=` 整体覆盖即不传它）。
+   */
+  botLineup?: readonly BotDifficulty[]
   /** 测试 / 开发用：由一个 BotBrain 驾驶本机玩家（sendInput 被忽略）。 */
   localAutopilot?: { profile: BotProfileId; personality?: BotPersonality }
 }
@@ -98,7 +103,10 @@ export class LocalHost implements GameSource {
     }
     this.sim = new LocalSim({ seed: opts.seed, config: opts.config, rules: opts.rules, players })
     this.localPlayerId = this.sim.playerIdForSlot(0)
-    const profile = BOT_PROFILES[this.ai]
+    const lineup = opts.botLineup
+    if (lineup && lineup.length !== opts.botCount) throw new Error(`LocalHost: botLineup has ${lineup.length} entries for ${opts.botCount} bots`)
+    // 原型扩展（NON-CONTRACT，ADR 0043）：真人（本机 slot 0，自动驾驶时亦然）作为「不围剿」软目标交给每个 Bot，不让 Bot 从快照猜。
+    const softTargets: readonly U64[] = [this.localPlayerId]
     for (let i = 0; i < opts.botCount; i++) {
       const id = this.sim.playerIdForSlot(i + 1)
       const brain = new BotBrain({
@@ -107,7 +115,8 @@ export class LocalHost implements GameSource {
         personality: PERSONALITIES[i % PERSONALITIES.length],
         config: opts.config,
         rules: opts.rules,
-        profile,
+        profile: BOT_PROFILES[lineup ? lineup[i] : this.ai],
+        softTargets,
       })
       this.bots.push({ id, brain })
     }

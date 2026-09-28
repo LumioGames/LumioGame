@@ -122,7 +122,7 @@ export function initialIndex(last: string | null): number {
 }
 
 /** Bot 难度的中文名（暂停卡 / 选角页脚）。 */
-export const AI_LABEL: Readonly<Record<BotDifficulty, string>> = { easy: '简单', normal: '普通', hard: '困难' }
+export const AI_LABEL: Readonly<Record<BotDifficulty, string>> = { easy: '简单', normal: '普通', hard: '困难', rookie: '菜鸟' }
 
 /** 开局规则卡上的「你是谁」一行：「你是 闪电猫 · Shift 闪现」/「你是 棉花兔 · 被动 回春」。 */
 export function characterLine(c: SelectCard): string {

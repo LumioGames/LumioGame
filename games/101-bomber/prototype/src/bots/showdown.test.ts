@@ -50,6 +50,28 @@ describe('showdown helpers', () => {
     expect(hitPoints(dm, cellIdx(9, 10), config, rules)).toBe(4)
     expect(hitPoints(dm, cellIdx(9, 12), config, rules)).toBe(0)
   })
+
+  it('ADR 0039: the poison rate scales with the bot\'s own cap (same formula as the rules), hitPoints caps at the victim\'s cap', () => {
+    const at = (stageIndex: number) => ({ ...finalCircle({ ring: 9 }), stageIndex })
+    const scale = (maxHealth: number) => ({ cfg: config, maxHealth })
+    expect([poisonRate(rules, at(2), scale(6)), poisonRate(rules, at(3), scale(6))]).toEqual([1, 2])
+    expect([poisonRate(rules, at(2), scale(16)), poisonRate(rules, at(3), scale(16))]).toEqual([3, 6])
+    expect(poisonRate(rules, null, scale(8))).toBe(2)
+    const board = buildBoard(
+      makeSnapshot({
+        map: standardMap(),
+        players: [],
+        bombs: [
+          { id: 1, X: 9, Y: 8, owner: 2, fuseEndTick: 140 },
+          { id: 2, X: 9, Y: 10, owner: 2, fuseEndTick: 140 },
+          { id: 3, X: 8, Y: 9, owner: 2, fuseEndTick: 140 },
+        ],
+      }),
+    )
+    const dm = buildDangerMap(board, 8, { X: 10, Y: 9, power: 2, fuseEndTick: 150 })
+    expect(hitPoints(dm, cellIdx(9, 9), config, rules)).toBe(config.maxHealthPoints)
+    expect(hitPoints(dm, cellIdx(9, 9), config, rules, 10)).toBe(8)
+  })
 })
 
 describe('late entry', () => {

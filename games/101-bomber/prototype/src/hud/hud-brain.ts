@@ -164,6 +164,8 @@ const PICKUP_TEXT: Readonly<Record<PickupKind, string>> = {
   [PickupKind.SpeedPlus]: '+1 速度',
   [PickupKind.HealthPack]: '+1 心',
   [PickupKind.SkillCandy]: '+ 技能糖',
+  [PickupKind.GoldHeart]: '金心',
+  [PickupKind.Frenzy]: '狂暴糖',
 }
 
 const DROP_NAME: Readonly<Record<PickupKind, string>> = {
@@ -172,6 +174,8 @@ const DROP_NAME: Readonly<Record<PickupKind, string>> = {
   [PickupKind.SpeedPlus]: '速度',
   [PickupKind.HealthPack]: '血包',
   [PickupKind.SkillCandy]: '技能糖',
+  [PickupKind.GoldHeart]: '金心',
+  [PickupKind.Frenzy]: '狂暴糖',
 }
 
 /** 死亡回顾的掉落行：「火力 ×1、速度 ×2」（按火力 / 炸弹 / 速度排序）；空列表为「无」。 */

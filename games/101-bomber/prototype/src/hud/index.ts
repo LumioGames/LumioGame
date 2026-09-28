@@ -1,6 +1,8 @@
 import './hud.css'
 import {
   MatchPhase,
+  maxHealthCeiling,
+  maxHealthOfView,
   PickupKind,
   type BomberConfig,
   type BotDifficulty,
@@ -179,13 +181,17 @@ export function createHud(opts: HudOptions): Hud {
   const bottom = el('div', 'hud-bottom', layer)
   const stats = el('div', 'hud-stats pill', bottom)
   const hearts = el('div', 'st-hearts', stats)
+  const heartSlots: HTMLSpanElement[] = []
   const heartEls: HTMLSpanElement[] = []
-  const heartCount = Math.ceil(config.maxHealthPoints / config.healthPointsPerHeart)
+  // 原型扩展（NON-CONTRACT，ADR 0039）：心数上限每人不同（3–8 心）——按封顶预建心格，超出本人上限的隐藏。
+  const heartCount = Math.ceil(maxHealthCeiling(config, rules) / config.healthPointsPerHeart)
   for (let i = 0; i < heartCount; i++) {
     const h = el('span', 'heart', hearts)
     iconEl('heart', 'heart-bg', h)
     const fill = el('span', 'heart-fill', h)
     iconEl('heart', '', fill)
+    if (i * config.healthPointsPerHeart >= config.maxHealthPoints) setStyle(h, 'display', 'none')
+    heartSlots.push(h)
     heartEls.push(fill)
   }
   // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时心变绿（毒绿取技能色）；心旁「麻痹中」/「中毒中」小标签。
@@ -430,9 +436,13 @@ export function createHud(opts: HudOptions): Hud {
     if (!p) return
     const a = p.玩家属性
     const hp = Math.max(0, heartTrack.displayed(now, a.血量当前))
-    const fills = heartFills(hp, config.maxHealthPoints, config.healthPointsPerHeart)
-    fills.forEach((f, i) => setStyle(heartEls[i], 'width', `${f * 100}%`))
-    const label = heartsLabel(hp, config.maxHealthPoints, config.healthPointsPerHeart)
+    const maxHp = maxHealthOfView(p, config)
+    const fills = heartFills(hp, maxHp, config.healthPointsPerHeart)
+    heartSlots.forEach((h, i) => setStyle(h, 'display', i < fills.length ? '' : 'none'))
+    fills.forEach((f, i) => {
+      if (heartEls[i]) setStyle(heartEls[i], 'width', `${f * 100}%`)
+    })
+    const label = heartsLabel(hp, maxHp, config.healthPointsPerHeart)
     if (hearts.title !== label) hearts.title = label
     stats.classList.toggle('is-low', hp > 0 && hp <= config.healthPointsPerHeart)
     stats.classList.toggle('is-dead', hp <= 0)

@@ -1,4 +1,4 @@
-import { PickupKind } from '../contract'
+import { maxHealthFor, PickupKind } from '../contract'
 import { freeCellsNear } from './chest'
 import { createPickup, liveBombsOf } from './pickup'
 import { cellOfIdx, emit, type SimPlayer, type World } from './world'
@@ -36,6 +36,14 @@ export function hatCountOf(w: World, p: SimPlayer): number {
   return l.fire + l.bomb + l.speed
 }
 
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0039，design §12）：每人心数上限（半心点）= contract `maxHealthFor`(帽数, 金心数)。
+ * 帽数与金心只在死亡 / 退出时减少，所以存活期间只升不降；跨阈值时 pickup.ts 让当前血量同增（新心是满的）。
+ */
+export function maxHealthOf(w: World, p: SimPlayer): number {
+  return maxHealthFor(w.cfg, w.rules, hatCountOf(w, p), p.goldHearts)
+}
+
 /** 身上每一级强化各一件（出局 / 退出时全部掉落），序：火力 → 炸弹 → 速度。 */
 export function allPowerupKinds(w: World, p: SimPlayer): PickupKind[] {
   const l = powerupLevels(w, p)
@@ -71,8 +79,15 @@ export function rollPowerupDrops(w: World, v: SimPlayer): PickupKind[] {
   return kinds
 }
 
+/**
+ * 扣掉并落下 kinds（死亡结算 Tick 定下的强化），原型扩展（NON-CONTRACT，ADR 0039）金心一并**全部**落下（常规死亡、
+ * 决赛圈出局、中途退出同口径）：强化先占格，金心随后，同为 Source 'death'、droppedBy = 死者（于是同享 ADR 0029 的 3 秒防爆），
+ * 格不够则余下作废（金心照样清零）。没有金心时与旧口径逐位相同（随机数消耗不变）。
+ */
 export function dropPowerups(w: World, v: SimPlayer, deathCell: number, kinds: readonly PickupKind[]): void {
-  if (kinds.length === 0) return
+  const gold = v.goldHearts
+  v.goldHearts = 0
+  if (kinds.length === 0 && gold === 0) return
   const cfg = w.cfg
   const step = w.rules.speedStepMilli
   const tier0 = cfg.speedTierToCellsPerSecond[0]
@@ -96,7 +111,11 @@ export function dropPowerups(w: World, v: SimPlayer, deathCell: number, kinds: r
     cells[j] = tmp
   }
   const n = Math.min(kinds.length, cells.length)
-  if (n === 0) return
-  emit(w, { type: 'PowerupsDropped', presentationOnly: true, VictimNetEntityIdRaw: v.id, Kinds: kinds.slice(0, n), Cell: cellOfIdx(w, deathCell), Tick: w.t })
-  for (let i = 0; i < n; i++) createPickup(w, cells[i], kinds[i], { source: 'death', droppedBy: v.id, fromCell: deathCell })
+  const origin = { source: 'death', droppedBy: v.id, fromCell: deathCell } as const
+  if (n > 0) {
+    emit(w, { type: 'PowerupsDropped', presentationOnly: true, VictimNetEntityIdRaw: v.id, Kinds: kinds.slice(0, n), Cell: cellOfIdx(w, deathCell), Tick: w.t })
+    for (let i = 0; i < n; i++) createPickup(w, cells[i], kinds[i], origin)
+  }
+  const g = Math.min(gold, cells.length - n)
+  for (let i = 0; i < g; i++) createPickup(w, cells[n + i], PickupKind.GoldHeart, origin)
 }

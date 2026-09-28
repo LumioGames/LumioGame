@@ -1,4 +1,5 @@
-import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, type RingRect } from '../contract'
+import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, poisonPointsFor, type RingRect } from '../contract'
+import { maxHealthOf } from './death-drops'
 import { promoteEliminations } from './hats'
 import {
   cellOfIdx,
@@ -133,11 +134,12 @@ export function clearRing(w: World, r: Rect): number {
 
 /**
  * 圈外中毒（design §12）：离开安全圈起每 poison 个 Tick 扣一次；重生保护不免疫；Killer = 受害者。
- * 每次扣的点数按当前已生效的段取（原型扩展 NON-CONTRACT，ADR 0031：5×5 生效起加重）。
+ * 每次扣的点数按当前已生效的段取（原型扩展 NON-CONTRACT，ADR 0031：5×5 生效起加重），再按受害者心数上限等比
+ * （原型扩展 NON-CONTRACT，ADR 0039：⌈段点数 × 当前上限 / maxHealthPoints⌉，任何上限下满血约 6 / 3 秒毒死）。
  */
 export function queuePoison(w: World): void {
   const fc = w.finalCircle
-  const points = fc ? poisonPointsAt(w.rules, fc.stageIndex) : 0
+  const stagePoints = fc ? poisonPointsAt(w.rules, fc.stageIndex) : 0
   for (const p of w.players) {
     if (!fc || !isAlive(p)) {
       p.poisonTicks = 0
@@ -152,7 +154,7 @@ export function queuePoison(w: World): void {
     if (p.poisonTicks % w.ticks.poison !== 0) continue
     w.effects.push({
       target: p.id,
-      points,
+      points: poisonPointsFor(w.cfg, stagePoints, maxHealthOf(w, p)),
       bomb: 0,
       owner: 0,
       chainId: 0,

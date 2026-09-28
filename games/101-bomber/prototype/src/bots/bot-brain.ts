@@ -11,7 +11,7 @@ import type {
   U64,
   WorldSnapshot,
 } from '../contract'
-import { BOT_PROFILES, BOT_TACTICS, BombKind, MatchPhase, msToTicks, 方向 } from '../contract'
+import { BOT_PROFILES, BOT_TACTICS, BombKind, MatchPhase, maxHealthOfView, msToTicks, 方向 } from '../contract'
 import { cellOf, idx, inBounds } from '../shared/grid'
 import {
   brickValue,
@@ -78,6 +78,11 @@ export interface BotOptions {
   profile?: BotProfile
   /** 原型扩展（NON-CONTRACT，design §15 Bot 难度分档（原型工具））：技能 / 摊牌战术常量；缺省 BOT_TACTICS（测试可覆写）。 */
   tactics?: BotTactics
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：宿主传入的「不围剿」软目标（真人玩家 id，不从快照猜）。作为目标 +6 分惩罚、
+   * 只有离他最近的 2 个 Bot 能选他（真人是帽王或在 3 格内除外）。缺省 = 无；接线归 M1-3。
+   */
+  softTargets?: readonly U64[]
 }
 
 /** 'trade' / 'skill' 为原型扩展（NON-CONTRACT，ADR 0030 / 0031）：摊牌期换血放弹、施放主动技能 / 踢弹。 */
@@ -581,7 +586,8 @@ export class BotBrain {
     this.pressIsAttack = false
     const pos = me.LogicTransform.WorldPosition
     const fc = board.finalCircle
-    const rate = poisonRate(this.rules, fc)
+    // 原型扩展（NON-CONTRACT，ADR 0039）：毒速按本人心数上限等比（与规则层同式）。
+    const rate = poisonRate(this.rules, fc, { cfg: this.config, maxHealth: maxHealthOfView(me, this.config) })
     // 原型扩展（NON-CONTRACT，ADR 0036）：晚进圈只是 Bot 的战术；ringEntry 'onTime'（验收 D 的脚本普通玩家）
     // 摊牌期也按 STRICT_REST 选落脚点——下一圈一预告就走进去，不在将要变毒的格子上逗留。
     const lateHorizon = this.showdown && this.profile.ringEntry === 'late' ? lateEntryHorizon(fc, this.tactics, board.now) : null
@@ -936,7 +942,7 @@ export class BotBrain {
       farm = Math.max(farm, w.farm * 0.6)
     }
     // 原型扩展（NON-CONTRACT，ADR 0030）：棉花兔不满血时先回春，少追人（摊牌期除外）。
-    if (!this.showdown && skills.passive?.id === 'regen' && me.玩家属性.血量当前 < this.config.maxHealthPoints) {
+    if (!this.showdown && skills.passive?.id === 'regen' && me.玩家属性.血量当前 < maxHealthOfView(me, this.config)) {
       hunt = scaled(hunt, this.tactics.rabbitHurtHuntPermille)
     }
     const total = farm + hunt + collect + roam

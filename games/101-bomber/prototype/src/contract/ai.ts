@@ -5,7 +5,7 @@ import type { SourceNote } from './skills'
  * 这是原型的测试 / 体验工具，不是玩法规则：规则层（sim）不读它，只有 `src/bots` 与宿主读。
  * 全部「推断待验证」，除非注明 D9（用户第 4 轮给定的普通档数值）。
  */
-export type BotDifficulty = 'easy' | 'normal' | 'hard'
+export type BotDifficulty = 'rookie' | 'easy' | 'normal' | 'hard'
 /** 'player' = 验收 D 用的脚本「普通水平玩家」（比 normal 反应快、不设陷阱、按时进圈），不对外开放。 */
 export type BotProfileId = BotDifficulty | 'player'
 
@@ -43,6 +43,18 @@ export interface BotProfile {
    * 'onTime' = 普通人：下一圈一预告就走进去，摊牌期也只把永不进毒圈的格子当落脚点、不在毒里逗留（逃生除外）。
    */
   ringEntry: 'late' | 'onTime'
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：路线进出危险格两端留的逃生余量（Tick；= bots/path-search.ts 的 margin 缺省 2）。
+   * rookie 为 0（Bot 的失误会致命）；其余档 = 现值 2，行为不变。接线归 M1-3。
+   */
+  escapeMarginTicks: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0043）：每颗敌方炸弹把火力看小 1 格的概率（‰）；0 = 不掷（现行为）。
+   * 随机数走新随机流（easy / normal / hard 序列不变）。接线归 M1-3。
+   */
+  misperceivePermille: number
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：冒险穿危险区捡糖的概率（‰）；0 = 不掷（现行为）。接线归 M1-3。 */
+  greedyPickupPermille: number
   src: SourceNote
 }
 
@@ -63,6 +75,9 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     reactMode: 'ownCell',
     showdownTradePermille: 1000,
     ringEntry: 'late',
+    escapeMarginTicks: 2,
+    misperceivePermille: 0,
+    greedyPickupPermille: 0,
     src: '已验证：= 第 3 轮 bot-brain.ts 常量（REACT 2–4、NOISE 5%、TRAP 92%、frenzy 直通）；技能 / 摊牌字段推断待验证',
   },
   normal: {
@@ -80,6 +95,9 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     reactMode: 'perBomb',
     showdownTradePermille: 1000,
     ringEntry: 'late',
+    escapeMarginTicks: 2,
+    misperceivePermille: 0,
+    greedyPickupPermille: 0,
     src: '引用 用户第 4 轮 D9（反应 4–7 Tick、噪声 15%、不设陷阱）；skillUsePermille 700 → 200 = 第 4 轮平衡（D 验收，ADR 0034）；其余推断待验证',
   },
   easy: {
@@ -97,7 +115,30 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     reactMode: 'perBomb',
     showdownTradePermille: 600,
     ringEntry: 'late',
+    escapeMarginTicks: 2,
+    misperceivePermille: 0,
+    greedyPickupPermille: 0,
     src: '推断待验证：比普通档慢一档、更犹豫；skillUsePermille 400 → 100 随普通档下调保持 easy < normal（ADR 0034）',
+  },
+  rookie: {
+    reactMinTicks: 10,
+    reactMaxTicks: 16,
+    thinkEveryTicks: 3,
+    noisePermille: 300,
+    attackSkipPermille: 500,
+    trapPermille: 0,
+    maxOwnLiveAttackBombs: 1,
+    frenzyBypass: false,
+    blastScalePermille: 600,
+    engageScalePermille: 600,
+    skillUsePermille: 0,
+    reactMode: 'perBomb',
+    showdownTradePermille: 600,
+    ringEntry: 'late',
+    escapeMarginTicks: 0,
+    misperceivePermille: 250,
+    greedyPickupPermille: 300,
+    src: '引用 ADR 0043：反应 10–16 Tick、决策间隔 3、噪声 30%、放弃进攻 50%、不用技能、逃生余量 0、25% 看小火力、30% 冒险捡糖；其余字段照抄 easy（M1-3 可调）；推断待验证',
   },
   player: {
     reactMinTicks: 3,
@@ -114,6 +155,9 @@ export const BOT_PROFILES: Readonly<Record<BotProfileId, BotProfile>> = {
     reactMode: 'perBomb',
     showdownTradePermille: 1000,
     ringEntry: 'onTime',
+    escapeMarginTicks: 2,
+    misperceivePermille: 0,
+    greedyPickupPermille: 0,
     src: '推断待验证：验收 D 的脚本普通玩家（调参前固定：反应 3–5、噪声 5%、不设陷阱、1 颗进攻弹）；ringEntry onTime = 用户 2026-09-27「让脚本玩家更像普通人」（ADR 0036，按时进圈、不玩 Bot 的晚进圈）',
   },
 }
@@ -123,7 +167,42 @@ export const DEFAULT_BOT_DIFFICULTY: BotDifficulty = 'normal'
 /** `?ai=` → 难度；未知或空 → 'normal'。 */
 export function parseBotDifficulty(v: string | null): BotDifficulty {
   const s = v?.trim().toLowerCase()
-  return s === 'easy' || s === 'normal' || s === 'hard' ? s : DEFAULT_BOT_DIFFICULTY
+  return s === 'rookie' || s === 'easy' || s === 'normal' || s === 'hard' ? s : DEFAULT_BOT_DIFFICULTY
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：默认阵容比例——15 个 Bot = 菜鸟 7 / 普通 6 / 困难 2（{@link lineupFor}）。
+ * 只列出现在阵容里的档；比例不锁，推断待验证（design §15）。
+ */
+export const LINEUP_WEIGHTS: Readonly<Partial<Record<BotDifficulty, number>>> = { rookie: 7, normal: 6, hard: 2 }
+
+/** 阵容里各档的先后（菜鸟在前、困难在后）。 */
+const LINEUP_ORDER: readonly BotDifficulty[] = ['rookie', 'easy', 'normal', 'hard']
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：botCount 个 Bot 的默认阵容（下标 i = 第 i 个 Bot，即 slot i + 1）。
+ * 按 {@link LINEUP_WEIGHTS} 最大余数法分配（整数运算；余数相同时菜鸟优先），15 → 菜鸟 7 / 普通 6 / 困难 2，
+ * 更少时按比例（7 → 3 / 3 / 1）。排列：菜鸟在前、普通居中、困难在后。`?ai=` 仍可整体覆盖（宿主不传阵容即可）。
+ */
+export function lineupFor(botCount: number, weights: Readonly<Partial<Record<BotDifficulty, number>>> = LINEUP_WEIGHTS): BotDifficulty[] {
+  const n = Math.max(0, Math.floor(botCount))
+  const tiers = LINEUP_ORDER.filter((d) => (weights[d] ?? 0) > 0)
+  const total = tiers.reduce((a, d) => a + (weights[d] ?? 0), 0)
+  if (n === 0 || total === 0) return []
+  const counts = tiers.map((d) => Math.floor((n * (weights[d] ?? 0)) / total))
+  const rems = tiers.map((d, i) => ({ i, r: (n * (weights[d] ?? 0)) % total }))
+  rems.sort((a, b) => b.r - a.r || a.i - b.i)
+  let left = n - counts.reduce((a, c) => a + c, 0)
+  for (const { i } of rems) {
+    if (left <= 0) break
+    counts[i]++
+    left--
+  }
+  const out: BotDifficulty[] = []
+  tiers.forEach((d, i) => {
+    for (let k = 0; k < counts[i]; k++) out.push(d)
+  })
+  return out
 }
 
 /** Bot 用技能与决赛圈摊牌的战术常量（所有难度共用）。 */

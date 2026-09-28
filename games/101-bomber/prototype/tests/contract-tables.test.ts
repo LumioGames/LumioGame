@@ -9,25 +9,37 @@ import {
   CHARACTERS,
   COMBOS,
   DEFAULT_CONFIG,
+  DEFAULT_MAP_TIER,
   DEFAULT_RULES,
   DeathCause,
+  LINEUP_WEIGHTS,
+  MAP_TIERS,
   PickupKind,
   SKILL_IDS,
   SKILLS,
   bombCandyPool,
   candyPool,
+  centerDistance,
   characterCode,
   comboFor,
   describeSkill,
   isPowerupKind,
+  lineupFor,
+  maxHealthOfView,
   msToTicks,
   parseBotDifficulty,
   parseCharacterId,
+  parseMapTier,
   pickCode,
   poisonPointsAt,
   protoConfig,
+  ringZoneOf,
+  rulesForMap,
   skillCode,
   skillParams,
+  ZONE_BOX,
+  type BotDifficulty,
+  type MapTierId,
   type SkillId,
 } from '../src/contract'
 import { PIERCE_BOMB, PIERCE_CASES, parsePierceBoard, referenceCross } from './support/pierce-cases'
@@ -288,6 +300,10 @@ describe('skill rules data (ADR 0030)', () => {
     expect(isPowerupKind(PickupKind.SpeedPlus)).toBe(true)
     expect(isPowerupKind(PickupKind.HealthPack)).toBe(false)
     expect(isPowerupKind(PickupKind.SkillCandy)).toBe(false)
+    // ADR 0039 / 0040：金心与狂暴糖也不是帽子。
+    expect(isPowerupKind(PickupKind.GoldHeart)).toBe(false)
+    expect(isPowerupKind(PickupKind.Frenzy)).toBe(false)
+    expect([PickupKind.GoldHeart, PickupKind.Frenzy]).toEqual([5, 6])
   })
 })
 
@@ -323,6 +339,103 @@ describe('bot profiles (design §15 Bot 难度分档)', () => {
     expect(parseBotDifficulty('HARD')).toBe('hard')
     expect(parseBotDifficulty('player')).toBe('normal')
     expect(parseBotDifficulty(null)).toBe('normal')
+    expect(parseBotDifficulty(' Rookie ')).toBe('rookie')
+  })
+
+  it('M1 fields (ADR 0043): existing tiers keep today\'s behaviour (escape margin 2, no misperception, no greedy pickups); rookie is ranged', () => {
+    for (const k of ['easy', 'normal', 'hard', 'player'] as const)
+      expect(BOT_PROFILES[k]).toMatchObject({ escapeMarginTicks: 2, misperceivePermille: 0, greedyPickupPermille: 0 })
+    for (const p of Object.values(BOT_PROFILES)) {
+      expect(p.escapeMarginTicks).toBeGreaterThanOrEqual(0)
+      for (const k of ['misperceivePermille', 'greedyPickupPermille'] as const) {
+        expect(p[k]).toBeGreaterThanOrEqual(0)
+        expect(p[k]).toBeLessThanOrEqual(1000)
+      }
+    }
+    expect(TAG.test(BOT_PROFILES.rookie.src)).toBe(true)
+  })
+})
+
+describe('lineupFor (ADR 0043)', () => {
+  const count = (xs: readonly BotDifficulty[]) => {
+    const c: Record<string, number> = {}
+    for (const x of xs) c[x] = (c[x] ?? 0) + 1
+    return c
+  }
+
+  it('15 bots → rookie 7 / normal 6 / hard 2, rookies first; fewer bots are proportional (largest remainder)', () => {
+    expect(LINEUP_WEIGHTS).toEqual({ rookie: 7, normal: 6, hard: 2 })
+    const l15 = lineupFor(15)
+    expect(count(l15)).toEqual({ rookie: 7, normal: 6, hard: 2 })
+    expect(l15).toEqual([...Array(7).fill('rookie'), ...Array(6).fill('normal'), ...Array(2).fill('hard')])
+    expect(count(lineupFor(7))).toEqual({ rookie: 3, normal: 3, hard: 1 })
+    expect(count(lineupFor(1))).toEqual({ rookie: 1 })
+    expect(lineupFor(0)).toEqual([])
+    for (let n = 0; n <= 30; n++) expect(lineupFor(n)).toHaveLength(n)
+    expect(count(lineupFor(30))).toEqual({ rookie: 14, normal: 12, hard: 4 })
+  })
+})
+
+describe('map tiers (ADR 0040, design §4.2 / §5.0)', () => {
+  const ids: MapTierId[] = [19, 23, 27]
+
+  it('three tiers keyed by size; power chests = chest stages; last three stages clear and poison 2; supply only on 27', () => {
+    expect(Object.keys(MAP_TIERS).map(Number).sort((a, b) => a - b)).toEqual(ids)
+    for (const id of ids) {
+      const t = MAP_TIERS[id]
+      expect(t.id).toBe(id)
+      expect(t.size).toBe(id)
+      expect(t.powerChests).toBe(t.ringStages.filter((s) => s.chest).length)
+      expect(t.ringStages[t.ringStages.length - 1]).toMatchObject({ size: 1, chest: false, clearInside: true, poisonPoints: 2 })
+      expect(t.ringStages.slice(-3).map((s) => s.size)).toEqual([5, 3, 1])
+      expect(t.ringStages.every((s) => s.clearInside === s.size <= 5 && s.poisonPoints === (s.size <= 5 ? 2 : 1))).toBe(true)
+      expect(t.boxes.wood.hits).toBe(1)
+      expect(t.boxes.iron.hits).toBe(1)
+      expect(t.boxes.gold.hits).toBe(2)
+      for (const k of ['wood', 'iron', 'gold'] as const) expect(t.boxes[k].count % 4).toBe(0)
+      expect(t.zones.coreMaxD).toBeLessThan(t.zones.midMaxD)
+      expect(t.zones.midMaxD).toBeLessThan((id - 1) / 2)
+      expect(t.centralSupply).toBe(id === 27)
+      expect(t.plazaSide).toBe(id === 27 ? 3 : 0)
+      expect(TAG.test(t.src)).toBe(true)
+    }
+    expect(ZONE_BOX).toEqual({ outer: 'wood', mid: 'iron', core: 'gold' })
+  })
+
+  it('rulesForMap: 19 × 8 is DEFAULT_RULES itself (default tier unchanged); 27 swaps stages / regen / players / map', () => {
+    expect(DEFAULT_MAP_TIER).toBe(19)
+    expect(DEFAULT_RULES.map).toBe(MAP_TIERS[19])
+    expect(rulesForMap(DEFAULT_RULES, 19, 8)).toEqual(DEFAULT_RULES)
+    expect(rulesForMap(DEFAULT_RULES, 19)).toEqual(DEFAULT_RULES)
+    expect(DEFAULT_RULES.ringStages).toBe(MAP_TIERS[19].ringStages)
+    const r27 = rulesForMap(DEFAULT_RULES, 27)
+    expect(r27).toMatchObject({ playerCount: 16, regenOrbitsPerInterval: 4 })
+    expect(r27.map).toBe(MAP_TIERS[27])
+    expect(r27.ringStages).toBe(MAP_TIERS[27].ringStages)
+    expect(r27.matchCapMs).toBe(DEFAULT_RULES.matchCapMs)
+    expect(rulesForMap(DEFAULT_RULES, 23, 10).playerCount).toBe(10)
+    expect(protoConfig().mapSize).toBe(19)
+    expect(protoConfig(r27).mapSize).toBe(27)
+    expect(protoConfig(r27, { mapSize: 23 }).mapSize).toBe(23)
+    expect(protoConfig({ matchCapMs: 1000 }).mapSize).toBe(DEFAULT_CONFIG.mapSize)
+  })
+
+  it('ring zones by Chebyshev distance: 27 → core ≤ 4 / mid 5–8 / outer ≥ 9; 19 → ≤ 2 / 3–5 / ≥ 6', () => {
+    const zone = (id: MapTierId, x: number, y: number) => ringZoneOf(MAP_TIERS[id].zones, centerDistance(id, x, y))
+    expect(centerDistance(27, 13, 13)).toBe(0)
+    expect([zone(27, 17, 13), zone(27, 18, 13), zone(27, 21, 5), zone(27, 22, 13), zone(27, 1, 1)]).toEqual(['core', 'mid', 'mid', 'outer', 'outer'])
+    expect([zone(19, 11, 11), zone(19, 12, 9), zone(19, 14, 4), zone(19, 15, 9)]).toEqual(['core', 'mid', 'mid', 'outer'])
+  })
+
+  it('parseMapTier: 19 / 23 / 27, anything else → fallback', () => {
+    expect([parseMapTier('27'), parseMapTier(' 23 '), parseMapTier('19')]).toEqual([27, 23, 19])
+    expect([parseMapTier(null), parseMapTier('21'), parseMapTier('big')]).toEqual([19, 19, 19])
+    expect(parseMapTier('x', 27)).toBe(27)
+  })
+
+  it('maxHealthOfView falls back to the global cap when the field is absent', () => {
+    expect(maxHealthOfView({}, DEFAULT_CONFIG)).toBe(6)
+    expect(maxHealthOfView({ maxHealth: 12 }, DEFAULT_CONFIG)).toBe(12)
   })
 })
 
@@ -419,7 +532,43 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
       'chestSkillCandyPool',
       'toxinIntervalMs',
       'toxinPointsPerInterval',
+      // 方向 B · M1（ADR 0039 / 0040）
+      'heartsPerHats',
+      'maxHatHearts',
+      'maxGoldHearts',
+      'bossMinHearts',
+      'goldBoxGoldHeartPermille',
+      'powerChestGoldHeartPermille',
+      'boxLoot',
+      'supplyAnnounceMs',
+      'supplyOpenMs',
+      'supplyLoot',
+      'frenzyMs',
+      'frenzyFuseMs',
+      'frenzyExtraBombs',
+      'frenzyMinIntervalTicks',
+      'map',
     ].map((n): [string, string | null, string] => ['config.ts', 'ProtoRules', n]),
+    ...[
+      'BoxLoot',
+      'SupplyLoot',
+      'MapTierId',
+      'RingZone',
+      'ResourceBoxTier',
+      'ZONE_BOX',
+      'ZoneRadii',
+      'MapTierRules',
+      'MAP_TIERS',
+      'DEFAULT_MAP_TIER',
+      'rulesForMap',
+      'parseMapTier',
+      'centerDistance',
+      'ringZoneOf',
+      'maxHealthFor',
+      'maxHealthCeiling',
+      'isBoss',
+      'poisonPointsFor',
+    ].map((n): [string, string | null, string] => ['config.ts', null, n]),
     ['config.ts', null, 'RingStage'],
     ['config.ts', null, 'protoConfig'],
     ['config.ts', null, 'poisonPointsAt'],
@@ -449,6 +598,9 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
       (n): [string, string | null, string] => ['events.ts', null, n],
     ),
     ['events.ts', 'MatchEnded', 'proto'],
+    ['events.ts', null, 'SupplyAnnounced'],
+    ['events.ts', null, 'SupplyOpened'],
+    ['events.ts', 'PickupSpawned', 'Source'],
     ['events.ts', 'PickupSpawned', 'Skill'],
     ['events.ts', 'PickupSpawned', 'SkillLevel'],
     ['events.ts', 'PickupTaken', 'Skill'],
@@ -462,6 +614,24 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
     ['snapshot.ts', 'PickupView', 'skill'],
     ['snapshot.ts', 'WorldSnapshot', 'FireZones'],
     ['snapshot.ts', 'MatchMeta', 'results'],
+    // 方向 B · M1（ADR 0039 / 0040）
+    ['snapshot.ts', 'PlayerView', 'maxHealth'],
+    ['snapshot.ts', 'PlayerView', 'goldHearts'],
+    ['snapshot.ts', 'PlayerView', 'frenzyUntilTick'],
+    ['snapshot.ts', null, 'maxHealthOfView'],
+    ['snapshot.ts', 'BombView', 'uncounted'],
+    ['snapshot.ts', null, 'ResourceBoxView'],
+    ['snapshot.ts', null, 'MapView'],
+    ['snapshot.ts', null, 'SupplyView'],
+    ['snapshot.ts', 'MatchMeta', 'map'],
+    ['snapshot.ts', 'MatchMeta', 'supply'],
+    ['snapshot.ts', 'WorldSnapshot', 'ResourceBoxes'],
+    // ai.ts（整份 NON-CONTRACT，M1 新字段逐项也标）
+    ['ai.ts', 'BotProfile', 'escapeMarginTicks'],
+    ['ai.ts', 'BotProfile', 'misperceivePermille'],
+    ['ai.ts', 'BotProfile', 'greedyPickupPermille'],
+    ['ai.ts', null, 'LINEUP_WEIGHTS'],
+    ['ai.ts', null, 'lineupFor'],
     ...['SkillSlotView', 'PlayerSkillsView', 'BombKickView', 'FireZoneView', 'MatchRankRow', 'MatchResultsView'].map(
       (n): [string, string | null, string] => ['snapshot.ts', null, n],
     ),
@@ -474,6 +644,9 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
 
   it('SkillCandy is named in the PickupKind doc; the 技能 activation is marked inline', () => {
     expect(docFor('components.ts', null, 'PickupKind')).toContain('SkillCandy')
+    // 方向 B · M1：金心 / 狂暴糖同样在 PickupKind 文档里点名；PlayerHealed 的 'boss' 来源写在事件文档里。
+    expect(docFor('components.ts', null, 'PickupKind')).toMatch(/GoldHeart[\s\S]*Frenzy/)
+    expect(docFor('events.ts', null, 'PlayerHealed')).toContain("Source 'boss'")
     const input = readFileSync(join(SRC, 'contract', 'input.ts'), 'utf8')
     const line = input.split('\n').find((l) => l.includes("ability: '技能'"))
     expect(line).toContain('NON-CONTRACT')

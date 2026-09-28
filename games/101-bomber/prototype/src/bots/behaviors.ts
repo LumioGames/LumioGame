@@ -1,6 +1,7 @@
 import {
   BlockType,
   BombKind,
+  maxHealthOfView,
   msToTicks,
   PickupKind,
   type BomberConfig,
@@ -219,7 +220,7 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         // 原型扩展（NON-CONTRACT，ADR 0033）：血包解毒——中毒时满血也值得吃，且按残血口径多追。
         const toxin = toxinPointsLeft(ctx.rules, ctx.skills, ctx.board.now, ctx.config.tickRateHz)
         if (toxin > 0) return [Math.max(HEAL_BONUS, inCircle ? ctx.tactics.healReachSteps : 0), 0]
-        if (a.血量当前 >= ctx.config.maxHealthPoints) return null
+        if (a.血量当前 >= maxHealthOfView(ctx.me, ctx.config)) return null
         if (inCircle) return [ctx.tactics.healReachSteps, 0]
         return [a.血量当前 <= ctx.rules.bombDamagePoints ? HEAL_BONUS : 0, 0]
       }
@@ -227,6 +228,10 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         const o = candyOutcome(ctx, p)
         return o ? [ctx.tactics.candyBonusSteps[o.kind], CANDY_SCORE[o.kind]] : null
       }
+      // 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：金心 / 狂暴糖暂不追（估值归 M1-3）。
+      case PickupKind.GoldHeart:
+      case PickupKind.Frenzy:
+        return null
     }
   }
   let best: Goal | null = null
@@ -296,7 +301,6 @@ export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 
   const king = ctx.snap.BomberMatchState.HatKingNetEntityIdRaw
   const hereX = ctx.here % ctx.board.size
   const hereY = (ctx.here - hereX) / ctx.board.size
-  const maxHp = ctx.config.maxHealthPoints
   let best: PlayerView | null = null
   let bestScore = Infinity
   for (const p of ctx.snap.Players) {
@@ -312,7 +316,7 @@ export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 
       if (p.NetEntityIdRaw === king) score -= 10
       score -= Math.min(RICH_CAP, richWeight * p.BomberPlayerState.HatCount)
     }
-    score -= (maxHp - p.玩家属性.血量当前) * weakWeight
+    score -= (maxHealthOfView(p, ctx.config) - p.玩家属性.血量当前) * weakWeight
     if (protectedAtDetonation(ctx, p)) score += 12
     if (p.NetEntityIdRaw === prefer) score -= 3
     if (score < bestScore) {
