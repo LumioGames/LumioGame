@@ -16,6 +16,14 @@ import { appConfig, appLineup, appRules, DEV_FAST_SCALE, devEvolveCandies, parse
  * 方向 B（ADR 0040 / 0043）：默认 16 人 · 27×27（你 + 15 Bot）；没给 `?ai=` 时 Bot 用默认阵容（菜鸟 / 普通 / 困难）。
  */
 const params = parseAppParams(location.search, import.meta.env.DEV)
+const platformOrigin = new URLSearchParams(location.search).get('lumioOrigin')
+if (platformOrigin && window.parent !== window) {
+  try {
+    window.parent.postMessage({ type: 'lumio:ready' }, platformOrigin)
+  } catch {
+    // 平台地址无效时游戏照常在本页运行。
+  }
+}
 const seed = (params.seed ?? Math.floor(Math.random() * 0x7fffffff)) >>> 0
 const rules: ProtoRules = appRules(params)
 const config = appConfig(params, rules)
