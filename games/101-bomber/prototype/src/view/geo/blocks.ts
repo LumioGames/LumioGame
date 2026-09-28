@@ -79,3 +79,70 @@ export function crateGeometry(): BufferGeometry {
   b.add(new CylinderGeometry(0.012, 0.012, 0.02, 6), 0x5a3a24, mat(0, h * 0.42 - 0.01, 0.497, Math.PI / 2, 0, 0))
   return b.build()
 }
+
+// ---- 方向 B：三级资源箱（ADR 0040，design §5.0）——木 / 铁 / 金靠轮廓 + 材质区分，不只靠颜色 ----
+
+/** 铁箱高度：比木箱矮一截，顶面收成斜角（带斜面的保险箱）。 */
+export const IRON_BOX_HEIGHT = 0.77
+/** 金箱：长方箱身 + 拱形箱盖。 */
+export const GOLD_CHEST_BODY = 0.46
+export const GOLD_CHEST_LID = 0.31
+
+/**
+ * 铁箱：深铁灰箱身 + 亮钢包角立柱与腰带 + 铆钉 + 正面黄铜转盘锁；顶面是四棱台斜角（给「金属材质」的 tin 材质用）。
+ */
+export function ironBoxGeometry(): BufferGeometry {
+  const b = new GeoBuilder()
+  const body = 0x5b6778
+  const steel = 0xc9d3de
+  const bodyH = 0.58
+  b.add(new RoundedBoxGeometry(0.84, bodyH, 0.84, 2, 0.04), (_nx, ny) => (ny > 0.6 ? 0x6b7889 : body), mat(0, bodyH / 2, 0))
+  // 斜角顶：四棱台（4 段圆柱转 45° = 方台），底半宽 0.42 → 顶半宽 0.3。
+  const lidH = 0.16
+  b.add(new CylinderGeometry(0.3 * Math.SQRT2, 0.42 * Math.SQRT2, lidH, 4, 1), 0x7a8798, mat(0, bodyH + lidH / 2, 0, 0, Math.PI / 4, 0))
+  // 包角立柱 + 腰带
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) b.add(new BoxGeometry(0.1, bodyH, 0.1), steel, mat(sx * 0.4, bodyH / 2, sz * 0.4))
+  }
+  b.add(new BoxGeometry(0.86, 0.08, 0.86), steel, mat(0, bodyH * 0.55, 0))
+  // 腰带上的铆钉（四面）
+  for (const ry of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    for (const x of [-0.24, 0, 0.24]) {
+      b.add(new SphereGeometry(0.025, 8, 6), 0xeef2f6, mat(0, 0, 0, 0, ry, 0).multiply(mat(x, bodyH * 0.55, 0.43, 0, 0, 0, 1, 1, 0.6)))
+    }
+  }
+  // 正面转盘锁（朝镜头）
+  b.add(new CylinderGeometry(0.11, 0.11, 0.04, 20), 0xd9a441, mat(0, bodyH * 0.3, 0.43, Math.PI / 2, 0, 0))
+  b.add(new BoxGeometry(0.14, 0.03, 0.03), 0x7a5a1c, mat(0, bodyH * 0.3, 0.46))
+  // 顶面四颗螺栓
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) b.add(new CylinderGeometry(0.035, 0.035, 0.03, 8), steel, mat(sx * 0.16, bodyH + lidH + 0.01, sz * 0.16))
+  }
+  return b.build()
+}
+
+/**
+ * 金箱：长方箱身 + 半圆拱形箱盖（宝箱轮廓）+ 亮金包带 + 正面锁扣与红宝石（配带金属感的顶点色材质）。
+ */
+export function goldChestGeometry(): BufferGeometry {
+  const b = new GeoBuilder()
+  const body = 0xd99a2b
+  const band = 0xffe07a
+  const w = 0.86
+  const d = 0.62
+  const h = GOLD_CHEST_BODY
+  const r = GOLD_CHEST_LID
+  b.add(new RoundedBoxGeometry(w, h, d, 2, 0.04), body, mat(0, h / 2, 0))
+  // 拱形盖：半圆柱，轴沿 X。
+  b.add(new CylinderGeometry(r, r, w - 0.02, 24, 1, false, 0, Math.PI), 0xe8ab35, mat(0, h, 0, 0, 0, Math.PI / 2))
+  // 包带：箱身竖带 + 盖上半圆带 + 盖沿横带
+  for (const x of [-0.28, 0.28]) {
+    b.add(new BoxGeometry(0.08, h + 0.01, d + 0.02), band, mat(x, h / 2, 0))
+    b.add(new CylinderGeometry(r + 0.012, r + 0.012, 0.08, 24, 1, false, 0, Math.PI), band, mat(x, h, 0, 0, 0, Math.PI / 2))
+  }
+  b.add(new BoxGeometry(w + 0.02, 0.05, d + 0.02), band, mat(0, h, 0))
+  // 正面锁扣 + 红宝石
+  b.add(new RoundedBoxGeometry(0.16, 0.18, 0.04, 1, 0.015), band, mat(0, h - 0.04, d / 2))
+  b.add(new SphereGeometry(0.05, 12, 8), 0xff3b5c, mat(0, h - 0.04, d / 2 + 0.025, 0, 0, 0, 1, 1, 0.6))
+  return b.build()
+}

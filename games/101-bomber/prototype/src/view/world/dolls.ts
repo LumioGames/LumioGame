@@ -17,7 +17,7 @@ import { createDollMaterial, type SharedMaterials } from '../materials'
 /**
  * 一只玩偶的表现状态机：走路（颠 + 挤压拉伸 + 摆臂迈脚）、转身、眨眼、受击闪白 + 晃、
  * 受伤三档（完好 / 缝补贴片 / 冒棉花 + 歪头）、保护期闪烁、死亡散架（零件四散、落地弹一次）、
- * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）。
+ * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）；Boss（心数上限 ≥ 6，ADR 0039）竖直加高。
  */
 
 const TAU = Math.PI * 2
@@ -122,6 +122,8 @@ export class Doll {
   hitBarUntil = -1e9
   hp = 6
   protectedPulse = 0
+  /** Boss 竖直加高（ADR 0039 / 0043，logic/doll-fit bossHeightScale）：只拉高身体 / 头 / 手，脚不动，XZ 不变。 */
+  private height = 1
 
   // 帽塔摇摆（世界空间弹簧）
   swayX = 0
@@ -222,6 +224,15 @@ export class Doll {
     this.lastVZ = 0
     this.speed = 0
     this.swayX = this.swayZ = this.swayVX = this.swayVZ = 0
+  }
+
+  /** Boss 加高系数（1 = 普通）；每帧可调，下一次 update 生效。 */
+  setHeight(k: number): void {
+    this.height = Math.max(1, k)
+  }
+
+  get heightScale(): number {
+    return this.height
   }
 
   hit(now: number): void {
@@ -358,7 +369,8 @@ export class Doll {
     const sy = squash * breathe
     const sxz = 1 / Math.sqrt(sy)
     this.bodyPivot.position.y = bob
-    this.bodyPivot.scale.set(sxz, sy, sxz)
+    // Boss 只在竖直方向拉高（脚留在根节点上不动），XZ 脚印与向前探出不变（ADR 0032）。
+    this.bodyPivot.scale.set(sxz, sy * this.height, sxz)
 
     // 手脚
     const swing = Math.sin(phi) * w

@@ -33,7 +33,10 @@ export interface AudioSystem {
   dispose(): void
 }
 
-/** 听得见引信 / 危险提示音的距离（格）。 */
+/**
+ * 听得见引信 / 危险提示音的距离（格）。其余有世界位置的音效一律经 mixing.spatialize 按距离衰减
+ * （SPATIAL：4 格内满音量、14 格外静音，推断待验证）；本人自己的操作音、击杀 / 命中确认音与全场提示（号角、决赛圈、补给预告）不衰减。
+ */
 const NEAR_CELLS = 9
 const HEARTBEAT_MS = 900
 /** 帽子连拾音高递增的连续间隔（秒）。 */
@@ -286,6 +289,13 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           sfx.cureChime(s, e.NetEntityIdRaw === me ? here(0.8, 0.1) : p ? at(p.x, p.z, 0.35, 0.1) : here(0.2, 0.1))
           break
         }
+        // ---- 原型扩展（NON-CONTRACT，ADR 0040）：中央补给——预告是全场提示（不衰减），开启在补给格按距离衰减 ----
+        case 'SupplyAnnounced':
+          sfx.ringWarn(s, t0 + 0.05)
+          break
+        case 'SupplyOpened':
+          sfx.chestOpen(s, cellAt(e.Cell.X, e.Cell.Y, 1.2, 0.05))
+          break
         case 'MatchEnded': {
           // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
           // 局是被一记击杀终结的：领奖台晚一个慢镜时长开（ADR 0043），号角与音乐同样顺延。
@@ -396,10 +406,10 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     if (counting && sec !== lastCountdown) sfx.countdownTick(s, t0, phase === MatchPhase.Warmup || sec <= 3)
     lastCountdown = counting ? sec : -1
 
-    runMusic(s, sample)
+    runMusic(s, sample, me)
   }
 
-  const runMusic = (s: Synth, sample: FeedSample): void => {
+  const runMusic = (s: Synth, sample: FeedSample, me: U64): void => {
     const snap = sample.curr
     if (snap.Tick !== stallTick) {
       stallTick = snap.Tick
@@ -407,6 +417,9 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     }
     const phase = snap.BomberMatchState.Phase
     if (phase !== MatchPhase.Settlement) matchEndedTick = null
+    // 本人狂暴（ADR 0040）：音乐换加速层。
+    const mine = snap.Players.find((p) => p.NetEntityIdRaw === me)
+    const frenzy = !!mine && (mine.frenzyUntilTick ?? 0) > sample.renderTick
     const mode = musicOn
       ? musicMode({
           phase,
@@ -415,6 +428,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           matchEndedTick,
           podiumMs: rules.podiumMs,
           stalled: sample.realNow - stallSince > STALL_MS,
+          frenzy,
         })
       : 'silent'
     seq.setMode(mode)

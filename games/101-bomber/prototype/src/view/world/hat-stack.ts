@@ -51,10 +51,11 @@ export class HatRenderer {
 
   /**
    * 头顶帽塔（最多 4 顶 + 可选皇冠）。base = 头顶世界位置，headQuat = 头的世界朝向（歪头时整塔跟着歪），
-   * sway = 世界空间摇摆偏移（越往上滞后越大），unit = 高度与缩放系数（场内 1；领奖台跟玩偶放大）。
+   * sway = 世界空间摇摆偏移（越往上滞后越大），unit = 高度与缩放系数（场内 1；领奖台跟玩偶放大），
+   * lift = 只在竖直方向的加高（Boss，ADR 0039 / 0043：帽子跟着拉高，XZ 不变）。
    * 返回塔高（世界单位，已含皇冠）。
    */
-  tower(n: number, base: Vector3, headQuat: Quaternion, swayX: number, swayZ: number, crowned: boolean, unit = 1): number {
+  tower(n: number, base: Vector3, headQuat: Quaternion, swayX: number, swayZ: number, crowned: boolean, unit = 1, lift = 1): number {
     const l = hatStackLayout(n, crowned, this.layout)
     for (let i = 0; i < l.drawn; i++) {
       const off = l.offsets[i]
@@ -67,18 +68,18 @@ export class HatRenderer {
       _q.copy(headQuat).multiply(_q2)
       _q2.setFromAxisAngle(_up, i * 0.7)
       _q.multiply(_q2)
-      this.hats.push(tqs(M, x, base.y + off * unit, z, _q, s, s, s))
+      this.hats.push(tqs(M, x, base.y + off * unit * lift, z, _q, s, s * lift, s))
     }
     if (crowned) {
       const lag = hatSwayLag(l.drawn, l.crownY)
       const crown = this.crownMesh()
-      crown.position.set(base.x + swayX * lag, base.y + l.crownY * unit, base.z + swayZ * lag)
+      crown.position.set(base.x + swayX * lag, base.y + l.crownY * unit * lift, base.z + swayZ * lag)
       crown.quaternion.copy(headQuat)
       const cs = l.crownScale * unit
-      crown.scale.set(cs, cs, cs)
+      crown.scale.set(cs, cs * lift, cs)
       crown.visible = true
     }
-    return l.totalHeight * unit
+    return l.totalHeight * unit * lift
   }
 
   private crownMesh(): Mesh {

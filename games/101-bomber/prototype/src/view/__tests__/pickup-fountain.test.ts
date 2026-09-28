@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BIG_FOUNTAIN, CHEST_ARC, DEATH_FOUNTAIN, fountainFor, pickupArcPose } from '../world/pickups'
+import { BIG_FOUNTAIN, BOSS_FOUNTAIN, CHEST_ARC, DEATH_FOUNTAIN, fountainFor, pickupArcPose } from '../world/pickups'
 
 /** 死者掉落沿抛物线喷出（design §3.1，ADR 0043）：≥ 6 帽的喷泉更高更大；宝箱喷出的弧线不变。 */
 describe('death-drop fountain arc', () => {
@@ -10,6 +10,14 @@ describe('death-drop fountain arc', () => {
     expect(BIG_FOUNTAIN.height).toBeGreaterThan(DEATH_FOUNTAIN.height)
     expect(BIG_FOUNTAIN.ms).toBeGreaterThan(DEATH_FOUNTAIN.ms)
     expect(DEATH_FOUNTAIN.height).toBeGreaterThan(CHEST_ARC.height)
+  })
+
+  it('a Boss knock-down gets the biggest fountain regardless of hats (ADR 0043 大号爆装喷泉)', () => {
+    expect(fountainFor(0, true)).toBe(BOSS_FOUNTAIN)
+    expect(fountainFor(9, true)).toBe(BOSS_FOUNTAIN)
+    expect(fountainFor(9, false)).toBe(BIG_FOUNTAIN)
+    expect(BOSS_FOUNTAIN.height).toBeGreaterThan(BIG_FOUNTAIN.height)
+    expect(BOSS_FOUNTAIN.pop).toBeGreaterThan(BIG_FOUNTAIN.pop)
   })
 
   it('is a parabola that starts slightly raised, peaks mid-flight and lands at 0 with full size', () => {

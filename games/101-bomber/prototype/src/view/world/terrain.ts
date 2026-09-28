@@ -11,9 +11,10 @@ import {
   type Scene,
 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { BlockType, type TerrainView } from '../../contract'
+import { BlockType, type ResourceBoxView, type TerrainView } from '../../contract'
 import { Batch, M, trs } from '../batch'
-import { crateGeometry, hardBlockGeometry, softBlockGeometry } from '../geo/blocks'
+import { crateGeometry, goldChestGeometry, hardBlockGeometry, ironBoxGeometry, softBlockGeometry } from '../geo/blocks'
+import { tierCode, TIER_CODE } from '../logic/growth-look'
 import { groundQuad } from '../geo/bomb'
 import { hash01 } from '../logic/rand'
 import type { SharedMaterials } from '../materials'
@@ -24,6 +25,8 @@ import { drawMatTexture, rugTexture, stitchTexture, woodTexture } from '../textu
  * 地形：桌面软垫（奶油方砖）+ 托盘包边 + 毛毡地毯 + 木纹桌面；三种砖各一个 InstancedMesh（槽位 = Y·size + X）；
  * 水方格下沉 0.15（软垫挖洞 + 池壁 + 奶油石沿 + 动态波纹水面）。
  * 只按 `rev` 与自存副本做 diff —— 不依赖 BrickDestroyed 表现事件。
+ * 原型扩展（NON-CONTRACT，ADR 0040）：木箱格按 `WorldSnapshot.ResourceBoxes` 的等级换成木箱 / 铁箱（斜角保险箱，金属材质）/
+ * 金箱（拱顶宝箱，亮金属材质）三种实例网格；不在列表里的木箱格按木箱画。
  */
 
 const ZERO = new Matrix4().makeScale(0, 0, 0)
@@ -81,6 +84,11 @@ export class TerrainView3D {
   private readonly soft: InstancedMesh
   private readonly hard: InstancedMesh
   private readonly crate: InstancedMesh
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：铁箱 / 金箱。 */
+  private readonly ironBox: InstancedMesh
+  private readonly goldBox: InstancedMesh
+  /** 每格资源箱等级编码（logic/growth-look TIER_CODE；0 = 木）。砖消失后保留，弹飞时还用得上。 */
+  private readonly tiers: Uint8Array
   private readonly matMesh: Mesh
   private matTex: CanvasTexture
   private readonly matMat: MeshStandardMaterial
@@ -97,6 +105,7 @@ export class TerrainView3D {
     this.size = size
     const n = size * size
     this.brick = new Uint8Array(n)
+    this.tiers = new Uint8Array(n)
     this.ground = new Uint8Array(n).fill(BlockType.地面)
     const center = size / 2
 
@@ -171,6 +180,8 @@ export class TerrainView3D {
     this.soft = mk(softBlockGeometry(), mats.plasticTinted, true)
     this.hard = mk(hardBlockGeometry(), mats.tin, false)
     this.crate = mk(crateGeometry(), mats.plastic, false)
+    this.ironBox = mk(ironBoxGeometry(), mats.tin, false)
+    this.goldBox = mk(goldChestGeometry(), new MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.6 }), false)
 
     // 水
     this.waterMat = new ShaderMaterial({
@@ -202,6 +213,30 @@ export class TerrainView3D {
 
   get brickLayer(): Uint8Array {
     return this.brick
+  }
+
+  /** 该格资源箱的等级编码（0 木 / 1 铁 / 2 金）。 */
+  tierAt(idx: number): number {
+    return this.tiers[idx] ?? TIER_CODE.wood
+  }
+
+  /**
+   * 资源箱等级（每份快照调用一次，放在 sync 之后）：当前是木箱的格按列表换网格；已消失的格保留旧等级（弹飞动画用）。
+   */
+  syncTiers(boxes: ReadonlyMap<number, ResourceBoxView>): void {
+    let changed = false
+    for (let i = 0; i < this.brick.length; i++) {
+      if (this.brick[i] !== BlockType.木箱) continue
+      const code = tierCode(boxes.get(i))
+      if (code === this.tiers[i]) continue
+      const was = this.crateMesh(this.tiers[i])
+      this.tiers[i] = code
+      if (this.pending.has(i)) continue
+      was.setMatrixAt(i, ZERO)
+      this.placeSlot(i, BlockType.木箱)
+      changed = true
+    }
+    if (changed) this.flush()
   }
 
   groundAt(x: number, y: number): number {
@@ -250,7 +285,9 @@ export class TerrainView3D {
   pop(idx: number, block: number, now: number): number {
     if (!this.pending.delete(idx)) return 0xffffff
     this.pops.push({ kind: block, idx, start: now })
-    return block === BlockType.积木 ? this.softColor(idx) : block === BlockType.木箱 ? 0xc98f5a : 0x7f95b2
+    if (block === BlockType.积木) return this.softColor(idx)
+    if (block === BlockType.木箱) return this.tiers[idx] === TIER_CODE.gold ? 0xffc93c : this.tiers[idx] === TIER_CODE.iron ? 0x5b6778 : 0xc98f5a
+    return 0x7f95b2
   }
 
   softColor(idx: number): number {
@@ -264,19 +301,27 @@ export class TerrainView3D {
     return (r << 16) | (g << 8) | b
   }
 
-  private meshFor(block: number): InstancedMesh | null {
+  private crateMesh(code: number): InstancedMesh {
+    return code === TIER_CODE.gold ? this.goldBox : code === TIER_CODE.iron ? this.ironBox : this.crate
+  }
+
+  private meshFor(block: number, idx: number): InstancedMesh | null {
     if (block === BlockType.积木 || block === BlockType.木头 || block === BlockType.鞭炮) return this.soft
     if (block === BlockType.铁皮) return this.hard
-    if (block === BlockType.木箱) return this.crate
+    if (block === BlockType.木箱) return this.crateMesh(this.tiers[idx] ?? TIER_CODE.wood)
     return null
   }
 
   private setSlot(i: number, was: number, now: number): void {
+    const prev = this.meshFor(was, i)
+    if (prev) prev.setMatrixAt(i, ZERO)
+    this.placeSlot(i, now)
+  }
+
+  private placeSlot(i: number, now: number): void {
     const x = i % this.size
     const y = Math.floor(i / this.size)
-    const prev = this.meshFor(was)
-    if (prev) prev.setMatrixAt(i, ZERO)
-    const next = this.meshFor(now)
+    const next = this.meshFor(now, i)
     if (!next) return
     // 铁皮不旋转；积木 / 木箱按格微抖朝向，避免一排完全复制。
     const jitter = now === BlockType.铁皮 ? 0 : (hash01(i, 11) - 0.5) * 0.06
@@ -285,7 +330,7 @@ export class TerrainView3D {
   }
 
   private flush(): void {
-    for (const m of [this.soft, this.hard, this.crate]) {
+    for (const m of [this.soft, this.hard, this.crate, this.ironBox, this.goldBox]) {
       m.instanceMatrix.needsUpdate = true
       if (m.instanceColor) m.instanceColor.needsUpdate = true
     }
@@ -334,7 +379,7 @@ export class TerrainView3D {
     if (this.pops.length === 0) return
     let keep = 0
     for (const p of this.pops) {
-      const mesh = this.meshFor(p.kind)
+      const mesh = this.meshFor(p.kind, p.idx)
       if (!mesh) continue
       const t = (now - p.start) / POP_MS
       const x = p.idx % this.size
@@ -357,8 +402,8 @@ export class TerrainView3D {
 
   /** 换局：清掉进行中的弹飞。 */
   reset(): void {
-    for (const p of this.pops) this.meshFor(p.kind)?.setMatrixAt(p.idx, ZERO)
-    for (const [idx, block] of this.pending) this.meshFor(block)?.setMatrixAt(idx, ZERO)
+    for (const p of this.pops) this.meshFor(p.kind, p.idx)?.setMatrixAt(p.idx, ZERO)
+    for (const [idx, block] of this.pending) this.meshFor(block, idx)?.setMatrixAt(idx, ZERO)
     this.pending.clear()
     this.pops.length = 0
     this.flush()

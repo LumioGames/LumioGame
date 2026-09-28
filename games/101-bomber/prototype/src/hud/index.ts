@@ -23,7 +23,7 @@ import { ElimOverlay, KillFeedView, PoisonWarn, ResourceMeter, RuleCard } from '
 import { el, iconEl, roundButton, setIcon, setStyle, setText } from './dom'
 import { edgeArrowPlacement, interpolatedPlayerPos } from './edge-arrow'
 import { circleHud, circleSubtitle } from './final-circle'
-import { formatClock, heartFills, heartsLabel, speedLevel, uiScale } from './format'
+import { formatClock, goldHeartMask, heartFills, heartsLabel, speedLevel, uiScale } from './format'
 import { BannerQueue, HintPill, HitHint, PickupFlash, PopupStack } from './fx-layers'
 import { HeartTrack } from './hit-stagger'
 import { HudBrain, type DeathRecap, type HudMoment, type SettlementResults } from './hud-brain'
@@ -267,7 +267,14 @@ export function createHud(opts: HudOptions): Hud {
   onResize()
   globalThis.addEventListener?.('resize', onResize)
 
-  const brain = new HudBrain({ localId: me, pillarMinHats: rules.hatKingPillarMinHats, tickRateHz: rate, pointsPerHeart: config.healthPointsPerHeart, rules })
+  const brain = new HudBrain({
+    localId: me,
+    pillarMinHats: rules.hatKingPillarMinHats,
+    tickRateHz: rate,
+    pointsPerHeart: config.healthPointsPerHeart,
+    rules,
+    baseMaxHealth: config.maxHealthPoints,
+  })
   const timeline = new HudTimeline()
   const heartTrack = new HeartTrack()
   /** 按连锁节奏延后执行的表现（逐颗红晕、死亡回顾）。 */
@@ -375,7 +382,7 @@ export function createHud(opts: HudOptions): Hud {
     const live = sample.curr
     const phase = live.BomberMatchState.Phase
     const remaining = (live.match.phaseEndTick - sample.renderTick) / rate
-    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille, rules, config.healthPointsPerHeart)
+    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille, rules, config.healthPointsPerHeart, config.maxHealthPoints)
     let t: string
     let s = '活到最后者赢'
     let mode = ''
@@ -438,7 +445,13 @@ export function createHud(opts: HudOptions): Hud {
     const hp = Math.max(0, heartTrack.displayed(now, a.血量当前))
     const maxHp = maxHealthOfView(p, config)
     const fills = heartFills(hp, maxHp, config.healthPointsPerHeart)
-    heartSlots.forEach((h, i) => setStyle(h, 'display', i < fills.length ? '' : 'none'))
+    // 金心带来的心画成金色心格（ADR 0039，design §12 残血表现）。
+    const gold = goldHeartMask(maxHp, config.healthPointsPerHeart, p.goldHearts ?? 0)
+    heartSlots.forEach((h, i) => {
+      setStyle(h, 'display', i < fills.length ? '' : 'none')
+      const g = gold[i] === true
+      if (h.classList.contains('is-gold') !== g) h.classList.toggle('is-gold', g)
+    })
     fills.forEach((f, i) => {
       if (heartEls[i]) setStyle(heartEls[i], 'width', `${f * 100}%`)
     })

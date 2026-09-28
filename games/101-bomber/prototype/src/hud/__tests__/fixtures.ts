@@ -12,6 +12,7 @@ import {
   type PlayerView,
   type SkillId,
   type SkillSlotView,
+  type SupplyView,
   type U64,
   type WorldSnapshot,
   方向,
@@ -33,6 +34,10 @@ export interface PlayerSpec {
   /** 原型扩展（NON-CONTRACT，ADR 0030）：技能状态；缺省 = 快照没有 skills 字段。 */
   skills?: PlayerSkillsView
   eliminatedTick?: number
+  /** 原型扩展（NON-CONTRACT，ADR 0039）：心数上限（半心点）/ 金心 / 狂暴截止。 */
+  maxHealth?: number
+  goldHearts?: number
+  frenzyUntilTick?: number
 }
 
 /** 技能状态夹具：未给的字段全 0 / 空槽。 */
@@ -67,6 +72,9 @@ export function player(p: PlayerSpec): PlayerView {
     eliminated: p.eliminated ?? false,
     ...(p.skills ? { skills: p.skills } : {}),
     ...(p.eliminatedTick !== undefined ? { eliminatedTick: p.eliminatedTick } : {}),
+    ...(p.maxHealth !== undefined ? { maxHealth: p.maxHealth } : {}),
+    ...(p.goldHearts !== undefined ? { goldHearts: p.goldHearts } : {}),
+    ...(p.frenzyUntilTick !== undefined ? { frenzyUntilTick: p.frenzyUntilTick } : {}),
   }
 }
 
@@ -121,6 +129,8 @@ export interface SnapSpec {
   results?: MatchResultsView | null
   fireZones?: FireZoneView[]
   pickups?: PickupView[]
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：中央补给。 */
+  supply?: SupplyView | null
 }
 
 /** 拾取物夹具（技能糖带 skill）。 */
@@ -160,6 +170,7 @@ export function snap(s: SnapSpec): WorldSnapshot {
       resourceRemaining: s.resourceRemaining ?? 0,
       finalCircle: s.finalCircle ?? null,
       ...(s.results !== undefined ? { results: s.results } : {}),
+      ...(s.supply !== undefined ? { supply: s.supply } : {}),
     },
     ...(s.fireZones ? { FireZones: s.fireZones } : {}),
   }

@@ -18,6 +18,7 @@ import type { GroundMarks } from './ground-marks'
  * 保护期内（renderTick < protectedUntilTick，ADR 0029：炸不掉）罩一层淡金色泡泡，最后 0.8 s 闪烁提示即将失效。
  * 原型扩展（NON-CONTRACT，ADR 0030）：技能糖（Kind = SkillCandy）按 PickupView.skill 画各自的糖球 + 技能色光环
  * （代替金环，一眼分得出「帽子糖」和「技能糖」）+ 糖下 1–3 颗等级金豆；skill 缺席时退回普通糖果。
+ * 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：金心（大一号的金色心 + 闪光）、狂暴糖（带尖刺的红糖球 + 火苗）各有一种造型。
  */
 interface PickupVis {
   id: number
@@ -59,7 +60,8 @@ export interface PickupArc {
   pop: number
 }
 
-const KINDS = [PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack] as const
+/** 普通糖果的种类（技能糖另算）；金心 / 狂暴糖为原型扩展（NON-CONTRACT，ADR 0039 / 0040）。 */
+const KINDS = [PickupKind.FirePlus, PickupKind.BombPlus, PickupKind.SpeedPlus, PickupKind.HealthPack, PickupKind.GoldHeart, PickupKind.Frenzy] as const
 const DIE_MS = 220
 /** 每种技能糖同时在场的上限。 */
 const SKILL_CANDY_CAP = 32
@@ -73,12 +75,15 @@ export const CHEST_ARC: PickupArc = { ms: PICKUP_ARC_MS, height: 1.3, pop: 0 }
 export const DEATH_FOUNTAIN: PickupArc = { ms: 520, height: 2.2, pop: 0.15 }
 /** 死者 ≥ 6 帽的大号喷泉（design §3.1「死者 ≥ 6 帽更大」）。 */
 export const BIG_FOUNTAIN: PickupArc = { ms: 680, height: 3.3, pop: 0.4 }
+/** 击倒 Boss（心数上限 ≥ 6，ADR 0043）的大号爆装喷泉；中央补给开启也用它（ADR 0040）。 */
+export const BOSS_FOUNTAIN: PickupArc = { ms: 820, height: 4.4, pop: 0.6 }
 /** 同一死者的掉落逐颗错开喷出的间隔（毫秒）与上限（颗）。 */
 export const FOUNTAIN_STAGGER_MS = 45
 export const FOUNTAIN_STAGGER_MAX = 12
 
-/** 死者死前帽数 → 喷泉弧线。 */
-export function fountainFor(hatsBefore: number): PickupArc {
+/** 死者死前帽数（与是否 Boss）→ 喷泉弧线。 */
+export function fountainFor(hatsBefore: number, boss = false): PickupArc {
+  if (boss) return BOSS_FOUNTAIN
   return hatsBefore >= KILL_JUICE.bigDropHats ? BIG_FOUNTAIN : DEATH_FOUNTAIN
 }
 
@@ -90,7 +95,7 @@ export function pickupArcPose(u: number, arc: PickupArc): { lift: number; scale:
 }
 
 export class PickupLayer {
-  private readonly candies: Batch[]
+  private readonly candies = new Map<number, Batch>()
   private readonly rings: Batch
   private readonly halos: Batch
   private readonly bubbles: Batch
@@ -102,7 +107,7 @@ export class PickupLayer {
   private readonly c = new Color()
 
   constructor(scene: Object3D, mats: SharedMaterials) {
-    this.candies = KINDS.map((k) => new Batch(candyGeometry(k), mats.plastic, 64, { castShadow: true }))
+    for (const k of KINDS) this.candies.set(k, new Batch(candyGeometry(k), mats.plastic, 64, { castShadow: true }))
     this.rings = new Batch(candyRingGeometry(), mats.gold, 128, {})
     this.halos = new Batch(new TorusGeometry(0.37, 0.04, 8, 40), mats.solid, 64, { color: true })
     this.bubbles = new Batch(
@@ -111,7 +116,7 @@ export class PickupLayer {
       64,
       {},
     )
-    for (const b of this.candies) scene.add(b.mesh)
+    for (const b of this.candies.values()) scene.add(b.mesh)
     scene.add(this.rings.mesh, this.halos.mesh, this.bubbles.mesh)
     for (const id of SKILL_IDS) {
       const b = new Batch(skillCandyGeometry(id), mats.plastic, SKILL_CANDY_CAP, { castShadow: true })
@@ -167,7 +172,7 @@ export class PickupLayer {
   }
 
   update(now: number, camYaw: number, marks: GroundMarks, renderTick = 0, tickRateHz = 20): void {
-    for (const b of this.candies) b.begin()
+    for (const b of this.candies.values()) b.begin()
     for (const b of this.skillCandies.values()) b.begin()
     this.rings.begin()
     this.skillRings.begin()
@@ -215,7 +220,7 @@ export class PickupLayer {
           this.pips.push(trs(M, px + rx * off, y - PIP_DROP * s, pz + rz * off, 0, 0, 0, s, s, s))
         }
       } else {
-        const batch = this.candies[v.kind] ?? this.candies[0]
+        const batch = this.candies.get(v.kind) ?? (this.candies.get(PickupKind.FirePlus) as Batch)
         batch.push(trs(M, px, y, pz, 0, t * 1.5 + v.id, 0, s * 1.05, s * 1.05, s * 1.05))
         // 金环面朝镜头（绕 Y 对齐镜头朝向），向镜头仰起一点
         this.rings.push(trs(M, px, y, pz, -0.35, camYaw, 0, s, s, s))
@@ -235,7 +240,7 @@ export class PickupLayer {
       }
       marks.shadow(px, pz, 0.55, y - 0.25)
     }
-    for (const b of this.candies) b.end()
+    for (const b of this.candies.values()) b.end()
     for (const b of this.skillCandies.values()) b.end()
     this.rings.end()
     this.skillRings.end()

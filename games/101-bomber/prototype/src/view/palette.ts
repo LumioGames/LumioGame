@@ -9,11 +9,32 @@ export const LEAF = 0x6cc551
 export const CREAM = 0xfff3dc
 export const BACKGROUND = 0xddf1f7
 
-/** 脚圈 / 炸弹色带：slot 0 是本机（蓝，与参考图一致）。 */
-export const SLOT_COLORS: readonly number[] = [SKY, TANGERINE, SUNSHINE, LEAF, 0xb57bff, 0xff6fa8, 0xffffff, INK]
+/**
+ * 脚圈 / 炸弹色带：slot 0 是本机（蓝，与参考图一致）。16 个槽（ADR 0040：16 人 · 27×27），前 8 个不变；
+ * 颜色不是唯一的识别手段（名牌、击杀栏还有名字与动物色点）。HUD 的 icons.SLOT_COLOR 逐槽同值（growth-look.test 守护）。
+ */
+export const SLOT_COLORS: readonly number[] = [
+  SKY,
+  TANGERINE,
+  SUNSHINE,
+  LEAF,
+  0xb57bff,
+  0xff6fa8,
+  0xffffff,
+  INK,
+  0x2ec4b6,
+  0xe63946,
+  0x3a5bd9,
+  0xb8e04a,
+  0x8d5a3b,
+  0xd33fc6,
+  0x9aa3ad,
+  0x1b7f5a,
+]
 
 export function slotColor(slot: number): number {
-  return SLOT_COLORS[((slot % 8) + 8) % 8]
+  const n = SLOT_COLORS.length
+  return SLOT_COLORS[((slot % n) + n) % n]
 }
 
 export const SOFT_BLOCK_COLORS: readonly number[] = [0xf9d98a, 0xf7b48a, 0x9fd3e2, 0xb3dc9c]

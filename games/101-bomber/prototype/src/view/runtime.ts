@@ -3,13 +3,16 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import {
   BlockType,
   DeathCause,
+  isBoss,
   MatchPhase,
+  maxHealthOfView,
   msToTicks,
   skillParams,
   type BomberCell,
   type BomberEvent,
   type PickupView,
   type PlayerView,
+  type ResourceBoxView,
   type SkillId,
   type WorldSnapshot,
 } from '../contract'
@@ -18,6 +21,7 @@ import { juiceEnabled, KILL_JUICE, KillJuice, settleHoldTicks } from '../present
 import { COMBO_FORM, SKILL_COLOR } from '../present/skill-style'
 import { cellOf } from '../shared/grid'
 import { CameraRig } from './camera'
+import { orbitHeartGeometry } from './geo/candy'
 import { buildDecor } from './geo/decor'
 import { ExplosionFx } from './fx/explosion'
 import { HatFlyFx, type DropTarget } from './fx/hat-fly'
@@ -27,7 +31,7 @@ import { LabelLayer, type FloatKind, type PlayerTagState } from './labels'
 import { chainHitstopMs, chainShakeAmplitude, CAMERA } from './logic/camera-math'
 import { CELL_GROW_MS, computeChainDelays, type ChainBomb } from './logic/chain-stagger'
 import { effectiveDetonationTicks, type DetonationBomb } from './logic/detonation'
-import { DOLL_FIT, dollLayout, localRingPulse, PODIUM_DOLL_SCALE, type DollLayout } from './logic/doll-fit'
+import { bossHeightScale, DOLL_FIT, dollLayout, localRingPulse, PODIUM_DOLL_SCALE, type DollLayout } from './logic/doll-fit'
 import { bombBlocked, canPreviewBomb } from './logic/fire-preview'
 import {
   diffHatCounts,
@@ -40,7 +44,18 @@ import {
   type HatFlow,
 } from './logic/hat-flow'
 import { dropLanding, HAT, lossLaunch, type HatSlot } from './logic/hat-layout'
-import { clamp01, easeInOutCubic, heartStage, interpolateXZ, type XZ } from './logic/interp'
+import {
+  FRENZY_LOOK,
+  frenzyActive,
+  frenzyGlow,
+  GOLD_ORBIT,
+  goldOrbitPoint,
+  headHeartBar,
+  resourceBoxIndex,
+  supplyBeacon,
+  TIER_CODE,
+} from './logic/growth-look'
+import { clamp01, damageStage, easeInOutCubic, interpolateXZ, type XZ } from './logic/interp'
 import { PODIUM, podiumCameraPose, podiumOrder, podiumSpots, rowsFromResults, type CamPose, type PodiumSpot } from './logic/podium'
 import { bombTone, type BombTone } from './logic/bomb-look'
 import { hash01 } from './logic/rand'
@@ -54,18 +69,19 @@ import { ANIMAL_COLORS, LEAF, SKY, SOFT_BLOCK_COLORS, SUNSHINE, TANGERINE, slotC
 import { RendererHost } from './renderer'
 import { createSceneRig, type SceneRig } from './scene'
 import { dashedRingTexture, dashTexture, previewTexture, radialTexture, ringTexture, starTexture } from './textures'
+import { Batch, M, trs } from './batch'
 import { BombLayer } from './world/bombs'
 import { ChestLayer, type ChestDiff } from './world/chests'
 import { Doll, DollFactory, type DollFx } from './world/dolls'
 import { FireCellLayer, type FireOwner } from './world/fire-cells'
 import { GroundMarks } from './world/ground-marks'
 import { HatRenderer } from './world/hat-stack'
-import { FOUNTAIN_STAGGER_MAX, FOUNTAIN_STAGGER_MS, fountainFor, PickupLayer, type PickupOrigin } from './world/pickups'
+import { BOSS_FOUNTAIN, FOUNTAIN_STAGGER_MAX, FOUNTAIN_STAGGER_MS, fountainFor, PickupLayer, type PickupOrigin } from './world/pickups'
 import { PODIUM_ORDER, PodiumStage } from './world/podium'
 import { BombPreview } from './world/preview'
 import { RingFog } from './world/ring-fog'
 import { SkillFxLayer } from './world/skill-fx'
-import { Spotlight } from './world/spotlight'
+import { Spotlight, SUPPLY_BEAM } from './world/spotlight'
 import { TerrainView3D, type RemovedBrick } from './world/terrain'
 
 /**
@@ -81,6 +97,8 @@ import { TerrainView3D, type RemovedBrick } from './world/terrain'
  * 击杀手感（ADR 0043，present/kill-juice）：本人击杀 → 玩偶散架那一刻定帧 70 ms + 镜头冲击；自己的炸弹打到别人 → 受害者头顶「−1」心形飘字；
  * 死者掉落是逐颗错开的爆装喷泉（≥ 6 帽更高更大）；整局最后一杀 → 本地慢镜 0.6 秒（0.3×，只缩放表现时钟），领奖台晚同样时长再开。
  * 定帧与慢镜受震动强度设置控制（为 0 时关掉），镜头冲击由镜头按强度缩放。
+ * 方向 B 外观（ADR 0039 / 0040 / 0043，NON-CONTRACT 字段缺席时退化）：Boss（上限 ≥ 6 心）竖直加高 + 头顶常驻心条、他人破损三档按占上限比例、
+ * 金心环绕、狂暴全身红光、三级资源箱（地形按格换网格，金箱头顶剩余命中）、中央补给光柱 + 名牌 + 开启喷发、击倒 Boss 大号爆装喷泉。
  */
 
 interface PendingBlast {
@@ -127,6 +145,8 @@ interface DeathRecord {
   burstAt: number
   /** 死前帽数（爆装喷泉大小，ADR 0043）。 */
   hats: number
+  /** 死前心数上限 ≥ Boss 门槛（大号爆装喷泉，ADR 0043）。 */
+  boss: boolean
 }
 
 const FRAG_COLORS_CRATE = [0xc98f5a, 0x9e6a3c, 0xd49c66]
@@ -141,7 +161,7 @@ const HEAL_TEXT = (hearts: number): string => `+${hearts} 心`
 /** 中招飘字（原型扩展 NON-CONTRACT，ADR 0033）。 */
 const TOXIN_TEXT = '中毒'
 const SHOCK_TEXT = '麻痹'
-/** 命中飘字（design §3.1 命中，ADR 0043）：心形图标 +「−1」。 */
+/** 命中飘字（design §3.1 命中，ADR 0043）：红色「−1♥」（labels 把心放在数字后面）。 */
 const HURT_TEXT = (hearts: number): string => `−${hearts}`
 /** 本人击杀等不到玩偶散架时刻时，最多等这么久（毫秒）就地演定帧与冲击。 */
 const KILL_JUICE_WAIT_MS = 250
@@ -180,7 +200,8 @@ interface FloatText {
 }
 
 interface PendingChest {
-  kind: 'hit' | 'open'
+  /** 'supply' = 原型扩展（NON-CONTRACT，ADR 0040）：中央补给开启喷发。 */
+  kind: 'hit' | 'open' | 'supply'
   id: number
   tick: number
   x: number
@@ -303,6 +324,12 @@ export class ViewRuntime {
   private readonly dropSeq = new Map<number, number>()
   /** 整局最后一杀后领奖台延后开场的 Tick 数（= 慢镜时长）；其余局为 0。 */
   private ceremonyHold = 0
+  /** 方向 B：中央补给光柱、金心环绕、资源箱按格索引、补给状态与补给战利品的喷发起点。 */
+  private readonly supplyBeam: Spotlight
+  private readonly goldOrbit: Batch
+  private boxes = new Map<number, ResourceBoxView>()
+  private supplyState: string | null = null
+  private supplyOrigin: { x: number; z: number; untilTick: number } | null = null
 
   constructor(private readonly opts: ViewOptions) {
     const { config } = opts
@@ -329,6 +356,9 @@ export class ViewRuntime {
     this.bombs = new BombLayer(world, this.mats, radial, this.fuseTicks, msToTicks(config.dangerWindowMs, config.tickRateHz))
     this.pickups = new PickupLayer(world, this.mats)
     this.spotlight = new Spotlight(world, radial)
+    this.supplyBeam = new Spotlight(world, radial, SUPPLY_BEAM)
+    this.goldOrbit = new Batch(orbitHeartGeometry(), this.mats.gold, 64, { castShadow: false })
+    world.add(this.goldOrbit.mesh)
     this.preview = new BombPreview(world, previewTexture())
     this.blasts = new ExplosionFx(world, this.mats)
     this.fragments = new ParticlePool(new RoundedBoxGeometry(1, 1, 1, 1, 0.18), this.mats.solid, 512, true)
@@ -442,6 +472,7 @@ export class ViewRuntime {
     cam.getWorldQuaternion(this.camQuat)
     this.marks.begin()
     this.hats.begin()
+    this.goldOrbit.begin()
     this.labels.begin(this.host.width, this.host.height)
 
     const ceremony = this.ceremony
@@ -460,6 +491,7 @@ export class ViewRuntime {
       this.chests.update(now, this.marks, this.labels)
       this.fog.update(now, dt, this.camQuat)
       this.updateKing(curr, now, dt)
+      this.updateSupply(curr, s.renderTick, now, dt)
       this.updatePreview(curr, now, dt)
       this.updateFloats(now)
     }
@@ -473,6 +505,7 @@ export class ViewRuntime {
 
     this.marks.end()
     this.hats.end()
+    this.goldOrbit.end()
 
     const t = this.localTarget
     this.cam.update(dt, realDt, this.realSec, t.x, t.z, t.dx, t.dz, this.opts.settings.shake)
@@ -500,7 +533,11 @@ export class ViewRuntime {
 
     // 地形
     this.terrain.sync(curr.Terrain, silent, this.removed)
+    // 三级资源箱（ADR 0040）：按格换木 / 铁 / 金网格（放在 sync 之后：新长出来的箱子本帧就换好）。
+    this.boxes = resourceBoxIndex(curr.ResourceBoxes, this.size)
+    this.terrain.syncTiers(this.boxes)
     for (const r of this.removed) this.pendingBricks.push({ idx: r.idx, block: r.block, tick: curr.Tick })
+    this.syncSupply(curr, silent)
 
     // 决赛圈：毒雾 + 强力宝箱（全凭快照；ChestHit / ChestOpened 事件缺席也一样演）
     this.fog.sync(curr.match.finalCircle ?? null, now / 1000, silent)
@@ -581,7 +618,9 @@ export class ViewRuntime {
         this.pendingHits.push({ id, tick: curr.Tick, died })
         if (died) {
           const hats = Math.max(p.BomberPlayerState.HatCount, this.prevMap.get(id)?.BomberPlayerState.HatCount ?? 0, this.lastHats.get(id) ?? 0)
-          this.deaths.push({ id, x: p.LogicTransform.WorldPosition.x, z: p.LogicTransform.WorldPosition.z, tick: curr.Tick, burstAt: Number.POSITIVE_INFINITY, hats })
+          const before = this.prevMap.get(id) ?? p
+          const boss = isBoss(this.opts.config, this.opts.rules, maxHealthOfView(before, this.opts.config))
+          this.deaths.push({ id, x: p.LogicTransform.WorldPosition.x, z: p.LogicTransform.WorldPosition.z, tick: curr.Tick, burstAt: Number.POSITIVE_INFINITY, hats, boss })
         }
       }
       if (prevHp === undefined && (hp <= 0 || p.eliminated)) doll.hide()
@@ -669,8 +708,15 @@ export class ViewRuntime {
         fromZ,
         delayMs: Math.max(0, burst - this.lastViewNow) + 40 + stagger,
         halo: victim ? slotColor(victim.meta.slot) : 0xffffff,
-        arc: fountainFor(hats),
+        arc: fountainFor(hats, death?.boss ?? false),
       }
+    }
+    // 中央补给开启（ADR 0040）：新出现在补给格附近的战利品从中心喷出（大号喷泉，逐颗错开）。
+    const so = this.supplyOrigin
+    if (so && (this.lastCurr?.Tick ?? 0) <= so.untilTick && Math.max(Math.abs(so.x - x), Math.abs(so.z - z)) <= 6) {
+      const seq = this.dropSeq.get(-1) ?? 0
+      this.dropSeq.set(-1, seq + 1)
+      return { fromX: so.x, fromZ: so.z, delayMs: 120 + Math.min(seq, FOUNTAIN_STAGGER_MAX) * FOUNTAIN_STAGGER_MS, halo: -1, arc: BOSS_FOUNTAIN }
     }
     for (const c of this.chestDiff.opened) {
       if (Math.abs(c.x - x) + Math.abs(c.z - z) <= 3.01) return { fromX: c.x, fromZ: c.z, delayMs: 60 + 180, halo: -1 }
@@ -680,6 +726,8 @@ export class ViewRuntime {
 
   private resetMatch(): void {
     this.endCeremony()
+    // 用户试玩反馈（2026-09-28）：每局开局默认跟随本机（局部视角），俯瞰只在按 V 时切换。
+    this.cam.resetView()
     this.fog.clear()
     this.chests.clear()
     this.pendingChest = []
@@ -719,6 +767,8 @@ export class ViewRuntime {
     this.pendingKills = []
     this.dropSeq.clear()
     this.ceremonyHold = 0
+    this.supplyState = null
+    this.supplyOrigin = null
   }
 
   private addDropCell(victim: number, x: number, z: number): void {
@@ -950,7 +1000,7 @@ export class ViewRuntime {
             // 命中（design §3.1）：自己的炸弹打到别人 → 受害者头顶「−1」心形飘字。
             if (r.bombHit && r.owner === localId && r.victim !== localId) {
               const text = HURT_TEXT(Math.round((r.points / this.perHeart) * 10) / 10)
-              this.timeline.add(now + d, () => this.addFloat(r.victim, 'heal', text))
+              this.timeline.add(now + d, () => this.addFloat(r.victim, 'hurt', text))
             }
           }
           if (!any) this.scheduleHit(doll, now)
@@ -965,6 +1015,11 @@ export class ViewRuntime {
               doll.burst(burstAt)
               this.puffCotton(cx, cy, cz, 24, 3.2, 0xffffff, 0.34)
               this.puffCotton(cx, cy, cz, 5, 2.2, ANIMAL_COLORS[doll.animal].body, 0.2)
+              // 击倒 Boss（ADR 0043）：金色彩纸 + 金棉花，配大号爆装喷泉。
+              if (this.deaths.some((d) => d.id === h.id && d.tick === h.tick && d.boss)) {
+                this.confettiBurst(cx, cy + 0.4, cz, 0, 1, 0, 60, 6.5, 1.2, [SUNSHINE, 0xffe07a, 0xffffff, 0xff5a6e])
+                this.puffCotton(cx, cy, cz, 14, 3.6, SUNSHINE, 0.3)
+              }
             })
           }
         }
@@ -1006,7 +1061,9 @@ export class ViewRuntime {
         this.pendingChest = this.pendingChest.filter((c) => c.tick > rt)
         for (const c of due) {
           const at = now + 60
-          if (c.kind === 'hit') {
+          if (c.kind === 'supply') {
+            this.timeline.add(at, () => this.supplyBurst(c.x, c.z))
+          } else if (c.kind === 'hit') {
             this.chests.shake(c.id, at)
             this.timeline.add(at, () => this.puffCotton(c.x, 0.6, c.z, 5, 1.8, 0xfff3dc, 0.2))
           } else {
@@ -1086,6 +1143,14 @@ export class ViewRuntime {
   /** 飞帽落到掉出的强化上：「啵」一小团棉花。 */
   private readonly onHatLost = (x: number, z: number): void => {
     this.puffCotton(x, 0.35, z, 4, 1.0, 0xfff3dc, 0.16)
+  }
+
+  /** 中央补给开启（ADR 0040）：青绿 + 金色彩纸冲天、棉花圈、轻微镜头冲击（按震动强度缩放）。 */
+  private supplyBurst(x: number, z: number): void {
+    this.confettiBurst(x, 0.8, z, 0, 1, 0, 80, 7.5, 1.4, [0x5ee0c8, 0x2ec4b6, SUNSHINE, 0xffffff, 0xff5a6e])
+    this.puffCotton(x, 0.6, z, 16, 3.2, 0xc9fff4, 0.3)
+    this.puffCotton(x, 0.5, z, 10, 2.4, 0xffffff, 0.3)
+    this.cam.shake(0.1)
   }
 
   private chestBurst(x: number, z: number): void {
@@ -1178,10 +1243,12 @@ export class ViewRuntime {
     const x = (idx % this.size) + 0.5
     const z = Math.floor(idx / this.size) + 0.5
     const crate = block === BlockType.木箱
+    // 铁箱 / 金箱碎成自己的颜色（ADR 0040）；木箱仍是三种木色。
+    const woodCrate = crate && this.terrain.tierAt(idx) === TIER_CODE.wood
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + hash01(idx, i) * 0.6
       const out = 1.5 + hash01(idx + i, 1) * 1.5
-      const c = crate ? FRAG_COLORS_CRATE[i % 3] : i % 4 === 3 ? SOFT_BLOCK_COLORS[(idx + i) % 4] : color
+      const c = woodCrate ? FRAG_COLORS_CRATE[i % 3] : crate ? (i % 3 === 2 ? 0xffffff : color) : i % 4 === 3 ? SOFT_BLOCK_COLORS[(idx + i) % 4] : color
       this.fragments.spawn({
         x: x + Math.sin(a) * 0.2,
         y: 0.45,
@@ -1223,7 +1290,10 @@ export class ViewRuntime {
       const inWater = this.terrain.groundAt(Math.floor(this.pos.x), Math.floor(this.pos.z)) === BlockType.水
       doll.groundY += ((inWater ? -0.1 : 0) - doll.groundY) * Math.min(1, dt * 10)
       const hp = p.玩家属性.血量当前
-      const stage = heartStage(hp, this.perHeart)
+      const maxHp = maxHealthOfView(p, this.opts.config)
+      // 他人破损三档按占上限比例（design §12）；Boss 只竖直加高（ADR 0039 / 0043）。
+      const stage = damageStage(hp, maxHp)
+      doll.setHeight(bossHeightScale(maxHp, this.perHeart, this.opts.rules.bossMinHearts))
       const prot = renderTick < p.BomberPlayerState.ProtectedUntilTick
       const sk = p.skills
       const combo = comboOf(sk, this.opts.rules.skills)
@@ -1235,6 +1305,12 @@ export class ViewRuntime {
       this.dollFx.tremble = st.shocked && !st.frozen ? shockTremble(now / 1000, p.NetEntityIdRaw) : 0
       this.dollFx.glow = form ? form.glow * (0.75 + 0.25 * Math.sin((now / 1000) * Math.PI * 2)) : 0
       this.dollFx.glowColor = form?.ring
+      // 狂暴（ADR 0040）：全身红光，盖过组合技的光。
+      const frenzy = frenzyActive(p, renderTick)
+      if (frenzy) {
+        this.dollFx.glow = frenzyGlow(now)
+        this.dollFx.glowColor = FRENZY_LOOK.color
+      }
       doll.update(this.pos.x, this.pos.z, now, dt, stage, prot, this.dollFx)
       this.skillFx.player(doll, sk, renderTick, curr.match.tickRateHz, now)
 
@@ -1260,6 +1336,14 @@ export class ViewRuntime {
         this.marks.ring(doll.x, doll.z, L.ringQuad, color, DOLL_FIT.otherRingAlpha)
       }
       if (prot) this.marks.dashedRing(doll.x, doll.z, L.protectRing, 0xffffff, 0.9, now * 0.002)
+      if (frenzy) this.marks.glowAt(doll.x, doll.z, 1.3, 0.9, 0.12, 0.08, 0.55 + 0.25 * Math.sin(now * 0.02))
+      // 金心环绕（ADR 0039）：几颗金心绕着腰转。
+      const gold = Math.min(this.opts.rules.maxGoldHearts, p.goldHearts ?? 0)
+      for (let i = 0; i < gold; i++) {
+        const q = goldOrbitPoint(i, gold, now + p.NetEntityIdRaw * 97)
+        const sc = GOLD_ORBIT.size
+        this.goldOrbit.push(trs(M, doll.x + q.x, q.y + doll.groundY, doll.z + q.z, 0, now * 0.004 + i, 0, sc, sc, sc))
+      }
     }
     if (!localSeen) {
       this.localTarget.dx = 0
@@ -1274,7 +1358,7 @@ export class ViewRuntime {
       const king = id === kingId && kingId !== 0
       const n = this.shownHats(p, renderTick, now)
       const crowned = king && n >= pillarMin
-      const th = this.hats.tower(n, doll.headTop, doll.headQuat, doll.swayX, doll.swayZ, crowned)
+      const th = this.hats.tower(n, doll.headTop, doll.headQuat, doll.swayX, doll.swayZ, crowned, 1, doll.heightScale)
       this.towerH.set(id, th)
       let base = this.lastBase.get(id)
       if (!base) this.lastBase.set(id, (base = { x: 0, y: 0, z: 0, n: 0, unit: 1 }))
@@ -1526,7 +1610,12 @@ export class ViewRuntime {
       tag.name = tag.isLocal ? '你' : p.meta.name
       tag.stack = this.shownHats(p, this.lastRenderTick, now)
       tag.king = kingId !== 0 && p.NetEntityIdRaw === kingId
-      tag.pips = now < doll.hitBarUntil && alive ? heartStage(p.玩家属性.血量当前, this.perHeart) : -1
+      // 心条（ADR 0039）：Boss 常驻，其余受击后 3 秒；格数 = 上限，金心格为金色。
+      const bar = headHeartBar(p.玩家属性.血量当前, maxHealthOfView(p, this.opts.config), this.perHeart, p.goldHearts ?? 0, this.opts.rules.bossMinHearts, now < doll.hitBarUntil)
+      tag.pips = alive ? bar.pips : -1
+      tag.pipMax = bar.pipMax
+      tag.pipGold = bar.pipGold
+      tag.boss = bar.boss
       tag.visible = alive
       const th = this.towerH.get(p.NetEntityIdRaw) ?? 0
       const a = doll.labelAnchor(this.v3, th)
@@ -1554,6 +1643,36 @@ export class ViewRuntime {
     }
     const endgame = curr.BomberMatchState.Phase === 2
     this.spotlight.update(active, this.kingX, this.kingZ, now, dt, endgame, this.camQuat, this.marks)
+  }
+
+  // ---------------------------------------------------------------- 中央补给 / 金箱（原型扩展 NON-CONTRACT，ADR 0040）
+
+  /** 补给状态变化（快照）：变成「已开启」时排一次开启喷发（跟 renderTick 对齐），并记下战利品的喷发起点。 */
+  private syncSupply(curr: WorldSnapshot, silent: boolean): void {
+    const sp = curr.match.supply ?? null
+    const state = sp ? sp.state : null
+    if (sp && state === 'opened' && this.supplyState !== 'opened' && !silent) {
+      const x = sp.Cell.X + 0.5
+      const z = sp.Cell.Y + 0.5
+      this.pendingChest.push({ kind: 'supply', id: 0, tick: sp.openTick, x, z })
+      this.supplyOrigin = { x, z, untilTick: sp.openTick + 2 * this.opts.config.tickRateHz }
+    }
+    this.supplyState = state
+  }
+
+  /** 中央补给光柱（预告起亮、开启后留 8 秒）+ 礼盒名牌倒计时；金箱（需 2 下）头顶剩余命中点。 */
+  private updateSupply(curr: WorldSnapshot, renderTick: number, now: number, dt: number): void {
+    const rate = curr.match.tickRateHz
+    const b = supplyBeacon(curr.match.supply, renderTick, rate)
+    const lit = !!b && (!b.opened || renderTick < (curr.match.supply?.openTick ?? 0) + 8 * rate)
+    this.supplyBeam.update(lit, b?.x ?? 0, b?.z ?? 0, now, dt, false, this.camQuat, this.marks)
+    if (b && lit) this.labels.setBeacon(b.opened ? '补给开启！' : `补给 ${b.secLeft}`, b.x, SUPPLY_BEAM.height * 0.45, b.z)
+    for (const [idx, box] of this.boxes) {
+      if (box.HitsRequired <= 1) continue
+      const x = (idx % this.size) + 0.5
+      const z = Math.floor(idx / this.size) + 0.5
+      this.labels.setChest(-1 - idx, box.HitsLeft, box.HitsRequired, x, 1.15, z, true)
+    }
   }
 
   // ---------------------------------------------------------------- 技能（原型扩展 NON-CONTRACT，ADR 0030）

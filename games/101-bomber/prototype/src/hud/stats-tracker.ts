@@ -1,11 +1,13 @@
-import { MatchPhase, type CharacterId, type SkillId, type U64, type WorldSnapshot } from '../contract'
+import { MatchPhase, PickupKind, type CharacterId, type SkillId, type U64, type WorldSnapshot } from '../contract'
 import type { HighlightStats } from '../present/highlight-cards'
 import type { ChainLedger } from './chain-ledger'
 import type { TickBatch } from './timeline'
 
 /**
  * 本人本局统计（design §13 结算页）：全部从事件 + 快照推出，matchIndex 变化时清零。
- * 另按人累计全场的高光卡统计（design §13 高光卡，ADR 0043）：最长连锁、击杀、帽王时长、拆迁、拾取、1 心逃生。
+ * 另按人累计全场的高光卡统计（design §13 高光卡，ADR 0043）：最长连锁、击杀、帽王时长、拆迁、拾取、1 心逃生、
+ * 击倒 Boss（死者死前心数上限 ≥ 6，ADR 0039）、捡到的金心。快照从没带过 `maxHealth` / `goldHearts` 的数据源，
+ * 后两类不给高光卡（字段缺席 = 本类不参与分配）。
  */
 export interface MatchStats {
   matchIndex: number
@@ -20,6 +22,8 @@ export interface MatchStats {
   maxHats: number
   /** 本人身为帽王的累计 Tick（只算 Running / Endgame）。 */
   hatKingTicks: number
+  /** 原型扩展（NON-CONTRACT，ADR 0039）：本局本人最高心数上限（整心；快照缺 maxHealth 时 = 基础 3 心）。 */
+  maxHearts: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：本人主动技能成功施放次数（SkillActivated）。 */
   skillCasts: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：本局角色（结算表「角色」）；未知为 null。 */
@@ -44,6 +48,7 @@ function empty(matchIndex: number): MatchStats {
     bestChain: 0,
     maxHats: 0,
     hatKingTicks: 0,
+    maxHearts: 0,
     skillCasts: 0,
     character: null,
     skills: [],
@@ -59,8 +64,19 @@ interface PlayerTally {
   derivedBricks: number
   pickups: number
   clutch: number
+  /** 击倒 Boss 的次数。 */
+  bossKills: number
+  /** 捡到的金心数。 */
+  goldHearts: number
   /** 此刻正处在 1 心（> 0 且 ≤ 1 心）。 */
   low: boolean
+}
+
+export interface StatsTrackerOptions {
+  /** Boss 门槛（半心点，= bossMinHearts × 每心点数）；缺省 12。 */
+  bossMinPoints?: number
+  /** 基础心数上限（半心点，= BomberConfig.maxHealthPoints）；缺省 3 心。 */
+  baseMaxHealth?: number
 }
 
 export class StatsTracker {
@@ -70,25 +86,33 @@ export class StatsTracker {
   private lastSnapTick = -1
   private readonly board = new Map<U64, PlayerTally>()
   private sawBrickEvents = false
+  /** 数据源的快照带过心数上限 / 金心（这两类高光卡才参与分配）。 */
+  private sawMaxHealth = false
+  private sawGoldHearts = false
+  private readonly bossMinPoints: number
+  private readonly baseMaxHealth: number
 
   constructor(
     private readonly localId: U64,
     matchIndex = 0,
     private readonly pointsPerHeart = 2,
+    opts: StatsTrackerOptions = {},
   ) {
     this.s = empty(matchIndex)
+    this.bossMinPoints = opts.bossMinPoints ?? 6 * pointsPerHeart
+    this.baseMaxHealth = opts.baseMaxHealth ?? 3 * pointsPerHeart
   }
 
   private tally(id: U64): PlayerTally {
     let t = this.board.get(id)
     if (!t) {
-      t = { bestChain: 0, hatKingTicks: 0, eventBricks: 0, derivedBricks: 0, pickups: 0, clutch: 0, low: false }
+      t = { bestChain: 0, hatKingTicks: 0, eventBricks: 0, derivedBricks: 0, pickups: 0, clutch: 0, bossKills: 0, goldHearts: 0, low: false }
       this.board.set(id, t)
     }
     return t
   }
 
-  /** 高光卡输入（Boss 猎人 / 金心收藏家的数据要等规则层有心数上限与金心，这里先不带 → 这两类不参与分配）。 */
+  /** 高光卡输入；数据源没有心数上限 / 金心时不带 bossKills / goldHearts（这两类不参与分配）。 */
   highlightStats(id: U64): HighlightStats {
     const t = this.board.get(id)
     return {
@@ -99,6 +123,8 @@ export class StatsTracker {
       bricks: t ? (this.sawBrickEvents ? t.eventBricks : t.derivedBricks) : 0,
       clutch: t?.clutch ?? 0,
       pickups: t?.pickups ?? 0,
+      ...(this.sawMaxHealth ? { bossKills: t?.bossKills ?? 0 } : {}),
+      ...(this.sawGoldHearts ? { goldHearts: t?.goldHearts ?? 0 } : {}),
     }
   }
 
@@ -142,12 +168,18 @@ export class StatsTracker {
           if (e.KillerNetEntityIdRaw !== e.VictimNetEntityIdRaw) {
             this.s.killsById.set(e.KillerNetEntityIdRaw, (this.s.killsById.get(e.KillerNetEntityIdRaw) ?? 0) + 1)
             if (e.KillerNetEntityIdRaw === me) this.s.kills++
+            // 击倒 Boss（ADR 0039 / 0043）：死者死前（上一份快照）心数上限 ≥ 门槛。
+            const victim = batch.before?.Players.find((p) => p.NetEntityIdRaw === e.VictimNetEntityIdRaw)
+            if (e.KillerNetEntityIdRaw !== 0 && victim?.maxHealth !== undefined && victim.maxHealth >= this.bossMinPoints) {
+              this.tally(e.KillerNetEntityIdRaw).bossKills++
+            }
           }
           if (e.VictimNetEntityIdRaw === me) this.s.deaths++
           break
         case 'PickupTaken':
           if (e.PickerNetEntityIdRaw === me) this.s.pickups++
           this.tally(e.PickerNetEntityIdRaw).pickups++
+          if (e.Kind === PickupKind.GoldHeart) this.tally(e.PickerNetEntityIdRaw).goldHearts++
           break
         case 'BrickDestroyed':
           if (e.OwnerNetEntityIdRaw === me) this.eventBricks++
@@ -196,6 +228,11 @@ export class StatsTracker {
     if (!snap) return
     const me = snap.Players.find((p) => p.NetEntityIdRaw === this.localId)
     if (me) this.s.maxHats = Math.max(this.s.maxHats, me.BomberPlayerState.HatCount)
+    if (me) this.s.maxHearts = Math.max(this.s.maxHearts, Math.floor((me.maxHealth ?? this.baseMaxHealth) / this.pointsPerHeart))
+    for (const p of snap.Players) {
+      if (p.maxHealth !== undefined) this.sawMaxHealth = true
+      if (p.goldHearts !== undefined) this.sawGoldHearts = true
+    }
     // 没有技能表现事件的数据源（及开局专属技能）：从快照的角色与技能槽补齐。
     if (me?.skills) {
       this.s.character ??= me.skills.character

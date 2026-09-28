@@ -10,6 +10,16 @@ interface BannerItem {
   mine: boolean
 }
 
+const BANNER_ICON: Readonly<Record<BannerTone, 'ring' | 'spark' | 'flame' | 'crown' | 'heart' | 'gift'>> = {
+  crown: 'crown',
+  fall: 'crown',
+  final: 'ring',
+  evolve: 'spark',
+  streak: 'flame',
+  boss: 'heart',
+  supply: 'gift',
+}
+
 /** 横幅排队最多留几条。 */
 export const BANNER_QUEUE_MAX = 3
 
@@ -34,6 +44,7 @@ export function queueBanner<T extends { tone: BannerTone }>(queue: T[], b: T, ma
  * 全场横幅：只播加冕 / 倒台 / 决赛圈开场（design §3.1、§4.2），排队逐条播放。
  * 原型扩展（NON-CONTRACT，ADR 0030）：本人进化「进化：火焰冲刺！」也走横幅（tone 'evolve'，只给本人看）。
  * 本人连杀（tone 'streak'，ADR 0043）：双杀 … 暴走 / 大杀特杀 / 主宰 / 超神，只给本人看。
+ * 全场大事件（方向 B）：击倒 Boss（tone 'boss'，ADR 0043）、中央补给预告 / 开启（tone 'supply'，ADR 0040）。
  */
 export class BannerQueue {
   private readonly root: HTMLDivElement
@@ -68,9 +79,14 @@ export class BannerQueue {
       return
     }
     this.until =
-      now + (next.tone === 'final' ? BannerQueue.FINAL_DURATION_MS : next.tone === 'evolve' ? BannerQueue.EVOLVE_DURATION_MS : BannerQueue.DURATION_MS)
+      now +
+      (next.tone === 'final'
+        ? BannerQueue.FINAL_DURATION_MS
+        : next.tone === 'evolve' || next.tone === 'boss' || next.tone === 'supply'
+          ? BannerQueue.EVOLVE_DURATION_MS
+          : BannerQueue.DURATION_MS)
     this.root.dataset.tone = next.tone
-    setIcon(this.icon, next.tone === 'final' ? 'ring' : next.tone === 'evolve' ? 'spark' : next.tone === 'streak' ? 'flame' : 'crown')
+    setIcon(this.icon, BANNER_ICON[next.tone])
     this.root.classList.toggle('is-mine', next.mine)
     setText(this.title, next.title)
     setText(this.sub, next.sub)
