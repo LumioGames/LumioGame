@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint51补充,scene28 于测量后遭第五次死亡fatal,证据保全现场清理（2026-10-06 1:1x +08）
+
+scene28 于双移动测量采集并封存后约25分钟(Gameplay tick10341)第五次复现同一 "Death structure intent" fatal:DS exit、六Bot session_terminal、launcher FAIL;fault 日志 SHA 保全于 live-ordinary28-root-01/hostentry_fault.log.scene28-preserved(receipt 记 occurrence=5,含测量先于fatal事实),运行时副本恢复306原状;残留aux 18105精确停止,失效页面已关,18101/18105/18331全部空闲,受保护端口(14监听)未动。**本轮增量刷新的浏览器回归结论不受影响**(证据先于fatal封存);五份现场死亡证据齐备供ADR142 Owner裁定。scene28全链路产物完整保留:complete26(20261006-incremental-refresh-delivery)、Game28(game28-incremental-refresh-consumer-01)、scene28物化(browser-experience-scene28-source-preparation-01)、测量(live-private-28-root-01)。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint50,三套件全达基线!Gas 943/948(仅5环境)、ECS 仅预存环境失败、Coordination 全绿,独立复审已派（2026-10-06 0:4x +08）
 
 按验证器指示对齐最后一例:wide-hierarchy 的 prior 补移动子树闭包+capacity 在预留后取(旧129/1精确计数与恒等是见证/全量拷贝钉子);ECS 侧确认 RealGeneratorPipeline 失败在纯净 57bd5303 基线同败(环境性,非回归),唯一真回归=AuthorityCaptureScratch 账本恒等/峰值标定,按增量语义调整(第二次=首次子集且此后幂等;Peak==Max→≤Max,强不变量配额/值/残留不变)。终态:Gas 948:943(仅5个预先存在的环境失败)、ECS 仅预存环境失败、Coordination 202 绿/2 BLOCKED_ENV。全部对齐已提交推送(11124618);独立复审子代理已派出(裁决七通道完备性/顺序重建/remote见证标记消费者/四处置期望是否放宽/ProjectUnderRemote 的 Dirty 抑制语义/唯一权威世界约束),结果落 .101-restore-01/runtime26-refresh-touched-01/independent-review-01/result.json;handoff v7 已更新。complete26/Game28/scene28/浏览器回归视复审裁决推进;全部交付门保留。goal ACTIVE。
