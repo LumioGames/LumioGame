@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint57,决定性发现:残余~1Hz停顿主要是"后台标签页rAF饥饿"测量伪影——隐藏页整窗raf=0、停顿前间隔850-960ms;前台残余p50 5.4/p95 87.6远小于此前口径,runtime28目标废止（2026-10-06 4:1x +08）
+
+scene32(m/n新账号)SERVING+私有测量UI 18105,双移动窗口采集:**被隐藏的A页整个窗口 raf=0/visible=0,8个连续停顿tick(569-577)前都有850-960ms调度间隔,tick本体仅~100ms追赶工作(native仅7-20ms)**;同页安静12秒监听 rAF 回调为**零**——IAB单前台制下隐藏页 rAF 被节流,泵被饿死。**结论:此前归档的"停顿tick内native突发18×"(runtime28)主要是追赶伪影,不是Runtime路径成本;双标签同窗采样对隐藏侧系统性地失真。**前台侧(B)残余:p50 5.4ms/p95 87.6ms/max 135.8ms/17长任务——真实但远小,归因须前台钉住采样,首选候选=游戏仓客户端UI(applyDump/DOM重建),不在Runtime仓。runtime28-residual-stall-target **废止**(handoff v3);稳态undo门(1222ff6f)保留为回归守卫。测量纪律修正:今后移动采样必须前台钉住或仅读前台页。证据 live-private-32-root-01/{stall-attribution,dual-move-01-cutA/B}.json(SHA)。**无Runtime侧RED门存在——未盲目实施publication-version门控**;complete28链路未启动(无修复可消费)。fatal证据链(九份封顶)与其余交付门保持。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint56,稳态原生预算门GREEN即立:GAS稳态组零undo/release——管理侧假设被否证,残余停顿需活场景四段EventSource实测归因（2026-10-06 3:5x +08）
 
 对 runtime28 目标先立门再修:新回归门 GasJointSteadyNativeBudgetTests(commit 1222ff6f 已推)——1个已覆盖存活输入下连续8个稳态权威组 native Undo 调用为零、完成排空每组≤2(实测0)。**门从GREEN开始:管理侧 GAS 在稳态不重发 undo/release 的假设被否证为假说**——停顿tick的18× native 突发不来自GAS undo路径,剩余候选=NativeWitnessChanged 每输入段读(需EventSource计数)/游戏侧 BomberTerrainRead 工作读(游戏仓)/客户端UI refreshVoxelWorld(游戏仓)/~1Hz FullSnapshot 应用。离线fake-session无法复现突发(稳态已零),**四段EventSource必须在活移动场景上运行**才能归因——下一会话入口。Gas 948:943 维持基线。账本与 handoff(publish-candidate-handoff.json v2)已同步;八份+封顶fatal证据链、其余交付门保持。goal ACTIVE。
