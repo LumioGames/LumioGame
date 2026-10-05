@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58,scene33 用户可见浏览器验收现场已备好(SERVING+验收指引),等待用户前台操作与 Owner 三项裁定（2026-10-06 4:5x +08）
+
+scene33(o/p新账号,无死亡新世界,complete27/Game29 引擎)按同一资格化基线重建 **SERVING**(6Bot+2玩家,18101/18331;受保护端口未动)。用户验收指引已写入 live-ordinary33-root-01/user-acceptance-guide.json:①用户在自己可见浏览器前台开 A/B 两页;②双向移动终验(A右B上/A上B右各15s);③放弹同步终验;④单一序列十次真实关闭/新开可玩重进;⑤整浏览器进程退出后重进测试;⑥保存时序/截图/笔记(证据目录同文件夹,服务器日志自动化侧并行保留)。**明确边界:本自动化会话的Hz/卡顿数字受IAB窗格rAF上界约束(checkpoint57),真实体验只能由用户前台浏览器裁定。**同时等待 Owner 三项裁定:ADR142(十份死亡证据链,Draft/Pending)、Platform18085发布身份(旧bomber-0.0.4-main.ecece8a)、schema15严格pins独立复审(BomberPlayObservation.cs/replica-adapter.test.ts)。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint57补充2,scene32 死于同链第10次(tick10443,一行登记),现场清理完毕（2026-10-06 4:3x +08）
 
 scene32 于停顿归因测量(含三组对照)完成并封存后死于同一 "Death structure intent" fatal(tick10443)。按 checkpoint54 封顶纪律**一行登记**:fault 日志 SHA 保全于 live-ordinary32-root-01(receipt chainOccurrence=10),运行时副本恢复306,aux 18105 精确停止,页面全关,18101/18105/18331 空闲,受保护端口14监听未动。本轮归因结论(rAF 窗格伪影、有效指标p50 5.4-5.7ms、runtime28废止)在 fatal 前封存,不受影响。goal ACTIVE。
