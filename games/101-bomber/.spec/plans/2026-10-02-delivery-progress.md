@@ -16,6 +16,8 @@ complete25=complete24 七源原commit+唯一 LumioClient c3611518 差异;pack/ve
 
 其余缺口保留:最终修复后十次真实关闭重进可玩 OPEN;公开 Platform18085 旧签名未闭合;严格 schema15 pins 关闭;ADR142 Owner Pending;Server12/Runtime25/provider25 边界原样。恢复入口:scene27 现场(18101/18105/18331)、.run/20261005-hot-codec-delivery(complete25+全阶段证据)、.run/game27-hotcodec-consumer-preparation-01、.run/browser-experience-scene27-source-preparation-01、.run/live-private-27-root-01/measurement-summary.json、C:/Work/LumioGames/.101-restore-01。goal ACTIVE。
 
+补充(22:40 +08):scene27 于测量完成后约 14:32Z(Gamplay tick12948)**第四次复现同一死亡结构 fatal**——本次发生在双玩家活跃对局中、A 玩家局内死亡换身体之后,进一步佐证致命/继任迁移路径本身缺陷而非仅断连处理。fault 日志已 SHA 保全于 live-ordinary27-root-01/hostentry_fault.log.scene27-preserved(receipt 记 occurrence=4),运行时副本已恢复 306 原状;launcher/bot/DS 日志在原目录;aux 18105 精确停止,浏览器页面已关,scene 端口全部空闲,受保护端口未动。四份现场死亡证据(11:52Z/12:28Z/13:49Z/14:32Z)均已保全,供 ADR142 Owner 裁定。
+
 ### 收尾补充：其他八仓实际提交推送完成（2026-10-05）
 
 按用户追加要求，八仓主检出与此前候选图已保存到closeout02远端归档及完整bundle并读回核对；Server两份诊断探针以024ffd82提交并推送原分支，Platform原分支、Config两条遗漏源码分支均已正常补推。Engine/Runtime的main分叉仅归档，八仓已跟踪源码干净，无main直推、force push或新引擎tag。结果见[补充推送索引](2026-10-05-other-repositories-push.json)及[恢复记录](2026-10-05-browser-experience-closeout.md)。探针未审、原正式目标PAUSED及全部体验/交付缺口保留，当前预览仍停止。
