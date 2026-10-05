@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint55,第11轮补验:A侧首开挂起同型复现(1.65s复测即活)但第12轮双侧全绿;残余~1Hz停顿归因=停顿tick内native突发18×(体素段刷新为下一RED目标)（2026-10-06 3:0x +08）
+
+scene31(k/l新账号,无死亡世界)第11轮:A侧首开20s门超时(与scene30第9轮同型,**瞬时型在无死亡世界也复现**)、立即复测1.65s即活;B侧2.6s即活。第12轮同世界:**双侧全绿**(A 2.1s/B 1.3s)。两场景合计:12次首开中11次双侧全绿(91.7%),全部挂起首开均在无重连点击的即时复测1.6-2.0s恢复——瞬时型与旧世界持续型是两种形态,连同八份fatal均为ADR142 Owner输入。证据 live-ordinary31-root-01/supplemental-rounds.json+5张截图SHA。残余~1Hz停顿归因(基于scene29探针字段):停顿tick(96-150ms)内**native调用突发为安静tick的18×**(8.2ms vs 0.45ms边界),排除纯托管publish记账与legacy全量重建路径(仅JointPrediction==null才走);候选=GAS Witness/CorrectNative重读、组内体素段刷新(RefreshTypedAuthority的体素侧未增量——只做了ECS字段增量)、~1Hz fullsnapshot。**下一RED目标=体素段变更门控刷新**(publication-version比较),归档于 publish-candidate-handoff.json(runtime28-residual-stall-target.v1)。goal ACTIVE;八份fatal证据链保持;其余交付门保留。
+
 ### 真机体验优先交接：checkpoint54补充,scene30 亦死于第八次死亡fatal(tick17828),证据保全现场清理;无死亡起步世界仍触发链——Bot死亡亦是触发源（2026-10-06 2:5x +08）
 
 scene30 于十轮终验(B侧10/10、双侧9/10)完成并封存后死于第八次同一 "Death structure intent" fatal(tick17828)。**该世界人类玩家零死亡**(十轮中从未淘汰,fatal 时仅 Bot 间自然对局)——证明 Bot 的死亡/继任同样触发该链,不只人类断线。fault 日志 SHA 保全于 live-ordinary30-root-01(receipt occurrence=8),运行时副本恢复306,aux精确停止,全部页面已关,18101/18105/18331空闲,受保护端口14监听未动。至此八份现场 fatal 证据链(11:52Z/12:28Z/13:49Z/14:32Z/tick10341/tick21084/tick19066/tick17828)跨越三代引擎全部保全,人类与Bot死亡两种触发形态均有实例——ADR142 Owner 裁定输入完整。本轮全部验收结论(十轮B侧10/10/双侧9/10、p50 5.5ms/Hz 9.7)在 fatal 前封存,不受影响。goal ACTIVE;其余交付门保留。
