@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint52补充,scene28 restart-02 亦遭第六次死亡fatal(tick21084),证据保全现场清理（2026-10-06 1:5x +08）
+
+restart-02 在双向窗口+断连证据+十轮尝试之后同样死于 "Death structure intent" fatal(tick21084,DS exit、watchdog、六Bot退出):fault 日志 SHA 保全于 live-ordinary28-root-02/hostentry_fault.log.scene28r02-preserved(receipt occurrence=6);运行时副本恢复306;aux 18105 精确停止,全部浏览器页已关,18101/18105/18331 空闲,受保护端口14监听未动。至此六份现场死亡证据齐备(11:52Z/12:28Z/13:49Z/14:32Z/tick10341/tick21084),全部先于/后于测量的封存边界清晰,供 ADR142 Owner 裁定。本轮全部结论(增量刷新 p50 砍半、inbound_queue_full 断连链、十轮不可玩挂起)不受影响。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint52,双向移动窗口1完成;移动负载下 inbound_queue_full 断线为新证据;十轮重进实测不可玩(挂起非激活)门保持OPEN（2026-10-06 1:3x +08）
 
 scene28 restart-02(f账号)SERVING 后:双向移动窗口1(A右/B上15s)完成,探针/时序沿用 live-private-28-root-01 dual-move-01;窗口2遇局内淘汰+换身体,窗口3起两页先后 ws 关闭——**新证据:移动保持负载下 inbound_queue_full(queue 256/256,drain 停滞12.2s)导致传输关闭踢出**,归因链指向剩余 Publish 阶段全世界表现键遍历(97实体~215KB/组)——它不仅拖慢帧,还会断连。十轮真实关闭/新开验收在公开18101正式页执行:2轮实测记录(每轮双页真实开-开始-关),**均不可玩**:HUD渲染但 Move/放弹按钮全部禁用、会话未激活、开始对局+Reconnect并存——与 ADR142 Draft/Owner-Pending 的离线死亡/继任链在多次换身体/断线后的表现一致;按约束未修游戏 guard 遮掩,证据存 live-ordinary28-root-02/ten-close-reopen-attempt.json。十轮门保持 OPEN(需新对局或 Owner 裁定后重测);Publish 阶段优化确认为下一 Runtime RED→GREEN 目标(candidate-handoff v10 已载)。scene28 现场 SERVING 保留;受保护端口未动;其余交付门全部保留。goal ACTIVE。
