@@ -4,6 +4,14 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint44,Refresh 增量刷新候选 RED 已立、五条分叉通道并入后仍差最后一层,候选以 WIP 分支封存未消费（2026-10-05 23:5x +08）
+
+按验证器指示在所属 Runtime 仓对移动期每泵 54–108ms 主导成本开 RED→GREEN:隔离工作树 .101-restore-01/LumioGameRuntime26RefreshTouchedOnly(基 57bd5303)。定位:成本在 GasJointPrediction.Selective 四相中的 RefreshTypedAuthority(每权威组全量 实体×组件×字段 捕获拷贝);咽喉 ApplyValidatedWorldChange 携带组触及实体。**RED 已立**:真实 native 下 96 个 wire 创建未触及实体 + 1 字段组 = 全量 1,731,200B vs 预算 96,000B(GasJointRefreshTouchedOnlyTests)。
+
+候选(GREEN 未达,commit f257df5a,分支 wip/101-incremental-authority-refresh 已推送)并入五条合法分叉通道:wire 触及追踪、predicted.Dirty 增量、层属实体(CollectOwnedEntities,新 IPredictionFieldOwner)、本地空间标记(attach/detach 按 ApplyingRemote 分流远/本地集,CommitSpatialIndex 消费并清两者)、StructureSchema 重收养(Find+!IsEmpty,零投影读副作用),另有首刷全量/新预测世界/dirty 收缩三重全量兜底。过程中 12 个真回归(TransformGraph 撤销、restore-composition 重放 [1,2,2]、structural scratch refusal)与 LegacyJournal 手写重挂族全部被这些通道修复;克隆包裹 ApplyingRemote 的尝试会破坏空间存储预算测试,已撤销。
+
+**未解的最后阻塞**:wire 创建的实体持有预测层位置,CollectOwnedEntities 每次刷新把它们全部重拷(97 实体夹具 skip=0,自测仍 1.73MB RED)。终态套件 948:941 过、7 失败=5 个预先存在的环境失败(缺 LUMIO_VOXEL_PREDICTION_TEST_PATH test-support native,基线同败)+自测预算 RED+1 个方差敏感的 boxing 测试。候选明细与续作路径见 worktree 内 .run/refresh-touched-01/candidate-handoff.json(sha 32f3329d…)。**未进任何官方整包、未消费、未浏览器**;complete26/Game28/scene28 未开始。现场维持 scene27 收尾后的干净状态(端口空闲、受保护服务未动)。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint43,Client16 热编解码全链路落地并被实测否证为主因,真实停顿在移动期每泵 54–108ms,死亡fatal第三次复现（2026-10-05 22:35 +08）
 
 接手对话从最终交接恢复现场并推进:restart-03 按同资格化基线(complete24/Game26)重建 SERVING(新账号 PlayScene26Oct05c*,审批 approval-03/run-06 变体);12:28Z fatal 的 hostentry_fault.log 先 SHA 保全再移出运行时副本;PowerShell7 缺失经 winget 安装恢复。双移动基线:A 8.28Hz/mean30.74/p95 33.6/max892、B 7.02Hz/mean34.84/p95 244.7,两页均有 ~1Hz 周期 240–520ms 长任务。约15分钟后(13:49Z,Gameplay tick18216)同一 "Death structure intent" fatal 第三次复现,DS exit、六Bot session_terminal、launcher FAIL;证据保全于 live-ordinary26-root-restart-03*。ADR142 仍 Draft/Owner Pending,未启用任何 Draft 候选。
