@@ -4,6 +4,18 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint43,Client16 热编解码全链路落地并被实测否证为主因,真实停顿在移动期每泵 54–108ms,死亡fatal第三次复现（2026-10-05 22:35 +08）
+
+接手对话从最终交接恢复现场并推进:restart-03 按同资格化基线(complete24/Game26)重建 SERVING(新账号 PlayScene26Oct05c*,审批 approval-03/run-06 变体);12:28Z fatal 的 hostentry_fault.log 先 SHA 保全再移出运行时副本;PowerShell7 缺失经 winget 安装恢复。双移动基线:A 8.28Hz/mean30.74/p95 33.6/max892、B 7.02Hz/mean34.84/p95 244.7,两页均有 ~1Hz 周期 240–520ms 长任务。约15分钟后(13:49Z,Gameplay tick18216)同一 "Death structure intent" fatal 第三次复现,DS exit、六Bot session_terminal、launcher FAIL;证据保全于 live-ordinary26-root-restart-03*。ADR142 仍 Draft/Owner Pending,未启用任何 Draft 候选。
+
+Client16 完成全部资格并经官方链路消费:按 owner-archive 恢复 c3611518 到 C:/Work/LumioGames/.101-restore-01 隔离工作树(Runtime24 57bd5303、Engine 523c3d3、NativeCore/Voxel/Server 同commit同步恢复);final-01 68/68 GREEN(63旧+5新);trim-host 扩展 hot codec 探针后 strict Publish raw0、产物执行 checks=15(hotCodecChecks=7)exit0;独立复审 18/18 全过仅5条P3,ACCEPT_FOR_OWNER_COMMIT_AND_PACKAGE_CONSUMPTION;已推 LumioClient 分支 fix/101-working-read-hot-byte-codec。
+
+complete25=complete24 七源原commit+唯一 LumioClient c3611518 差异;pack/verify/audit(305 payload issues空)/五PE闭包/新写 Default CLR 构造探针(REAL_NATIVE_HOSTING_CTOR_DEFAULT_CLR_GREEN)/domain 全 raw0;Root 接受 d00258cf(审批绑定 complete24 接受+Client16 复审;pack07 旧路径依赖全部换恢复根;Game27 普通四域 835 raw0,与26差异24文件全在引擎 WASM replica;同源严格 Host AOT 376 raw0。scene27 新账号 PlayScene26Oct05d* 物化启动 SERVING;私有测量 UI(377=game27 AOT 376+同组测量字面量,index tabindex 移植)18105;双玩家实际同房进入。
+
+**实测结论:热编解码未改善移动体验,不是主因。** 测量页(含观察成本)scene27:A 6.85Hz/B 8.95Hz,tick p50 仍 ~12ms,~1Hz 220–260ms 周期长任务与 26 基线同在(A/B 优劣互换属窗口方差)。决定性判别:无探针正式 18101 页(带热编解码)真实按住右移12秒,注入 PerformanceObserver 实测 78 个 54–108ms 长任务、中位间隔 ~104ms——真实生产停顿是移动期几乎每泵一个 54–108ms 长任务,与此前"Refresh 占四相 ~77%"一致;下一步主攻应为 replica Refresh/表现重建(所属 Runtime 仓),JS-Native 边界分配线到此为止。双向同步实测通过:两页最新 pose 完全一致(同5枚炸弹 id/xz/owner/sourceLife、同玩家位置),放弹双向投影同步;截图与探针存 live-private-27-root-01。人数因果未证明;整浏览器退出 UNTESTED。
+
+其余缺口保留:最终修复后十次真实关闭重进可玩 OPEN;公开 Platform18085 旧签名未闭合;严格 schema15 pins 关闭;ADR142 Owner Pending;Server12/Runtime25/provider25 边界原样。恢复入口:scene27 现场(18101/18105/18331)、.run/20261005-hot-codec-delivery(complete25+全阶段证据)、.run/game27-hotcodec-consumer-preparation-01、.run/browser-experience-scene27-source-preparation-01、.run/live-private-27-root-01/measurement-summary.json、C:/Work/LumioGames/.101-restore-01。goal ACTIVE。
+
 ### 收尾补充：其他八仓实际提交推送完成（2026-10-05）
 
 按用户追加要求，八仓主检出与此前候选图已保存到closeout02远端归档及完整bundle并读回核对；Server两份诊断探针以024ffd82提交并推送原分支，Platform原分支、Config两条遗漏源码分支均已正常补推。Engine/Runtime的main分叉仅归档，八仓已跟踪源码干净，无main直推、force push或新引擎tag。结果见[补充推送索引](2026-10-05-other-repositories-push.json)及[恢复记录](2026-10-05-browser-experience-closeout.md)。探针未审、原正式目标PAUSED及全部体验/交付缺口保留，当前预览仍停止。
