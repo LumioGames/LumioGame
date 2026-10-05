@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint54,scene30 无既往死亡新世界十轮终验:B侧 10/10、双侧 9/10(第9轮A侧瞬时挂起2秒复测即活),scene29 第七次死亡fatal证据保全（2026-10-06 2:3x +08）
+
+scene29 于十轮验收后死于第七次同一 Death structure intent fatal(tick19066),fault 日志 SHA 保全于 live-ordinary29-root-01(hostentry_fault receipt occurrence=7),运行时副本恢复306;scene30(新账号 PlayScene26Oct05i/j,无既往人类死亡)以同一 complete27/Game29 引擎重建 SERVING。**十轮真实关闭/新开终验(公开18101正式页,每轮双页开→开始→截图→真关)**:B侧 **10/10** 可操控(在 scene29 旧世界为7/10);A侧 10/10(第9轮首次20秒门超时,未点任何按钮即时复测 **1997ms 即活**——瞬时型,非持续挂起);双侧全绿 **9/10**。等待1.5-2.4秒(第9轮例外)。20张每轮双玩家截图+时序 SHA 保全于 live-ordinary30-root-01/{ten-close-reopen.json,shots/}。**ADR142 Owner 直接输入**:无既往死亡的新世界上旧世界 B 侧持续挂起不再复现(仅一次瞬时且自恢复),与死亡/继任链因果一致;七份现场 fatal 证据链齐备(11:52Z/12:28Z/13:49Z/14:32Z/tick10341/tick21084/tick19066)。未修游戏 guard。goal ACTIVE;其余交付门保留。
+
 ### 真机体验优先交接：checkpoint53,Publish增量表现键全链路:复审ACCEPT→complete27六阶段raw0→Game29→scene29实测 p50 5.5ms/Hz 9.7/max 161ms,十轮 7/10 双侧可玩（2026-10-06 2:0x +08）
 
 Publish 阶段全世界表现键遍历(97实体~215KB/组,inbound_queue_full断连链)在所属仓修复:World 缓存每实体 key+脏集,只对写入choke(OnLocalWrite/OnContainerWrite双分支/MarkTransformChange双分支/ReducerScalar/AddReducerContainer/SetSilent)、Attach全部实体、Detach、WriteStructure/ProjectStructure、ProjectPendingCommands、refresh拷贝循环标记过的实体重推导;逐key计费精确等价。门测:无变化组≤4次重推导(实测1)vs 全量97;一字段组≤5(实测2)。三套件基线(Gas 948:943仅5环境;ECS仅预存generator-pipeline;Coordination 202绿)。独立复审-02 ACCEPT(16/16 checks,2P2键别名/多源break为当前无触发形态的潜在项,3P3)。complete27 官方整包六阶段 raw0(manifest 0a5a4636,Runtime a5907448 唯一delta);Game29普通835+严格AOT 376 raw0;scene29(新账号g/h)SERVING。
