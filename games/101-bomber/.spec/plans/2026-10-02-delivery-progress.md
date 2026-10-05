@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充2,os-error-5二连发(q/r世界gen37同型),restart-03(s/t)SERVING为当前验收现场;环境因素初查(Defender实时开/磁盘938GB/RAM正常)（2026-10-06 5:1x +08）
+
+q/r 世界又在 DS generation 37 因同型 "拒绝访问(os error 5)" 退出——**os-error-5 二连发,均非死亡链**(零EXECUTE_FAULT);初查:Defender实时监控开启、磁盘938GB空闲、RAM正常、无残留进程;疑似环境级文件句柄/AV扫描干扰 ds-store 检查点写入,确切根因待现场复现时取证。restart-03(s/t)按同基线重建 **SERVING**(验收指引已迁至 live-ordinary33-root-03)。若该现场再次同型退出,记录时间点与当时操作供根因定位。用户前台验收与Owner三项裁定继续等待。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充,o/p世界因"拒绝访问(os error 5)"新形态退出(非死亡链,零EXECUTE_FAULT),restart-02(q/r)已SERVING,验收指引已迁移（2026-10-06 5:0x +08）
 
 scene33 o/p 世界在 DS generation 12 因 **DS_FATAL 拒绝访问(os error 5)** 退出——**与死亡链不同型**:零 BOMBER_EXECUTE_FAULT、无 hostentry fault 日志,DS日志SHA与Bot日志保全(os-error5-preserve-receipt.json,不计链第11次)。restart-02(q/r新账号)同基线重建 **SERVING**(6Bot+2玩家,18101/18331)。用户验收指引迁移至 live-ordinary33-root-02/user-acceptance-guide.json(指向18101 A/B、双移动/放弹终验、单一序列十轮、整浏览器退出)。等待用户前台操作与Owner三项裁定(ADR142十份链、18085身份、schema15 pins)。goal ACTIVE。
