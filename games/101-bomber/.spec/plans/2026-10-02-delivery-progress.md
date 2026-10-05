@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint56,稳态原生预算门GREEN即立:GAS稳态组零undo/release——管理侧假设被否证,残余停顿需活场景四段EventSource实测归因（2026-10-06 3:5x +08）
+
+对 runtime28 目标先立门再修:新回归门 GasJointSteadyNativeBudgetTests(commit 1222ff6f 已推)——1个已覆盖存活输入下连续8个稳态权威组 native Undo 调用为零、完成排空每组≤2(实测0)。**门从GREEN开始:管理侧 GAS 在稳态不重发 undo/release 的假设被否证为假说**——停顿tick的18× native 突发不来自GAS undo路径,剩余候选=NativeWitnessChanged 每输入段读(需EventSource计数)/游戏侧 BomberTerrainRead 工作读(游戏仓)/客户端UI refreshVoxelWorld(游戏仓)/~1Hz FullSnapshot 应用。离线fake-session无法复现突发(稳态已零),**四段EventSource必须在活移动场景上运行**才能归因——下一会话入口。Gas 948:943 维持基线。账本与 handoff(publish-candidate-handoff.json v2)已同步;八份+封顶fatal证据链、其余交付门保持。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint55补充,scene31 亦死于第九次死亡fatal(tick10760),证据保全现场清理;九份证据链封顶归档（2026-10-06 3:2x +08）
 
 scene31 于第11/12轮补验完成并封存后死于第九次同一 "Death structure intent" fatal(tick10760;又是仅Bot死亡触发)。fault 日志 SHA 保全于 live-ordinary31-root-01(receipt occurrence=9),运行时副本恢复306,aux精确停止,页面全关,18101/18105/18331空闲,受保护端口14监听未动。**九份现场fatal证据链至此封顶归档**(11:52Z/12:28Z/13:49Z/14:32Z/tick10341/tick21084/tick19066/tick17828/tick10760),三代引擎、人类与Bot两种触发、有/无既往死亡世界均覆盖——ADR142 Owner 裁定输入完备,不再重复归档同型fatal(后续同型按"同链第N次"登记行数即可)。本轮全部验收结论(第11轮瞬时挂起+复测1.65s活、第12轮双侧全绿、残余停顿native突发归因)在 fatal 前封存,不受影响。goal ACTIVE;其余交付门保留。
