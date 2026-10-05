@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充3,os-error-5三连发(s/t世界gen213,均在ds-store检查点写入时),restart-04(u/v)SERVING为当前验收现场;疑似外部文件锁(Defender实时/句柄争用),目录排除需Owner/用户决定（2026-10-06 5:3x +08）
+
+s/t 世界在 gen213 再次同型 os-error-5——**三连发**(o/p gen12、q/r gen37、s/t gen213),全部发生在 ds-store 检查点写入时(writer.lock/checkpoint-*.draft 旁),全部非死亡链(零EXECUTE_FAULT);三份记录与SHA保全。假设:外部文件锁(Defender实时扫描或句柄争用)命中检查点目录;**给 .run 证据目录加 Defender 排除属系统级决定,未自行施加**。restart-04(u/v)SERVING,验收指引在 live-ordinary33-root-04。用户前台验收与Owner三项裁定继续等待;若现场再同型退出,记录时间点。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充2,os-error-5二连发(q/r世界gen37同型),restart-03(s/t)SERVING为当前验收现场;环境因素初查(Defender实时开/磁盘938GB/RAM正常)（2026-10-06 5:1x +08）
 
 q/r 世界又在 DS generation 37 因同型 "拒绝访问(os error 5)" 退出——**os-error-5 二连发,均非死亡链**(零EXECUTE_FAULT);初查:Defender实时监控开启、磁盘938GB空闲、RAM正常、无残留进程;疑似环境级文件句柄/AV扫描干扰 ds-store 检查点写入,确切根因待现场复现时取证。restart-03(s/t)按同基线重建 **SERVING**(验收指引已迁至 live-ordinary33-root-03)。若该现场再次同型退出,记录时间点与当时操作供根因定位。用户前台验收与Owner三项裁定继续等待。goal ACTIVE。
