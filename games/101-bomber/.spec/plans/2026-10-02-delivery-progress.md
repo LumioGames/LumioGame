@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint57补充2,scene32 死于同链第10次(tick10443,一行登记),现场清理完毕（2026-10-06 4:3x +08）
+
+scene32 于停顿归因测量(含三组对照)完成并封存后死于同一 "Death structure intent" fatal(tick10443)。按 checkpoint54 封顶纪律**一行登记**:fault 日志 SHA 保全于 live-ordinary32-root-01(receipt chainOccurrence=10),运行时副本恢复306,aux 18105 精确停止,页面全关,18101/18105/18331 空闲,受保护端口14监听未动。本轮归因结论(rAF 窗格伪影、有效指标p50 5.4-5.7ms、runtime28废止)在 fatal 前封存,不受影响。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint57补充,唯一标签对照:自动化会话内IAB窗格可见性不可控(仅存A页仍raf=0/hz3.33)——Hz与停顿周期在本环境不可测,真实体验验收须用户可见浏览器（2026-10-06 4:2x +08）
 
 对照实验封死结论:关闭B仅存A页,15秒右移窗口 raf 仍为0、hz 3.33、环值与前一窗完全相同——**rAF由宿主IAB窗格可见性决定,标签级前台操作无法恢复**;自动化会话中窗格对用户不可见,全部Hz/停顿间隔数字(含历史18.56Hz与scene29的9.7Hz)都受窗格可见性上界约束,不构成用户体验结论。**有效指标仅:每tick托管工作p50 5.4-5.7ms、追赶max~640ms、native边界0.4-20ms/组、稳态零undo(离线门)**;真实浏览器的Hz/停顿/断连相关验收只能在用户自己的可见浏览器中执行——这是验收环境边界,非代码缺陷。runtime28废止维持;complete28未启动(无Runtime修复可消费,不造作修复)。九份fatal证据链与其余交付门保持。goal ACTIVE。
