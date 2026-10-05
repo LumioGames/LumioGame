@@ -4,6 +4,12 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint51,完整闭环达成:复审三轮ACCEPT→complete26六阶段raw0→Game28普通+AOT raw0→scene28实测 tick p50 从11-12ms砍半至6ms（2026-10-06 0:5x +08）
+
+按验证器指示完成全链路:最后一例对齐后 Gas 948:943(仅5环境基线)、ECS 仅预存 generator-pipeline 环境失败(纯净57bd5303同败已验证)、Coordination 202绿/2跳过;独立复审三轮:首轮REJECT(2个P1静默漂移+1打包阻断+四处置期望全判合理再定基)→30bc32a9修双集守卫+三choke见证+删StackTrace→复核又拒(第四条未见证路径:ISyncHost.OnLocalWrite/OnContainerWrite早退)→5e288af9补两处真choke见证→**累计ACCEPT_INCREMENTAL_AUTHORITY_REFRESH_P1_FIXES**。complete26官方整包(pack/verify/audit 305 payload issues空/五PE闭包/新Default CLR构造探针GREEN/domain)全raw0,Root接受1272ab4c,审批链绑定complete25接受+runtime26复审;Game28普通835 raw0+同源严格AOT 376 raw0;scene28(新账号PlayScene26Oct05e*)物化SERVING,私有测量UI(377=game28 AOT+测量层)18105服务,双玩家真实同房进入。
+
+**实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint50,三套件全达基线!Gas 943/948(仅5环境)、ECS 仅预存环境失败、Coordination 全绿,独立复审已派（2026-10-06 0:4x +08）
 
 按验证器指示对齐最后一例:wide-hierarchy 的 prior 补移动子树闭包+capacity 在预留后取(旧129/1精确计数与恒等是见证/全量拷贝钉子);ECS 侧确认 RealGeneratorPipeline 失败在纯净 57bd5303 基线同败(环境性,非回归),唯一真回归=AuthorityCaptureScratch 账本恒等/峰值标定,按增量语义调整(第二次=首次子集且此后幂等;Peak==Max→≤Max,强不变量配额/值/残留不变)。终态:Gas 948:943(仅5个预先存在的环境失败)、ECS 仅预存环境失败、Coordination 202 绿/2 BLOCKED_ENV。全部对齐已提交推送(11124618);独立复审子代理已派出(裁决七通道完备性/顺序重建/remote见证标记消费者/四处置期望是否放宽/ProjectUnderRemote 的 Dirty 抑制语义/唯一权威世界约束),结果落 .101-restore-01/runtime26-refresh-touched-01/independent-review-01/result.json;handoff v7 已更新。complete26/Game28/scene28/浏览器回归视复审裁决推进;全部交付门保留。goal ACTIVE。
