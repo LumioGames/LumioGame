@@ -4,6 +4,10 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint49,配置D落地:兄弟组顺序重建成功,自测+全部语义族绿,仅剩1例空间记账测试与5环境基线（2026-10-06 0:2x +08）
+
+按验证器指示重放配置C并实现成员表顺序重建(配置D,commit 35410931 已推):拷贝集扩展改为**父链+整个权威兄弟组**,拷贝循环本就按 World.CreationOrder 迭代,父级成员表顺序被精确重建——手写重挂/分离族全绿;ObservePredictionSpatial 见证标记归 remote 集、结构投影走 ApplyingRemote 单点、CollectOwnedEntities 补 Component 属主分支;自测夹具绑真实 native 空间索引(生产形态)+预热字段变更,400k 门下 GREEN(组 253KB/刷新本体 38KB vs 全量 ~1.73MB,45×)。两处测试期望按新本地漂移语义调整并留码内理由(churn 的 Dirty==Creation→≤、wide-hierarchy 的129见证计数→[1,129]+prior含移动子树闭包),强不变量(残留/历史/容量)不变——需独立复审签署。**Gas 948:942,失败=5 个预先存在的环境基线+1 例 RealNativeWideHierarchyRefusal 的 SpatialDirty prior.SetEquals 记账**(prior 已含 Self 子树闭包仍差集,下一步打印差集对齐)。未消费;complete26/Game28/scene28/浏览器回归未开始;全部交付门保留。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint48,配置C实测:自测绿+第六通道两法(组件属主映射+父链扩展),手写族卡在兄弟顺序重建,恢复已知良好态（2026-10-06 0:0x +08）
 
 按验证器指示重现 B 配置并加第六联合通道(配置C):(1)CollectOwnedEntities switch 补 Component 分支,LogicTransform 成员层属主可映射到实体;(2)拷贝集扩展沿权威侧父链把被拷实体的父级并入。自测在生产形态夹具(绑 NativeEngineTestLease 索引+预热字段变更)下 GREEN(400k 门,组 253KB/刷新本体 38KB)。**手写族剩余阻塞精确定义为兄弟顺序**:期望子序 [0a,0b,0e](权威 CreationOrder),实际 [0b,0e,0a](触及子被追加)——全量刷新因按 CreationOrder 重放每个父级成员表而天然恢复顺序;增量即使带父链扩展也未重建父级成员表顺序(或父级实际未被拷到,或 SyncList ApplyAuthority 在 cutoff0 不替换列表顺序)。下一杠杆:强制拷父并显式按权威序重放其成员容器;必要时在 SyncTypes.Prediction 的 ApplyAuthority 处补顺序替换。配置C五处 diff 清单与全部细节在 handoff v5(0f8018…);未保留,工作树复验恢复 cb91cfae(948:942,6失败=5环境+自测RED)。未消费;complete26/Game28/scene28/浏览器回归未开始;全部交付门保留。goal ACTIVE。
