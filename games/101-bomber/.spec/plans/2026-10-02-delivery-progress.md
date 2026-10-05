@@ -4,6 +4,10 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint50,三套件全达基线!Gas 943/948(仅5环境)、ECS 仅预存环境失败、Coordination 全绿,独立复审已派（2026-10-06 0:4x +08）
+
+按验证器指示对齐最后一例:wide-hierarchy 的 prior 补移动子树闭包+capacity 在预留后取(旧129/1精确计数与恒等是见证/全量拷贝钉子);ECS 侧确认 RealGeneratorPipeline 失败在纯净 57bd5303 基线同败(环境性,非回归),唯一真回归=AuthorityCaptureScratch 账本恒等/峰值标定,按增量语义调整(第二次=首次子集且此后幂等;Peak==Max→≤Max,强不变量配额/值/残留不变)。终态:Gas 948:943(仅5个预先存在的环境失败)、ECS 仅预存环境失败、Coordination 202 绿/2 BLOCKED_ENV。全部对齐已提交推送(11124618);独立复审子代理已派出(裁决七通道完备性/顺序重建/remote见证标记消费者/四处置期望是否放宽/ProjectUnderRemote 的 Dirty 抑制语义/唯一权威世界约束),结果落 .101-restore-01/runtime26-refresh-touched-01/independent-review-01/result.json;handoff v7 已更新。complete26/Game28/scene28/浏览器回归视复审裁决推进;全部交付门保留。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint49,配置D落地:兄弟组顺序重建成功,自测+全部语义族绿,仅剩1例空间记账测试与5环境基线（2026-10-06 0:2x +08）
 
 按验证器指示重放配置C并实现成员表顺序重建(配置D,commit 35410931 已推):拷贝集扩展改为**父链+整个权威兄弟组**,拷贝循环本就按 World.CreationOrder 迭代,父级成员表顺序被精确重建——手写重挂/分离族全绿;ObservePredictionSpatial 见证标记归 remote 集、结构投影走 ApplyingRemote 单点、CollectOwnedEntities 补 Component 属主分支;自测夹具绑真实 native 空间索引(生产形态)+预热字段变更,400k 门下 GREEN(组 253KB/刷新本体 38KB vs 全量 ~1.73MB,45×)。两处测试期望按新本地漂移语义调整并留码内理由(churn 的 Dirty==Creation→≤、wide-hierarchy 的129见证计数→[1,129]+prior含移动子树闭包),强不变量(残留/历史/容量)不变——需独立复审签署。**Gas 948:942,失败=5 个预先存在的环境基线+1 例 RealNativeWideHierarchyRefusal 的 SpatialDirty prior.SetEquals 记账**(prior 已含 Self 子树闭包仍差集,下一步打印差集对齐)。未消费;complete26/Game28/scene28/浏览器回归未开始;全部交付门保留。goal ACTIVE。
