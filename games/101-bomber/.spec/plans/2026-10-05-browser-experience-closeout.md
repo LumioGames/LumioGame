@@ -6,7 +6,7 @@
 
 ## 保存与恢复
 
-本任务 `.101-pack07` 下77个检出（71个 linked worktree、6个独立 clone）的原 HEAD 与有效未提交源都先保存。93个 `.run` / `.tmp` 目录、118257个证据文件已移至最终交接目录，核对成员与长度；另有逐文件 SHA 校验的 Client16、Runtime25、Server12关键证据及变更源码原始字节。普通 bin/obj/target 缓存可重建。原父仓与游戏 `.run` 保留，未纳入源码上传。
+本任务 `.101-pack07` 下77个直接检出（71个 linked worktree、6个独立 clone）的原 HEAD 与有效未提交源都先保存；另发现并归档一个藏在旧 `.run` 中的嵌套工作树，已移除Git标记及登记，完整目录保留为普通证据目录。93个 `.run` / `.tmp` 目录、118257个证据文件已移至最终交接目录，核对成员与长度；另有逐文件 SHA 校验的 Client16、Runtime25、Server12关键证据及变更源码原始字节。普通 bin/obj/target 缓存可重建。原父仓与游戏 `.run` 保留，未纳入源码上传。
 
 归档使用各所属 GitHub 仓的 `refs/notes/101-bomber-handoff-20261005-closeout01/*`，并保存经验证的完整历史 bundle。归档节点的 parents 保存不同候选，不是把候选合并成一份生产树。`owner-archive.json` 提供每个检出的 `savedHead`、对应 `repositoryUrl`、`archiveRef` 与 bundle；必须恢复目标 savedHead，而不是盲目使用归档节点的树。
 
@@ -24,13 +24,13 @@ git fetch https://github.com/LumioGames/LumioClient.git refs/notes/101-bomber-ha
 git worktree add --detach <新的隔离目录> c361151828b9b512bd6ab3826692c4bbbf288814
 ```
 
-父仓完整成果另保存于 LumioGame 的 `refs/notes/101-bomber-handoff-20261005-closeout01/game-workspace`；原任务分支清理后保留主目录的 detached 检出。只读查看不是发布资格。Engine 子模块原7e798301上的12个历史脏文件另保存为702f9d903e4a6ee78e8d9c4cb06408599c6a19c8，归档 ref 为 `inherited-engine-snapshot`；该指针仅代表收尾快照，不是官方完整24或新发行版本。实际预览继续消费父仓 `.run` 中资格化完整24，不消费该历史脏子模块快照。
+父仓完整成果另保存于 LumioGame 的 `refs/notes/101-bomber-handoff-20261005-closeout01/game-workspace`；原任务分支已清理，主目录保留 detached 检出，完整源码仍可见；继续时创建新的工作分支。只读查看不是发布资格。Engine 子模块原7e798301上的12个历史脏文件另保存为702f9d903e4a6ee78e8d9c4cb06408599c6a19c8，归档 ref 为 `inherited-engine-snapshot`；该指针仅代表收尾快照，不是官方完整24或新发行版本。实际预览继续消费父仓 `.run` 中资格化完整24，不消费该历史脏子模块快照。
 
 ## 实际基线与现场
 
 已资格化：官方完整24（Runtime57bd5303、Clienta9d44ba4）、Game26普通四域及同源严格Host AOT。正式376网页文件和18105纯UI测量377文件共用一个DS与唯一权威世界。完整24 manifest b7fc286f2a3f1ccde5d1cdb3a472a863676dad52c387aa36ce26b9b55f33bf44；严格AOT wasm 7bbc3fbb830a400007cb16b9531d7a0633fb15ec4d87e521910e73b472416a3a。已独审的Game26五改两增 JSON sourcegen 源已精确应用到父仓，七份 hash 见 `sourcegen-applied.json`。没有把私有测量UI覆盖进公开源码。
 
-恢复后真实2+6八人场景：公开 `http://127.0.0.1:18101/play/?player=A` 和 B；纯UI测量18105；DS `ws://127.0.0.1:18331/`，私有Platform18097。收尾采集 launcher37356、DS30168、aux13144及六Bot；最终是否存活见 live-final.json，下一对话仍须重新核查。不要影响18081、18082、18084、18085、18092–18097的其他服务。
+恢复后真实2+6八人场景：公开 `http://127.0.0.1:18101/play/?player=A` 和 B；纯UI测量18105；DS `ws://127.0.0.1:18331/`，私有Platform18097。收尾采集 launcher37356、DS30168、aux13144及六Bot；最后核查确认该恢复场景又于12:28:04.239279Z、Gameplay Tick28297/Host Tick28298触发同一死亡结构fatal，DS实际exit2，launcher verification为FAIL，所属8进程均已退出；收尾只精确停止残留aux13144，没有再次恢复预览。当前18101/18105/18331均停止。完整失败已复制并核对SHA；下一对话须先据归档与场景恢复记录重建真实现场，不继承SERVING。不要影响18081、18082、18084、18085、18092–18097的其他服务。
 
 旧Scene26于2026-10-05T11:52:23Z、Tick313680实际 fatal：`Death structure intent no longer identifies its live old body`。旧DS2756/launcher38340退出，旧aux13340精确退役；已用同一资格化基线恢复新账户场景。重启本身未修复这个根因，存在再次失败的可能。恢复场景有新的 first-start 与 paired / dual-move cut 日志，不能拿旧 Running 截图代替当前可玩性。
 
@@ -56,3 +56,6 @@ Runtime25：当前Native24真实32/32与successor227/227 GREEN；但ADR142仍Dra
 - 其余正式交付缺口完整保留，原goal暂停不表示完成。
 
 继续时维持唯一权威世界，源码问题在所属仓修，再经官方完整包消费。不得通过旧DLL替换、减少玩家/Bot、关闭体素、降模拟频率、放宽额度或协议校验、原型模拟器遮掩体验问题。保留原失败与原始日志，按复现、证据、根因、最小修复、真实回归推进。
+
+
+

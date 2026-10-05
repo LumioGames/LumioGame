@@ -644,5 +644,33 @@
       "checkoutCount": 1,
       "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-12-lumiovoxelengine.bundle"
     }
-  ]
+  ],
+  "nestedWorktree": {
+    "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+    "schema": "101-nested-worktree-closeout-v1",
+    "bundleVerified": true,
+    "preservedPlainDirectory": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/preserved/worktree-evidence/LumioClient15WasmMarshalTrimClosure/.run/runtime23-dependency",
+    "sourceChanges": [],
+    "snapshot": "928a19b81b7b7718e001946954520438556b625a",
+    "additionalToDirect77": true,
+    "originalHead": "928a19b81b7b7718e001946954520438556b625a",
+    "deregistered": true,
+    "remoteVerified": true,
+    "remoteReadback": "928a19b81b7b7718e001946954520438556b625a\trefs/notes/101-bomber-handoff-20261005-closeout01/nested-runtime23-dependency",
+    "oldPath": "C:/Work/LumioGames/.101-pack07/LumioClient15WasmMarshalTrimClosure/.run/runtime23-dependency",
+    "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/nested-runtime23-dependency",
+    "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/nested-runtime23-dependency.bundle",
+    "gitMarkerMoved": true
+  },
+  "cleanupSummary": {
+    "otherServicesPreserved": true,
+    "primaryWorkspaceState": "detached",
+    "previewStatus": "STOPPED_AFTER_ACTUAL_FATAL",
+    "totalLocalBranchesDeleted": 42,
+    "originalRemoteWorkingBranchesExisted": false,
+    "nestedWorktreeDeregistered": 1,
+    "primaryLocalBranchesDeleted": 2,
+    "ownerLocalBranchesDeleted": 40,
+    "directCheckoutsRemoved": 77
+  }
 }
