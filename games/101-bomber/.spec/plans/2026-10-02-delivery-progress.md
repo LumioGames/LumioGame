@@ -4,6 +4,12 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint45,Refresh 候选 owned 联合已清零、末阻精确定位到层投影回调的空间标记,仍未绿未消费（2026-10-05 24:0x +08）
+
+续作 checkpoint44 候选(commit 655d273a,分支 wip/101-incremental-authority-refresh):CollectOwnedEntities 改为与 HasProjectedStructure 同口径忽略 base-only 位置(97实体夹具 owned=0,验证器指定的修法已实施);MarkSpatialDirty 收敛为单点按 ApplyingRemote 分流(含层投影回调与递归标记);刷新收尾投影移入远端区间(并恢复探针清理时误删的 state.Project(previousCutoff))。终态 Gas 套件 948:942 过、6 失败=5 个预先存在的环境失败(缺 test-support native)+自测预算(1.96MB vs 96KB);此前 12 个真回归保持全绿。
+
+**末阻精确定位**:LogicTransform 成员层投影回调(LogicTransform.Layers 的 project => MarkSpatialDirty(EntityId))在 RebuildSelective 区间外投影(_state.Project(0)/RemoveAffected)以非远端态执行,把每个被投影实体标入本地空间集;无预测世界 Phase-10 提交介入时(未绑索引夹具)标记累积,本地空间联合退化为全量拷贝(skip=0)。生产中绑定索引每 tick 清理、应近似空——但必须以代码修掉而非依赖运行形态。下一步杠杆(按优先):把 RebuildSelective 的投影置于 predicted.ApplyingRemote=true 下执行(gas 模块,与刷新同型),需同验手写重挂族的持久标记仍走本地集不被破坏;或夹具绑真实 native 空间索引并按生产形态验证每组有预测侧提交。续作路径与全部细节见 worktree .run/refresh-touched-01/candidate-handoff.json(v2,a9cbd852…)。未进官方整包;complete26/Game28/scene28/浏览器回归未开始;全部交付门保留。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint44,Refresh 增量刷新候选 RED 已立、五条分叉通道并入后仍差最后一层,候选以 WIP 分支封存未消费（2026-10-05 23:5x +08）
 
 按验证器指示在所属 Runtime 仓对移动期每泵 54–108ms 主导成本开 RED→GREEN:隔离工作树 .101-restore-01/LumioGameRuntime26RefreshTouchedOnly(基 57bd5303)。定位:成本在 GasJointPrediction.Selective 四相中的 RefreshTypedAuthority(每权威组全量 实体×组件×字段 捕获拷贝);咽喉 ApplyValidatedWorldChange 携带组触及实体。**RED 已立**:真实 native 下 96 个 wire 创建未触及实体 + 1 字段组 = 全量 1,731,200B vs 预算 96,000B(GasJointRefreshTouchedOnlyTests)。
