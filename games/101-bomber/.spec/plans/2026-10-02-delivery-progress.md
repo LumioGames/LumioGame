@@ -4,6 +4,10 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 真机体验优先交接：checkpoint47,第五加法点已定位(ObservePredictionSpatial 粗粒度读见证),B 配置自测绿但破手写族,已恢复已知良好态（2026-10-05 24:2x +08）
+
+全位点排查成功:**第五加法点 = ObservePredictionSpatial(World.PredictionSpatial.cs)**——每次空间读把 CreationOrder 全部实体直加本地集,未绑索引时 Commit 不清空而永久累积;单点探针零命中之谜由此完全解释(该点绕过 MarkSpatialDirty)。另有第六点(PredictionStructure.cs:182 结构投影直加)。**B 配置实测**(Observe 改 remote+结构走单点+测试绑 NativeEngineTestLease 索引):自测 **GREEN,253,280B**(刷新本体仅 38,320B vs 全量稳态 ~1.73MB;余 ~215KB 为 Publish 阶段全世界表现键遍历=下一优化目标),但手写重挂/churn 族 14 失败——其"账外结构分叉"依赖投影期本地标记作回退通道。按纪律未保留 B 配置,工作树已恢复已推送的 cb91cfae(942/948,6失败=5环境+自测RED),B 配置全部细节与精确开放问题(SetParent 手写为何未达 dirty-delta 通道;建议第六联合通道=活动 PredictionUndoJournal 所涉实体)记录于 handoff v4(0e7abd2…)。未消费;complete26/Game28/scene28/浏览器回归未开始;全部交付门保留。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint46,四处区间外投影已入远端区间,本地空间集来源出现矛盾证据,候选继续 WIP（2026-10-05 24:1x +08）
 
 按验证器指示把 RebuildSelective/RemoveAffected 的四处纯投影(重建起始 Project(0)、RemoveAffected 收尾 Project、执行后 Project、catch 路径 Project)包入 ProjectUnderRemote(ApplyingRemote=true,commit cb91cfae 已推 wip 分支);ExecuteAffected 的本地输入重放保持在区间外,手写重挂族的区间外写仍标本地、语义不变,其测试族保持通过。但自测仍红(1.92MB vs 96KB):本地空间集仍达 97,而单点分流构建下所有已路由加法点(attach 775/detach 846/MarkSpatialDirty/递归)的栈探针对目标实体均无命中——标记来源与现行加法点清单矛盾,指向未发现的第五个加法点或 World 构造/克隆路径直接填充,需下一会话在单点构建下重做全位点断点排查。终态 Gas 948:942 过(5 环境基线+自测)。handoff v3(578d7dc…);未消费、complete26/Game28/scene28/浏览器回归未开始、全部交付门保留。goal ACTIVE。
