@@ -59,3 +59,11 @@ Runtime25：当前Native24真实32/32与successor227/227 GREEN；但ADR142仍Dra
 
 
 
+
+## 其他仓库补充提交与推送
+
+用户追加要求其他相关仓库都提交推送。八仓主检出已复核并完成远端读回：LumioGameEngine、LumioGameRuntime、LumioClient、LumioServer、LumioNativeCore、LumioVoxelEngine、LumioPlatform、LumioConfig。每仓保存包含主检出、正式完整24来源及此前候选图的新恢复ref `refs/notes/101-bomber-handoff-20261005-closeout02/<仓名小写>` 和完整历史bundle。完整结果见[补充推送索引](2026-10-05-other-repositories-push.json)及父仓 `.run/20261005-other-repos-push-01/push-results.json`。
+
+Server 原两份未提交诊断源码已保存为024ffd827030be826599a9072a778be7765f0b34，并正常快进推送 fix/r588-ds-tick-failure-detail；Platform feat/lumio-handoff已补推至3a2ef1a7。Config 两条未上传来源分支已补推：codex/101-config-authoring 6112af36与codex/101-config-registry a991a517，后者为完整24消费来源。其余四个干净主检出本已与origin/main一致；Engine/Runtime的历史main分叉保存至归档，没有改写远端main。
+
+Engine两锁文件和Runtime十四个生成测试文件仅换行变化，原字节逐文件保存，没有伪造空的源码改动。八仓已跟踪源码状态均干净，原本地缓存与证据保留。Server新保存的探针仍未审核，不是Server12待完成的三份生产修复；其全量JSON序列化与字节切片存在性能/字符边界风险，不当已验证性能修复消费。本次补推未合入main、未发布引擎tag、未重新启动或改变任何服务，原体验和正式交付门保持未完成。

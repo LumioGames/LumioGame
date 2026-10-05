@@ -4,6 +4,9 @@
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
+### 收尾补充：其他八仓实际提交推送完成（2026-10-05）
+
+按用户追加要求，八仓主检出与此前候选图已保存到closeout02远端归档及完整bundle并读回核对；Server两份诊断探针以024ffd82提交并推送原分支，Platform原分支、Config两条遗漏源码分支均已正常补推。Engine/Runtime的main分叉仅归档，八仓已跟踪源码干净，无main直推、force push或新引擎tag。结果见[补充推送索引](2026-10-05-other-repositories-push.json)及[恢复记录](2026-10-05-browser-experience-closeout.md)。探针未审、原正式目标PAUSED及全部体验/交付缺口保留，当前预览仍停止。
 ### 真机体验优先交接：用户要求收尾，成果归档、候选封存与现场恢复记录（2026-10-05 20:51 +08）
 
 本对话按用户要求停止继续开发，原正式交付 goal PAUSED，未达到交付或体验验收。最新恢复入口为 [收尾与恢复记录](2026-10-05-browser-experience-closeout.md) 及 C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/handoff.json。77个本任务检出的原HEAD与有效源码已提交并保存到各所属GitHub仓的归档refs，12个完整历史bundle已验证；93个证据目录、118257件文件已保留。77个直接检出与40个本任务owner工作分支已实际清理；父仓feat/101-bomber-engine-foundation和Engine candidate/101-uint已删除，共42个本地工作分支，原远端均无同名工作分支。额外嵌套工作树已归档并取消登记，完整证据目录保留。父仓提交与远端读回见最终JSON，归档不代表main合并或引擎发布。最后现场再次于12:28:04Z发生同一fatal，DS exit2、verification FAIL；所属8进程自然退出，残留aux精确停止，当前预览已停止，下一对话先恢复真实现场。
@@ -1143,6 +1146,7 @@ Root完成本Scene18第1～6轮真实关闭/新页，入口检查均两玩家act
 - Root补齐现有复制中的生命上限、金心数与资源tier：真实失败后，客户端39/39、表现654/654、实际74546 WASM及页面64/64，零失败跳过；类型与构建exit0。十源冻结`.run/chest-binding-display/growth-tier-freeze-01.json`，已交独审。根报告`.sdd/101-20261003-chest-binding-display.md`记录详细边界及前两次环境配置失败，未伪称整局表现通过。
 - 确认原型af385完整归档到`.run/prototype-reference-af385/games/101-bomber/prototype`，未覆盖工作区旧prototype。实际浏览器1440×900选角、跟随、俯瞰及390×844移动布局截图已留在同目录上层；`browser-reference.json`记录范围与WebGL警告。仅作原型参照，不能算正式游戏证据。
 - 三项公共契约裁定仍待答复。正式Platform/DS整局、同房下一局、回放、多种子、三档30分钟及最终浏览器视觉音效验收继续列为未完成。
+
 
 
 
