@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "mapName": "default",
+  "staticLayers": {
+    "ground": "floor",
+    "boundary": "iron",
+    "hardPillars": "hardPillar",
+    "empty": "air"
+  },
+  "dynamicContent": "runtime-seeded"
+}

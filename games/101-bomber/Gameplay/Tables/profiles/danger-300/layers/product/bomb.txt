@@ -1,0 +1,6 @@
+table: bomb
+schema: schemas/bomb.json
+
+| name | danger_ms |
+| --- | --- |
+| default | 300 |

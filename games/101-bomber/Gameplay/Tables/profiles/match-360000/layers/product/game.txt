@@ -1,0 +1,6 @@
+table: game
+schema: schemas/game.json
+
+| name | match_duration_ms |
+| --- | --- |
+| default | 360000 |

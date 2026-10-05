@@ -225,3 +225,7 @@ Stage 0 的内核契约见 [`docs/specs/bomber/stage0-kernel-contract.md`](docs/
 > - 2030-09-07 自动转为 Apache License 2.0
 >
 > 完整条款见引擎分发物随附的 LICENSE 文件。
+
+## Lumio Bomber 101
+
+The first engine-backed game lives in [games/101-bomber/](games/101-bomber/). It is a self-contained Bomber Stage 0 workspace consuming the pinned Engine v0.0.1 release. Read its [gameplay contract](games/101-bomber/.spec/knowledge/features/bomber-gameplay.md) and [fourteen-step tour](games/101-bomber/.spec/knowledge/features/bomber-tour.md) for the deterministic bomb loop, final circle, bot launcher, spectator evidence, and BLOCKED_ENV behavior.

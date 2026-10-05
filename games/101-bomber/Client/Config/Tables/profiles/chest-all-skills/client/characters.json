@@ -1,0 +1,62 @@
+{
+  "contentFingerprint": "e075fa4a7ecfb6ff43f1c6ae008090590d741caedce13c794e26eb8b535d347c",
+  "rows": [
+    {
+      "base_attributes_profile": "default",
+      "bound_level": 1,
+      "bound_max_level": 1,
+      "bound_skill_id": "1",
+      "bound_slot": "Passive",
+      "id": 118001,
+      "name": "rabbit",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "base_attributes_profile": "default",
+      "bound_level": 1,
+      "bound_max_level": 3,
+      "bound_skill_id": "2",
+      "bound_slot": "Active",
+      "id": 118002,
+      "name": "duck",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "base_attributes_profile": "default",
+      "bound_level": 1,
+      "bound_max_level": 3,
+      "bound_skill_id": "3",
+      "bound_slot": "Active",
+      "id": 118003,
+      "name": "cat",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "base_attributes_profile": "default",
+      "bound_level": 1,
+      "bound_max_level": 3,
+      "bound_skill_id": "4",
+      "bound_slot": "Active",
+      "id": 118004,
+      "name": "bear",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "base_attributes_profile": "default",
+      "bound_level": 1,
+      "bound_max_level": 1,
+      "bound_skill_id": "13",
+      "bound_slot": "Active",
+      "id": 118005,
+      "name": "kangaroo",
+      "source_ref": "docs/specs/bomber/design.md#8; ADR-0047; ADR-0048",
+      "source_status": "design; balance unverified"
+    }
+  ],
+  "table": "characters",
+  "target": "C"
+}

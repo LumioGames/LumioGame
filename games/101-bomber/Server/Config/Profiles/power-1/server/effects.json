@@ -1,0 +1,147 @@
+{
+  "contentFingerprint": "778c7d32e206011c2db0a66d02f4ae5e64b68a165e87edc4e663494618643d39",
+  "rows": [
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121001,
+      "lifetime": "Instant",
+      "name": "BombDamage",
+      "operation": "Damage",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "value_source": "bomb.damage_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121002,
+      "lifetime": "Periodic",
+      "name": "DrownDamage",
+      "operation": "Damage",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "life.drown_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121003,
+      "lifetime": "Periodic",
+      "name": "RingPoison",
+      "operation": "Damage",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "circle_stages.poison_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121004,
+      "lifetime": "Periodic",
+      "name": "FireExposure",
+      "operation": "Damage",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_rules.fire_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121005,
+      "lifetime": "Periodic",
+      "name": "Toxin",
+      "operation": "Damage",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_rules.toxin_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121006,
+      "lifetime": "Instant",
+      "name": "HealthPack",
+      "operation": "Heal",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "value_source": "life.health_pack_points"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 121007,
+      "lifetime": "Periodic",
+      "name": "Regen",
+      "operation": "Heal",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_levels.heal_points"
+    },
+    {
+      "attribute_name": "BombPower",
+      "id": 121008,
+      "lifetime": "Instant",
+      "name": "PowerUpgrade",
+      "operation": "BaseUpgrade",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "value_source": "attributes.upgrade_step"
+    },
+    {
+      "attribute_name": "BombCapacity",
+      "id": 121009,
+      "lifetime": "Instant",
+      "name": "CapacityUpgrade",
+      "operation": "BaseUpgradeAndAvailable",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "value_source": "attributes.upgrade_step"
+    },
+    {
+      "attribute_name": "SpeedTier",
+      "id": 121010,
+      "lifetime": "Instant",
+      "name": "SpeedUpgrade",
+      "operation": "BaseTierLookup",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "value_source": "speed_tiers.speed_milli"
+    },
+    {
+      "attribute_name": "None",
+      "id": 121011,
+      "lifetime": "Duration",
+      "name": "Freeze",
+      "operation": "ControlLock",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_levels.freeze_ms"
+    },
+    {
+      "attribute_name": "None",
+      "id": 121012,
+      "lifetime": "Duration",
+      "name": "ControlImmunity",
+      "operation": "ControlImmune",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_rules.control_immunity_ms"
+    },
+    {
+      "attribute_name": "None",
+      "id": 121013,
+      "lifetime": "Duration",
+      "name": "Bubble",
+      "operation": "Invulnerable",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_levels.duration_ms"
+    },
+    {
+      "attribute_name": "MovementSpeedMilli",
+      "id": 121014,
+      "lifetime": "Duration",
+      "name": "Shock",
+      "operation": "CurrentScale",
+      "source_ref": "docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "design; effect SDK semantics pending",
+      "value_source": "skill_rules.shock_speed_permille"
+    }
+  ],
+  "table": "effects",
+  "target": "S"
+}

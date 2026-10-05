@@ -1,0 +1,24 @@
+{
+  "sourceRoot": "C:/Work/LumioGames/probe/container-delta-candidate-sources/LumioVoxelEngine",
+  "base": "6eee59fbfd2439ce2b48e31d495c24d4d9076545",
+  "snapshotSha256": "977550afe719c2bd30ab6ec907787748e53892bb572fcedbb7021f1a5e66ad24",
+  "patchSha256": "740c7dfee4a89de36b5b074bfb603bada2ff64b82adb6390f37b6856a82c860e",
+  "files": [
+    {
+      "path": "crates/lumio-voxel-wasm/src/lib.rs",
+      "sha256": "771b1739c130dfc5c3e90901fac06465aebbf9abb50bbccdfe0e3108942fcec3"
+    },
+    {
+      "path": "crates/lumio-voxel-wasm/src/bridge.rs",
+      "sha256": "85d6377a03dd225293816f8136b4f08b1bc08bf608da15beb196546b3fa4439e"
+    },
+    {
+      "path": "crates/lumio-voxel-wasm/src/tests.rs",
+      "sha256": "8d84eb88f44ed5310a95ce3ab1e65af693a44a6245f98c8f671eff192b79baa3"
+    },
+    {
+      "path": "crates/lumio-voxel-wasm/src/render.rs",
+      "sha256": "ce7055ba60fc65f0f7b01932f01b9043d2d29ac40992136c1f9cdd3642a58012"
+    }
+  ]
+}

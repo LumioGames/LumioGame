@@ -1,0 +1,40 @@
+{
+  "contentFingerprint": "e5063ddb9aa59be922befb84c2b10c66c18fa0f935aed714930810b6ff82bdc1",
+  "rows": [
+    {
+      "bound_if_either_bound": true,
+      "id": 117001,
+      "left_skill_id": "3",
+      "name": "fireDash",
+      "preserve_source_levels": true,
+      "result_skill_id": "8",
+      "right_skill_id": "4",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "bound_if_either_bound": true,
+      "id": 117002,
+      "left_skill_id": "2",
+      "name": "bounceBubble",
+      "preserve_source_levels": true,
+      "result_skill_id": "9",
+      "right_skill_id": "5",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "bound_if_either_bound": true,
+      "id": 117003,
+      "left_skill_id": "6",
+      "name": "glacierBomb",
+      "preserve_source_levels": true,
+      "result_skill_id": "10",
+      "right_skill_id": "7",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    }
+  ],
+  "table": "skill_combos",
+  "target": "C"
+}

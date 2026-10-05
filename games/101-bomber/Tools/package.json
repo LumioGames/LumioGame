@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "main": "./test.mjs",
+  "scripts": {
+    "launch": "node launcher.mjs",
+    "capture-basemap": "node capture-basemap.mjs"
+  }
+}

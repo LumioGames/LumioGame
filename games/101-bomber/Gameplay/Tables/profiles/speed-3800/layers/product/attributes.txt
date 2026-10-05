@@ -1,0 +1,6 @@
+table: attributes
+schema: schemas/attributes.json
+
+| name | initial | minimum |
+| --- | --- | --- |
+| MovementSpeedMilli | 3800 | 3800 |

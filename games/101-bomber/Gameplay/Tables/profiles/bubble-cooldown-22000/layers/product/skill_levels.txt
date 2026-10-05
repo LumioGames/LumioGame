@@ -1,0 +1,6 @@
+table: skill_levels
+schema: schemas/skill_levels.json
+
+| name | cooldown_ms |
+| --- | --- |
+| bubble_lv1 | 22000 |

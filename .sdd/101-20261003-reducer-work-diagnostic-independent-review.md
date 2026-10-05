@@ -1,0 +1,7 @@
+# Official reducer context diagnostic: narrow independent review
+
+Root reviewed the additive private diagnostic from `reducer_work_optimization`, manifest SHA256 `018698b267953b61f89b58ae222eadc051f66c016286e1a5c3d228fb0b66acdf`. Verdict: accept the test source for actual measurement. The existing Fact is preserved byte for byte; removing only the additive Theory and helper recovers original source `33fdfaee8a6b36dc25485afe76cde60420237d34df090a765d16d7492b47eede` exactly. Accepted source is `97aef79d83571c0aa586b6b13641630a18089ff93e9b850ac1576572ae4d98c6`.
+
+The two proposed result limits, 400 and 704, are explicit diagnostic contexts. They do not modify the configured World result limit or generated program image. The test invokes the actual frozen official parser, bindings, Validate and Block methods and records original program bytes, SHA, schema, declarations, full metrics when valid, body costs, field charges and actual errors. Public per-program work remains 1,000,000. Reflection member names and record properties were checked against official package source, including the separate full-validation overhead and body-only cost. No rule substitute, patched program, Native receipt or gameplay producer is introduced.
+
+This accepts a structural diagnostic only. Production cohort capacities remain unselected; no Native startup or live gameplay is established. Build and both actual measurements were UNRUN at review. Root publication proof and exact accepted/before bytes are under `.run/reducer-work-root-publication-01/`.

@@ -1,0 +1,22 @@
+table: speed_tiers
+schema: schemas/speed_tiers.json
+
+| id     | name  | tier | speed_milli | source_status | source_ref                     |
+| ------ | ----- | ---- | ----------- | ------------- | ------------------------------ |
+| 102001 | tier0 | 0    | 3500        | design        | docs/specs/bomber/design.md#15 |
+
+| 102002 | tier1 | 1    | 3850        | design        | docs/specs/bomber/design.md#15 |
+
+| 102003 | tier2 | 2    | 4200        | design        | docs/specs/bomber/design.md#15 |
+
+| 102004 | tier3 | 3    | 4550        | design        | docs/specs/bomber/design.md#15 |
+
+| 102005 | tier4 | 4    | 4900        | design        | docs/specs/bomber/design.md#15 |
+
+| 102006 | tier5 | 5    | 5250        | design        | docs/specs/bomber/design.md#15 |
+
+| 102007 | tier6 | 6    | 5600        | design        | docs/specs/bomber/design.md#15 |
+
+| 102008 | tier7 | 7    | 5950        | design        | docs/specs/bomber/design.md#15 |
+
+| 102009 | tier8 | 8    | 6000        | design        | docs/specs/bomber/design.md#15 |

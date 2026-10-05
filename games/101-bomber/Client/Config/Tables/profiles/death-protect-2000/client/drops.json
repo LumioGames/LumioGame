@@ -1,0 +1,20 @@
+{
+  "contentFingerprint": "010de2c42e76b240d0567745d5bb04b028c29b740337cb246720de32dbf0338c",
+  "rows": [
+    {
+      "death_drop_permille": 500,
+      "death_protection_ms": 2000,
+      "final_death_drop_permille": 1000,
+      "id": 106001,
+      "name": "default",
+      "ordinary_expiry_enabled": false,
+      "pickup_distance_milli": 500,
+      "scatter_mode": "NearestWalkableCellThenIdentity",
+      "soft_drop_permille": 300,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate; pickup radius first-round decision"
+    }
+  ],
+  "table": "drops",
+  "target": "C"
+}

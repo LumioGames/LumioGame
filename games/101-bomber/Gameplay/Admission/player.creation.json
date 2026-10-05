@@ -1,0 +1,1011 @@
+{
+  "schemaVersion": 1,
+  "declarationId": 101,
+  "successorDeclarationId": 101,
+  "slotCount": {
+    "op": "Convert",
+    "type": "u32",
+    "value": {
+      "op": "ConfigScalar",
+      "type": "i32",
+      "key": "game.100001.player_count"
+    }
+  },
+  "assignments": [
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "Participant",
+      "type": "entity",
+      "value": {
+        "op": "ProposedParticipantId",
+        "type": "entity"
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "ParticipantIndex",
+      "type": "i32",
+      "value": {
+        "op": "Convert",
+        "type": "i32",
+        "value": {
+          "op": "ReservedSlot",
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "LifeGeneration",
+      "type": "u64",
+      "value": {
+        "op": "Literal",
+        "type": "u64",
+        "value": "1"
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "LifePhase",
+      "type": "i32",
+      "value": {
+        "op": "Select",
+        "type": "i32",
+        "condition": {
+          "op": "ConfigScalar",
+          "type": "bool",
+          "key": "life.105001.first_spawn_protected"
+        },
+        "whenTrue": {
+          "op": "Literal",
+          "type": "i32",
+          "value": "0"
+        },
+        "whenFalse": {
+          "op": "Literal",
+          "type": "i32",
+          "value": "1"
+        }
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "Facing",
+      "type": "i32",
+      "value": {
+        "op": "Literal",
+        "type": "i32",
+        "value": "3"
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "RespawnAtTick",
+      "type": "u64",
+      "value": {
+        "op": "Literal",
+        "type": "u64",
+        "value": "0"
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+      "field": "ProtectedUntilTick",
+      "type": "u64",
+      "value": {
+        "op": "Select",
+        "type": "u64",
+        "condition": {
+          "op": "ConfigScalar",
+          "type": "bool",
+          "key": "life.105001.first_spawn_protected"
+        },
+        "whenTrue": {
+          "op": "Add",
+          "type": "u64",
+          "left": {
+            "op": "CutTick",
+            "type": "u64"
+          },
+          "right": {
+            "op": "Divide",
+            "type": "u64",
+            "left": {
+              "op": "Multiply",
+              "type": "u64",
+              "left": {
+                "op": "Convert",
+                "type": "u64",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "u32",
+                  "key": "life.105001.protection_ms"
+                }
+              },
+              "right": {
+                "op": "Convert",
+                "type": "u64",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "u32",
+                  "key": "game.100001.tick_rate_hz"
+                }
+              }
+            },
+            "right": {
+              "op": "Literal",
+              "type": "u64",
+              "value": "1000"
+            }
+          }
+        },
+        "whenFalse": {
+          "op": "Literal",
+          "type": "u64",
+          "value": "0"
+        }
+      }
+    },
+    {
+      "owner": "Life",
+      "component": "Lumio.GameRuntime.Ecs.LogicTransform",
+      "field": "localPosition",
+      "type": "vector3",
+      "value": {
+        "op": "SelectByReservedSlot",
+        "type": "vector3",
+        "rows": [
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Convert",
+                  "type": "i32",
+                  "value": {
+                    "op": "Divide",
+                    "type": "u32",
+                    "left": {
+                      "op": "Convert",
+                      "type": "u32",
+                      "value": {
+                        "op": "Add",
+                        "type": "i32",
+                        "left": {
+                          "op": "ConfigScalar",
+                          "type": "i32",
+                          "key": "map.108001.boundary_cells"
+                        },
+                        "right": {
+                          "op": "Subtract",
+                          "type": "i32",
+                          "left": {
+                            "op": "Subtract",
+                            "type": "i32",
+                            "left": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.width"
+                            },
+                            "right": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.boundary_cells"
+                            }
+                          },
+                          "right": {
+                            "op": "Literal",
+                            "type": "i32",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "op": "Literal",
+                      "type": "u32",
+                      "value": "2"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.width"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Convert",
+                  "type": "i32",
+                  "value": {
+                    "op": "Divide",
+                    "type": "u32",
+                    "left": {
+                      "op": "Convert",
+                      "type": "u32",
+                      "value": {
+                        "op": "Add",
+                        "type": "i32",
+                        "left": {
+                          "op": "ConfigScalar",
+                          "type": "i32",
+                          "key": "map.108001.boundary_cells"
+                        },
+                        "right": {
+                          "op": "Subtract",
+                          "type": "i32",
+                          "left": {
+                            "op": "Subtract",
+                            "type": "i32",
+                            "left": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.depth"
+                            },
+                            "right": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.boundary_cells"
+                            }
+                          },
+                          "right": {
+                            "op": "Literal",
+                            "type": "i32",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "op": "Literal",
+                      "type": "u32",
+                      "value": "2"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.width"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Convert",
+                  "type": "i32",
+                  "value": {
+                    "op": "Divide",
+                    "type": "u32",
+                    "left": {
+                      "op": "Convert",
+                      "type": "u32",
+                      "value": {
+                        "op": "Add",
+                        "type": "i32",
+                        "left": {
+                          "op": "ConfigScalar",
+                          "type": "i32",
+                          "key": "map.108001.boundary_cells"
+                        },
+                        "right": {
+                          "op": "Subtract",
+                          "type": "i32",
+                          "left": {
+                            "op": "Subtract",
+                            "type": "i32",
+                            "left": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.depth"
+                            },
+                            "right": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.boundary_cells"
+                            }
+                          },
+                          "right": {
+                            "op": "Literal",
+                            "type": "i32",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "op": "Literal",
+                      "type": "u32",
+                      "value": "2"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.boundary_cells"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.depth"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Convert",
+                  "type": "i32",
+                  "value": {
+                    "op": "Divide",
+                    "type": "u32",
+                    "left": {
+                      "op": "Convert",
+                      "type": "u32",
+                      "value": {
+                        "op": "Add",
+                        "type": "i32",
+                        "left": {
+                          "op": "ConfigScalar",
+                          "type": "i32",
+                          "key": "map.108001.boundary_cells"
+                        },
+                        "right": {
+                          "op": "Subtract",
+                          "type": "i32",
+                          "left": {
+                            "op": "Subtract",
+                            "type": "i32",
+                            "left": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.width"
+                            },
+                            "right": {
+                              "op": "ConfigScalar",
+                              "type": "i32",
+                              "key": "map.108001.boundary_cells"
+                            }
+                          },
+                          "right": {
+                            "op": "Literal",
+                            "type": "i32",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "op": "Literal",
+                      "type": "u32",
+                      "value": "2"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.depth"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          },
+          {
+            "op": "ConstructVector3",
+            "type": "vector3",
+            "x": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.width"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "y": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "ConfigScalar",
+                  "type": "i32",
+                  "key": "map.108001.obstacle_layer"
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            },
+            "z": {
+              "op": "Add",
+              "type": "f32",
+              "left": {
+                "op": "Convert",
+                "type": "f32",
+                "value": {
+                  "op": "Subtract",
+                  "type": "i32",
+                  "left": {
+                    "op": "Subtract",
+                    "type": "i32",
+                    "left": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.depth"
+                    },
+                    "right": {
+                      "op": "ConfigScalar",
+                      "type": "i32",
+                      "key": "map.108001.boundary_cells"
+                    }
+                  },
+                  "right": {
+                    "op": "Literal",
+                    "type": "i32",
+                    "value": "1"
+                  }
+                }
+              },
+              "right": {
+                "op": "Literal",
+                "type": "f32",
+                "value": 0.5
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "Slot",
+      "type": "i32",
+      "value": {
+        "op": "Convert",
+        "type": "i32",
+        "value": {
+          "op": "ReservedSlot",
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "MatchId",
+      "type": "u64",
+      "value": {
+        "op": "ExistingWorldField",
+        "type": "u64",
+        "key": "Lumio.Bomber.Gameplay.Contracts.Components.BomberMatchState.MatchId"
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "CurrentLife",
+      "type": "entity",
+      "value": {
+        "op": "ProposedLifeId",
+        "type": "entity"
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "LastLife",
+      "type": "entity",
+      "value": {
+        "op": "ProposedLifeId",
+        "type": "entity"
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "LifeGeneration",
+      "type": "u64",
+      "value": {
+        "op": "Literal",
+        "type": "u64",
+        "value": "1"
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "LifePhase",
+      "type": "i32",
+      "value": {
+        "op": "Select",
+        "type": "i32",
+        "condition": {
+          "op": "ConfigScalar",
+          "type": "bool",
+          "key": "life.105001.first_spawn_protected"
+        },
+        "whenTrue": {
+          "op": "Literal",
+          "type": "i32",
+          "value": "0"
+        },
+        "whenFalse": {
+          "op": "Literal",
+          "type": "i32",
+          "value": "1"
+        }
+      }
+    },
+    {
+      "owner": "Participant",
+      "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberParticipantState",
+      "field": "NextCharacterId",
+      "type": "i32",
+      "value": {
+        "op": "TemplateDefault",
+        "type": "i32",
+        "owner": "Life",
+        "component": "Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState",
+        "field": "NextCharacterId"
+      }
+    }
+  ]
+}

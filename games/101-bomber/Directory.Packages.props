@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <!--
+      No lock file. Lumio.Engine.SDK comes from the Engine/ release folder and its version moves
+      with the submodule pin (Tools/update-engine.mjs); the engine regression job also swaps
+      Engine/ for a main build of the same layout (ADR-123 决策 7), whose package has another
+      content hash. A committed lock would fail those restores with NU1403.
+    -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.Testing.Platform" Version="2.3.3" />
+    <!-- ADR-123: the version is Engine/manifest.json#version (Directory.Build.props). -->
+    <PackageVersion Include="Lumio.Engine.SDK" Version="$(LumioSdkVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.11" />
+  </ItemGroup>
+</Project>

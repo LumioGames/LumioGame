@@ -1,0 +1,214 @@
+{
+  "table": "skill_rules",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "max_level",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "max level"
+    },
+    {
+      "name": "candy_level",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "candy level"
+    },
+    {
+      "name": "crate_skill_permille",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "crate skill permille"
+    },
+    {
+      "name": "death_drop_permille",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "death drop permille"
+    },
+    {
+      "name": "bomb_candy_weight",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "bomb candy weight"
+    },
+    {
+      "name": "ordinary_candy_weight",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "ordinary candy weight"
+    },
+    {
+      "name": "freeze_cap_ms",
+      "ordinal": 8,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "freeze cap ms"
+    },
+    {
+      "name": "control_immunity_ms",
+      "ordinal": 9,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "control immunity ms"
+    },
+    {
+      "name": "freeze_bomb_damages",
+      "ordinal": 10,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "freeze bomb damages"
+    },
+    {
+      "name": "toxin_interval_ms",
+      "ordinal": 11,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "toxin interval ms"
+    },
+    {
+      "name": "toxin_points",
+      "ordinal": 12,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "toxin points"
+    },
+    {
+      "name": "toxin_lethal",
+      "ordinal": 13,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "toxin lethal"
+    },
+    {
+      "name": "shock_speed_permille",
+      "ordinal": 14,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "shock speed permille"
+    },
+    {
+      "name": "fire_exposure_ms",
+      "ordinal": 15,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "fire exposure ms"
+    },
+    {
+      "name": "fire_points",
+      "ordinal": 16,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "fire points"
+    },
+    {
+      "name": "aura_side_cells",
+      "ordinal": 17,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "aura side cells"
+    },
+    {
+      "name": "slot_count",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "slot count"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 19,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 20,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+table: attributes
+schema: schemas/attributes.json
+
+| name | initial | minimum |
+| --- | --- | --- |
+| BombPower | 1 | 1 |

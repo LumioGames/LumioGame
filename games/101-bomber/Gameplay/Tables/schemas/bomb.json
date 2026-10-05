@@ -1,0 +1,120 @@
+{
+  "table": "bomb",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "fuse_ms",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "fuse ms"
+    },
+    {
+      "name": "danger_ms",
+      "ordinal": 3,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "danger ms"
+    },
+    {
+      "name": "damage_points",
+      "ordinal": 4,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "damage points"
+    },
+    {
+      "name": "kick_speed_milli",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "kick speed milli"
+    },
+    {
+      "name": "max_kicks_per_player_tick",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max kicks per player tick"
+    },
+    {
+      "name": "capacity_return_phase",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "capacity return phase"
+    },
+    {
+      "name": "chain_damage_cap_attribute",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "chain damage cap attribute"
+    },
+    {
+      "name": "moving_bomb_chain_reaction",
+      "ordinal": 9,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "moving bomb chain reaction"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    }
+  ]
+}

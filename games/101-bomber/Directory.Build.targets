@@ -1,0 +1,60 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)eng/EngineCandidate.targets" />
+  <!--
+    ADR-123: Lumio.Engine.SDK resolves from Engine/sdk/ only (Directory.Build.props reads the
+    version from Engine/manifest.json; NuGet.config maps the package to that folder). One path,
+    no fall-back: an empty or missing Engine/ is LUMIO_SDK_UNRESOLVED with the exact command
+    that fills it. The check runs before restore collects package references, so a missing
+    submodule never surfaces as a NuGet source error first.
+  -->
+  <Target Name="ResolveLumioSdk" BeforeTargets="CollectPackageReferences;BeforeBuild">
+    <Error
+      Condition="'$(LumioSdkResolved)' != 'true'"
+      Text="LUMIO_SDK_UNRESOLVED: the engine release is not in $(LumioEngineRoot) (expected manifest.json and sdk/Lumio.Engine.SDK.&lt;version&gt;.nupkg; manifest version='$(LumioSdkVersion)').%0AThe Engine/ submodule was not fetched (cloned without --recursive?). Run:%0A%0A    git submodule update --init --depth 1 Engine%0A%0AThere is no other engine path: no sibling checkout, no global-packages, no nuget.org." />
+    <Error
+      Condition="'$(LumioSdkResolved)' == 'true' and '$(LumioSdkVersion)' != '$(LumioRequiredSdkVersion)'"
+      Text="LUMIO_SDK_VERSION_MISMATCH: Engine SDK version '$(LumioSdkVersion)' at $(LumioEngineRoot) does not match required version '$(LumioRequiredSdkVersion)'." />
+  </Target>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' or '$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay.Tests'">
+    <PackageReference Include="Lumio.Engine.SDK" />
+  </ItemGroup>
+
+  <!-- TreatWarningsAsErrors + GenerateDocumentationFile still elevates CS1591 on some
+       SDK hosts even when the gameplay csproj already lists it in NoWarn. Restate both
+       here so generated files stay machine-written. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay'">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay'">
+    <!-- ADR-115: the typed Readers live under each end's Config/Generated. They are
+         compiled into this assembly's matching side; the gameplay tree has no
+         generated/config/ any more, so only the selected end's Readers can enter. -->
+    <Compile Remove="generated/config/**/*.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Client/Config/Generated/*.cs" Link="config/generated/%(Filename)%(Extension)" Condition="'$(_LumioConfigSide)' == 'client'" />
+    <Compile Include="$(MSBuildThisFileDirectory)Server/Config/Generated/*.cs" Link="config/generated/%(Filename)%(Extension)" Condition="'$(_LumioConfigSide)' != 'client'" />
+  </ItemGroup>
+
+  <!-- One gameplay tree, two compile sides. Server is the default (DS loads this assembly). -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioEcsSide)' != 'client'">
+    <DefineConstants>$(DefineConstants);LUMIO_SERVER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioEcsSide)' != 'client'">
+    <Compile Remove="**/*.Client.cs" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioEcsSide)' == 'client'">
+    <DefineConstants>$(DefineConstants);LUMIO_CLIENT</DefineConstants>
+    <!-- OutputPath isolation lives in Directory.Build.props (evaluated before the SDK). -->
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioEcsSide)' == 'client'">
+    <Compile Remove="**/*.Server.cs" />
+  </ItemGroup>
+
+  <!-- Packed SDK props default LumioEcsGenerate=true for every consumer. The test
+       project has no entity declarations; generating there emits typeof(WorldEntity)
+       without the type (CS0246 on external-clone). -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay.Tests'">
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+  </PropertyGroup>
+</Project>

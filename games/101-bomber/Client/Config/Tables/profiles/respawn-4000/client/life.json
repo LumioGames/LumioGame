@@ -1,0 +1,21 @@
+{
+  "contentFingerprint": "b65e24466a0aa06a12b7e18bfb57b5d79e8eb94469ff54bb2cde8e84b7df9307",
+  "rows": [
+    {
+      "drown_interval_ms": 1000,
+      "drown_points": 1,
+      "first_spawn_protected": true,
+      "health_pack_points": 2,
+      "id": 105001,
+      "name": "default",
+      "points_per_heart": 2,
+      "protection_blocks_ring": false,
+      "protection_ms": 3000,
+      "respawn_ms": 4000,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    }
+  ],
+  "table": "life",
+  "target": "C"
+}

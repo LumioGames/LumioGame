@@ -1,0 +1,8 @@
+{
+  "format": "lumio.block-asset.v1",
+  "faces": {
+    "top": "textures/trunk_top.png",
+    "bottom": "textures/trunk_top.png",
+    "side": "textures/trunk_side.png"
+  }
+}

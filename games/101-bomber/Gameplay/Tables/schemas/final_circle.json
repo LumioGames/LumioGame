@@ -1,0 +1,112 @@
+{
+  "table": "final_circle",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "duration_ms",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "duration ms"
+    },
+    {
+      "name": "resource_threshold_permille",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "resource threshold permille"
+    },
+    {
+      "name": "resource_comparison",
+      "ordinal": 4,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "resource comparison"
+    },
+    {
+      "name": "preview_ms",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "preview ms"
+    },
+    {
+      "name": "poison_interval_ms",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "poison interval ms"
+    },
+    {
+      "name": "late_poison_points",
+      "ordinal": 7,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "late poison points"
+    },
+    {
+      "name": "resource_trigger_requires_regen_stopped",
+      "ordinal": 8,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "resource trigger requires regen stopped"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

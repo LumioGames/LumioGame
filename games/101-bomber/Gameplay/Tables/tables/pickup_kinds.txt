@@ -1,0 +1,20 @@
+table: pickup_kinds
+schema: schemas/pickup_kinds.json
+
+| id     | name        | kind_code | soft_weight | attribute_name | ledger_mode             | source_status                                                               | source_ref                                       |
+| ------ | ----------- | --------- | ----------- | -------------- | ----------------------- | --------------------------------------------------------------------------- | ------------------------------------------------ |
+| 107001 | Fire        | 0         | 30          | BombPower      | BaseUpgrade             | prototype-candidate                                                         | docs/specs/bomber/design.md#15                   |
+
+| 107002 | Bomb        | 1         | 30          | BombCapacity   | BaseUpgradeAndAvailable | prototype-candidate                                                         | docs/specs/bomber/design.md#15                   |
+
+| 107003 | Speed       | 2         | 25          | SpeedTier      | BaseTierLookup          | prototype-candidate                                                         | docs/specs/bomber/design.md#15                   |
+
+| 107004 | Health      | 3         | 15          | HealthPoints   | Heal                    | prototype-candidate                                                         | docs/specs/bomber/design.md#15                   |
+
+| 107005 | Skill       | 4         | 0           | None           | SkillGrant              | prototype-candidate                                                         | docs/specs/bomber/design.md#15                   |
+
+| 107006 | GoldenHeart | 5         | 0           | HealthPoints   | GoldenHeartOwnership    | design                                                                      | ADR-0039; docs/specs/bomber/design.md#85         |
+
+| 107007 | Kick        | 6         | 0           | None           | KickQualification       | dormant downstream consumer pending; terrain ownership persists unspendable | ADR0048; design section5.0                       |
+
+| 107008 | Frenzy      | 7         | 0           | None           | Frenzy                  | design                                                                      | ADR0048; docs/specs/bomber/design.md section 8.5 |

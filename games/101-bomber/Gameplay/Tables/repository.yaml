@@ -1,0 +1,15 @@
+repository:
+  name: LumioBomber101
+  organization: LumioGames
+  kind: game-configuration
+  visibility: public
+  defaultBranch: main
+  url: https://github.com/LumioGames/LumioGame
+  description: Bomber 101 immutable gameplay configuration
+outputs:
+  targets:
+    - S
+    - C
+  generatedPolicy: reproducible-read-only
+simulation:
+  tickRate: 20

@@ -1,0 +1,6 @@
+table: final_circle
+schema: schemas/final_circle.json
+
+| id     | name    | duration_ms | resource_threshold_permille | resource_comparison | preview_ms | poison_interval_ms | late_poison_points | resource_trigger_requires_regen_stopped | source_status | source_ref                     |
+| ------ | ------- | ----------- | --------------------------- | ------------------- | ---------- | ------------------ | ------------------ | --------------------------------------- | ------------- | ------------------------------ |
+| 111001 | default | 115000      | 200                         | StrictLess          | 10000      | 1000               | 2                  | true                                    | design        | docs/specs/bomber/design.md#15 |

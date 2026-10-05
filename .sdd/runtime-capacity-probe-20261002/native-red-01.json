@@ -1,0 +1,7 @@
+{
+  "command": "dotnet bin/Release/net10.0/Probe.dll",
+  "exit": 1,
+  "native": "C:/Work/LumioGames/LumioGameEngine/.run/693f01ad148c0ef0f925cc4bd911c7c1/win-x64/run-KyEbZK/lumio_engine_native.dll",
+  "nativeSha256": "6f2aac8009922b8a848a5cd44d567887b39823dcb56cbaad08c206a974e76337",
+  "logSha256": "1db8b96eaca0c44d194c31374e3c059c235915f695d101f5f8bea7d1ff704fcf"
+}

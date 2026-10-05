@@ -1,0 +1,6 @@
+table: regeneration
+schema: schemas/regeneration.json
+
+| id     | name    | interval_ms | target_initial_permille | max_mirror_orbits | threat_distance_cells | stop_before_final_ms | source_status | source_ref                                                                                                | first_trigger_ms | barrel_roll_denominator | chest_roll_denominator |
+| ------ | ------- | ----------- | ----------------------- | ----------------- | --------------------- | -------------------- | ------------- | --------------------------------------------------------------------------------------------------------- | ---------------- | ----------------------- | ---------------------- |
+| 110001 | default | 8000        | 600                     | 2                 | 3                     | 60000                | design        | docs/specs/bomber/design.md#15; .spec/decisions/0048-bomber-m2-map-packages-and-interaction-boundaries.md | 8000             | 32                      | 6                      |

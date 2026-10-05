@@ -1,0 +1,6 @@
+table: movement
+schema: schemas/movement.json
+
+| id     | name    | place_buffer_ms | corner_assist_milli | repeat_assist_milli | repeat_window_ticks | turn_buffer_ticks | secondary_axis_permille | spawn_facing | water_speed_permille | player_collision | source_status | source_ref                     |
+| ------ | ------- | --------------- | ------------------- | ------------------- | ------------------- | ----------------- | ----------------------- | ------------ | -------------------- | ---------------- | ------------- | ------------------------------ |
+| 103001 | default | 125             | 500                 | 250                 | 6                   | 6                 | 500                     | Down         | 700                  | false            | design        | docs/specs/bomber/design.md#15 |

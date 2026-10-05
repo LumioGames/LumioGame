@@ -1,0 +1,28 @@
+# Bomber browser managed Tick diagnostic
+
+**Goal:** Attribute the measured browser lifecycle long frames and the approximately 19 ms per authority group before choosing a production engine fix.
+
+**Scope:** Private diagnostics in a new Runtime worktree at the exact official08 Runtime commit d8ae3da3793d5d95785606be319668a4318af85a. The Game workspace, frozen release roots, eight participants, voxel resources, Tick rate, protocol validation and finite budgets remain protected. Diagnostics must be consumed through an official complete build and removed before final acceptance.
+
+**Evidence:** `games/101-bomber/.run/browser-experience-repair-01/live-08` contains reviewed compact-v4 browser observations. Early unchanged-Self, one-publication groups average approximately 20.8 ms; late groups average approximately 19.2 ms. Initial baselines take approximately 510–524 ms and later world replacements 153–357 ms. Native invocation windows explain approximately 1.1–1.4% of synchronous Tick, but managed interop and observation bookkeeping remain outside that attribution. The earlier 34–67 MB compact-v2 payload is a contaminated performance observation and is retained as such.
+
+## Tasks
+
+- [x] Create the isolated owning Runtime worktree. Read its entry, knowledge navigation and applicable standards; verify exact base and clean source before edits.
+- [x] Add a fixed-size, private Stopwatch counter helper. Record no credentials or gameplay payload, and emit a bounded summary every 64 outer rebuilds or baseline clones. Instrument confirmed clone, typed authority capture/copy, ingress freeze/fingerprint/staging, and final GAS publication. Preserve original return values, exception identity, call count and ordering; do not time every individual field or add a second world.
+- [x] Independently review exact instrumented bytes and instrumentation boundaries. Compile only appropriate owning projects if needed. Commit only enumerated diagnostic files in the isolated repository and freeze a clean official-builder input.
+- [x] Build diagnostic complete09 using the same verified eight-repository official builder input, changing only the diagnostic Runtime commit. Record all source commits, build exits and manifest integrity; no manual DLL overlay.
+- [x] Consume the complete diagnostic package for Server, Bot, browser Gameplay and browser host. Run two independent players plus six real Bots. Correlate bounded phase summaries with actual browser Tick, lifecycle, input, authority and frame evidence.
+- [ ] Select a minimal owning-repository production repair from measured evidence. Add a meaningful behavior regression first, implement, independently review, build an official complete release without diagnostic code, and repeat real-browser acceptance.
+
+## Preserved limitations
+
+The non-author review accepts exact four files for private diagnostics only (`.sdd/101-20261004-runtime-private-tick-diagnostic-independent-review.md`, SHA256 `59ca4f580c7ef9439d270b8a08bd8504f1abf3238e561ff2cfe5f9b4648a6ddb`). Root committed only those four files as Runtime `0053ea4d2b9b9743f2871156e725e13a842e0d6a`, then created clean detached input `C:/Work/LumioGames/.101-pack07/LumioGameRuntime09Diagnostic`. The author's two untracked evidence files remain intact in the original diagnostic worktree. Official complete09 diagnostic construction started with exactly the same seven other source commits as complete08. No performance conclusion follows from this source review or package build.
+
+Two private AOT comparisons are retained: attempt01 is rejected because the SDK requires trimming; attempt02 fails nine IL2026 compilation diagnostics under the unchanged warnings-as-errors rule, before link or AOT. Neither is a runtime comparison or an accepted production configuration. No warning gate is weakened.
+
+The original close/open deadlock repair and Participant Self read repair have independent reviews. Ten actual close/new-tab cycles in live06 received authority data, but the observing/resync presentation transition and the remaining long frames prevent a full experience acceptance claim. A final uninstrumented page run, bilateral movement and bombs, and at least ten close/open cycles on the final production candidate remain required. All other formal delivery gaps remain active.
+
+Diagnostic09 was built successfully (305 files, manifest `6de6e91240457ed90ed7edcc0140bedb41724fabeaa5d9c93faa8ca3c78ba29b`) and independently audited, then consumed by four successful Game build/publish steps. Actual A/B plus six Bots produced57 bounded windows per player: capture/copy averages13.915/13.992ms, about94% of inclusive joint cost. Native-call windows are not subtracted from managed time. Full analysis and immutable-prefix evidence are under `games/101-bomber/.run/browser-experience-repair-01/live-09-diagnostic`; identity review is `.sdd/101-20261004-diagnostic09-identity-audit.md`.
+
+The same live scene later stopped committing at host7098/applied7097,136.866s before actual A close/reopen. Preserve this scene until its root-cause repair is ready; it is not an experience pass. Two controlled actual Native/CLR reproductions now confirm legal ineligible terminal observation loses exported owner facts and the signed Host retains its batch. The owning Runtime repair and independent review are underway. The separately reviewed Transform duplicate-capture guard is committed as `cc1f909489ff9ee484df7728e9222447d594bbbf`; browser benefit remains unmeasured. A new clean composition tree contains that commit, and will receive only the independently accepted terminal repair before an official production complete package without the four diagnostic files.

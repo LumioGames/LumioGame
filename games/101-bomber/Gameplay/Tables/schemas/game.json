@@ -1,0 +1,270 @@
+{
+  "table": "game",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "tick_rate_hz",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "tick rate hz"
+    },
+    {
+      "name": "player_count",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "player count"
+    },
+    {
+      "name": "map_size",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "map size"
+    },
+    {
+      "name": "warmup_ms",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "warmup ms"
+    },
+    {
+      "name": "match_duration_ms",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "match duration ms"
+    },
+    {
+      "name": "podium_ms",
+      "ordinal": 7,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "podium ms"
+    },
+    {
+      "name": "results_ms",
+      "ordinal": 8,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "results ms"
+    },
+    {
+      "name": "skills_enabled",
+      "ordinal": 9,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "skills enabled"
+    },
+    {
+      "name": "default_bot_profile",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "default bot profile"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    },
+    {
+      "name": "initial_seed",
+      "ordinal": 13,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Initial authoritative match seed; subsequent matches derive their seed through Runtime determinism"
+    },
+    {
+      "name": "central_supply_enabled",
+      "ordinal": 14,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "central supply enabled; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_announce_ms",
+      "ordinal": 15,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply announce ms; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_open_ms",
+      "ordinal": 16,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply open ms; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_strengthening_count",
+      "ordinal": 17,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply strengthening count; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_health_count",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply health count; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_frenzy_count",
+      "ordinal": 19,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply frenzy count; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_special_count",
+      "ordinal": 20,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply special count; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "central_supply_golden_heart_count",
+      "ordinal": 21,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "central supply golden heart count; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "frenzy_enabled",
+      "ordinal": 22,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "frenzy enabled; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "frenzy_duration_ms",
+      "ordinal": 23,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "frenzy duration ms; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "frenzy_fuse_ms",
+      "ordinal": 24,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "frenzy fuse ms; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "frenzy_concurrent_limit",
+      "ordinal": 25,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 1,
+      "maximum": 6,
+      "description": "frenzy concurrent limit; ADR0048 and design sections 8.5/8.6"
+    },
+    {
+      "name": "frenzy_min_placement_ticks",
+      "ordinal": 26,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 5,
+      "description": "frenzy min placement ticks; ADR0048 and design sections 8.5/8.6"
+    }
+  ]
+}

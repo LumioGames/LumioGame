@@ -1,0 +1,27 @@
+[
+  {
+    "path": "modules/coordination/src/Lumio.GameRuntime.Coordination/Voxel/HostVoxelWorldAdapter.cs",
+    "sha256": "8523E41D8BEF860F1466307313C63D68535E4F46A5A1AD3B49E3D5CFB5D84882",
+    "bytes": 33812
+  },
+  {
+    "path": "modules/coordination/src/Lumio.GameRuntime.Coordination/Voxel/VoxelGameplayBinding.cs",
+    "sha256": "8FA09B6472F1DC4D07F0C6FE2BE09852A8EB53E04D21EB2099C3FD8CFC315624",
+    "bytes": 4323
+  },
+  {
+    "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/Prediction/WorldManager.JointPrediction.cs",
+    "sha256": "53139D06078BEF95C61A22FDEB6011640BED85465793F226B3F296B881CAA8A3",
+    "bytes": 13833
+  },
+  {
+    "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.cs",
+    "sha256": "D6275395BAE2D5698228957B9773E14F2CDDDBF92033E36CB9BF00AE6138108C",
+    "bytes": 99298
+  },
+  {
+    "path": "modules/gas/src/Lumio.GameRuntime.Gas/Prediction/GasJointPrediction.cs",
+    "sha256": "DFBD88CB24E83F026AF65B0C9B4D2C7B07B36F833B30E0BC5D29B6B6918523BD",
+    "bytes": 24840
+  }
+]

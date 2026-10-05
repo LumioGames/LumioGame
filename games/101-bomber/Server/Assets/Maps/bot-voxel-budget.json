@@ -1,0 +1,16 @@
+{
+  "catalogPath": "official-catalog.json",
+  "residentSectionBudget": 8,
+  "receiptRetentionEntries": 64,
+  "prediction": {
+    "totalRetainedPayloadCeiling": 1048576,
+    "maxRecords": 32,
+    "maxBlockJournal": 64,
+    "maxBindingJournal": 32,
+    "maxOverlaySlots": 96,
+    "maxValidationSections": 4,
+    "maxValidationCellsPerSection": 64,
+    "maxBindingTextEntries": 32,
+    "bindingTextSlotBytes": 64
+  }
+}

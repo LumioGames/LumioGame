@@ -1,0 +1,20 @@
+{
+  "contentFingerprint": "c2eb0e11ccc18528242fd714a2ba8d02ed57d25999d8bf90c5d238cb9e7fe25c",
+  "rows": [
+    {
+      "duration_ms": 115000,
+      "id": 111001,
+      "late_poison_points": 3,
+      "name": "default",
+      "poison_interval_ms": 1000,
+      "preview_ms": 10000,
+      "resource_comparison": "StrictLess",
+      "resource_threshold_permille": 200,
+      "resource_trigger_requires_regen_stopped": true,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    }
+  ],
+  "table": "final_circle",
+  "target": "C"
+}

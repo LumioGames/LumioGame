@@ -4,7 +4,6 @@ using System.Linq;
 using System.Globalization;
 using System.Numerics;
 using Lumio.Bomber.Gameplay.Config;
-using Lumio.Bomber.Gameplay.Components.Identity;
 using Lumio.Bomber.Gameplay.Contracts.Components;
 using Lumio.Bomber.Gameplay.Contracts.EntityTypes;
 using Lumio.Bomber.Gameplay.EntityTypes;
@@ -12,6 +11,7 @@ using Lumio.Engine.NativeLoader;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Gas;
 using Lumio.GameRuntime.Primitives;
+using Lumio.GameRuntime.Simulation.Determinism;
 
 namespace Lumio.Bomber.Gameplay;
 
@@ -22,16 +22,43 @@ public sealed class BombSystem : EcsSystem
 {
     public override void Execute(World world)
     {
+        try
+        {
+            ExecuteCore(world);
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"BOMBER_EXECUTE_FAULT tick={world.Tick}: {error}");
+            throw;
+        }
+    }
+
+    private static void ExecuteCore(World world)
+    {
         BomberMatchState match = world.Single<BomberMatchState>();
         BomberWorldRuntime runtime = world.Single<BomberWorldRuntime>();
         world.Single<BomberPresentationJournal>().Expire(world.Tick);
         IBomberConfig config = BomberConfigBinding.For(world);
+        BomberTerrainTransactions.BeginFrame(world);
+        BomberEffectBusiness.Consume(world, match);
+        match.SettlementRespawnTicks.Value = Ticks.FromMilliseconds(config.Life.RespawnMs, config.Game.TickRateHz);
+        match.SettlementPodiumTicks.Value = Ticks.FromMilliseconds(config.Game.PodiumMs, config.Game.TickRateHz);
         EnsureParticipants(world, match, config);
         EnsureMatch(match, config, world);
         if (match.MatchId.Value == 0) return;
-        UpdatePlayers(world, match, config);
+        BomberIceBridges.Begin(world);
+        BomberTerrainTransactions.Begin(world);
+        BomberFavoriteFireZones.Advance(world);
         AdvanceMatch(world, match, config);
+        BomberFinalCircle.Advance(world);
+        BomberSuccessorLifecycle.Advance(world, match, config);
+        UpdatePlayers(world, match, config);
+        BomberStatisticsBusiness.Advance(world, match);
         ProcessBombs(world, match, config);
+        BomberIceBridges.End(world);
+        BomberInventory.ReconcileSuccessors(world);
+        BomberRegeneration.Advance(world);
+        BomberTerrainTransactions.End(world);
         AdvanceMatch(world, match, config);
         CollectOverlappingCandy(world, config);
         runtime.ValidateRoster(config);
@@ -59,8 +86,7 @@ public sealed class BombSystem : EcsSystem
             if (!world.IsLive(item.Entity)) continue;
             if (++liveItems > config.ObjectBudgets.PickupCapacity)
                 throw new InvalidOperationException("Automatic pickup item count exceeds the configured budget.");
-            if ((BomberPickupKind)item.Kind.Value == BomberPickupKind.Skill)
-                items.Add(item.Entity);
+            items.Add(item.Entity);
         }
         items.Sort();
 
@@ -73,8 +99,7 @@ public sealed class BombSystem : EcsSystem
             {
                 if (!world.IsLive(itemId)) continue;
                 BomberPickupItem item = world.Get<BomberPickupItem>(itemId);
-                if ((BomberPickupKind)item.Kind.Value != BomberPickupKind.Skill ||
-                    !item.ClaimedBy.Value.IsDefault) continue;
+                if (!item.ClaimedBy.Value.IsDefault) continue;
                 Vector3 from = world.Get<LogicTransform>(life).LocalPosition;
                 Vector3 to = world.Get<LogicTransform>(itemId).LocalPosition;
                 if (Vector3.DistanceSquared(from, to) > radiusSquared) continue;
@@ -94,7 +119,7 @@ public sealed class BombSystem : EcsSystem
                 !world.IsLive(participant.CurrentLife.Value)) return;
         match.MatchId.Value = 1;
         match.MatchIndex.Value = 1;
-        match.Seed.Value = 0xB0B3A101UL;
+        match.Seed.Value = config.Game.InitialSeed;
         match.ConfigHash.Value = config.Game.Name + ":" + config.Game.Id;
         match.StartTick.Value = world.Tick;
         match.PhaseEndTick.Value = checked(world.Tick + Ticks.FromMilliseconds(config.Game.WarmupMs, config.Game.TickRateHz));
@@ -121,8 +146,6 @@ public sealed class BombSystem : EcsSystem
                 runtime.SetParticipants(participants.Select(participant => participant.Entity).ToArray(), config);
             foreach (BomberParticipantState participant in participants)
             {
-                if (participant.DeathStructurePending.Value && participant.CurrentLife.Value.IsDefault)
-                    BindPendingSuccessor(world, participant, match, config);
                 if (participant.CurrentLife.Value.IsDefault || !world.IsLive(participant.CurrentLife.Value)) continue;
                 BomberPlayerState body = world.Get<BomberPlayerState>(participant.CurrentLife.Value);
                 if (!body.Participant.Value.IsDefault && body.Participant.Value != participant.Entity)
@@ -155,7 +178,7 @@ public sealed class BombSystem : EcsSystem
                 participant.CurrentLife.Value = player.Entity;
                 participant.LastLife.Value = player.Entity;
                 participant.LifeGeneration.Value = 1;
-                participant.NextCharacterId.Value = player.NextCharacterId.Value;
+                    participant.NextCharacterId.Value = player.NextCharacterId.Value;
                 player.ParticipantIndex.Value = slot;
                 player.LifeGeneration.Value = participant.LifeGeneration.Value;
                 BindSelectedLife(world, participant, config);
@@ -175,23 +198,14 @@ public sealed class BombSystem : EcsSystem
         ulong protectionTicks = Ticks.FromMilliseconds(config.Life.ProtectionMs, config.Game.TickRateHz);
         foreach (BomberPlayerState player in world.Each<BomberPlayerState>().ToArray())
         {
+            if (player.RestorePending.Value) _ = BomberHealthBusiness.Submit(world, player, true);
             BomberSkillState skill = world.Get<BomberSkillState>(player.Entity);
-            if (skill.BubbleUntilTick.Value <= world.Tick) skill.BubbleUntilTick.Value = 0;
-            if (skill.AuraUntilTick.Value <= world.Tick) skill.AuraUntilTick.Value = 0;
-            if (skill.FrozenUntilTick.Value <= world.Tick) skill.FrozenUntilTick.Value = 0;
+            BomberFiniteSkills.ConsumeBubble(world, player, skill);
+            BomberFiniteSkills.ConsumeAura(world, player, skill);
+            BomberFiniteSkills.ConsumeFreeze(world, player, skill);
             if (player.LifePhase.Value == (int)BomberLifePhase.Protected
-                && player.ProtectedUntilTick.Value != 0 && player.ProtectedUntilTick.Value <= world.Tick)
+                && player.ProtectedUntilTick.Value <= world.Tick)
                 player.LifePhase.Value = (int)BomberLifePhase.Vulnerable;
-            if (player.LifePhase.Value == (int)BomberLifePhase.AwaitingRespawn &&
-                player.RespawnAtTick.Value <= world.Tick && (BomberMatchPhase)match.Phase.Value != BomberMatchPhase.FinalCircle)
-            {
-                BomberParticipantState participant = player.Participant.Value.IsDefault
-                    ? throw new InvalidOperationException("A respawning player must have a participant.")
-                    : world.Get<BomberParticipantState>(player.Participant.Value);
-                PreparePendingRespawn(world, participant, player);
-                QueueSuccessor(world, participant, player, config, protectionTicks);
-                continue;
-            }
             if (!player.Participant.Value.IsDefault && world.IsLive(player.Participant.Value))
                 SyncParticipantLifecycle(world.Get<BomberParticipantState>(player.Participant.Value), player);
             BomberMatchRules.SyncDerivedPlayerState(world, player);
@@ -206,207 +220,15 @@ public sealed class BombSystem : EcsSystem
         participant.EliminatedTick.Value = player.EliminatedTick.Value;
     }
 
-    private static void QueueSuccessor(World world, BomberParticipantState participant,
-        BomberPlayerState oldLife, IBomberConfig config, ulong protectionTicks)
-    {
-        if (!participant.DeathStructurePending.Value || participant.CurrentLife.Value != default)
-            throw new InvalidOperationException("A respawning participant must have one pending destroyed life.");
-        if (participant.DeathStructureLife.Value != oldLife.Entity || participant.LastLife.Value != oldLife.Entity)
-            throw new InvalidOperationException("A respawn successor must replace the pending life.");
-
-        ulong previousGeneration = participant.LifeGeneration.Value;
-        ulong successorGeneration = checked(previousGeneration + 1UL);
-        if (participant.SelectedForMatchCharacterId.Value > 0 &&
-            SelectCharacterAbility.TryConfiguredCharacter(config,
-                checked((uint)participant.SelectedForMatchCharacterId.Value), out CharactersRow selected))
-            SelectCharacterAbility.BindCharacter(world.Get<BomberSkillState>(oldLife.Entity), selected);
-        CaptureRespawnCarry(world, participant, oldLife.Entity);
-
-        EntityOrder order = world.Commands.Create<PlayerEntity>();
-        IdentityComponent identity = order.Get<IdentityComponent>();
-        IdentityComponent oldIdentity = world.Get<IdentityComponent>(oldLife.Entity);
-        EcsRegistry.Generated(identity)!.WriteField("accountId", oldIdentity.AccountId.Value, silent: true);
-        EcsRegistry.Generated(identity)!.WriteField("name", oldIdentity.Name.Value, silent: true);
-
-        BomberPlayerState successor = order.Get<BomberPlayerState>();
-        successor.Participant.Value = participant.Entity;
-        successor.LifeGeneration.Value = successorGeneration;
-        successor.LifePhase.Value = (int)BomberLifePhase.Protected;
-        successor.ParticipantIndex.Value = participant.Slot.Value;
-        successor.Facing.Value = (int)BomberDirection.Down;
-        successor.RespawnAtTick.Value = 0;
-        successor.ProtectedUntilTick.Value = checked(world.Tick + protectionTicks);
-        successor.EliminatedTick.Value = 0;
-        successor.NextCharacterId.Value = 0;
-
-        var position = SpawnPosition(config.Map, participant.Slot.Value);
-        EcsRegistry.Generated(order.Get<LogicTransform>())!.WriteField("localPosition",
-            FormattableString.Invariant($"{position.X:R},{position.Y:R},{position.Z:R}"), silent: true);
-
-        participant.LifeGeneration.Value = successorGeneration;
-        participant.DeathStructureGeneration.Value = successorGeneration;
-        participant.LifePhase.Value = successor.LifePhase.Value;
-        participant.RespawnAtTick.Value = 0;
-        participant.DeathTick.Value = 0;
-        participant.EliminatedTick.Value = 0;
-        world.Commands.Destroy(oldLife.Entity);
-    }
-
-    private static void PreparePendingRespawn(World world, BomberParticipantState participant,
-        BomberPlayerState oldLife)
-    {
-        if (participant.DeathStructurePending.Value && participant.CurrentLife.Value.IsDefault)
-            return;
-        if (participant.CurrentLife.Value != oldLife.Entity || participant.LastLife.Value != oldLife.Entity)
-            throw new InvalidOperationException("A respawning participant must own its current life.");
-        participant.CurrentLife.Value = default;
-        participant.LastLife.Value = oldLife.Entity;
-        participant.DeathStructurePending.Value = true;
-        participant.DeathStructureLife.Value = oldLife.Entity;
-        participant.DeathStructureGeneration.Value = participant.LifeGeneration.Value;
-        participant.DeathStructureTick.Value = world.Tick;
-    }
-
-    private static void BindPendingSuccessor(World world, BomberParticipantState participant,
-        BomberMatchState match, IBomberConfig config)
-    {
-        if (!participant.DeathStructurePending.Value || !participant.CurrentLife.Value.IsDefault)
-            return;
-        NetEntityId pendingLife = participant.DeathStructureLife.Value;
-        BomberPlayerState? successor = null;
-        foreach (BomberPlayerState candidate in world.Each<BomberPlayerState>())
-        {
-            if (!world.IsLive(candidate.Entity) || candidate.Entity == pendingLife ||
-                candidate.Participant.Value != participant.Entity ||
-                candidate.LifeGeneration.Value != participant.DeathStructureGeneration.Value) continue;
-            if (successor is not null)
-                throw new InvalidOperationException("A participant received multiple successor lives.");
-            successor = candidate;
-        }
-        if (successor is null) return;
-
-        RestoreRespawnCarry(world, participant, successor.Entity, config);
-        participant.CurrentLife.Value = successor.Entity;
-        participant.LastLife.Value = successor.Entity;
-        participant.LifePhase.Value = successor.LifePhase.Value;
-        participant.RespawnAtTick.Value = successor.RespawnAtTick.Value;
-        participant.DeathTick.Value = 0;
-        participant.EliminatedTick.Value = 0;
-        participant.DeathStructurePending.Value = false;
-        participant.DeathStructureLife.Value = default;
-        participant.DeathStructureGeneration.Value = 0;
-        participant.DeathStructureTick.Value = 0;
-        BindSelectedLife(world, participant, config);
-        BomberMatchRules.SyncDerivedPlayerState(world, successor);
-
-        ulong sequence = BomberMatchRules.Emit(world, "player_respawned", match.MatchId.Value,
-            $"player={successor.Entity.ToHex()}");
-        var position = world.Get<LogicTransform>(successor.Entity).LocalPosition;
-        world.Single<BomberPresentationJournal>().Append(world, "respawn", match.MatchId.Value, sequence,
-            participant.Entity, successor.Entity, successor.LifeGeneration.Value,
-            x: BomberMatchRules.CellX(position), z: BomberMatchRules.CellZ(position),
-            data: new Dictionary<string, string> {
-                ["previousLifeGeneration"] = (successor.LifeGeneration.Value - 1UL).ToString(CultureInfo.InvariantCulture),
-                ["protectedUntilTick"] = successor.ProtectedUntilTick.Value.ToString(CultureInfo.InvariantCulture) });
-    }
-
-    private static void CaptureRespawnCarry(World world, BomberParticipantState participant, NetEntityId life)
-    {
-        AttributeComponent attributes = world.Get<AttributeComponent>(life);
-        BomberSkillState skill = world.Get<BomberSkillState>(life);
-        BomberRespawnCarry carry = world.Get<BomberRespawnCarry>(participant.Entity);
-        carry.CarryPresent.Value = true;
-        carry.PowerBase.Value = checked((int)attributes.GetBaseValue(BomberAttributeNames.BombPower));
-        carry.CapacityBase.Value = checked((int)attributes.GetBaseValue(BomberAttributeNames.BombCapacity));
-        carry.SpeedTierBase.Value = checked((int)attributes.GetBaseValue(BomberAttributeNames.SpeedTier));
-        carry.AvailableBombs.Value = checked((int)attributes.GetBaseValue(BomberAttributeNames.AvailableBombs));
-        carry.CharacterId.Value = checked((int)skill.CharacterId.Value);
-        carry.BombSkillId.Value = checked((int)skill.BombSkillId.Value);
-        carry.BombLevel.Value = skill.BombSkillLevel.Value;
-        carry.BombBound.Value = skill.BombSkillBound.Value;
-        carry.BombCombinationOriginA.Value = checked((int)skill.ComboSourceA.Value);
-        carry.BombOriginALevel.Value = skill.ComboLevelA.Value;
-        carry.BombOriginABound.Value = skill.BombSkillBound.Value;
-        carry.BombCombinationOriginB.Value = checked((int)skill.ComboSourceB.Value);
-        carry.BombOriginBLevel.Value = skill.ComboLevelB.Value;
-        carry.BombOriginBBound.Value = skill.BombSkillBound.Value;
-        carry.ActiveSkillId.Value = checked((int)skill.ActiveSkillId.Value);
-        carry.ActiveLevel.Value = skill.ActiveSkillLevel.Value;
-        carry.ActiveBound.Value = skill.ActiveSkillBound.Value;
-        carry.ActiveCombinationOriginA.Value = checked((int)skill.ComboSourceA.Value);
-        carry.ActiveOriginALevel.Value = skill.ComboLevelA.Value;
-        carry.ActiveOriginABound.Value = skill.ActiveSkillBound.Value;
-        carry.ActiveCombinationOriginB.Value = checked((int)skill.ComboSourceB.Value);
-        carry.ActiveOriginBLevel.Value = skill.ComboLevelB.Value;
-        carry.ActiveOriginBBound.Value = skill.ActiveSkillBound.Value;
-        carry.PassiveSkillId.Value = checked((int)skill.PassiveSkillId.Value);
-        carry.PassiveLevel.Value = skill.PassiveSkillLevel.Value;
-        carry.PassiveBound.Value = skill.PassiveSkillBound.Value;
-        carry.PassiveCombinationOriginA.Value = checked((int)skill.ComboSourceA.Value);
-        carry.PassiveOriginALevel.Value = skill.ComboLevelA.Value;
-        carry.PassiveOriginABound.Value = skill.PassiveSkillBound.Value;
-        carry.PassiveCombinationOriginB.Value = checked((int)skill.ComboSourceB.Value);
-        carry.PassiveOriginBLevel.Value = skill.ComboLevelB.Value;
-        carry.PassiveOriginBBound.Value = skill.PassiveSkillBound.Value;
-    }
-
-    private static void RestoreRespawnCarry(World world, BomberParticipantState participant,
-        NetEntityId life, IBomberConfig config)
-    {
-        BomberRespawnCarry carry = world.Get<BomberRespawnCarry>(participant.Entity);
-        if (!carry.CarryPresent.Value) return;
-        AttributeComponent attributes = world.Get<AttributeComponent>(life);
-        SetAttribute(attributes, BomberAttributeNames.BombPower, carry.PowerBase.Value);
-        SetAttribute(attributes, BomberAttributeNames.BombCapacity, carry.CapacityBase.Value);
-        SetAttribute(attributes, BomberAttributeNames.SpeedTier, carry.SpeedTierBase.Value);
-        long speed = config.SpeedTier(carry.SpeedTierBase.Value).SpeedMilli;
-        SetAttribute(attributes, BomberAttributeNames.MovementSpeedMilli, speed);
-        long available = Math.Clamp(carry.AvailableBombs.Value, 0, carry.CapacityBase.Value);
-        SetAttribute(attributes, BomberAttributeNames.AvailableBombs, available);
-        long health = config.Life.PointsPerHeart * 3L;
-        SetAttribute(attributes, BomberAttributeNames.HealthPoints, health);
-
-        BomberSkillState skill = world.Get<BomberSkillState>(life);
-        skill.CharacterId.Value = checked((uint)Math.Max(0, carry.CharacterId.Value));
-        skill.BombSkillId.Value = checked((uint)Math.Max(0, carry.BombSkillId.Value));
-        skill.BombSkillLevel.Value = carry.BombLevel.Value;
-        skill.BombSkillBound.Value = carry.BombBound.Value;
-        skill.ActiveSkillId.Value = checked((uint)Math.Max(0, carry.ActiveSkillId.Value));
-        skill.ActiveSkillLevel.Value = carry.ActiveLevel.Value;
-        skill.ActiveSkillBound.Value = carry.ActiveBound.Value;
-        skill.PassiveSkillId.Value = checked((uint)Math.Max(0, carry.PassiveSkillId.Value));
-        skill.PassiveSkillLevel.Value = carry.PassiveLevel.Value;
-        skill.PassiveSkillBound.Value = carry.PassiveBound.Value;
-        skill.ComboSourceA.Value = checked((uint)Math.Max(0, carry.BombCombinationOriginA.Value));
-        skill.ComboLevelA.Value = carry.BombOriginALevel.Value;
-        skill.ComboSourceB.Value = checked((uint)Math.Max(0, carry.BombCombinationOriginB.Value));
-        skill.ComboLevelB.Value = carry.BombOriginBLevel.Value;
-        skill.CooldownFromTick.Value = 0;
-        skill.CooldownUntilTick.Value = 0;
-        skill.BubbleUntilTick.Value = 0;
-        skill.AuraUntilTick.Value = 0;
-        skill.FrozenUntilTick.Value = 0;
-        skill.FreezeImmuneUntilTick.Value = 0;
-        skill.ToxinUntilTick.Value = 0;
-        skill.ShockUntilTick.Value = 0;
-        skill.ToxinSource.Value = default;
-        skill.LastDamageTick.Value = 0;
-        skill.RegenNextTick.Value = 0;
-        skill.TeleportSequence.Value = 0;
-        carry.CarryPresent.Value = false;
-    }
-
-    private static void SetAttribute(AttributeComponent attributes, string name, long value)
-    {
-        attributes.SetBaseValue(name, value);
-        attributes.SetCurrentValue(name, value);
-    }
-
     private static void ProcessBombs(World world, BomberMatchState match, IBomberConfig config)
     {
+        BomberFrenzy.Validate(world);
         using NativeHfsmDefinition definition = BomberHfsmDefinitions.Compile(world, BomberHfsmKind.Bomb);
         foreach (BomberBombState bomb in world.Each<BomberBombState>())
         {
+            BomberSplitBombs.ObservePublished(world, bomb);
+            BomberBarrelBombPromises.ObservePublished(world, bomb);
+            BomberFrenzy.ObservePublished(world, bomb);
             BomberBombLifecycle.Ensure(world, bomb, definition);
             if (bomb.PlacementRecorded.Value) continue;
             var position = world.Get<LogicTransform>(bomb.Entity).LocalPosition;
@@ -421,21 +243,52 @@ public sealed class BombSystem : EcsSystem
                 occurredTick: bomb.PlacedAtTick.Value);
             bomb.PlacementRecorded.Value = true;
         }
+        BomberSplitBombs.ExtinguishWater(world, definition);
         BomberBombKick.Advance(world, definition);
         var due = new Queue<BomberBombState>(world.Each<BomberBombState>()
-            .Where(bomb => bomb.Phase.Value == (int)BomberBombPhase.Fuse && bomb.FuseEndTick.Value <= world.Tick));
+            .Where(bomb => bomb.Phase.Value == (int)BomberBombPhase.Fuse && bomb.FuseEndTick.Value <= world.Tick &&
+                !BomberIceBridges.HoldsFuse(world, bomb)));
         var chained = new HashSet<NetEntityId>();
         var chainCounts = new Dictionary<ulong, int>();
+        var contactSources = new List<BomberBombState>();
+        var contactSourceIds = new HashSet<NetEntityId>();
+        foreach (var source in world.Each<BomberBombState>().Where(b => b.TerrainContinuations.Count != 0))
+        {
+            ApplyBlastCells(world, match, source, BomberBlastTerrain.Resume(world, source), due, chained);
+            contactSources.Add(source);
+            contactSourceIds.Add(source.Entity);
+        }
         while (due.Count != 0)
         {
             BomberBombState bomb = due.Dequeue();
             if (!world.IsLive(bomb.Entity) || bomb.Phase.Value != (int)BomberBombPhase.Fuse) continue;
+            if (BomberIceBridges.HoldsFuse(world, bomb)) continue;
             BomberBombLifecycle.Send(world, bomb, definition, BomberHfsmDefinitions.EventId.FuseElapsed);
             Explode(world, match, config, bomb, due, chained, chainCounts);
+            if (contactSourceIds.Add(bomb.Entity)) contactSources.Add(bomb);
         }
+        foreach (BomberBombState bomb in world.Each<BomberBombState>())
+            if (bomb.Phase.Value == (int)BomberBombPhase.Danger && contactSourceIds.Add(bomb.Entity)) contactSources.Add(bomb);
+        BomberSplitBombs.Advance(world);
+        foreach (BomberBombState bomb in contactSources)
+        {
+            if (!world.IsLive(bomb.Entity)) continue;
+            if (bomb.Phase.Value == (int)BomberBombPhase.Danger && bomb.DangerUntilTick.Value > world.Tick)
+                ReserveBlastContacts(world, match, bomb);
+        }
+        // Several children may reserve new rows in the same persisted mother. Reserve the
+        // whole contact set before admitting any Effect, which pins its row associations.
+        foreach (BomberBombState source in contactSources.Where(b => world.IsLive(b.Entity))
+            .Select(b => BomberSplitBombs.DamageOwner(world, b)).DistinctBy(b => b.Entity))
+            BomberEffectBusiness.SubmitDamage(world, source);
+        // Apply due Native phase actions before sampling this tick's fire coverage.
         foreach (BomberBombState bomb in world.Each<BomberBombState>().ToArray())
         {
             if (!world.IsLive(bomb.Entity)) continue;
+            if (BomberTerrainTransactions.HoldsSource(world, bomb.Entity)) continue;
+            if (BomberFireExposure.HoldsSource(world, bomb.Entity)) continue;
+            if (BomberIceBridges.HoldsSource(world, bomb.Entity)) continue;
+            if (Enumerable.Range(0, bomb.HitStates.Count).Any(i => bomb.HitStates[i] == (int)BomberHitStorageState.Pending)) continue;
             if (bomb.Phase.Value == (int)BomberBombPhase.Danger && bomb.DangerUntilTick.Value <= world.Tick)
             {
                 BomberBombLifecycle.Send(world, bomb, definition, BomberHfsmDefinitions.EventId.DangerElapsed);
@@ -444,16 +297,15 @@ public sealed class BombSystem : EcsSystem
             {
                 BomberBombLifecycle.Send(world, bomb, definition, BomberHfsmDefinitions.EventId.BurnElapsed);
             }
+            else if (bomb.Phase.Value == (int)BomberBombPhase.Expired && !BomberSplitBombs.HoldsFamily(world, bomb))
+                world.Commands.Destroy(bomb.Entity);
         }
+        BomberFireExposure.Advance(world);
     }
 
     private static void Explode(World world, BomberMatchState match, IBomberConfig config, BomberBombState bomb,
         Queue<BomberBombState> due, HashSet<NetEntityId> chained, Dictionary<ulong, int> chainCounts)
     {
-        bomb.ReachUp.Value = bomb.Power.Value;
-        bomb.ReachDown.Value = bomb.Power.Value;
-        bomb.ReachLeft.Value = bomb.Power.Value;
-        bomb.ReachRight.Value = bomb.Power.Value;
         int chainLength = chainCounts.TryGetValue(bomb.ChainId.Value, out int priorCount)
             ? checked(priorCount + 1) : 1;
         chainCounts[bomb.ChainId.Value] = chainLength;
@@ -466,18 +318,7 @@ public sealed class BombSystem : EcsSystem
         var origin = world.Get<LogicTransform>(bomb.Entity).LocalPosition;
         int originX = BomberMatchRules.CellX(origin);
         int originZ = BomberMatchRules.CellZ(origin);
-        var cells = new List<(int X, int Z)> { (originX, originZ) };
-        foreach ((int dx, int dz) in new[] { (0, -1), (1, 0), (0, 1), (-1, 0) })
-        {
-            for (int step = 1; step <= Math.Max(0, bomb.Power.Value); step++)
-            {
-                int x = originX + dx * step;
-                int z = originZ + dz * step;
-                MapRow map = config.Map;
-                if (x < map.BoundaryCells || z < map.BoundaryCells || x >= map.Width - map.BoundaryCells || z >= map.Depth - map.BoundaryCells) break;
-                cells.Add((x, z));
-            }
-        }
+        var cells = BomberBlastTerrain.Trace(world, bomb);
         ulong sequence = BomberMatchRules.Emit(world, "bomb_detonated", match.MatchId.Value,
             $"bomb={bomb.Entity.ToHex()} chainId={bomb.ChainId.Value}");
         world.Single<BomberPresentationJournal>().Append(world, "bomb_exploded", match.MatchId.Value, sequence,
@@ -488,107 +329,50 @@ public sealed class BombSystem : EcsSystem
                 ["chainId"] = bomb.ChainId.Value.ToString(CultureInfo.InvariantCulture),
                 ["cellCount"] = cells.Count.ToString(CultureInfo.InvariantCulture),
                 ["indexInChain"] = chainLength.ToString(CultureInfo.InvariantCulture) });
+        ApplyBlastCells(world, match, bomb, cells, due, chained);
+        BomberMatchRules.Emit(world, "chain_resolved", match.MatchId.Value,
+            $"chainId={bomb.ChainId.Value}");
+    }
+
+    private static void ApplyBlastCells(World world, BomberMatchState match, BomberBombState bomb,
+        List<(int X, int Z)> cells, Queue<BomberBombState> due, HashSet<NetEntityId> chained)
+    {
+        // An accepted terrain continuation still owes its original contacts, even
+        // when delivery arrives after Danger. It does not reopen the entry window.
+        BomberIceBridges.RequestContact(world, bomb, cells);
+        ReserveBlastContacts(world, match, bomb, cells);
         for (int i = 0; i < cells.Count; i++)
         {
             (int x, int z) = cells[i];
-            ApplyBlastCell(world, match, bomb, x, z);
-            if (i == 0) continue;
             BomberBombState? chainedBomb = BomberMatchRules.FindBombAt(world, x, z, bomb.Entity);
-            if (chainedBomb is not null && chainedBomb.Phase.Value == (int)BomberBombPhase.Fuse && chained.Add(chainedBomb.Entity))
+            if (chainedBomb is not null && chainedBomb.Phase.Value == (int)BomberBombPhase.Fuse &&
+                !BomberIceBridges.HoldsFuse(world, chainedBomb) && chained.Add(chainedBomb.Entity))
             {
                 chainedBomb.FuseEndTick.Value = world.Tick;
                 chainedBomb.ChainId.Value = bomb.ChainId.Value;
                 due.Enqueue(chainedBomb);
             }
         }
-        BomberMatchRules.Emit(world, "chain_resolved", match.MatchId.Value,
-            $"chainId={bomb.ChainId.Value}");
     }
 
-    private static void ApplyBlastCell(World world, BomberMatchState match, BomberBombState bomb, int x, int z)
+    private static void ReserveBlastContacts(World world, BomberMatchState match, BomberBombState bomb, List<(int X, int Z)>? acceptedCells = null)
     {
-        NetEntityId playerId = BomberMatchRules.FindPlayerAt(world, x, z);
-        if (playerId.IsDefault) return;
-        BomberPlayerState player = world.Get<BomberPlayerState>(playerId);
-        BomberSkillState skills = world.Get<BomberSkillState>(playerId);
-        if (player.LifePhase.Value == (int)BomberLifePhase.Eliminated || skills.BubbleUntilTick.Value > world.Tick
-            || player.ProtectedUntilTick.Value > world.Tick) return;
-        if (player.Participant.Value.IsDefault || player.LifeGeneration.Value == 0) return;
-        if (!bomb.Owner.Value.IsDefault && bomb.Owner.Value == player.Participant.Value &&
-            !IsCurrentSourceForOwner(world, bomb))
-            return;
-        var target = new BomberTargetIdentity(player.Participant.Value, playerId, player.LifeGeneration.Value);
-        if (bomb.TryReserveHit(target) != BomberStorageAdmission.Added) return;
-        AttributeComponent attributes = world.Get<AttributeComponent>(playerId);
-        long previousHealth = attributes.GetCurrentValue(BomberAttributeNames.HealthPoints);
-        long health = Math.Max(0, previousHealth - BomberMatchRules.HalfHeartsPerBomb);
-        // Health has no persistent modifier layer in the Bomber model: damage updates the
-        // authoritative BASE ledger, and CURRENT mirrors it for the Aoi-facing value. Writing
-        // only CURRENT is lost when the next attribute evaluation rebuilds CURRENT from BASE.
-        attributes.SetBaseValue(BomberAttributeNames.HealthPoints, health);
-        attributes.SetCurrentValue(BomberAttributeNames.HealthPoints, health);
-        _ = bomb.CommitContact(target);
-        ulong sequence = BomberMatchRules.Emit(world, "damage_applied", match.MatchId.Value,
-            $"source={bomb.Entity.ToHex()} target={playerId.ToHex()} cause={(int)BomberDamageCause.Explosion}");
-        var journal = world.Single<BomberPresentationJournal>();
-        var damageData = new Dictionary<string, string> {
-            ["appliedPoints"] = (previousHealth - health).ToString(CultureInfo.InvariantCulture),
-            ["healthPointsLeft"] = health.ToString(CultureInfo.InvariantCulture),
-            ["bombId"] = bomb.Entity.ToHex(),
-            ["chainId"] = bomb.ChainId.Value.ToString(CultureInfo.InvariantCulture) };
-        journal.Append(world, "damage_applied", match.MatchId.Value, sequence,
-            player.Participant.Value, playerId, player.LifeGeneration.Value,
-            bomb.Owner.Value, bomb.SourceLife.Value, bomb.Entity, x, z, "explosion", damageData);
-        if (health > 0) return;
-        player.LifePhase.Value = BomberMatchRules.IsInFinalCircle(world)
-            ? (int)BomberLifePhase.Eliminated : (int)BomberLifePhase.AwaitingRespawn;
-        player.EliminatedTick.Value = BomberMatchRules.IsInFinalCircle(world) ? world.Tick : 0;
-        player.RespawnAtTick.Value = BomberMatchRules.IsInFinalCircle(world)
-            ? 0 : checked(world.Tick + Ticks.FromMilliseconds(BomberConfigBinding.For(world).Life.RespawnMs,
-                BomberConfigBinding.For(world).Game.TickRateHz));
-        attributes.SetBaseValue(BomberAttributeNames.HealthPoints, 0);
-        attributes.SetCurrentValue(BomberAttributeNames.HealthPoints, 0);
-        if (!player.Participant.Value.IsDefault && world.IsLive(player.Participant.Value))
+        var origin = world.Get<LogicTransform>(bomb.Entity).LocalPosition;
+        int bx = BomberMatchRules.CellX(origin), bz = BomberMatchRules.CellZ(origin);
+        foreach (BomberPlayerState player in world.Each<BomberPlayerState>())
         {
-            BomberParticipantState participant = world.Get<BomberParticipantState>(player.Participant.Value);
-            if (player.LifePhase.Value == (int)BomberLifePhase.AwaitingRespawn)
-            {
-                CaptureRespawnCarry(world, participant, player.Entity);
-                participant.CurrentLife.Value = default;
-                participant.DeathStructurePending.Value = true;
-                participant.DeathStructureLife.Value = player.Entity;
-                participant.DeathStructureGeneration.Value = player.LifeGeneration.Value;
-                participant.DeathStructureTick.Value = world.Tick;
-            }
-            else
-            {
-                participant.CurrentLife.Value = player.Entity;
-                participant.DeathStructurePending.Value = false;
-                participant.DeathStructureLife.Value = default;
-                participant.DeathStructureGeneration.Value = 0;
-                participant.DeathStructureTick.Value = 0;
-            }
-            participant.LastLife.Value = player.Entity;
-            participant.LifePhase.Value = player.LifePhase.Value;
-            participant.DeathTick.Value = world.Tick;
-            participant.RespawnAtTick.Value = player.RespawnAtTick.Value;
-            participant.EliminatedTick.Value = player.EliminatedTick.Value;
+            if (player.LifePhase.Value >= (int)BomberLifePhase.AwaitingRespawn || BomberFiniteSkills.HasBubble(world, player.Entity)
+                || player.ProtectedUntilTick.Value > world.Tick || player.Participant.Value.IsDefault || player.LifeGeneration.Value == 0) continue;
+            if (BomberFrenzy.IsSelfImmune(bomb, player)) continue;
+            var position = world.Get<LogicTransform>(player.Entity).LocalPosition;
+            int x = BomberMatchRules.CellX(position), z = BomberMatchRules.CellZ(position);
+            bool covered = acceptedCells is not null ? acceptedCells.Contains((x, z)) : (x == bx && z == bz) ||
+                (x == bx && z < bz && bz - z <= bomb.ReachUp.Value) ||
+                (x == bx && z > bz && z - bz <= bomb.ReachDown.Value) ||
+                (z == bz && x < bx && bx - x <= bomb.ReachLeft.Value) ||
+                (z == bz && x > bx && x - bx <= bomb.ReachRight.Value);
+            if (covered) BomberEffectBusiness.ReserveDamage(world, match, bomb, player, x, z);
         }
-        journal.Append(world, "death", match.MatchId.Value, world.Single<BomberWorldRuntime>().AllocateEventSequence(),
-            player.Participant.Value, playerId, player.LifeGeneration.Value,
-            bomb.Owner.Value, bomb.SourceLife.Value, bomb.Entity, x, z, "explosion",
-            new Dictionary<string, string> { ["eliminated"] = (player.LifePhase.Value == (int)BomberLifePhase.Eliminated).ToString().ToLowerInvariant(),
-                ["chainId"] = bomb.ChainId.Value.ToString(CultureInfo.InvariantCulture) });
-    }
-
-    private static bool IsCurrentSourceForOwner(World world, BomberBombState bomb)
-    {
-        if (bomb.Owner.Value.IsDefault || !world.IsLive(bomb.Owner.Value) ||
-            !world.TypeOf(bomb.Owner.Value).Is<BomberParticipantEntity>()) return false;
-        BomberParticipantState owner = world.Get<BomberParticipantState>(bomb.Owner.Value);
-        return owner.CurrentLife.Value == bomb.SourceLife.Value &&
-            owner.LifeGeneration.Value == bomb.SourceLifeGeneration.Value &&
-            world.IsLive(bomb.SourceLife.Value) && world.TypeOf(bomb.SourceLife.Value).Is<PlayerEntity>();
     }
 
     private static void AdvanceMatch(World world, BomberMatchState match, IBomberConfig config)
@@ -596,28 +380,29 @@ public sealed class BombSystem : EcsSystem
         BomberMatchPhase phase = (BomberMatchPhase)match.Phase.Value;
         if (phase == BomberMatchPhase.Warmup && world.Tick >= match.PhaseEndTick.Value)
         {
+            var runtime = world.Single<BomberWorldRuntime>();
+            if (runtime.InitialResourcePhase.Value is 1 or 2 || runtime.PendingVoxelTransactionIds.Count != 0 ||
+                world.Each<BomberPlayerState>().Any(p => p.RestorePending.Value)) return;
             match.Phase.Value = (int)BomberMatchPhase.Running;
             match.StartTick.Value = world.Tick;
             match.PhaseEndTick.Value = checked(world.Tick + Ticks.FromMilliseconds(config.Game.MatchDurationMs, config.Game.TickRateHz));
         }
-        else if (phase == BomberMatchPhase.Running && world.Tick >= match.PhaseEndTick.Value -
-            Ticks.FromMilliseconds(config.FinalCircle.DurationMs, config.Game.TickRateHz))
+        else if (phase == BomberMatchPhase.Running)
         {
+            bool resources = BomberFinalCircle.ResourceThresholdReached(world, match, config);
+            ulong duration = Ticks.FromMilliseconds(config.FinalCircle.DurationMs, config.Game.TickRateHz);
+            bool time = match.PhaseEndTick.Value >= duration && world.Tick >= match.PhaseEndTick.Value - duration;
+            if (!resources && !time) return;
             match.Phase.Value = (int)BomberMatchPhase.FinalCircle;
-            match.PhaseEndTick.Value = checked(world.Tick + Ticks.FromMilliseconds(config.FinalCircle.DurationMs, config.Game.TickRateHz));
+            match.PhaseEndTick.Value = checked(world.Tick + duration);
             BomberFinalCircleState circle = world.Single<BomberFinalCircleState>();
             circle.TriggerTick.Value = world.Tick;
-            circle.TriggerReason.Value = (int)BomberEndReason.TimeLimit;
+            circle.TriggerReason.Value = (int)(resources ? BomberCircleTriggerReason.ResourceThreshold : BomberCircleTriggerReason.TimeLimit);
             circle.Phase.Value = (int)BomberMatchPhase.FinalCircle;
             ulong sequence = BomberMatchRules.Emit(world, "final_circle_started", match.MatchId.Value);
             world.Single<BomberPresentationJournal>().Append(world, "final_circle_start", match.MatchId.Value, sequence,
-                cause: "time_limit", data: new Dictionary<string, string> {
+                cause: resources ? "resources" : "time_limit", data: new Dictionary<string, string> {
                     ["endTick"] = match.PhaseEndTick.Value.ToString(CultureInfo.InvariantCulture) });
-        }
-        else if (phase == BomberMatchPhase.FinalCircle)
-        {
-            int alive = BomberMatchRules.CountAlive(world);
-            if (alive <= 1 || world.Tick >= match.PhaseEndTick.Value) EndMatch(world, match, alive);
         }
         else if (phase == BomberMatchPhase.Podium && world.Tick >= match.PhaseEndTick.Value)
         {
@@ -626,8 +411,15 @@ public sealed class BombSystem : EcsSystem
         }
         else if (phase == BomberMatchPhase.Results && world.Tick >= match.PhaseEndTick.Value)
         {
-            match.MatchIndex.Value++;
+            if (!BomberRoundTransition.Prepare(world)) return;
+            ulong nextIndex = checked(match.MatchIndex.Value + 1);
+            var nextSeed = new DeterminismContext(match.Seed.Value, world.Tick, RuntimeSchema.SchemaEpoch)
+                .OpenRngStream(FormattableString.Invariant($"bomber.match.{nextIndex}"));
+            ulong selectedSeed = nextSeed.NextUInt64();
+            BomberRoundTransition.StartNextGeneration(world, selectedSeed);
+            match.MatchIndex.Value = nextIndex;
             match.MatchId.Value++;
+            match.Seed.Value = selectedSeed;
             ResetForNextMatch(world, match, config);
             world.Single<BomberPresentationJournal>().Reset();
             match.StartTick.Value = world.Tick;
@@ -645,12 +437,15 @@ public sealed class BombSystem : EcsSystem
         match.EndReason.Value = (int)BomberEndReason.None;
         match.Winner.Value = default;
         match.SurvivorCount.Value = 0;
+        match.HatKing.Value = default;
+        match.OutcomePending.Value = false;
         BomberFinalCircleState circle = world.Single<BomberFinalCircleState>();
         circle.TriggerTick.Value = 0;
         circle.TriggerReason.Value = (int)BomberEndReason.None;
         circle.InitialResourceCount.Value = 0;
         circle.RemainingResourceCount.Value = 0;
         circle.RegenStopTick.Value = 0;
+        circle.ResourceCountInitialized.Value = false;
         circle.CurrentStageId.Value = 0;
         circle.NextStageId.Value = 0;
         circle.CurrentSide.Value = 0;
@@ -659,6 +454,7 @@ public sealed class BombSystem : EcsSystem
         circle.NextEffectiveTick.Value = 0;
         circle.PoisonPoints.Value = 0;
         circle.Phase.Value = 0;
+        BomberFinalCircle.Reset(world);
 
         foreach (BomberBombState bomb in world.Each<BomberBombState>().ToArray())
             world.Commands.Destroy(bomb.Entity);
@@ -666,7 +462,9 @@ public sealed class BombSystem : EcsSystem
         foreach (BomberParticipantState participant in world.Each<BomberParticipantState>())
         {
             participant.MatchId.Value = match.MatchId.Value;
-            participant.LifePhase.Value = (int)BomberLifePhase.Protected;
+            bool hasLife = !participant.CurrentLife.Value.IsDefault && world.IsLive(participant.CurrentLife.Value);
+            participant.LifePhase.Value = (int)(hasLife ? BomberLifePhase.Protected : BomberLifePhase.AwaitingRespawn);
+            participant.SuccessorPending.Value = !hasLife;
             participant.DeathTick.Value = 0;
             participant.RespawnAtTick.Value = 0;
             participant.EliminatedTick.Value = 0;
@@ -675,7 +473,8 @@ public sealed class BombSystem : EcsSystem
             participant.DeathStructureLife.Value = default;
             participant.DeathStructureGeneration.Value = 0;
             participant.DeathStructureTick.Value = 0;
-            participant.LifeGeneration.Value = 1;
+            BomberRoundTransition.ResetParticipant(world, participant);
+            BomberSuccessorLifecycle.BeginNextMatch(world, participant);
             LatchCharacter(world, participant, config);
             BomberStatistics statistics = world.Get<BomberStatistics>(participant.Entity);
             statistics.Kills.Value = 0;
@@ -687,20 +486,21 @@ public sealed class BombSystem : EcsSystem
             statistics.HatKingTicks.Value = 0;
             statistics.SkillCasts.Value = 0;
             statistics.Evolutions.Value = 0;
+            statistics.Deaths.Value = 0;
+            statistics.PeakHealthPoints.Value = BomberGrowth.InitialHealth;
+            statistics.BossKills.Value = 0;
+            statistics.ClutchEscapes.Value = 0;
+            statistics.GoldenHeartPickups.Value = 0;
+            statistics.SpecialBombHistory.Clear();
             if (participant.CurrentLife.Value.IsDefault || !world.IsLive(participant.CurrentLife.Value)) continue;
             BomberPlayerState player = world.Get<BomberPlayerState>(participant.CurrentLife.Value);
-            player.LifeGeneration.Value = 1;
             player.LifePhase.Value = (int)BomberLifePhase.Protected;
             player.RespawnAtTick.Value = 0;
             player.ProtectedUntilTick.Value = checked(world.Tick + protectionTicks);
             player.EliminatedTick.Value = 0;
             player.Facing.Value = (int)BomberDirection.Down;
             AttributeComponent attributes = world.Get<AttributeComponent>(player.Entity);
-            long resetHealth = config.Life.PointsPerHeart * 3;
-            attributes.SetBaseValue(BomberAttributeNames.HealthPoints, resetHealth);
-            attributes.SetCurrentValue(BomberAttributeNames.HealthPoints, resetHealth);
-            attributes.SetCurrentValue(BomberAttributeNames.AvailableBombs,
-                Math.Max(1, attributes.GetCurrentValue(BomberAttributeNames.BombCapacity)));
+            _ = BomberHealthBusiness.SubmitNewMatch(world, player);
             MoveAbility.WritePosition(world, player.Entity, SpawnPosition(config.Map, participant.Slot.Value), nameof(MoveAbility));
             BomberMatchRules.SyncDerivedPlayerState(world, player);
         }
@@ -723,6 +523,7 @@ public sealed class BombSystem : EcsSystem
             }
         }
         participant.SelectedForMatchCharacterId.Value = selected;
+        world.Get<BomberStatistics>(participant.Entity).CharacterId.Value = selected;
         participant.NextCharacterId.Value = 0;
         if (participant.CurrentLife.Value.IsDefault || !world.IsLive(participant.CurrentLife.Value)) return;
         world.Get<BomberPlayerState>(participant.CurrentLife.Value).NextCharacterId.Value = 0;
@@ -746,24 +547,6 @@ public sealed class BombSystem : EcsSystem
         SelectCharacterAbility.BindCharacter(skill, row);
     }
 
-    private static void EndMatch(World world, BomberMatchState match, int alive)
-    {
-        if ((BomberMatchPhase)match.Phase.Value != BomberMatchPhase.FinalCircle) return;
-        match.Phase.Value = (int)BomberMatchPhase.Podium;
-        match.EndTick.Value = world.Tick;
-        IBomberConfig config = BomberConfigBinding.For(world);
-        match.PhaseEndTick.Value = checked(world.Tick + Ticks.FromMilliseconds(config.Game.PodiumMs, config.Game.TickRateHz));
-        match.SurvivorCount.Value = Math.Max(0, alive);
-        match.Winner.Value = default;
-        bool published = PublishResults(world, match, alive);
-        ulong sequence = BomberMatchRules.Emit(world, "match_ended", match.MatchId.Value);
-        world.Single<BomberPresentationJournal>().Append(world, "match_end", match.MatchId.Value, sequence,
-            participant: match.Winner.Value, cause: ((BomberEndReason)match.EndReason.Value).ToString(),
-            data: new Dictionary<string, string> { ["survivorCount"] = match.SurvivorCount.Value.ToString(CultureInfo.InvariantCulture),
-                ["resultsPublished"] = published.ToString().ToLowerInvariant() });
-        if (published) BomberMatchRules.Emit(world, "ranking_valid", match.MatchId.Value);
-    }
-
     internal static bool PublishResults(World world, BomberMatchState match, int alive)
     {
         BomberParticipantState[] participants = world.Each<BomberParticipantState>()
@@ -782,6 +565,7 @@ public sealed class BombSystem : EcsSystem
             playerByParticipant.TryGetValue(participant.Entity, out BomberPlayerState? player)
                 && player.LifePhase.Value is (int)BomberLifePhase.Protected or (int)BomberLifePhase.Vulnerable;
         ulong EliminatedAt(BomberParticipantState participant) =>
+            participant.LifePhase.Value == (int)BomberLifePhase.Eliminated ? participant.EliminatedTick.Value :
             playerByParticipant.TryGetValue(participant.Entity, out BomberPlayerState? player)
                 ? player.EliminatedTick.Value : participant.EliminatedTick.Value;
         var ordered = participants.OrderByDescending(Survived)
@@ -794,20 +578,20 @@ public sealed class BombSystem : EcsSystem
             BomberParticipantState participant = ordered[i];
             playerByParticipant.TryGetValue(participant.Entity, out BomberPlayerState? playerState);
             bool survived = playerState is not null && playerState.LifePhase.Value is (int)BomberLifePhase.Protected or (int)BomberLifePhase.Vulnerable;
-            BomberSkillState? skills = playerState is null ? null : world.Get<BomberSkillState>(playerState.Entity);
             BomberStatistics stats = world.Get<BomberStatistics>(participant.Entity);
             rows.Add(new BomberResultRow
             {
                 MatchId = match.MatchId.Value,
                 Participant = participant.Entity,
-                Life = participant.LastLife.Value.IsDefault ? participant.CurrentLife.Value : participant.LastLife.Value,
+                Life = playerState is not null ? participant.CurrentLife.Value :
+                    participant.LastLife.Value.IsDefault ? participant.CurrentLife.Value : participant.LastLife.Value,
                 LifeGeneration = participant.LifeGeneration.Value,
                 Slot = participant.Slot.Value,
                 Rank = i + 1,
                 Survived = survived,
                 FinalHats = playerState?.HatCount.Value ?? 0,
                 EliminatedTick = survived ? 0 : EliminatedAt(participant),
-                Character = skills is null ? 0 : checked((int)skills.CharacterId.Value),
+                Character = participant.SelectedForMatchCharacterId.Value,
                 Kills = Math.Max(0, stats.Kills.Value),
                 Bombs = Math.Max(0, stats.Bombs.Value),
                 DestroyedBlocks = Math.Max(0, stats.DestroyedBlocks.Value),
@@ -817,6 +601,13 @@ public sealed class BombSystem : EcsSystem
                 SkillCasts = Math.Max(0, stats.SkillCasts.Value),
                 Evolutions = Math.Max(0, stats.Evolutions.Value),
                 HatKingTicks = stats.HatKingTicks.Value,
+                Deaths = stats.Deaths.Value,
+                PeakHealthPoints = stats.PeakHealthPoints.Value,
+                BossKills = stats.BossKills.Value,
+                ClutchEscapes = checked(stats.ClutchEscapes.Value + (survived &&
+                    world.Get<AttributeComponent>(playerState!.Entity).GetBaseValue(BomberAttributeNames.HealthPoints) is > 0 and <= 2 ? 1 : 0)),
+                GoldenHeartPickups = stats.GoldenHeartPickups.Value,
+                SpecialBombHistory = BomberSpecialBombHistory.Encode(stats.SpecialBombHistory.Values),
             });
         }
         for (int i = 1; i < rows.Count; i++)
@@ -844,13 +635,12 @@ public sealed class BombSystem : EcsSystem
             SurvivorCount = survivorCount,
             Rows = rows,
         }, configured);
-        match.EndReason.Value = (int)reason;
-        match.Winner.Value = winner;
-        match.SurvivorCount.Value = survivorCount;
+        if (match.EndReason.Value != (int)reason || match.Winner.Value != winner || match.SurvivorCount.Value != survivorCount)
+            throw new InvalidOperationException("Published ranking must agree with the settled authoritative outcome.");
         return true;
     }
 
-    private static System.Numerics.Vector3 SpawnPosition(MapRow map, int slot)
+    internal static System.Numerics.Vector3 SpawnPosition(MapRow map, int slot)
     {
         // The corners and edge midpoints are open cells on the authored odd-sized map.
         int left = map.BoundaryCells;
@@ -871,6 +661,11 @@ public sealed class BombSystem : EcsSystem
 
     internal static void ReturnBombCapacity(World world, BomberBombState bomb)
     {
+        if (bomb.Frenzy.Value)
+        {
+            bomb.CapacityReturned.Value = true;
+            return;
+        }
         if (bomb.CapacityReturned.Value || !world.IsLive(bomb.Owner.Value)
             || !world.TypeOf(bomb.Owner.Value).Is<BomberParticipantEntity>()) return;
         BomberParticipantState participant = world.Get<BomberParticipantState>(bomb.Owner.Value);

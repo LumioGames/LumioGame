@@ -1,0 +1,1383 @@
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\src\\index.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\index.ts"
+index 52226ea..55c1299 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\src\\index.ts"
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\index.ts"
+@@ -1,10 +1,11 @@
+ import './presentation.css'
+ import { createAudio } from './audio'
+-import { CHARACTER_ORDER, DEFAULT_CONFIG, DEFAULT_RULES, type BomberConfig, type CharacterId, type ProtoRules, type TickFrame, type U64 } from './contract'
++import { CHARACTER_ORDER, DEFAULT_CONFIG, DEFAULT_RULES, type BomberConfig, type CharacterId, type ProtoRules, type TickFrame, type U64, type 方向 } from './contract'
+ import { createHud } from './hud'
+ import { PresentationFeed } from './present/feed'
+ import { loadSettings, saveSettings } from './present/settings'
+ import { attachPresentationShortcuts } from './present/shortcuts'
++import { TouchControls } from './present/touch-controls'
+ import { createView, renderDollPortraits } from './view'
+ 
+ export * from './contract'
+@@ -26,11 +27,15 @@ export interface PresentationOptions {
+   callbacks?: {
+     onUseSkill?(): void
+     onPlaceBomb?(): void
+-    onChangeCharacter?(id: CharacterId): void
++    onChangeCharacter?(id: CharacterId): boolean | void
++    onMove?(primary: 方向, secondary: 方向): void
++    inputReady?(): boolean
+   }
+ }
+ 
+ export interface Presentation {
++  setSelectionWindow(open: boolean, initial: boolean): void
++  inputBlocked(): boolean
+   push(frame: TickFrame, now?: number): void
+   resize(): void
+   toggleOverview(): void
+@@ -52,6 +57,14 @@ export function createPresentation(options: PresentationOptions): Presentation {
+     container: stage, labelRoot: labels, config, rules, localPlayerId, settings,
+     requestHitstop: (ms) => feed.freeze(ms, performance.now()),
+   })
++  const touchRoot = callbacks.onMove ? document.createElement('div') : null
++  if (touchRoot) hudRoot.append(touchRoot)
++  const touch = touchRoot ? new TouchControls(touchRoot, {
++    move: (primary, secondary) => callbacks.onMove?.(primary, secondary),
++    bomb: () => callbacks.onPlaceBomb?.(), skill: () => callbacks.onUseSkill?.(),
++    ready: () => !document.hidden && !hud.inputBlocked() && (callbacks.inputReady?.() ?? false),
++  }, window) : null
++  if (window.matchMedia('(pointer: coarse)').matches) touch?.show()
+   const toggleMute = (): void => {
+     settings.muted = !settings.muted
+     audio.setMuted(settings.muted)
+@@ -60,12 +73,15 @@ export function createPresentation(options: PresentationOptions): Presentation {
+   }
+   const hud = createHud({
+     root: hudRoot, config, rules, localPlayerId, settings,
++    isTouch: () => touch?.isVisible() ?? false,
+     project: (x, y, z) => view.project(x, y, z),
+     portraits: callbacks.onChangeCharacter
+       ? renderDollPortraits(CHARACTER_ORDER.filter((id) => Object.hasOwn(rules.characters, id)).map((id) => rules.characters[id].animal))
+       : new Map(),
+     callbacks: {
+       ...callbacks,
++      onSelectionGesture: () => audio.unlock(),
++      onSelectionSound: (kind) => audio.ui(kind),
+       onToggleMute: toggleMute,
+       onToggleOverview: () => view.toggleOverview(),
+       onToggleMusic: (on) => audio.setMusicEnabled(on),
+@@ -75,7 +91,7 @@ export function createPresentation(options: PresentationOptions): Presentation {
+   hud.setMuted(settings.muted)
+   const detachShortcuts = attachPresentationShortcuts(window, {
+     overview: () => view.toggleOverview(), mute: toggleMute,
+-    blocked: () => document.hidden || hudRoot.querySelector('.hud-modal.is-on') !== null,
++    blocked: () => document.hidden || hud.inputBlocked(),
+   })
+   let disposed = false
+   let last = performance.now()
+@@ -88,8 +104,10 @@ export function createPresentation(options: PresentationOptions): Presentation {
+     if (sample) {
+       view.update(sample, dt)
+       hud.update(sample, dt)
++      touch?.setSkill(hud.skillButton())
+       audio.update(sample, localPlayerId)
+     }
++    touch?.setEnabled(!document.hidden && !hud.inputBlocked() && (callbacks.inputReady?.() ?? false))
+     animation = requestAnimationFrame(render)
+   }
+   const unlock = (): void => audio.unlock()
+@@ -101,6 +119,8 @@ export function createPresentation(options: PresentationOptions): Presentation {
+   observer?.observe(stage)
+   animation = requestAnimationFrame(render)
+   return {
++    setSelectionWindow: (open, initial) => { if (!disposed) hud.setSelectionWindow(open, initial) },
++    inputBlocked: () => disposed || hud.inputBlocked(),
+     push: (frame, now = performance.now()) => { if (!disposed) feed.push(frame, now) },
+     resize,
+     toggleOverview: () => { if (!disposed) view.toggleOverview() },
+@@ -113,6 +133,8 @@ export function createPresentation(options: PresentationOptions): Presentation {
+       window.removeEventListener('pointerdown', unlock)
+       window.removeEventListener('keydown', unlock)
+       window.removeEventListener('resize', resize)
++      touch?.dispose()
++      touchRoot?.remove()
+       hud.dispose()
+       view.dispose()
+       audio.dispose()
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\index.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\index.ts"
+index 72b6df2..816fa3d 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\index.ts"
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\index.ts"
+@@ -51,7 +51,9 @@ export interface HudCallbacks {
+    */
+   onToggleMusic?(on: boolean): void
+   /** 原型扩展（NON-CONTRACT，ADR 0030）：「换角色」确认（下一局生效）；没接时不显示换角色按钮。 */
+-  onChangeCharacter?(id: CharacterId): void
++  onChangeCharacter?(id: CharacterId): boolean | void
++  onSelectionGesture?(): void
++  onSelectionSound?(kind: 'select' | 'confirm'): void
+ }
+ 
+ /** 音乐开关的跨模块信号：`CustomEvent<{ on: boolean }>`，派发在 globalThis（浏览器里是 window）上。 */
+@@ -77,6 +79,8 @@ export interface HudOptions {
+ }
+ 
+ export interface Hud {
++  setSelectionWindow(open: boolean, initial: boolean): void
++  inputBlocked(): boolean
+   update(sample: FeedSample, dtMs: number): void
+   setMuted(muted: boolean): void
+   /** 外部（app）改了音乐开关时同步按钮图标。 */
+@@ -503,6 +507,8 @@ export function createHud(opts: HudOptions): Hud {
+   callbacks.onToggleMusic?.(musicOn)
+ 
+   return {
++    setSelectionWindow: (open, initial) => overlays.setSelectionWindow(open, initial),
++    inputBlocked: () => overlays.inputBlocked(),
+     update(sample: FeedSample): void {
+       const now = sample.realNow
+       lastNow = now
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\overlays.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\overlays.ts"
+index 2e0598a..07491ff 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\overlays.ts"
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\overlays.ts"
+@@ -1,6 +1,6 @@
+ import type { BomberConfig, BotDifficulty, CharacterId } from '../contract'
+ import type { PresentationSettings } from '../present/settings'
+-import { CharacterSelect, type Portraits } from './character-select'
++import { CharacterSelect, loadLastCharacter, saveLastCharacter, type Portraits } from './character-select'
+ import { el, roundButton } from './dom'
+ import type { HudCallbacks } from './index'
+ import { selectCards, type SelectRules } from './select-model'
+@@ -23,6 +23,9 @@ export class Overlays {
+   private readonly cards: Record<Card, HTMLDivElement>
+   private readonly muteBox: HTMLInputElement
+   private readonly picker: CharacterSelect | null
++  private readonly initialPicker: CharacterSelect | null
++  private selectionOpen = false
++  private initialSubmitted = false
+ 
+   constructor(parent: HTMLElement, private readonly settings: PresentationSettings,
+     private readonly cb: HudCallbacks, private readonly o: OverlayOptions) {
+@@ -33,19 +36,45 @@ export class Overlays {
+     const cards = selectCards(o.rules, o.config)
+     this.picker = cb.onChangeCharacter ? new CharacterSelect({
+       host: this.cards.character, mode: 'switch', cards, portraits: o.portraits ?? new Map(),
+-      onConfirm: (id) => { cb.onChangeCharacter?.(id); this.show(null) },
++      onGesture: cb.onSelectionGesture, onSound: cb.onSelectionSound,
++      onConfirm: (id) => { this.confirm(id); this.show(null) },
+       onCancel: () => this.show(null),
+     }) : null
++    this.initialPicker = cb.onChangeCharacter ? new CharacterSelect({
++      host: parent, mode: 'start', cards, portraits: o.portraits ?? new Map(),
++      onGesture: cb.onSelectionGesture, onSound: cb.onSelectionSound,
++      onConfirm: (id) => this.confirm(id),
++    }) : null
++  }
++
++  private confirm(id: CharacterId): void {
++    if (!this.selectionOpen) return
++    if (this.cb.onChangeCharacter?.(id) === false) return
++    saveLastCharacter(id)
++    this.initialSubmitted = true
+   }
+ 
++  setSelectionWindow(open: boolean, initial: boolean): void {
++    this.selectionOpen = open
++    if (!open) {
++      this.initialPicker?.hide()
++      if (this.picker?.isOpen()) this.show(null)
++    } else if (initial && !this.initialSubmitted && !this.initialPicker?.isOpen()) {
++      this.show(null)
++      this.initialPicker?.show(loadLastCharacter() ?? this.o.currentCharacter())
++    }
++  }
++
++  inputBlocked(): boolean { return this.root.classList.contains('is-on') || Boolean(this.initialPicker?.isOpen()) }
++
+   open(card: Card): void {
+-    if (card === 'character' && !this.picker) return
++    if (this.initialPicker?.isOpen() || (card === 'character' && (!this.picker || !this.selectionOpen))) return
+     this.show(card)
+   }
+ 
+   setMuted(muted: boolean): void { this.muteBox.checked = !muted }
+ 
+-  dispose(): void { this.picker?.hide(); this.root.remove() }
++  dispose(): void { this.picker?.dispose(); this.initialPicker?.dispose(); this.root.remove() }
+ 
+   private show(card: Card | null): void {
+     this.root.classList.toggle('is-on', card !== null)
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\character-select.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\character-select.ts"
+index 153eb33..46de37c 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\src\\hud\\character-select.ts"
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\hud\\character-select.ts"
+@@ -3,7 +3,7 @@ import { skillCss } from '../present/skill-style'
+ import { el, iconEl, skillIconEl } from './dom'
+ import { uiScale } from './format'
+ import { ANIMAL_COLOR } from './icons'
+-import { AI_LABEL, initialIndex, selectCards, selectKey, selectReduce, type SelectCard, type SelectMode, type SelectRules, type SelectState } from './select-model'
++import { AI_LABEL, selectCards, selectKey, selectReduce, type SelectCard, type SelectMode, type SelectRules, type SelectState } from './select-model'
+ 
+ /**
+  * 选角界面（ADR 0030 / D1）的 DOM：开局前一屏（'start'），以及暂停卡 / 结算页「换角色」里的同一套卡片（'switch'，
+@@ -80,7 +80,7 @@ export class CharacterSelect {
+ 
+   show(current: string | null): void {
+     if (this.disposed) return
+-    this.state = { index: initialIndex(current), done: null }
++    this.state = { index: Math.max(0, this.o.cards.findIndex((card) => card.id === current)), done: null }
+     this.render()
+     if (!this.open) globalThis.addEventListener?.('keydown', this.onKey, { capture: true })
+     this.open = true
+@@ -93,6 +93,7 @@ export class CharacterSelect {
+     this.open = false
+     globalThis.removeEventListener?.('keydown', this.onKey, { capture: true })
+     this.root.classList.remove('is-on')
++    if (document.activeElement instanceof HTMLElement && this.root.contains(document.activeElement)) document.activeElement.blur()
+   }
+ 
+   isOpen(): boolean {
+@@ -163,6 +164,7 @@ export class CharacterSelect {
+     this.state = selectReduce(this.state, a, this.o.cards.length, this.o.mode)
+     if (this.state.index !== before.index) this.o.onSound?.('select')
+     this.render()
++    if (this.state.index !== before.index) this.cardEls[this.state.index]?.root.focus()
+     if (this.state.done === 'confirmed') {
+       this.o.onSound?.('confirm')
+       const id = this.o.cards[this.state.index].id
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\src\\presentation.css" "b/games\\101-bomber\\Client\\Presentation\\src\\presentation.css"
+index f8abce0..56f9ae4 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\src\\presentation.css"
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\presentation.css"
+@@ -6,7 +6,7 @@
+   font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+   user-select: none;
+ }
+-.bomber-stage { overflow: hidden; background: #ddf1f7; }
++.bomber-stage { overflow: hidden; background: #ddf1f7; touch-action: none; }
+ .bomber-stage canvas { display: block; width: 100%; height: 100%; }
+ .bomber-labels, .bomber-hud { pointer-events: none; }
+ .bomber-labels { z-index: 1; overflow: hidden; }
+@@ -16,8 +16,19 @@
+ .bomber-hud .sk-chip[aria-disabled='true'] { cursor: default; }
+ .bomber-hud .hud-logo { max-width: 22%; }
+ .bomber-hud .logo-title { overflow-wrap: anywhere; }
++.bomber-hud .hud-select[data-mode='start'] { justify-content: safe center; }
++.bomber-hud .hud-select[data-mode='start'] > * { flex-shrink: 0; }
+ @media (max-width: 600px) {
+   .bomber-hud .hud-logo { display: none; }
+   .bomber-hud .hud-buttons { top: calc(76px * var(--u)); }
+   .bomber-hud .md-card { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
+ }
++@media (max-width: 350px) and (orientation: portrait) {
++  .bomber-hud:has(.touch-root.is-touch) .hud-bottom { align-items: flex-start; }
++  .bomber-hud:has(.touch-root.is-touch) .hud-side {
++    top: calc(90px * var(--u) + var(--safe-t));
++    left: calc(var(--gap) + var(--safe-l));
++    right: auto;
++    bottom: auto;
++  }
++}
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\game-view.mjs" "b/games\\101-bomber\\Client\\UI\\Spectator\\game-view.mjs"
+index 1929366..fa0ca14 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\game-view.mjs"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\game-view.mjs"
+@@ -12,6 +12,7 @@ export function createGameView(callbacks) {
+   let view;
+   let localId;
+   let selectionOpen = false;
++  let initialSelectionSubmitted = false;
+   root.hidden = false;
+   document.body.classList.add('presentation-mode');
+   const evidence = window.__lumioPresentation = { status: 'loading', players: 0, frame: null };
+@@ -49,8 +50,13 @@ export function createGameView(callbacks) {
+         view = createPresentation({ stage, labels, hud, localPlayerId: localId,
+           config: settings.config, rules: settings.rules,
+           callbacks: { ...callbacks, onChangeCharacter: settings.catalog.characters.size > 0 && callbacks.onChangeCharacter
+-            ? id => { if (selectionOpen) callbacks.onChangeCharacter(id); } : undefined } });
++            ? id => {
++              if (!selectionOpen || callbacks.onChangeCharacter(id) === false) return false;
++              initialSelectionSubmitted = true;
++              return true;
++            } : undefined } });
+       }
++      view.setSelectionWindow(selectionOpen, !initialSelectionSubmitted);
+       const changeButton = hud.querySelector('.hud-buttons [title="换角色"]');
+       if (changeButton) changeButton.style.display = selectionOpen ? '' : 'none';
+       const events = adapter.events(frame);
+@@ -63,6 +69,7 @@ export function createGameView(callbacks) {
+       evidence.authorityTick = frame.tick;
+       evidence.unpositionedChests = frame.unpositionedChests ?? [];
+     },
++    inputBlocked() { return view?.inputBlocked() ?? false; },
+     dispose() {
+       selectionOpen = false;
+       view?.dispose();
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\game-view.test.mjs" "b/games\\101-bomber\\Client\\UI\\Spectator\\game-view.test.mjs"
+index 3055cfb..0bbc326 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\game-view.test.mjs"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\game-view.test.mjs"
+@@ -36,10 +36,12 @@ test('selection follows local readiness and phases without rebuilding presentati
+     }),
+     ReplicaTerrain: class { read() { return {}; } },
+     createPresentation: options => {
+-      const presentation = { options, pushes: [], disposeCount: 0 };
++      const presentation = { options, pushes: [], windows: [], disposeCount: 0 };
+       presentations.push(presentation);
+       return {
+         push: frame => presentation.pushes.push(frame.snapshot.phase),
++        setSelectionWindow: (open, initial) => presentation.windows.push([open, initial]),
++        inputBlocked: () => false,
+         dispose: () => presentation.disposeCount++,
+       };
+     },
+@@ -54,12 +56,15 @@ test('selection follows local readiness and phases without rebuilding presentati
+   choose('unready');
+   assert.equal(changeButton.style.display, 'none');
+   view.update(frame(0), {});
++  assert.deepEqual(presentations[0].windows, [[false, true], [true, true]]);
+   choose('duck');
+   assert.equal(changeButton.style.display, '');
+   view.update(frame(1), {});
++  assert.deepEqual(presentations[0].windows.at(-1), [true, false]);
+   choose('cat');
+   assert.equal(changeButton.style.display, '');
+   view.update(frame(2), {});
++  assert.deepEqual(presentations[0].windows.at(-1), [false, false]);
+   choose('closed');
+   assert.equal(changeButton.style.display, 'none');
+   view.update(frame(4), {});
+@@ -70,7 +75,21 @@ test('selection follows local readiness and phases without rebuilding presentati
+   assert.deepEqual(calls, ['duck', 'cat', 'kangaroo']);
+   assert.deepEqual(presentations[0].pushes, [0, 0, 1, 2, 4, 5]);
+   assert.equal(presentations[0].disposeCount, 0);
++  view.update({ ...frame(1), match: { id: 'world', matchId: '2', phase: 1 } }, {});
++  assert.equal(presentations.length, 2);
++  assert.deepEqual(presentations[1].windows, [[true, false]]);
+   view.dispose();
+   choose('bear');
+   assert.deepEqual(calls, ['duck', 'cat', 'kangaroo']);
++  const failedView = sandbox.createGameView({ onChangeCharacter: () => false });
++  failedView.update(frame(0), {});
++  const failed = presentations.at(-1);
++  assert.equal(failed.options.callbacks.onChangeCharacter('duck'), false);
++  failedView.update(frame(1), {});
++  assert.deepEqual(failed.windows.at(-1), [true, true], 'failed submission must keep the first-selection flow available');
++  failedView.dispose();
++  const spectatorView = sandbox.createGameView({});
++  spectatorView.update(frame(0), {});
++  assert.equal(presentations.at(-1).options.callbacks.onChangeCharacter, undefined);
++  spectatorView.dispose();
+ });
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\player-controls.mjs" "b/games\\101-bomber\\Client\\UI\\Spectator\\player-controls.mjs"
+index 3f05b0b..e1f4cfc 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\player-controls.mjs"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\player-controls.mjs"
+@@ -5,6 +5,8 @@ export function createPlayerInput({ sendMove, placeBomb, useSkill, ready, target
+   const held = new Map();
+   let timer;
+   let focused = true;
++  let touch = [0, 0];
++  let disposed = false;
+   const UI_FOCUS = 'button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]';
+   function blocked() {
+     const active = target.document?.activeElement;
+@@ -12,22 +14,30 @@ export function createPlayerInput({ sendMove, placeBomb, useSkill, ready, target
+       (active?.closest?.(UI_FOCUS) && !panel?.contains?.(active));
+   }
+   function move(turn = false) {
+-    if (!ready() || blocked()) { clear(); return; }
+-    const directions = [...new Set(held.values())].reverse();
++    if (disposed || !ready() || blocked()) { clear(); return; }
++    const directions = touch[0] ? touch : [...new Set(held.values())].reverse();
+     if (directions.length) sendMove(directions[0], directions[1] ?? 0, turn);
+   }
+   function press(key, direction) {
+-    if (!ready() || blocked() || held.has(key)) return;
++    if (disposed || !ready() || blocked() || held.has(key)) return;
+     held.set(key, direction);
+     move(true);
+     if (timer === undefined) timer = schedule(() => move(), intervalMs);
+   }
+   function release(key) {
+     held.delete(key);
+-    if (!held.size && timer !== undefined) { cancel(timer); timer = undefined; }
++    if (!held.size && !touch[0] && timer !== undefined) { cancel(timer); timer = undefined; }
++  }
++  function setTouchDirection(primary, secondary = 0) {
++    if (disposed || !ready() || blocked()) { clear(); return; }
++    touch = primary ? [primary, secondary] : [0, 0];
++    move(true);
++    if ((held.size || touch[0]) && timer === undefined) timer = schedule(() => move(), intervalMs);
++    if (!held.size && !touch[0] && timer !== undefined) { cancel(timer); timer = undefined; }
+   }
+   function clear() {
+     held.clear();
++    touch = [0, 0];
+     if (timer !== undefined) cancel(timer);
+     timer = undefined;
+   }
+@@ -67,5 +77,5 @@ export function createPlayerInput({ sendMove, placeBomb, useSkill, ready, target
+   if (bomb) listen(bomb, 'click', () => { if (ready() && !blocked()) placeBomb(); });
+   const skill = panel?.querySelector('[data-skill]');
+   if (skill) listen(skill, 'click', () => { if (ready() && !blocked()) useSkill?.(); });
+-  return { clear, destroy() { clear(); for (const remove of listeners) remove(); } };
++  return { clear, setTouchDirection, destroy() { disposed = true; clear(); for (const remove of listeners) remove(); } };
+ }
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\player-controls.test.mjs" "b/games\\101-bomber\\Client\\UI\\Spectator\\player-controls.test.mjs"
+index b92c317..02b82ed 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\player-controls.test.mjs"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\player-controls.test.mjs"
+@@ -2,6 +2,43 @@ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ import { createPlayerInput } from './player-controls.mjs';
+ 
++test('touch and keyboard share one cadence, touch wins, and release resumes held keys', () => {
++  const target = new EventTarget();
++  let pulse;
++  let enabled = true;
++  let schedules = 0;
++  const moves = [];
++  const controls = createPlayerInput({ target, ready: () => enabled,
++    sendMove: (...args) => moves.push(args), placeBomb() {},
++    schedule: callback => { schedules++; pulse = callback; return 1; }, cancel: () => { pulse = null; } });
++  const key = (type, code) => {
++    const event = new Event(type, { cancelable: true });
++    Object.assign(event, { code, repeat: false }); target.dispatchEvent(event);
++  };
++  key('keydown', 'KeyD');
++  controls.setTouchDirection(1, 4);
++  pulse();
++  assert.deepEqual(moves, [[2, 0, true], [1, 4, true], [1, 4, false]]);
++  assert.equal(schedules, 1);
++  controls.setTouchDirection(0, 0);
++  assert.deepEqual(moves.at(-1), [2, 0, true]);
++  key('keyup', 'KeyD');
++  assert.equal(pulse, null);
++  controls.setTouchDirection(3, 2);
++  enabled = false;
++  pulse();
++  assert.equal(pulse, null);
++  const count = moves.length;
++  enabled = true;
++  target.dispatchEvent(new Event('blur'));
++  controls.setTouchDirection(1, 0);
++  assert.equal(moves.length, count);
++  controls.destroy();
++  target.dispatchEvent(new Event('focus'));
++  controls.setTouchDirection(1, 0);
++  assert.equal(moves.length, count);
++});
++
+ test('movement is gated, repeats only while held, and clears on key release or focus loss', () => {
+   const target = new EventTarget();
+   let enabled = false;
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\main.js" "b/games\\101-bomber\\Client\\UI\\Spectator\\main.js"
+index 747c271..298e8d6 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\main.js"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\main.js"
+@@ -468,6 +468,12 @@ function updateGamePresentation() {
+     gameViewLoading = import('./game-view.mjs').then(({ createGameView }) => {
+       if (generation !== gameViewGeneration) return;
+       gameView = createGameView(PLAYER_MODE ? {
++        inputReady: () => active && currentSocket?.readyState === 1 && player.replica?.inputOpen === true,
++        onMove: (primary, secondary) => {
++          // Presentation direction order is still the approved prototype contract.
++          const directions = [0, 1, 3, 4, 2];
++          playerInput?.setTouchDirection(directions[primary], directions[secondary]);
++        },
+         onPlaceBomb: () => sendPlayerCommand('bomb', () => csharp.placeBomb()),
+         onUseSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
+         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
+@@ -956,11 +962,11 @@ async function start() {
+ }
+ 
+ function sendPlayerCommand(kind, createFrames) {
+-  if (!PLAYER_MODE || !active || currentSocket?.readyState !== 1) return;
++  if (!PLAYER_MODE || !active || currentSocket?.readyState !== 1) return false;
+   if (kind === 'character') {
+     if (!['WaitingForWorldReady', 'Warmup', 'Results'].includes(player.replica?.phase)
+-      || !player.replica?.inputEnabled || !player.replica?.selfId) return;
+-  } else if (!player.replica?.inputOpen) return;
++      || !player.replica?.inputEnabled || !player.replica?.selfId) return false;
++  } else if (!player.replica?.inputOpen || gameView?.inputBlocked()) return false;
+   try {
+     const frames = JSON.parse(createFrames());
+     for (const frame of frames) {
+@@ -972,10 +978,12 @@ function sendPlayerCommand(kind, createFrames) {
+       else if (kind === 'character') player.selectionsSent++;
+     }
+     player.lastInput = { kind, count: frames.length, at: Date.now() };
++    return frames.length > 0;
+   } catch (error) {
+     playerInput?.clear();
+     spectator.lastError = String(error.message ?? error);
+     setStatus('error', spectator.lastError);
++    return false;
+   }
+ }
+ 
+@@ -993,7 +1001,7 @@ async function initializePage() {
+     const { createPlayerInput } = await import('./player-controls.mjs');
+     playerInput = createPlayerInput({
+       panel: document.getElementById('player-controls'),
+-      ready: () => active && currentSocket?.readyState === 1 && player.replica?.inputOpen === true,
++      ready: () => active && currentSocket?.readyState === 1 && player.replica?.inputOpen === true && !gameView?.inputBlocked(),
+       sendMove: (primary, secondary, turn) => sendPlayerCommand('move', () => csharp.sendMove(primary, secondary, turn)),
+       placeBomb: () => sendPlayerCommand('bomb', () => csharp.placeBomb()),
+       useSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\spectator.css" "b/games\\101-bomber\\Client\\UI\\Spectator\\spectator.css"
+index a5ec73b..023b10a 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\spectator.css"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\spectator.css"
+@@ -46,7 +46,7 @@ body.presentation-mode { margin: 0; padding: 0; max-width: none; overflow: hidde
+ .presentation-mode #game-stage canvas { border: 0; background: transparent; }
+ .presentation-mode #status { position: fixed; z-index: 10; top: 16px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); background: #fff; color: #202628; padding: 6px 12px; border-radius: 4px; overflow-wrap: anywhere; }
+ .presentation-mode #status[hidden] { display: none; }
+-.presentation-mode #player-controls { position: fixed; bottom: 86px; left: 14px; z-index: 4; }
++.presentation-mode #player-controls { display: none; }
+ .presentation-mode #player-controls > [data-bomb], .presentation-mode #player-controls > [data-skill] { display: none; }
+ .presentation-mode .sel-sub { display: none; }
+ .presentation-mode .terrain-pending #game-stage { visibility: hidden; }
+diff --git "a/.sdd\\player-input-before\\Client\\Presentation\\tests\\visual.ts" "b/games\\101-bomber\\Client\\Presentation\\tests\\visual.ts"
+index 2455583..2cc84d0 100644
+--- "a/.sdd\\player-input-before\\Client\\Presentation\\tests\\visual.ts"
++++ "b/games\\101-bomber\\Client\\Presentation\\tests\\visual.ts"
+@@ -23,7 +23,7 @@ for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+ }
+ const presentation = createPresentation({
+   stage: document.getElementById('stage')!, labels: document.getElementById('labels')!, hud: document.getElementById('hud')!,
+-  config: { ...DEFAULT_CONFIG, mapSize: size }, localPlayerId: 1,
++  config: { ...DEFAULT_CONFIG, mapSize: size }, localPlayerId: 2,
+   callbacks: { onUseSkill: () => { state.skills++ }, onPlaceBomb: () => { state.bombs++ } },
+ })
+ const state = { skills: 0, bombs: 0, presentation }
+diff --git "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\main.test.mjs" "b/games\\101-bomber\\Client\\UI\\Spectator\\main.test.mjs"
+index d614dd1..4d43145 100644
+--- "a/.sdd\\player-input-before\\Client\\UI\\Spectator\\main.test.mjs"
++++ "b/games\\101-bomber\\Client\\UI\\Spectator\\main.test.mjs"
+@@ -951,6 +951,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
+   let callbacks;
+   const sandbox = {
+     JSON, Date,
++    blocked: false, touch: [],
+     api: {
+       Boot() {}, Close() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},
+       DumpPositions() { return '[]'; }, MapDimensions() { return '{}'; }, PlayerState() { return '{}'; },
+@@ -960,7 +961,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
+     },
+     importGameView: async () => ({ createGameView: value => {
+       callbacks = value;
+-      return { update() {} };
++      return { update() {}, inputBlocked: () => sandbox.blocked };
+     } }),
+   };
+   const context = vm.createContext(sandbox);
+@@ -972,7 +973,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
+     const voxelGrid = {};
+     const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0,
+       replica: { phase: 'Warmup', inputOpen: true, inputEnabled: true, selfId: 'self' } };
+-    const playerInput = { clear() {} };
++    const playerInput = { clear() {}, setTouchDirection: (...args) => globalThis.touch.push(args) };
+     const spectator = { lastError: null };
+     const currentSocket = { readyState: 1, send: value => globalThis.sent.push(value) };
+     const active = true;
+@@ -989,6 +990,11 @@ test("player startup requires both new GAS exports and presentation callbacks se
+   sandbox.bindExports(sandbox.api);
+   sandbox.updateGamePresentation();
+   await settle(() => Boolean(callbacks));
++  assert.equal(callbacks.inputReady(), true);
++  callbacks.onMove(1, 4);
++  callbacks.onMove(2, 3);
++  callbacks.onMove(0, 0);
++  assert.deepEqual(sandbox.touch.map(args => Array.from(args)), [[1, 2], [3, 4], [0, 0]]);
+   callbacks.onUseSkill();
+   callbacks.onChangeCharacter('duck');
+   callbacks.onPlaceBomb();
+@@ -996,8 +1002,14 @@ test("player startup requires both new GAS exports and presentation callbacks se
+   assert.equal(vm.runInContext('player.skillsSent', context), 1);
+   assert.equal(vm.runInContext('player.selectionsSent', context), 1);
+   assert.equal(vm.runInContext('player.bombsSent', context), 1);
++  sandbox.blocked = true;
++  assert.equal(callbacks.onUseSkill(), false);
++  assert.equal(callbacks.onPlaceBomb(), false);
++  assert.deepEqual(sent, ['skill', 'character:duck', 'bomb']);
++  sandbox.blocked = false;
+   vm.runInContext("player.replica = { phase: 'WaitingForWorldReady', inputOpen: false, inputEnabled: true, selfId: 'self' }", context);
+   callbacks.onChangeCharacter('cat');
++  assert.equal(callbacks.inputReady(), false);
+   callbacks.onUseSkill();
+   callbacks.onPlaceBomb();
+   assert.deepEqual(sent, ['skill', 'character:duck', 'bomb', 'character:cat']);
+@@ -1006,7 +1018,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
+   assert.deepEqual(sent, ['skill', 'character:duck', 'bomb', 'character:cat', 'character:kangaroo']);
+   for (const phase of ['Running', 'FinalCircle', 'Podium']) {
+     vm.runInContext(`player.replica = { phase: '${phase}', inputOpen: true, inputEnabled: true, selfId: 'self' }`, context);
+-    callbacks.onChangeCharacter('closed');
++    assert.equal(callbacks.onChangeCharacter('closed'), false);
+   }
+   vm.runInContext("player.replica = { phase: 'WaitingForWorldReady', inputOpen: false, inputEnabled: true, selfId: null }", context);
+   callbacks.onChangeCharacter('missing-self');
+diff --git "a/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.ts"
+new file mode 100644
+index 0000000..675f1cf
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.ts"
+@@ -0,0 +1,90 @@
++import { 方向 } from '../contract'
++
++/**
++ * 浮动虚拟摇杆的纯逻辑：四向输出（契约 `方向` 只有四向 + 停），18% 死区，
++ * 换轴要多出 15% 的滞回，避免在 45° 附近来回抖动。屏幕向上 = 游戏「上」（远离镜头）。
++ * 副方向（原型扩展 NON-CONTRACT，ADR 0032）：次轴分量 ≥ 主轴 × sideRatio 时，次轴那一侧算「另一个按住的方向」，
++ * 与键盘两键同按一样，主方向走不动时沿它滑动。
++ */
++export class Joystick4 {
++  private ox = 0
++  private oy = 0
++  private active = false
++  private dir: 方向 = 方向.停
++  private side: 方向 = 方向.停
++  /** 摇杆头相对底座中心的位移（已夹到半径内），CSS 像素。 */
++  knobX = 0
++  knobY = 0
++
++  constructor(
++    readonly radius = 60,
++    readonly deadZone = 0.18,
++    readonly hysteresis = 0.15,
++    /** 次轴 ≥ 主轴 × 0.5（约 26.6°）才算副方向（critic §5.1 第 21 条；推断待验证）。 */
++    readonly sideRatio = 0.5,
++  ) {}
++
++  start(x: number, y: number): void {
++    this.ox = x
++    this.oy = y
++    this.active = true
++    this.dir = 方向.停
++    this.side = 方向.停
++    this.knobX = this.knobY = 0
++  }
++
++  move(x: number, y: number): 方向 {
++    if (!this.active) return 方向.停
++    const dx = x - this.ox
++    const dy = y - this.oy
++    const len = Math.hypot(dx, dy)
++    const k = len > this.radius ? this.radius / len : 1
++    this.knobX = dx * k
++    this.knobY = dy * k
++    if (len < this.deadZone * this.radius) {
++      this.dir = 方向.停
++      this.side = 方向.停
++      return this.dir
++    }
++    const ax = Math.abs(dx)
++    const ay = Math.abs(dy)
++    const h = 1 + this.hysteresis
++    const wasHorizontal = this.dir === 方向.左 || this.dir === 方向.右
++    const wasVertical = this.dir === 方向.上 || this.dir === 方向.下
++    let horizontal: boolean
++    if (wasHorizontal) horizontal = !(ay > ax * h)
++    else if (wasVertical) horizontal = ax > ay * h
++    else horizontal = ax >= ay
++    this.dir = horizontal ? (dx < 0 ? 方向.左 : 方向.右) : dy < 0 ? 方向.上 : 方向.下
++    const major = horizontal ? ax : ay
++    const minor = horizontal ? ay : ax
++    if (minor === 0 || minor < major * this.sideRatio) this.side = 方向.停
++    else if (horizontal) this.side = dy < 0 ? 方向.上 : 方向.下
++    else this.side = dx < 0 ? 方向.左 : 方向.右
++    return this.dir
++  }
++
++  end(): void {
++    this.active = false
++    this.dir = 方向.停
++    this.side = 方向.停
++    this.knobX = this.knobY = 0
++  }
++
++  isActive(): boolean {
++    return this.active
++  }
++
++  direction(): 方向 {
++    return this.dir
++  }
++
++  /** 副方向（与 direction() 垂直；没有则停）。 */
++  secondary(): 方向 {
++    return this.side
++  }
++
++  origin(): { x: number; y: number } {
++    return { x: this.ox, y: this.oy }
++  }
++}
+diff --git "a/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.test.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.test.ts"
+new file mode 100644
+index 0000000..ef07daa
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.test.ts"
+@@ -0,0 +1,42 @@
++import { describe, expect, it } from 'vitest'
++import { 方向 } from '../contract'
++import { Joystick4 } from './joystick'
++
++describe('approved prototype joystick intent', () => {
++  it('has an 18% dead zone and clamps the 52px knob to the 60px radius', () => {
++    const stick = new Joystick4()
++    expect(stick.move(100, 100)).toBe(方向.停)
++    stick.start(100, 100)
++    expect(stick.move(110, 100)).toBe(方向.停)
++    expect(stick.move(300, 100)).toBe(方向.右)
++    expect(stick.knobX).toBe(60)
++    expect(stick.knobY).toBe(0)
++    expect(stick.secondary()).toBe(方向.停)
++  })
++  it('keeps the current axis within 15% hysteresis and includes a substantial secondary axis', () => {
++    const stick = new Joystick4()
++    stick.start(0, 0)
++    expect(stick.move(30, 0)).toBe(方向.右)
++    expect(stick.move(30, -32)).toBe(方向.右)
++    expect(stick.secondary()).toBe(方向.上)
++    expect(stick.move(30, -36)).toBe(方向.上)
++    expect(stick.secondary()).toBe(方向.右)
++    expect(stick.move(0, -36)).toBe(方向.上)
++    expect(stick.secondary()).toBe(方向.停)
++  })
++  it('clears both axes on return to center, pointer release and a new gesture', () => {
++    const stick = new Joystick4()
++    stick.start(100, 100)
++    stick.move(60, 70)
++    expect(stick.secondary()).toBe(方向.上)
++    expect(stick.move(102, 103)).toBe(方向.停)
++    expect(stick.secondary()).toBe(方向.停)
++    stick.move(60, 130)
++    stick.end()
++    expect([stick.direction(), stick.secondary(), stick.knobX, stick.knobY]).toEqual([0, 0, 0, 0])
++    expect(stick.isActive()).toBe(false)
++    stick.start(50, 50)
++    expect(stick.origin()).toEqual({ x: 50, y: 50 })
++    expect(stick.direction()).toBe(方向.停)
++  })
++})
+diff --git "a/games\\101-bomber\\Client\\Presentation\\src\\present\\touch-controls.ts" "b/games\\101-bomber\\Client\\Presentation\\src\\present\\touch-controls.ts"
+new file mode 100644
+index 0000000..5baca4d
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\present\\touch-controls.ts"
+@@ -0,0 +1,231 @@
++import { 方向, type SkillId } from '../contract'
++import type { SkillButtonView } from '../present/skill-hud'
++import { SKILL_ICON, skillCss } from '../present/skill-style'
++import { Joystick4 } from './joystick'
++import './touch.css'
++
++export interface TouchActions {
++  move(primary: 方向, secondary: 方向): void
++  bomb(): void
++  skill(): void
++  ready(): boolean
++}
++
++/** 摇杆可起手的区域：屏幕左侧 45%（右侧留给放弹按钮与 HUD）。 */
++const STICK_ZONE = 0.45
++
++/** 点在 HUD 可交互元素上时不起摇杆（按钮、滑条、结算 / 暂停遮罩都标了 data-ui）。 */
++function isUiTarget(t: EventTarget | null): boolean {
++  const e = t as Element | null
++  return typeof e?.closest === 'function' && e.closest('button, input, select, a, [data-ui]') !== null
++}
++
++/**
++ * 触屏控件：左下浮动虚拟摇杆（底座 120 px、摇杆头 52 px）+ 右下 88 px 放弹按钮（参考图同款圆按钮）
++ * + 放弹按钮左边 68 px 技能「副按钮」（原型扩展 NON-CONTRACT，ADR 0030：主动槽技能，带冷却环；主动槽为空时隐藏）。
++ * 只在触屏设备显示（`(pointer: coarse)` 或第一次触摸之后）。
++ */
++export class TouchControls {
++  private readonly stick = new Joystick4(60, 0.18, 0.15)
++  private readonly base: HTMLDivElement
++  private readonly knob: HTMLDivElement
++  private readonly bomb: HTMLButtonElement
++  private readonly skill: HTMLButtonElement
++  private readonly skillIco: HTMLSpanElement
++  private readonly skillSec: HTMLSpanElement
++  private readonly skillLabel: HTMLSpanElement
++  private skillShown: SkillId | null = null
++  private pointerId: number | null = null
++  private visible = false
++  private enabled = false
++  private skillReady = false
++  private sentDirection: 方向 = 方向.停
++  private sentSecondary: 方向 = 方向.停
++  private readonly off: (() => void)[] = []
++
++  constructor(
++    private readonly root: HTMLElement,
++    private readonly actions: TouchActions,
++    private readonly target: Window,
++  ) {
++    root.classList.add('touch-root')
++    this.base = document.createElement('div')
++    this.base.className = 'tc-stick is-idle'
++    this.knob = document.createElement('div')
++    this.knob.className = 'tc-knob'
++    this.base.appendChild(this.knob)
++    this.bomb = document.createElement('button')
++    this.bomb.type = 'button'
++    this.bomb.className = 'tc-bomb'
++    this.bomb.setAttribute('aria-label', '放炸弹')
++    this.bomb.innerHTML =
++      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="14" r="7" fill="currentColor"/>' +
++      '<rect x="8.7" y="5.4" width="3.6" height="2.6" rx=".6" fill="currentColor"/>' +
++      '<path d="M12 6c1-2.2 3.2-3 5-2.2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
++      '<circle cx="18.6" cy="3.6" r="1.8" fill="#FF7A3D"/></svg><span class="tc-bomb-label">放炸弹</span><span class="tc-bomb-key">SPACE</span>'
++    this.skill = document.createElement('button')
++    this.skill.type = 'button'
++    this.skill.className = 'tc-skill is-hidden'
++    this.skill.setAttribute('aria-label', '放技能')
++    this.skillIco = document.createElement('span')
++    this.skillIco.className = 'tc-skill-ico'
++    const cd = document.createElement('span')
++    cd.className = 'tc-skill-cd'
++    this.skillSec = document.createElement('span')
++    this.skillSec.className = 'tc-skill-sec'
++    this.skillLabel = document.createElement('span')
++    this.skillLabel.className = 'tc-skill-label'
++    this.skill.append(this.skillIco, cd, this.skillSec, this.skillLabel)
++    root.appendChild(this.base)
++    root.appendChild(this.bomb)
++    root.appendChild(this.skill)
++
++    this.listen(this.skill, 'pointerdown', (e) => {
++      e.preventDefault()
++      if (!this.enabled || !this.actions.ready() || !this.skillReady) return
++      this.actions.skill()
++      this.skill.classList.add('is-pressed')
++    })
++    for (const t of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
++      this.listen(this.skill, t, () => this.skill.classList.remove('is-pressed'))
++    }
++
++    this.listen(this.bomb, 'pointerdown', (e) => {
++      e.preventDefault()
++      if (!this.enabled || !this.actions.ready()) return
++      this.actions.bomb()
++      this.bomb.classList.add('is-pressed')
++    })
++    for (const t of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
++      this.listen(this.bomb, t, () => this.bomb.classList.remove('is-pressed'))
++    }
++    this.listen(target, 'pointerdown', (e) => this.onDown(e as PointerEvent))
++    this.listen(target, 'pointermove', (e) => this.onMove(e as PointerEvent))
++    this.listen(target, 'pointerup', (e) => this.onUp(e as PointerEvent))
++    this.listen(target, 'pointercancel', (e) => this.onUp(e as PointerEvent))
++    this.listen(target, 'blur', () => this.release())
++    this.listen(target.document, 'visibilitychange', () => { if (target.document.hidden) this.release() })
++    this.listen(target, 'resize', () => this.release())
++    this.setEnabled(false)
++  }
++
++  show(): void {
++    if (this.visible) return
++    this.visible = true
++    this.root.classList.add('is-touch')
++  }
++
++  isVisible(): boolean {
++    return this.visible
++  }
++
++  setEnabled(enabled: boolean): void {
++    this.enabled = enabled
++    this.root.classList.toggle('is-blocked', !enabled)
++    this.bomb.disabled = !enabled
++    this.skill.disabled = !enabled || !this.skillReady
++    if (!enabled) this.release()
++  }
++
++  direction(): 方向 {
++    return this.stick.isActive() ? this.stick.direction() : 方向.停
++  }
++
++  /** 摇杆的副方向（原型扩展 NON-CONTRACT，ADR 0032）：次轴够大时是另一个「按住的方向」。 */
++  secondary(): 方向 {
++    return this.stick.isActive() ? this.stick.secondary() : 方向.停
++  }
++
++  /** 技能按钮的显示状态（每帧由 app 从 HUD 取来）；null = 主动槽为空，隐藏按钮。 */
++  setSkill(v: SkillButtonView | null): void {
++    const b = this.skill
++    this.skillReady = Boolean(v?.ready && !v.disabled)
++    b.disabled = !this.enabled || !this.skillReady
++    b.classList.toggle('is-hidden', v === null)
++    if (!v) {
++      this.skillShown = null
++      return
++    }
++    if (this.skillShown !== v.skill) {
++      this.skillShown = v.skill
++      this.skillIco.innerHTML = SKILL_ICON[v.skill]
++      b.style.setProperty('--skill', skillCss(v.skill))
++      b.setAttribute('aria-label', `放技能：${v.label}`)
++    }
++    const cd = (Math.round(v.cdFrac * 100) / 100).toFixed(2)
++    if (b.style.getPropertyValue('--cd') !== cd) b.style.setProperty('--cd', cd)
++    const sec = v.cdFrac > 0 ? String(Math.ceil(v.cdSec - 1e-6)) : ''
++    if (this.skillSec.textContent !== sec) this.skillSec.textContent = sec
++    if (this.skillLabel.textContent !== v.label) this.skillLabel.textContent = v.label
++    b.classList.toggle('is-ready', v.ready)
++    b.classList.toggle('is-effect', v.effect)
++    b.classList.toggle('is-disabled', v.disabled)
++  }
++
++  dispose(): void {
++    this.release()
++    for (const f of this.off) f()
++    this.off.length = 0
++    this.base.remove()
++    this.bomb.remove()
++    this.skill.remove()
++    this.root.classList.remove('touch-root', 'is-touch', 'is-blocked')
++  }
++
++  private listen(t: EventTarget, type: string, fn: (e: Event) => void): void {
++    t.addEventListener(type, fn)
++    this.off.push(() => t.removeEventListener(type, fn))
++  }
++
++  private onDown(e: PointerEvent): void {
++    if (e.pointerType === 'touch') this.show()
++    if (!this.visible || !this.enabled || !this.actions.ready() || this.pointerId !== null) return
++    if (e.clientX > this.target.innerWidth * STICK_ZONE || isUiTarget(e.target)) return
++    e.preventDefault()
++    this.pointerId = e.pointerId
++    this.stick.start(e.clientX, e.clientY)
++    this.base.classList.remove('is-idle')
++    this.base.style.left = `${e.clientX}px`
++    this.base.style.top = `${e.clientY}px`
++    this.drawKnob()
++  }
++
++  private onMove(e: PointerEvent): void {
++    if (e.pointerId !== this.pointerId) return
++    if (!this.actions.ready()) { this.release(); return }
++    e.preventDefault()
++    this.stick.move(e.clientX, e.clientY)
++    this.drawKnob()
++    this.emitDirection()
++  }
++
++  private onUp(e: PointerEvent): void {
++    if (e.pointerId === this.pointerId) this.release()
++  }
++
++  private release(): void {
++    this.pointerId = null
++    this.stick.end()
++    this.base.classList.add('is-idle')
++    this.base.style.left = ''
++    this.base.style.top = ''
++    this.drawKnob()
++    this.bomb.classList.remove('is-pressed')
++    this.skill.classList.remove('is-pressed')
++    this.emitDirection()
++  }
++
++  private emitDirection(): void {
++    const primary = this.direction()
++    const secondary = this.secondary()
++    if (primary === this.sentDirection && secondary === this.sentSecondary) return
++    this.sentDirection = primary
++    this.sentSecondary = secondary
++    this.actions.move(primary, secondary)
++  }
++
++  private drawKnob(): void {
++    this.knob.style.transform = `translate(${this.stick.knobX.toFixed(1)}px, ${this.stick.knobY.toFixed(1)}px)`
++    this.base.dataset.dir = String(this.stick.direction())
++  }
++}
+diff --git "a/games\\101-bomber\\Client\\Presentation\\src\\present\\touch.css" "b/games\\101-bomber\\Client\\Presentation\\src\\present\\touch.css"
+new file mode 100644
+index 0000000..acadd4a
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\src\\present\\touch.css"
+@@ -0,0 +1,184 @@
++/* 触屏控件：默认隐藏，只在 .is-touch 时显示（粗指针设备或第一次触摸之后）。 */
++.touch-root { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
++.touch-root.is-blocked { visibility: hidden; }
++.tc-bomb:disabled, .tc-skill:disabled { cursor: default; }
++/* Keep the approved sizes; tighten only the margins on 320px portrait screens. */
++@media (max-width: 350px) and (orientation: portrait) {
++  .touch-root .tc-stick.is-idle { left: calc(64px + env(safe-area-inset-left, 0px)); }
++  .touch-root .tc-skill { right: calc(114px + env(safe-area-inset-right, 0px)); }
++  .touch-root .tc-bomb { right: calc(16px + env(safe-area-inset-right, 0px)); }
++}
++.touch-root .tc-stick,
++.touch-root .tc-bomb {
++  display: none;
++}
++.touch-root.is-touch .tc-stick,
++.touch-root.is-touch .tc-bomb {
++  display: block;
++}
++
++.tc-stick {
++  position: absolute;
++  width: 120px;
++  height: 120px;
++  margin: -60px 0 0 -60px;
++  border-radius: 50%;
++  background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.14) 70%);
++  border: 2px solid rgba(255, 255, 255, 0.55);
++  box-shadow: 0 6px 18px rgba(43, 35, 32, 0.18);
++  -webkit-backdrop-filter: blur(6px);
++  backdrop-filter: blur(6px);
++  pointer-events: none;
++}
++.tc-stick.is-idle {
++  left: calc(92px + env(safe-area-inset-left, 0px));
++  top: calc(100% - 92px - env(safe-area-inset-bottom, 0px));
++  opacity: 0.6;
++}
++.tc-stick::before {
++  content: '';
++  position: absolute;
++  inset: 10px;
++  border-radius: 50%;
++  border: 2px dashed rgba(255, 255, 255, 0.25);
++}
++.tc-knob {
++  position: absolute;
++  left: 50%;
++  top: 50%;
++  width: 52px;
++  height: 52px;
++  margin: -26px 0 0 -26px;
++  border-radius: 50%;
++  background: rgba(255, 248, 236, 0.92);
++  border: 2px solid rgba(61, 184, 218, 0.9);
++  box-shadow: 0 4px 10px rgba(43, 35, 32, 0.25);
++}
++.tc-stick:not([data-dir='0']):not(.is-idle) .tc-knob {
++  background: #3db8da;
++  border-color: #fff8ec;
++}
++
++.tc-bomb {
++  position: absolute;
++  right: calc(24px + env(safe-area-inset-right, 0px));
++  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
++  width: 88px;
++  height: 88px;
++  padding: 0;
++  border-radius: 50%;
++  border: 3px solid rgba(255, 255, 255, 0.75);
++  background: radial-gradient(circle at 35% 30%, #ffe08a 0%, #ffc93c 55%, #f0a92a 100%);
++  box-shadow: 0 8px 20px rgba(43, 35, 32, 0.28), inset 0 -4px 0 rgba(43, 35, 32, 0.12);
++  color: #2b2320;
++  font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
++  pointer-events: auto;
++  touch-action: none;
++  -webkit-tap-highlight-color: transparent;
++  transition: transform 0.08s;
++}
++.tc-bomb svg {
++  display: block;
++  width: 34px;
++  height: 34px;
++  margin: 12px auto 0;
++}
++.tc-bomb-label {
++  display: block;
++  font-size: 13px;
++  font-weight: 900;
++  line-height: 1.1;
++}
++.tc-bomb-key {
++  display: block;
++  font-size: 8px;
++  font-weight: 800;
++  letter-spacing: 0.12em;
++  opacity: 0.6;
++}
++.tc-bomb.is-pressed {
++  transform: scale(0.9);
++}
++
++/* 技能「副按钮」（ADR 0030）：放弹按钮左边，同一视觉家族；冷却用 conic 遮罩。 */
++.touch-root .tc-skill {
++  display: none;
++}
++.touch-root.is-touch .tc-skill {
++  display: block;
++}
++.touch-root.is-touch .tc-skill.is-hidden {
++  display: none;
++}
++.tc-skill {
++  --skill: #fff8ec;
++  --cd: 0;
++  position: absolute;
++  right: calc(24px + 88px + 18px + env(safe-area-inset-right, 0px));
++  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
++  width: 68px;
++  height: 68px;
++  padding: 0;
++  border-radius: 50%;
++  border: 3px solid var(--skill);
++  background: radial-gradient(circle at 35% 30%, #4a3d37 0%, #2b2320 100%);
++  box-shadow: 0 8px 20px rgba(43, 35, 32, 0.28);
++  color: var(--skill);
++  font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
++  pointer-events: auto;
++  touch-action: none;
++  -webkit-tap-highlight-color: transparent;
++  transition: transform 0.08s;
++  overflow: hidden;
++}
++.tc-skill-ico svg {
++  display: block;
++  width: 30px;
++  height: 30px;
++  margin: 10px auto 0;
++}
++.tc-skill-cd {
++  position: absolute;
++  inset: 0;
++  border-radius: 50%;
++  background: conic-gradient(rgba(20, 16, 14, 0.72) calc(var(--cd) * 1turn), transparent 0);
++  pointer-events: none;
++}
++.tc-skill-sec {
++  position: absolute;
++  inset: 0;
++  display: grid;
++  place-items: center;
++  font-size: 22px;
++  font-weight: 900;
++  color: #fff;
++  pointer-events: none;
++}
++.tc-skill-label {
++  display: block;
++  font-size: 11px;
++  font-weight: 900;
++  color: #fff8ec;
++}
++.tc-skill.is-ready {
++  box-shadow: 0 0 0 3px var(--skill), 0 8px 20px rgba(43, 35, 32, 0.28);
++}
++.tc-skill.is-effect {
++  animation: tc-skill-pulse 0.6s ease-in-out infinite alternate;
++}
++.tc-skill.is-disabled {
++  opacity: 0.5;
++}
++.tc-skill.is-pressed {
++  transform: scale(0.9);
++}
++@keyframes tc-skill-pulse {
++  to {
++    box-shadow: 0 0 0 6px var(--skill), 0 8px 20px rgba(43, 35, 32, 0.28);
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  .tc-skill.is-effect {
++    animation: none;
++  }
++}
+diff --git "a/games\\101-bomber\\Client\\Presentation\\tests\\player-input.html" "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input.html"
+new file mode 100644
+index 0000000..1b4bb4a
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input.html"
+@@ -0,0 +1,10 @@
++<!doctype html>
++<html lang="zh-CN">
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<link rel="icon" href="data:,">
++<title>Player input presentation fixture — not a server match</title>
++<style>html,body{margin:0;width:100%;height:100%;overflow:hidden}main{position:fixed;inset:0}</style>
++<main><div id="stage"></div><div id="labels"></div><div id="hud"></div></main>
++<script type="module" src="./player-input.js"></script>
++</html>
+diff --git "a/games\\101-bomber\\Client\\Presentation\\tests\\player-input.js" "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input.js"
+new file mode 100644
+index 0000000..63ccb99
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input.js"
+@@ -0,0 +1,43 @@
++import { createPresentation, CHARACTER_ORDER, DEFAULT_RULES, DEFAULT_CONFIG, BlockType } from '../src/index.ts'
++import { snap, skillsView } from '../src/hud/__tests__/fixtures.ts'
++import { createPlayerInput } from '../../UI/Spectator/player-controls.mjs'
++
++// Read-only rendering/input fixture. These callbacks log intents; no gameplay is simulated.
++const snapshot = snap({ tick: 100, players: CHARACTER_ORDER.map((character, i) => ({
++  id: i + 1, x: 7.5 + i, z: 9.5, hats: i * 4,
++  skills: skillsView({ character, slots: { bomb: null, passive: null,
++    active: { skill: 'bubble', level: 1, bound: true } } }),
++})) })
++for (const [i, p] of snapshot.Players.entries()) p.meta.animal = DEFAULT_RULES.characters[CHARACTER_ORDER[i]].animal
++const size = DEFAULT_CONFIG.mapSize
++snapshot.Terrain = { size, rev: 1, ground: new Uint8Array(size * size).fill(BlockType.地面),
++  brick: new Uint8Array(size * size).fill(BlockType.Air) }
++for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
++  if (x === 0 || y === 0 || x === size - 1 || y === size - 1) snapshot.Terrain.brick[y * size + x] = BlockType.铁皮
++}
++const state = { ready: true, sendSuccess: true, commands: [], directions: [], selections: [], snapshot }
++const presentation = createPresentation({
++  stage: document.getElementById('stage'), labels: document.getElementById('labels'), hud: document.getElementById('hud'),
++  config: DEFAULT_CONFIG, localPlayerId: 2,
++  callbacks: {
++    inputReady: () => state.ready,
++    onMove: (a, b) => { state.directions.push([a, b]); const m = [0, 1, 3, 4, 2]; input.setTouchDirection(m[a], m[b]) },
++    onUseSkill: () => state.commands.push(['skill']),
++    onPlaceBomb: () => state.commands.push(['bomb']),
++    onChangeCharacter: id => { if (!state.sendSuccess) return false; state.selections.push(id); return true },
++  },
++})
++const input = createPlayerInput({
++  ready: () => state.ready && !presentation.inputBlocked(),
++  sendMove: (...args) => state.commands.push(['move', ...args]),
++  placeBomb: () => state.commands.push(['bomb']), useSkill: () => state.commands.push(['skill']),
++})
++Object.assign(state, { presentation, input, pushSkill(overrides) {
++  snapshot.Tick++
++  Object.assign(snapshot.Players[1].skills, overrides)
++  presentation.push({ snapshot: { ...snapshot, Players: [...snapshot.Players] }, events: [] })
++}, dispose() { input.destroy(); presentation.dispose() } })
++window.playerInputFixture = state
++presentation.push({ snapshot, events: [] })
++presentation.setSelectionWindow(true, true)
++presentation.toggleOverview()
+diff --git "a/games\\101-bomber\\Client\\Presentation\\tests\\player-input-browser.mjs" "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input-browser.mjs"
+new file mode 100644
+index 0000000..ed2e3d7
+--- /dev/null
++++ "b/games\\101-bomber\\Client\\Presentation\\tests\\player-input-browser.mjs"
+@@ -0,0 +1,123 @@
++import assert from 'node:assert/strict'
++import { mkdir, writeFile } from 'node:fs/promises'
++import { fileURLToPath } from 'node:url'
++import { chromium } from '../../../.run/browser-tools/node_modules/playwright/index.mjs'
++
++const output = new URL('../../../.run/player-input-evidence/', import.meta.url)
++await mkdir(output, { recursive: true })
++const browser = await chromium.launch({ channel: 'msedge', headless: true })
++const results = []
++try {
++  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 320, height: 568 }]) {
++    const mobile = viewport.width !== 1440
++    const page = await browser.newPage({ viewport, hasTouch: mobile })
++    const errors = []
++    page.on('pageerror', error => errors.push(error.message))
++    page.on('console', msg => { if (msg.type() === 'error') errors.push(`${msg.text()} ${msg.location().url}`) })
++    await page.addInitScript(() => localStorage.setItem('lumio-101-bomber-character', 'duck'))
++    await page.goto('http://127.0.0.1:5199/tests/player-input.html')
++    await page.waitForFunction(() => window.playerInputFixture && document.querySelectorAll('[data-mode="start"] .sel-portrait').length === 5)
++    const initial = page.locator('.hud-select[data-mode="start"]')
++    const selected = () => initial.locator('.sel-card[aria-checked="true"]').getAttribute('data-character')
++    assert.equal(await selected(), 'duck', 'remember last confirmed selection')
++    assert.equal(await initial.locator('.sel-card').count(), 5)
++    await page.screenshot({ path: fileURLToPath(new URL(`selection-${viewport.width}x${viewport.height}.png`, output)) })
++    const layout = await page.evaluate(() => {
++      const title = document.querySelector('[data-mode="start"] .sel-title').getBoundingClientRect()
++      const go = document.querySelector('[data-mode="start"] .sel-go').getBoundingClientRect()
++      return { width: innerWidth, scrollWidth: document.documentElement.scrollWidth, titleTop: title.top, goBottom: go.bottom }
++    })
++    assert.equal(layout.width, layout.scrollWidth)
++    assert.ok(layout.titleTop >= 0, `selection title clipped: ${JSON.stringify(layout)}`)
++    // The selector owns Space/WASD while open; these cannot send game input.
++    await page.keyboard.press('ArrowRight')
++    assert.notEqual(await selected(), 'duck')
++    assert.deepEqual(await page.evaluate(() => window.playerInputFixture.commands), [])
++    if (viewport.width === 320) {
++      await page.keyboard.press('Digit5')
++      assert.equal(await selected(), 'kangaroo')
++      const fifth = await initial.locator('[data-character="kangaroo"]').boundingBox()
++      assert.ok(fifth.y >= 0 && fifth.y + fifth.height <= viewport.height, 'keyboard selection must scroll the fifth card into view')
++      await page.screenshot({ path: fileURLToPath(new URL('selection-320x568-scrolled.png', output)) })
++    }
++    if (!mobile) {
++      await page.evaluate(() => { window.playerInputFixture.sendSuccess = false })
++      await initial.locator('.sel-go').click()
++      assert.deepEqual(await page.evaluate(() => window.playerInputFixture.selections), [])
++      assert.equal(await page.evaluate(() => localStorage.getItem('lumio-101-bomber-character')), 'duck')
++      await page.evaluate(() => { window.playerInputFixture.sendSuccess = true; window.playerInputFixture.presentation.setSelectionWindow(true, true) })
++      await initial.waitFor()
++    }
++    await initial.locator('[data-character="cat"]').click()
++    await initial.locator('.sel-go').click()
++    assert.deepEqual(await page.evaluate(() => window.playerInputFixture.selections), ['cat'])
++    assert.equal(await page.evaluate(() => localStorage.getItem('lumio-101-bomber-character')), 'cat')
++    assert.equal(await initial.isVisible(), false)
++    assert.equal(await page.evaluate(() => window.playerInputFixture.presentation.inputBlocked()), false)
++    assert.equal(await page.evaluate(() => window.playerInputFixture.snapshot.Players[0].skills.character), 'rabbit', 'selection must not write authoritative snapshot')
++    await page.keyboard.down('d')
++    await page.waitForTimeout(120)
++    await page.keyboard.up('d')
++    assert.ok(await page.evaluate(() => window.playerInputFixture.commands.some(c => c[0] === 'move' && c[1] === 2)))
++    if (mobile) {
++      await page.locator('.touch-root.is-touch:not(.is-blocked)').waitFor()
++      const bomb = await page.locator('.tc-bomb').boundingBox()
++      const skill = await page.locator('.tc-skill').boundingBox()
++      assert.equal(bomb.width, 88)
++      assert.equal(skill.width, 68)
++      const stick = await page.locator('.tc-stick').boundingBox()
++      assert.ok(stick.x + stick.width <= skill.x, 'idle stick and skill button must not overlap')
++      assert.ok(skill.x + skill.width <= bomb.x, 'skill and bomb must not overlap')
++      const cdp = await page.context().newCDPSession(page)
++      const touch = (type, touchPoints) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints })
++      const point = (id, x, y) => ({ id, x, y, radiusX: 4, radiusY: 4, force: 1 })
++      const origin = point(1, 80, viewport.height - 94)
++      const moving = point(1, 124, viewport.height - 124)
++      await touch('touchStart', [origin])
++      await touch('touchMove', [moving])
++      await page.waitForTimeout(120)
++      assert.ok(await page.evaluate(() => window.playerInputFixture.commands.some(c => c[0] === 'move' && c[1] === 2 && c[2] === 1)))
++      await touch('touchStart', [moving, point(2, bomb.x + 44, bomb.y + 44)])
++      await page.waitForTimeout(100)
++      await touch('touchEnd', [moving])
++      await touch('touchEnd', [])
++      assert.equal(await page.evaluate(() => window.playerInputFixture.commands.filter(c => c[0] === 'bomb').length), 1)
++      const count = await page.evaluate(() => window.playerInputFixture.commands.length)
++      await page.waitForTimeout(150)
++      assert.equal(await page.evaluate(() => window.playerInputFixture.commands.length), count, 'release stops cadence')
++      assert.deepEqual(await page.evaluate(() => window.playerInputFixture.directions.at(-1)), [0, 0])
++      await page.touchscreen.tap(skill.x + 34, skill.y + 34)
++      assert.equal(await page.evaluate(() => window.playerInputFixture.commands.filter(c => c[0] === 'skill').length), 1)
++      await page.evaluate(() => window.playerInputFixture.pushSkill({ cdFromTick: 100, cdUntilTick: 400 }))
++      await page.waitForFunction(() => document.querySelector('.tc-skill').disabled)
++      await page.touchscreen.tap(skill.x + 34, skill.y + 34)
++      assert.equal(await page.evaluate(() => window.playerInputFixture.commands.filter(c => c[0] === 'skill').length), 1)
++      await page.screenshot({ path: fileURLToPath(new URL(`touch-${viewport.width}x${viewport.height}.png`, output)) })
++      const overlaps = await page.evaluate(() => {
++        const boxes = ['.hud-board', '.hud-stats', '.hud-skills', '.hud-buttons', '.tc-bomb', '.tc-skill'].map(selector => [selector, document.querySelector(selector).getBoundingClientRect()])
++        return boxes.flatMap(([a, x], i) => boxes.slice(i + 1).filter(([, y]) => x.left < y.right && y.left < x.right && x.top < y.bottom && y.top < x.bottom).map(([b]) => [a, b]))
++      })
++      assert.deepEqual(overlaps, [], 'HUD and actionable touch controls must not occlude one another')
++      await page.evaluate(() => { window.playerInputFixture.ready = false })
++      await page.locator('.touch-root.is-blocked').waitFor({ state: 'attached' })
++      await page.evaluate(() => { window.playerInputFixture.ready = true })
++    }
++    await page.getByRole('button', { name: '设置', exact: true }).click()
++    assert.equal(await page.evaluate(() => window.playerInputFixture.presentation.inputBlocked()), true)
++    const before = await page.evaluate(() => window.playerInputFixture.commands.length)
++    await page.keyboard.press('Space')
++    assert.equal(await page.evaluate(() => window.playerInputFixture.commands.length), before)
++    await page.getByRole('button', { name: '关闭', exact: true }).click()
++    await page.getByRole('button', { name: '换角色', exact: true }).click()
++    await page.locator('[data-mode="switch"].is-on').waitFor()
++    await page.evaluate(() => window.playerInputFixture.presentation.setSelectionWindow(false, false))
++    assert.equal(await page.locator('[data-mode="switch"]').isVisible(), false, 'server closes the allowed selection window')
++    await page.evaluate(() => { window.playerInputFixture.dispose(); window.playerInputFixture.dispose() })
++    assert.equal(await page.locator('#stage canvas, .hud-layer, .touch-root, .player-label').count(), 0)
++    assert.deepEqual(errors, [])
++    results.push({ viewport, selectionCards: 5, restored: 'duck', submitted: 'cat', nativeTouch: mobile, layout, errors })
++    await page.close()
++  }
++  await writeFile(new URL('verification.json', output), JSON.stringify({ fixtureOnly: true, scenarios: results }, null, 2))
++  console.log(JSON.stringify(results, null, 2))
++} finally { await browser.close() }

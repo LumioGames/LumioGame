@@ -16,6 +16,36 @@ namespace Lumio.Bomber.Gameplay.Tests;
 public sealed class CharacterSelectionBoundaryTests
 {
     [Theory]
+    [InlineData(1u, 118001u)]
+    [InlineData(2u, 118002u)]
+    [InlineData(3u, 118003u)]
+    [InlineData(4u, 118004u)]
+    [InlineData(5u, 118005u)]
+    public void FirstUnboundEntryChoiceAfterWelcomeBindsOnceWithinWarmup(uint alias, uint character)
+    {
+        // The browser can send the existing authoritative Ability only after Welcome/self.
+        // Entry selection is distinct from later-round switching (design 8.0, contract 4).
+        using WorldManager manager = Started(out NetEntityId life);
+        World world = manager.World;
+        var participant = world.Get<BomberParticipantState>(world.Get<BomberPlayerState>(life).Participant.Value);
+        var skill = world.Get<BomberSkillState>(life);
+        Assert.Equal((int)BomberMatchPhase.Warmup, world.Single<BomberMatchState>().Phase.Value);
+        Assert.Equal(0, participant.SelectedForMatchCharacterId.Value);
+        Assert.Equal(0u, skill.CharacterId.Value);
+        Queue(manager, life, alias, 1);
+        manager.Tick();
+        Assert.Equal(character, skill.CharacterId.Value);
+        Assert.Equal((int)character, participant.SelectedForMatchCharacterId.Value);
+        Assert.Equal(0, participant.NextCharacterId.Value);
+        uint later = alias == 5 ? 118001u : 118005u;
+        Queue(manager, life, later, 2);
+        manager.Tick();
+        Assert.Equal(character, skill.CharacterId.Value);
+        Assert.Equal((int)character, participant.SelectedForMatchCharacterId.Value);
+        Assert.Equal((int)later, participant.NextCharacterId.Value);
+    }
+
+    [Theory]
     [InlineData(1u, 118001u, 0u, 1u)]
     [InlineData(2u, 118002u, 2u, 0u)]
     [InlineData(3u, 118003u, 3u, 0u)]
@@ -77,7 +107,7 @@ public sealed class CharacterSelectionBoundaryTests
         Assert.Equal(BomberMatchPhase.Warmup, (BomberMatchPhase)match.Phase.Value);
         Assert.Equal(118002, seat.SelectedForMatchCharacterId.Value);
         Assert.Equal(118002u, skill.CharacterId.Value);
-        Assert.Equal(cooldown, skill.CooldownUntilTick.Value);
+        Assert.Equal(0UL, skill.CooldownUntilTick.Value);
 
         Queue(manager, life, 3, 2);
         manager.Tick();
@@ -232,19 +262,15 @@ public sealed class CharacterSelectionBoundaryTests
         player.LifePhase.Value = (int)BomberLifePhase.AwaitingRespawn;
         player.RespawnAtTick.Value = world.Tick;
         manager.Tick();
-        manager.Tick();
-        NetEntityId successor = seat.CurrentLife.Value;
-        Assert.NotEqual(life, successor);
-        BomberSkillState reboundSkill = world.Get<BomberSkillState>(successor);
-        Assert.Equal(118002u, reboundSkill.CharacterId.Value);
-        Assert.Equal(2u, reboundSkill.ActiveSkillId.Value);
-        Assert.True(reboundSkill.ActiveSkillBound.Value);
+        Assert.Equal(118002u, skill.CharacterId.Value);
+        Assert.Equal(2u, skill.ActiveSkillId.Value);
+        Assert.True(skill.ActiveSkillBound.Value);
         Assert.Equal(118003, seat.NextCharacterId.Value);
     }
 
     private static WorldManager Started(out NetEntityId life)
     {
-        WorldManager manager = BomberTestWorld.Start();
+        WorldManager manager = BomberTestWorld.Start(withMap: true);
         EntityOrder[] orders = Enumerable.Range(0, 8)
             .Select(i => BomberTestWorld.QueuePlayer(manager.World, "selection-" + i)).ToArray();
         manager.Tick(); manager.Tick(); manager.Tick();

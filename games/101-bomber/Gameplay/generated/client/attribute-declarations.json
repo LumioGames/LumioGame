@@ -1,0 +1,3986 @@
+[
+  {
+    "attributeId": "AttributeComponent.availableBombsBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.availableBombsCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "AttributeComponent.bombCapacityBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.bombCapacityCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "AttributeComponent.bombPowerBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.bombPowerCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "AttributeComponent.healthPointsBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.healthPointsCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "AttributeComponent.movementSpeedMilliBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.movementSpeedMilliCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "AttributeComponent.speedTierBase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "AttributeComponent.speedTierCurrent",
+    "persistence": "ephemeral",
+    "replication": "replicated",
+    "valueType": "i64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBarrelState.initialResourceCell",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBarrelState.initialResourceMatch",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBarrelState.resourceGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.bombKind",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.burnUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.capacityReturned",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.chainId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.childDirection",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.contactedChests",
+    "maxCapacity": 52,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.dangerUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.explodedAtTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.frenzy",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.fuseEndTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.futureChildren",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitDependentsAdmitted",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitFamily",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitHandleGenerations",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitHandleInstances",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitHandleWorlds",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitLifeGenerations",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitLives",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitParticipants",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.hitStates",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.kickDirection",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.kickRange",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.kickStartTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.owner",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.pierceLayers",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.placedAtTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.placementRecorded",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.power",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.promiseToken",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.reachDown",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.reachLeft",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.reachRight",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.reachUp",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.skillLevel",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.sourceLife",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.sourceLifeGeneration",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberBombState.splitResolvedMask",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.splitSubmittedMask",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.terrainContinuations",
+    "maxCapacity": 4,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.traversalArms",
+    "maxCapacity": 4,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.traversalOriginX",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.traversalOriginZ",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberBombState.traversalPower",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.hasPendingTransaction",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.hitBombs",
+    "maxCapacity": 3,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.initialResourceCell",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.initialResourceMatch",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.pendingMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.pendingSubmittedTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.pendingTransactionId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberChestState.remainingHits",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberChestState.requiredHits",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberChestState.resourceGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.resourceTier",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberChestState.strongSpawnMatch",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberChestState.strongSpawnStage",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.actual",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.after",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.before",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.cause",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.chainId",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.family",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.generation",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.handleGeneration",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.handleInstance",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.handleWorld",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.life",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.matchId",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.participant",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.ready",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.source",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.sourceGeneration",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.sourceLife",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.sourceParticipant",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.status",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.target",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.tick",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.typeId",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.x",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberDamageFacts.z",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.activeActivations",
+    "maxCapacity": 5,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.activeStates",
+    "maxCapacity": 5,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.epoch",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.fingerprint",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.lifecycle",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.machineKey",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.machineKind",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.nextActivationSeq",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.ownerEntity",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.snapshotPresent",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.snapshotSchemaVersion",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleHfsmState.stepSeq",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.chestIssuedStageMask",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.chestUnavailableStageMask",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.clearedStageMask",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.currentSide",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.currentStageId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.initialResourceCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.nextAnnounceTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.nextEffectiveTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.nextSide",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.nextStageId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.poisonPoints",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.regenStopTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.remainingResourceCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.resourceCountInitialized",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.triggerReason",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFinalCircleState.triggerTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireActual",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireAfter",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireBefore",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireCause",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireChainId",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireFamily",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireGeneration",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireHandleGeneration",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireHandleInstance",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireHandleWorld",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireLife",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireMatchId",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireParticipant",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.firePulse",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireReady",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireSource",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireSourceGeneration",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireSourceKind",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireSourceLife",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireSourceParticipant",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireStatus",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireTarget",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireTick",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireTypeId",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireX",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireFacts.fireZ",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.auraEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.auraEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.auraEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.birthSubmitted",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.coverageMask",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.direction",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.durationTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.fromTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.length",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.lifetimeEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.lifetimeEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.lifetimeEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.lifetimeOutcome",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.owner",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.promiseToken",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.regionCoverage",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.regionOrdinal",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberFireZoneState.sourceChainId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.sourceLife",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.sourceLifeGeneration",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.sourceMatchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.sourceSkill",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberFireZoneState.untilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberHealthFacts.actual",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.after",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.before",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.generation",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.goldAfter",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.goldBefore",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.handleGeneration",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.handleInstance",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.handleWorld",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.hatsAfter",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.intent",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.item",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.kind",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.matchId",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.maximumAfter",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.maximumBefore",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.participant",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.ready",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.source",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.status",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.target",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.tick",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.typeId",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.upgradeAfter",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHealthFacts.upgradeBefore",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.activeActivations",
+    "maxCapacity": 7,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.activeStates",
+    "maxCapacity": 7,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.epoch",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.fingerprint",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.lifecycle",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.machineKey",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.machineKind",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.nextActivationSeq",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.ownerEntity",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.snapshotPresent",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.snapshotSchemaVersion",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberHfsmState.stepSeq",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberIceBridgeState.appliedTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberIceBridgeState.expiresAtTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberIceBridgeState.freezeToken",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberIceBridgeState.matchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberIceBridgeState.resourceGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberMatchState.configHash",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.endReason",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.endTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.hatKing",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.matchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.matchIndex",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.outcomePending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberMatchState.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.phaseEndTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.seed",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.settlementPodiumTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberMatchState.settlementRespawnTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberMatchState.startTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.survivorCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberMatchState.winner",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.currentLife",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathCellX",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathCellZ",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathConsumedCount",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathDropPending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathStructureGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathStructureLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathStructurePending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathStructureTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.deathTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.eliminatedTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.frenzyBombPromises",
+    "maxCapacity": 6,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.frenzyGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.frenzyLastPlacementTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.frenzyLife",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.frenzyUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.lastLife",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.lifeGeneration",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.lifePhase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.matchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.nextCharacterId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.pendingFinalRespawn",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.respawnAtTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.selectedForMatchCharacterId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.slot",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.successorPending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalBaseSample",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalCaptureTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalCurrentSample",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalDestructionTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberParticipantState.terminalOccurrenceTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.claimedBy",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.comboLevelA",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.comboLevelB",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.comboSourceA",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.comboSourceB",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.dropLifeGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.dropMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.dropOccurrenceTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.dropParticipant",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.droppedBy",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.excludedLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.excludedLifeGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.kind",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.phase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.protectedUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.skillId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.skillLevel",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.spawnTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPickupItem.supplyMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.supplyOrdinal",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.terrainOrdinal",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.terrainSourceBomb",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.terrainSourceFamily",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPickupItem.terrainTransaction",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.assistToleranceMilli",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombButtonLastInputTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombButtonLifeGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombButtonMode",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.bombButtonStartedTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.eliminatedTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.facing",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.goldenHeartCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.hatCount",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.inputMemoryMatchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.lastAssistTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.lastMoveDirection",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.lastMoveTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.lifeGeneration",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.lifePhase",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.maximumHealth",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.nextCharacterId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.participant",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.participantIndex",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.pendingPlaceUntilTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.pendingTurnDirection",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.pendingTurnUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.protectedUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.respawnAtTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberPlayerState.restoreIntent",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.restorePending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.restoredIntent",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPresentationJournal.entries",
+    "maxCapacity": 128,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeCombinationOriginA",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeCombinationOriginB",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeOriginABound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeOriginALevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeOriginBBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeOriginBLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.activeSkillId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.availableBombs",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombCombinationOriginA",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombCombinationOriginB",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombOriginABound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombOriginALevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombOriginBBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombOriginBLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.bombSkillId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.capacityBase",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.carryPresent",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.characterId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.deferredDeathDebts",
+    "maxCapacity": 703,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropOccurrenceTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropOriginX",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.dropOriginZ",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveCombinationOriginA",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveCombinationOriginB",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveOriginABound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveOriginALevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveOriginBBound",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveOriginBLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.passiveSkillId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingBombLevel",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingBombSkill",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingCapacity",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingGoldenHearts",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingPower",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.pendingSpeed",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.placedDropCount",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.powerBase",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.selectedDropCount",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberRespawnCarry.speedTierBase",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberResults.bestChains",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.bombs",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.bossKills",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.characters",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.clutchEscapes",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.deaths",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.destroyedBlocks",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.eliminatedTicks",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.endReasons",
+    "maxCapacity": 2,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.endTicks",
+    "maxCapacity": 2,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.evolutions",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.finalHats",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.goldenHeartPickups",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.hatKingTicks",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.kills",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.lifeGenerations",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.lives",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.matchIds",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.participants",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.peakHats",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.peakHealthPoints",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.pickups",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.publishedGeneration",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.ranks",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.retainedMatchIds",
+    "maxCapacity": 2,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.skillCasts",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.slots",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.specialBombHistories",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.survived",
+    "maxCapacity": 32,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.survivorCounts",
+    "maxCapacity": 2,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberResults.winnerParticipants",
+    "maxCapacity": 2,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberSkillState.activeSkillBound",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.activeSkillId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.activeSkillLevel",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.auraCastX",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraCastZ",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraChainId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraCooldownTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraDurationTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraFavorite",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraOutcome",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.auraUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.bombSkillBound",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.bombSkillId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.bombSkillLevel",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleCastX",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleCastZ",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleCooldownTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleDurationTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleOutcome",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.bubbleUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.characterId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.comboLevelA",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.comboLevelB",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.comboSourceA",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.comboSourceB",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.cooldownFromTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberSkillState.cooldownUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureChainId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureEntity",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureFamily",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureFromTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureKind",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureLastTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureParticipant",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureSkill",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.fireExposureStartedTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.firePulseSequence",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeDurationTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeImmuneUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeImmunityDurationTicks",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeImmunityEffectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeImmunityEffectInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeImmunityEffectWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.freezeRequestTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.frozenUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.lastDamageTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.passiveSkillBound",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.passiveSkillId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.passiveSkillLevel",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.regenNextTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSkillState.shockUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.teleportSequence",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.toxinSource",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "net-entity-id",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberSkillState.toxinUntilTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "aoi-scoped"
+  },
+  {
+    "attributeId": "BomberStatistics.bestChain",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.bombs",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.bossKills",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.characterId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.clutchEscapes",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.deaths",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.destroyedBlocks",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.evolutions",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.goldenHeartPickups",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.hatKingTicks",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.kills",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.peakHats",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.peakHealthPoints",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.pickups",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.skillCasts",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "i32",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberStatistics.specialBombHistory",
+    "maxCapacity": 6,
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "list",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberSuccessorLife.preparedRevision",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.dormantLife",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.effectGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.effectInstanceId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.effectTypeId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.effectWorldId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.eligible",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "bool",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.intentGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.nextLifeGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.observationParticipant",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.participant",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.reservationGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.reservationSlot",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.reservationWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restorationRevision",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreHandleGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreHandleInstance",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreHandleWorld",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreIntentGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreLifeGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.restoreOutcome",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.settlementTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.target",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "net-entity-id",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberSuccessorState.transferRequest",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.barrelBombPromises",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.bombPlacementCells",
+    "maxCapacity": 361,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.bombPlacementMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.bombPlacementParticipants",
+    "maxCapacity": 361,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.bombPlacementTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.fireTrailPromises",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.iceBridgePromises",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.initialBarrelReservations",
+    "maxCapacity": 8,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.initialResourceCursor",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.initialResourcePhase",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.initialResourcePlan",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.nextChainId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.nextEventSequence",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.nextHfsmMachineKey",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.nextResourceGeneration",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.nextVoxelTransactionSequence",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.participantIds",
+    "maxCapacity": 16,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingCellOffsets",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingChainIds",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingChests",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingExpectedRevisions",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingKinds",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingNewBlocks",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingOldBlocks",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingParticipants",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingSections",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingSourceBombs",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingSourceLifeGenerations",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingSourceLives",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingVoxelMatchIds",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingVoxelSubmittedTicks",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.pendingVoxelTransactionIds",
+    "maxCapacity": 1,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.regenerationMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.regenerationNextTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.regenerationPromises",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.supplyAnnouncedMatchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.supplyIssuedMatchId",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.supplyPending",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "utf8-string",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.terrainInitialMatchId",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.terrainPendingDetails",
+    "maxCapacity": 722,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.terrainReservedPickups",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.terrainRewards",
+    "maxCapacity": 703,
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "list",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "IdentityComponent.name",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "room-public"
+  }
+]

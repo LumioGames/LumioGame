@@ -1,0 +1,6 @@
+table: life
+schema: schemas/life.json
+
+| name | respawn_ms |
+| --- | --- |
+| default | 4000 |

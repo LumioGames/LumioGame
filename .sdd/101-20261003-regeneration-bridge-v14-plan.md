@@ -1,0 +1,57 @@
+# v14 regeneration first; ice bridge follow-up
+
+Planning only. No production, ECS declaration, config schema or generated file is changed by this document. Preserve the v13 barrel freeze and its pending independent review. Capacity coordinates the single next official generation; Root owns formal admission and release integration.
+
+Authoritative rules: root `docs/specs/bomber/design.md` §5; ADR0026/0035/0042/0048. There is currently no real Game regeneration or bridge producer. Existing Regenerate=3 is only an enum, regeneration tables and M2BudgetEnvelope are static arithmetic, and FinalCircle only records the resource census/stop boundary.
+
+## Proposed exact v14 ECS declaration list
+
+All proposed fields below are `[Persist]`, Scope.None, Authority.Server; all strings default empty. No Engine string-length attribute. This is the requested closed candidate list for capacity's next generation, not permission to generate before the other producers are ready.
+
+| Owner | Field | Type | Purpose |
+| --- | --- | --- | --- |
+| BomberWorldRuntime | RegenerationMatchId | Sync<ulong> | Exact scheduler match, refusing cross-match restore |
+| BomberWorldRuntime | RegenerationNextTick | Sync<ulong> | Next absolute8s wave; no repeated wave after restore/late delivery |
+| BomberWorldRuntime | NextResourceGeneration | Sync<ulong> | Monotonic generation allocator, starts above initial generation1, never reuses old-generation labels |
+| BomberWorldRuntime | RegenerationPromises | Sync<string> | Bounded whole-orbit structural creation and Native binding obligations |
+| new BomberIceBridgeState | ResourceGeneration | Sync<ulong> | Exact immutable bridge generation |
+| new BomberIceBridgeState | MatchId | Sync<ulong> | Exact producing match |
+| new BomberIceBridgeState | FreezeToken | Sync<string> | Immutable producer/publication provenance, UTF8<=128 |
+| new BomberIceBridgeState | AppliedTick | Sync<ulong> | Confirmed original freeze apply tick,0 before confirmation |
+| new BomberIceBridgeState | ExpiresAtTick | Sync<ulong> | AppliedTick+8s, immutable after successful freeze |
+| BomberWorldRuntime | IceBridgePromises | Sync<string> | Pending exact freeze/melt/expiry Native obligations |
+
+New entity declaration: `[EntityType(Mode.CS)] [BlockEntity] [Has(typeof(BomberIceBridgeState))] BomberIceBridgeEntity`. State receives `[EcsComponent]`. Existing barrel/chest ResourceGeneration can identify each newly allocated publication uniquely; no current-position fields or additional initial-coordinate fields are added. Each regeneration cell allocates its own distinct generation, permitting recovery of a partially published cohort without service-only state or replaying unknown creates.
+
+RegenerationPromises: at most4 mirror-orbit records, each exactly4 cells, UTF8<=16384 Encode/Hydrate. Only one unresolved wave exists. IceBridgePromises: at most60 cell/generation records (27 map water count), UTF8<=65536 Encode/Hydrate, one unresolved operation per exact current cell/generation. These are Game memory bounds from the supported map envelope; formal object/byte-budget calculations must include them and reject unsupported profiles. If the owning APIs make a proposed field unnecessary, remove it before closing the generation list; do not grow declarations after v14 generation.
+
+Frenzy agent owns its extra declarations and defaults; Root's agreed barrel Promise record append `bool Frenzy=false` is business encoding, not an ECS field. Source validation/publication propagates that mark and keeps exact original Life/gen. A barrel-derived bomb does not enter the extra Participant primary-six account.
+
+## Regeneration implementation sequence
+
+1. Establish a true Native RED at first wave Tick: below target resources, legal distant empty four-cell orbit, no actual growth today. Use the exact complete06 private SDK harness, source/DLL/hash pin, real cells/bindings. Keep formal guard closed. Prove first trigger8s and13 wave opportunities before105s, not an initial wave at0.
+2. Add scheduler in ordinary BombSystem sequence after confirmed terrain Begin and player updates, before ordinary terrain End. It runs only Running after initial phase3; advances one absolute wave slot once and never catches up by inventing writes in earlier ticks. Stop boundary derives the effective match duration/final duration/lead. On results/new round, refuse unresolved structural/Native records and reset only completed scheduler state.
+3. Census current Native softBrick+Wood/Iron/Gold chest resources; use immutable initial plan for the initial denominator. Barrel is not counted as a resource box in the existing final-circle20% rule. Compare integer permille and include already accepted pending regeneration in producer admission without treating unconfirmed Native intent as completed world resources.
+4. Choose full four-quadrant mirror orbits deterministically from match.Seed + logical wave Tick + stable stream name. Require all four cells: Native ground is legal nonwater, obstacle air and no sparse binding, outside spawn safety/central plaza/bridge access, no pickup or bomb, and distance>=3 from each live player and bomb. Check all four again immediately before Native staging. Candidate shortage produces fewer whole groups; never relax safety, split an orbit or spend extra group slots for crates/barrels.
+5. Select one product per orbit. First exact1/32 bucket for barrels, only if all four births and live+pending barrel quota fit4/8/8; otherwise ordinary product selection. Nonbarrel exact1/6 becomes ring-tier chest, otherwise soft. All possible products count toward the same2/3/4 wave cap. Do not use probabilities to discount worst-case capacity. Initial barrels, unresolved created barrels, live regenerated barrels and unconfirmed exact destruction reservations share admission; old generation receipt never decrements a new generation quota.
+6. Persist exact match/wave/orbit/cell/input revision/product/tier/generation obligations before structural create; mark each submission before the call. Observe unique generation publications and retain unknown births; no blind replay or forgotten partial four-cell cohort. Stage a whole legal four-cell Native mutation/binding using existing ordinary persisted transaction owner. Staged/Unknown keep the exact record; rejected/aborted operations release only proven unsubmitted/unbound identities via checked owner cleanup. Original section/revision/token evidence activates only the exact current cohort.
+7. Validate/hydrate record count/UTF8, match, phase/tick cadence, unique tokens/generations/cells, full identities, proper product/tier/ring and correlation to pending Native columns. Static creator coordinates remain input provenance; current cells and binding location come solely from Native.
+
+Existing source settings need correction through official authoring, not generated edits: default stop_before_final_ms currently60000, which would stop at65s with240s match/115s circle. Effective M2 profiles require20000 for105s. max_mirror_orbits currently2 for all profiles; set23→3,27→4. Source schema should expose exact integer roll denominators32/6 rather than approximate31permille; regenerate readers/exports through the complete06 compiler. This source/config work is separate from ECS v14 generation and must respect Root's table ownership.
+
+Required regression matrix: actual soft/chest/barrel growth and exact bindings; target60% stop; no0-wave/repeated wave;2/3/4 whole-group limits; all four safety conditions; insufficient barrel quota falls back without overproduction; Native revision abort retains correct live quota; unknown/partial structural births; Original-only recovery/no duplicate/new-generation corruption; next-match scheduler/producer cleanup; ordinary chest hit/loot/pierce, barrel27 and Terrain/round/layout suites. Actual23/27 integration waits for complete object-budget producer coverage, never a bypassed guard.
+
+## Ice bridge sequence after regeneration
+
+1. True Native RED: actual Freeze blast contact with water remains water; actual Fire/retained-fire contact with a manually legitimate Native bridge does not perform exact ordinary melt or extinguish stationary/Remote bombs today. Preserve these before implementing.
+2. Keep permanent ice block1031 and authored identity. Official author patch its sparse binding to BomberIceBridgeEntity (currently none), enabled remainsfalse until guard coverage complete. Merge ground binding policy with existing chest/barrel policies; allow exact bridge binding in ground-layer read/round cleanup.
+3. Gather freeze and melt requests from actual blast/retained-fire reach. Fire/retained-fire melts; Standard/Freeze ordinary dangerous flames do not melt. Collect all requests for the Tick before staging; melt wins on the same cell, and no losing freeze submission may remain to renew later. Existing same-generation freeze is a no-op and never refreshes expiry.
+4. Persist a unique generation and FreezeToken before structural birth. Observe exact unpublished identity, stage water→ice plus binding in ordinary Native batch, accept only retained Original. For selected synchronous HostAdapter, use its proved same-submitted-Tick application clock; ExpiresAtTick=Applied+Ticks(8000). Unknown delivery may expose a bridge whose original deadline is already past; do not restart lifetime.
+5. Melt/expire retains exact full bridge identity/generation, original Native cell/revision and cause. Native currently supports binding-retiring DigThrough→air; reverting ground to water must use an owning supported bound mutation/retirement path, or a checked ordinary two-step retired-air then water transaction. Investigate that API before coding; do not manually destroy a live Native binding or invent a public contract. All bomb extinguishment is gated on confirmed real accepted water change, not mere planned melt or the interim air cell.
+6. On accepted water result enumerate every Fuse bomb at the actual cell, stationary/Remote included. Apply ordinary BomberBombLifecycle.Extinguish and existing exact owner capacity-return path once; coordinate Frenzy's separate primary-six return path. A new life cannot receive the old life inventory refund. Late/duplicate old-generation result cannot melt a replacement bridge or refund twice.
+
+Bridge tests must cover original8s actual timing, no extension, expiry, Fire/retained-fire priority versus Freeze/Standard, exact old-generation refusal, no duplicate write/retirement, all stationary/Remote/Frenzy Fuse occupants extinguished once, dangerous/exploded bombs preserved, no early refund on stage/unknown/rejection, Native-bound rollback and complete next-round ground cleanup. Formal guard, budget and long-run acceptance remain Root gates.
+
+## Ownership and next window
+
+Barrel agent owns new regeneration/bridge helpers, proposed bridge components/entity, narrow WorldRuntime declarations, own TerrainTransactions and initial/round seams, focused tests. Capacity owns bomb lifecycle/Blast/ProcessBombs; request hooks for collect freeze/melt contact and lifecycle extinguishment. Root owns config/publication approval, formal producer budgets and release/browser; Frenzy owns self-immunity and extra concurrent-account semantics. Close all exact v14 declarations with capacity once, then make a preserved RED before production implementation. Current capacity build fence is respected: this plan writes no Game source.

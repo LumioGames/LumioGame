@@ -1,0 +1,135 @@
+{
+  "review": "read-only independent regeneration first-wave producer review",
+  "observedUtc": "2026-10-03T07:03:35.4757267Z",
+  "candidateManifestSha": "6ccf91dfeba82a0020abf2e85ea1e4d3e77425bfd006345dc972513f535ef778",
+  "sourceFiles": [
+    {
+      "file": "games/101-bomber/Gameplay/BomberRegeneration.Server.cs",
+      "beforeExpected": null,
+      "beforePhysical": null,
+      "candidateExpected": "86130bedf68d0646f9d7e56f32c11e6fe9c217f5704b4df79258a3acc272707f",
+      "candidatePhysical": "86130bedf68d0646f9d7e56f32c11e6fe9c217f5704b4df79258a3acc272707f",
+      "currentPhysical": "86130bedf68d0646f9d7e56f32c11e6fe9c217f5704b4df79258a3acc272707f",
+      "greenStart": "86130bedf68d0646f9d7e56f32c11e6fe9c217f5704b4df79258a3acc272707f",
+      "greenEnd": "86130bedf68d0646f9d7e56f32c11e6fe9c217f5704b4df79258a3acc272707f"
+    },
+    {
+      "file": "games/101-bomber/Gameplay/BombSystem.Server.cs",
+      "beforeExpected": "542af1c6a65bb93a91b8f836387814878ed3b5ef5502b3007dd904fdfbe68382",
+      "beforePhysical": "542af1c6a65bb93a91b8f836387814878ed3b5ef5502b3007dd904fdfbe68382",
+      "candidateExpected": "20fdbe00683bdf040edac2171a70be7b629bdd1fc6bb288f31110a160a693c3b",
+      "candidatePhysical": "20fdbe00683bdf040edac2171a70be7b629bdd1fc6bb288f31110a160a693c3b",
+      "currentPhysical": "22076471966d5510a4f40766b6dd0c22e1a272bc4a8b4f4e51c2c886811bcc9e",
+      "greenStart": "20fdbe00683bdf040edac2171a70be7b629bdd1fc6bb288f31110a160a693c3b",
+      "greenEnd": "20fdbe00683bdf040edac2171a70be7b629bdd1fc6bb288f31110a160a693c3b"
+    },
+    {
+      "file": "games/101-bomber/Gameplay/BomberTerrainTransactions.Server.cs",
+      "beforeExpected": "46cafe153ba20e83f2e4d9c2698f72149a078aebaf00218bceb7142582754b85",
+      "beforePhysical": "46cafe153ba20e83f2e4d9c2698f72149a078aebaf00218bceb7142582754b85",
+      "candidateExpected": "0299df358538b25e378f32f4c713a9227b40640856454485639a64469af008af",
+      "candidatePhysical": "0299df358538b25e378f32f4c713a9227b40640856454485639a64469af008af",
+      "currentPhysical": "0299df358538b25e378f32f4c713a9227b40640856454485639a64469af008af",
+      "greenStart": "0299df358538b25e378f32f4c713a9227b40640856454485639a64469af008af",
+      "greenEnd": "0299df358538b25e378f32f4c713a9227b40640856454485639a64469af008af"
+    },
+    {
+      "file": "games/101-bomber/Gameplay/Components/Bomber/BomberWorldRuntime.Server.cs",
+      "beforeExpected": "7fde39b62f811b9dd8042ef8cd3fe2f41d7633b5c52f667b7947f65f7ceb36e3",
+      "beforePhysical": "7fde39b62f811b9dd8042ef8cd3fe2f41d7633b5c52f667b7947f65f7ceb36e3",
+      "candidateExpected": "838b2f80485977a8bd6fcd2d918b38b3b16daedc10fe9be426307d521aa415ad",
+      "candidatePhysical": "838b2f80485977a8bd6fcd2d918b38b3b16daedc10fe9be426307d521aa415ad",
+      "currentPhysical": "838b2f80485977a8bd6fcd2d918b38b3b16daedc10fe9be426307d521aa415ad",
+      "greenStart": "838b2f80485977a8bd6fcd2d918b38b3b16daedc10fe9be426307d521aa415ad",
+      "greenEnd": "838b2f80485977a8bd6fcd2d918b38b3b16daedc10fe9be426307d521aa415ad"
+    },
+    {
+      "file": "games/101-bomber/Gameplay/BomberRoundTransition.Server.cs",
+      "beforeExpected": "e9a18ec95df73a0b669348692465f821a05324163a4ad3dcf00577dbc0732ce5",
+      "beforePhysical": "e9a18ec95df73a0b669348692465f821a05324163a4ad3dcf00577dbc0732ce5",
+      "candidateExpected": "7603a51e10b3f7ebef30d68a3f8a6ce4a95f8c3c91821ae03597a30055cea4ad",
+      "candidatePhysical": "7603a51e10b3f7ebef30d68a3f8a6ce4a95f8c3c91821ae03597a30055cea4ad",
+      "currentPhysical": "7603a51e10b3f7ebef30d68a3f8a6ce4a95f8c3c91821ae03597a30055cea4ad",
+      "greenStart": "7603a51e10b3f7ebef30d68a3f8a6ce4a95f8c3c91821ae03597a30055cea4ad",
+      "greenEnd": "7603a51e10b3f7ebef30d68a3f8a6ce4a95f8c3c91821ae03597a30055cea4ad"
+    }
+  ],
+  "testSha": "1430ca00bfdf3c792b97e5ca5a89d570ccc000be4cfa6a26d9d3403400ca4b1f",
+  "greenLogSha": "e3e178c3d447e96cdab80d1d621acb5bb1a98aedb13d5cfae2e2e01b0ec264c2",
+  "greenJsonSha": "e2e3904347672d6e0e7aea34dd5b1e7ceff5f61ff43c7d1d5a1ab0ebecd902e8",
+  "greenCount": {
+    "total": 4,
+    "failed": 0,
+    "passed": 4,
+    "skipped": 0,
+    "child": 0
+  },
+  "greenSourceCount": 370,
+  "greenSourceChanges": 0,
+  "greenCommand": [
+    "dotnet",
+    "C:/Work/LumioGames/LumioGame/games/101-bomber/.run/v14-fullpack07-native-20261003/artifacts/bin/Lumio.Bomber.Gameplay.Tests/release/Lumio.Bomber.Gameplay.Tests.dll",
+    "--filter-class",
+    "*BomberRegenerationProductionTests",
+    "--minimum-expected-tests",
+    "4"
+  ],
+  "greenAssembliesRecorded": [
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.Bomber.Gameplay.Tests.dll",
+      "sha256": "8961a57a0a036457e678e11b84344a933212ffaa2804726557e0e1d4c00a7d53"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.Bomber.Gameplay.dll",
+      "sha256": "3300423dbde83c84546a47b94f782bac0fef5421f26181250ac7758135637d0d"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.GameRuntime.Ecs.dll",
+      "sha256": "aa5520f37e22eb6337d4e9e5c33008684bb7fd51e598dad38ef404351dddbd49"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.GameRuntime.Gas.dll",
+      "sha256": "09150ba27017867b418856227f3bb0a9c1f7e170b762f67a8ae48191295d6dbc"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\runtimes\\win-x64\\native\\lumio_engine_native.dll",
+      "sha256": "c01599b8c31ea72185f2a206dbcc5c4ff8fb432c68bb61ea3dabab5e6d4ddb12"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\runtimes\\win-x64\\native\\build-info.json",
+      "sha256": "f9752593b0d802b76996a5bcaa8fdda4a75d2f9449fd160d268e793029f3570d"
+    }
+  ],
+  "currentAssemblies": [
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.Bomber.Gameplay.Tests.dll",
+      "currentSha": "475c407864e91681ea5da9d847fadde34bc4c1b6938082a6fc3b8b06e123a7b2"
+    },
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.Bomber.Gameplay.dll",
+      "currentSha": "339d719c19c2beb52d31ee3e534fcb73afd3cf09640e8e9a6bcd58f6eb70e018"
+    },
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.GameRuntime.Ecs.dll",
+      "currentSha": "aa5520f37e22eb6337d4e9e5c33008684bb7fd51e598dad38ef404351dddbd49"
+    },
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\Lumio.GameRuntime.Gas.dll",
+      "currentSha": "09150ba27017867b418856227f3bb0a9c1f7e170b762f67a8ae48191295d6dbc"
+    },
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\runtimes\\win-x64\\native\\lumio_engine_native.dll",
+      "currentSha": "c01599b8c31ea72185f2a206dbcc5c4ff8fb432c68bb61ea3dabab5e6d4ddb12"
+    },
+    {
+      "file": "C:\\Work\\LumioGames\\LumioGame\\games\\101-bomber\\.run\\v14-fullpack07-native-20261003\\artifacts\\bin\\Lumio.Bomber.Gameplay.Tests\\release\\runtimes\\win-x64\\native\\build-info.json",
+      "currentSha": "f9752593b0d802b76996a5bcaa8fdda4a75d2f9449fd160d268e793029f3570d"
+    }
+  ],
+  "currentExtraDelta": "Root Aura protection fix only: remove && player.ProtectedUntilTick.Value != 0 from BombSystem; not Regen author change",
+  "asciiFourRowsWorstBytes": 2125,
+  "asciiSingleRowWorstBytes": 530,
+  "canonicalTransactionBytes": 65,
+  "finding": "P2 per-cell Native adapter.Read in actual applied cohort loop violates stage0-kernel-contract:241",
+  "operations": "file/hash/git/source reads and proof/report writes under .sdd only; no build/test/GEN/Native/source/index mutation"
+}

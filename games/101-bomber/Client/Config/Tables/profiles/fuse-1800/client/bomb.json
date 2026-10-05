@@ -1,0 +1,21 @@
+{
+  "contentFingerprint": "2b4e91dfcf2afba44f81be5e0a9868ad998f9015684cbbdeb93b1955389a1125",
+  "rows": [
+    {
+      "capacity_return_phase": "LeaveFuse",
+      "chain_damage_cap_attribute": "HealthPoints",
+      "damage_points": 2,
+      "danger_ms": 400,
+      "fuse_ms": 1800,
+      "id": 104001,
+      "kick_speed_milli": 8000,
+      "max_kicks_per_player_tick": 1,
+      "moving_bomb_chain_reaction": true,
+      "name": "default",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    }
+  ],
+  "table": "bomb",
+  "target": "C"
+}

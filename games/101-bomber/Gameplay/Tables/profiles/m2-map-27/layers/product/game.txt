@@ -1,0 +1,6 @@
+table: game
+schema: schemas/game.json
+
+| name | player_count | map_size | source_status | source_ref |
+| --- | --- | --- | --- | --- |
+| default | 16 | 27 | inferred; author-only; unverified | ADR-0048 |

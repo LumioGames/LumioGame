@@ -1,0 +1,19 @@
+# V7浏览器观察器非作者窄审
+
+裁决：ACCEPT_PRIVATE_V7_OBSERVER_SOURCE_AND_EMITTED_COPY_ONLY；未发现P1/P2源码问题。此资格只覆盖精确私有观察器、普通完整12发布副本身份与惰性JS wrapper call-through验证，不等于真实C#/Native/浏览器联机、性能、移动或重进通过，也不允许把它发布为产品逻辑。未改生产、pins、服务或旧V6/V7现场。
+
+审查源码C:/Work/LumioGames/LumioGame/games/101-bomber/.run/browser-experience-repair-01/instrument-current-publish-v7.mjs，SHA256 bb09e3329c314a2e62a252fb5911104aaa47d9545d1ac007012abb3c41becb15；before V6 0f9927196556e6bd7c6d1a9db7510a7449be2f857b2a37d7b29775cdd67ee7ef。Root prepare脚本/deltas均冻结在 [独立证据](C:/Work/LumioGames/LumioGame/.run/measurement-v7-independent-review-01)。独立列出并逆回四处additions及schema字符串，候选全部字节精确等于V6；作者delta记录同时逐字段一致。除此以外无原返回、throw、finally、invoke.apply(this,args)、Native invoke、World或协议/输入规则变化。
+
+新字段只读原本已有sessionState导出的JSON结果，保存state/generation/inputEnabled/closed/sentInputs/notServingCloses与lastError（String后截500字符），tail最多80；playerState probe row附最近成功读取的session.generation（此前未知则null）。真实SpectatorReplicaHost.cs:117–123将generation从官方ClientSession.GetSnapshot().Generation以InvariantCulture字符串导出，不从UI造代次。ordinary main.js:691–714确证每pump原来就是Tick→SessionState→检查终止→applyDump/PlayerState，故此正式pump里的注记来自同pump刚完成的SessionState；faulted分支SessionState仍可观察lastError且不继续PlayerState。V7没有增加一次C#/Native/World调用，也不写Manager/PredictedWorld。
+
+scope说明：connectionGeneration是probe side metadata，原PlayerState返回字符串丝毫未改；普通window.__lumioPlayer.replica与probe.sample仍来源原PlayerState，不保证也出现此新增代次。它不是wire InputCommand新字段。任意直接PlayerState而无前置SessionState只标最近成功观察值，未成功读取时null；projection异常会记录projectionFaults，不能拿这种记录做qualified ACK。观测故障或截断数据不能被静默解释为generation连续。真正send→confirm还须同socket、真实wire generation、同life及覆盖首确认事件，不能用左截断尾段伪造延迟。
+
+边界与预算：原1MiB DOM/32KiB保留余量、每500ms发布、states/poses/presentation、600性能尾段和draw CPU observer全部逐字不变；新增sessionStates加入原budget trim列表，初始push cap80。正常trim会保留最小尾段而过大metadata最终抛错的原规则未放宽；错误文本最多500字符。附加JSON.parse/compact和serializer字节会增加观察成本，均在原exportProjection/serialization区间中部分可见，不称成本为0。仍不测GPU/屏幕FPS、不称Native调用耗时为纯NativeCPU、不增加诊断模拟世界。
+
+实际emit到NEW C:\Work\LumioGames\LumioGame\.run\measurement-v7-independent-review-01\measured12-v7-review-wwwroot：普通main SHA 25765c149ee6f2f51e12ce2a26f0884506a691688b8e217a63e938067f170f3c；V7main SHA 5c860ca3766de431e38aeaf4cb62d1c3bae645c3a9fed93153d3c4c4d17ae475；identity SHA 9750c0874649228cf8162aeb49e9da2995ae2709d8f8086ffc02f7a6a87c2152。835相对路径集合精确相同、834非main完整文件字节相同，无extras；剥observer精确回普通main，逆四变化精确回已审measured12-v6/main。普通wwwroot前后inventory完全一致，原834代码/managedWebCIL/Native payload都未替换。该NEW副本仅供核验，未启动服务。
+
+实际有限检查：generator syntax0、emitted main syntax0；actual emitted export wrapper 0，99次惰性原导出调用（sessionState92/playerState4/rawIdentity1/originalThrow1/tick1），receiver/args/原return对象与异常identity均保留，重复attach不增加层；generation17→18更新，lastError701字符截为500，92 session rows保留80/dropped12；invalid projection原返回保持且projectionFault计数增加。其Tick没有Native调用。Engine wrapper原断言验证附加createVoxelPresentation函数能力、exact once工厂调用、success/throw各一次委托及packet/return/error身份，Tickboundary计数2，raw0。不存在真实Engine/World创建或浏览器执行。
+
+保留失败边界：第一次照搬V4 seam fixture原结束marker let lastRender，错误把V6新增draw-observer块一起VM执行，因window未定义退出1。它是旧fixture提取边界INVALID，不是V7行为RED；旧fixture/log/exit均保留。NEW02唯一改结束marker为下一段“Count completed game draw callbacks”，全部原语义断言不改，actual wrapper重新执行0。源码未为通过此检查改动。完整字节inverse是主证据；惰性fixture是窄补充，不当Native/联机TDD。
+
+输入当前end fence全部SHA一致；普通835/834复验一致。最终manifest列源、emit副本、纯检查raw和本报告的实际SHA，不将manifest自身递归哈希。

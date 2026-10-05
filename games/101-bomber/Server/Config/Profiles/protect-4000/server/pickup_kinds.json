@@ -1,0 +1,87 @@
+{
+  "contentFingerprint": "38753d872df7431672a3ab44ba8a83e846e47e5a291316a3640776ac4b2def16",
+  "rows": [
+    {
+      "attribute_name": "BombPower",
+      "id": 107001,
+      "kind_code": 0,
+      "ledger_mode": "BaseUpgrade",
+      "name": "Fire",
+      "soft_weight": 30,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    },
+    {
+      "attribute_name": "BombCapacity",
+      "id": 107002,
+      "kind_code": 1,
+      "ledger_mode": "BaseUpgradeAndAvailable",
+      "name": "Bomb",
+      "soft_weight": 30,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    },
+    {
+      "attribute_name": "SpeedTier",
+      "id": 107003,
+      "kind_code": 2,
+      "ledger_mode": "BaseTierLookup",
+      "name": "Speed",
+      "soft_weight": 25,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 107004,
+      "kind_code": 3,
+      "ledger_mode": "Heal",
+      "name": "Health",
+      "soft_weight": 15,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    },
+    {
+      "attribute_name": "None",
+      "id": 107005,
+      "kind_code": 4,
+      "ledger_mode": "SkillGrant",
+      "name": "Skill",
+      "soft_weight": 0,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    },
+    {
+      "attribute_name": "HealthPoints",
+      "id": 107006,
+      "kind_code": 5,
+      "ledger_mode": "GoldenHeartOwnership",
+      "name": "GoldenHeart",
+      "soft_weight": 0,
+      "source_ref": "ADR-0039; docs/specs/bomber/design.md#85",
+      "source_status": "design"
+    },
+    {
+      "attribute_name": "None",
+      "id": 107007,
+      "kind_code": 6,
+      "ledger_mode": "KickQualification",
+      "name": "Kick",
+      "soft_weight": 0,
+      "source_ref": "ADR0048; design section5.0",
+      "source_status": "dormant downstream consumer pending; terrain ownership persists unspendable"
+    },
+    {
+      "attribute_name": "None",
+      "id": 107008,
+      "kind_code": 7,
+      "ledger_mode": "Frenzy",
+      "name": "Frenzy",
+      "soft_weight": 0,
+      "source_ref": "ADR0048; docs/specs/bomber/design.md section 8.5",
+      "source_status": "design"
+    }
+  ],
+  "table": "pickup_kinds",
+  "target": "S"
+}

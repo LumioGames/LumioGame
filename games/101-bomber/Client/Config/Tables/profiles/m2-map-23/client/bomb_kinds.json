@@ -1,0 +1,79 @@
+{
+  "contentFingerprint": "3b01041f6f9173f692035ab2787f014e0e60d2fd373e3e5e3b2d6c5deecc54f7",
+  "rows": [
+    {
+      "effect_key": "BombDamage",
+      "enabled": true,
+      "id": 119001,
+      "kind_code": 0,
+      "name": "Standard",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "effect_key": "Freeze",
+      "enabled": true,
+      "id": 119002,
+      "kind_code": 1,
+      "name": "Freeze",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "effect_key": "FireResidue",
+      "enabled": false,
+      "id": 119003,
+      "kind_code": 2,
+      "name": "Fire",
+      "source_ref": "ADR-0047",
+      "source_status": "dormant design content pending producer/effect/budget migration"
+    },
+    {
+      "effect_key": "Pierce",
+      "enabled": true,
+      "id": 119004,
+      "kind_code": 3,
+      "name": "Pierce",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "effect_key": "Split",
+      "enabled": false,
+      "id": 119005,
+      "kind_code": 4,
+      "name": "Split",
+      "source_ref": "ADR-0047",
+      "source_status": "dormant design content pending producer/effect/budget migration"
+    },
+    {
+      "effect_key": "Toxin",
+      "enabled": true,
+      "id": 119006,
+      "kind_code": 5,
+      "name": "Toxin",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "effect_key": "Shock",
+      "enabled": true,
+      "id": 119007,
+      "kind_code": 6,
+      "name": "Shock",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "effect_key": "Remote",
+      "enabled": false,
+      "id": 119008,
+      "kind_code": 7,
+      "name": "Remote",
+      "source_ref": "ADR-0047",
+      "source_status": "dormant design content pending producer/effect/budget migration"
+    }
+  ],
+  "table": "bomb_kinds",
+  "target": "C"
+}

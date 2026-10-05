@@ -1,0 +1,6 @@
+table: presentation
+schema: schemas/presentation.json
+
+| id     | name    | footprint_milli | forward_reach_milli | hat_pillar_threshold | hat_king_threshold | leaderboard_count | mobile_leaderboard_count | death_protection_flash_ms | source_status       | source_ref                     |
+| ------ | ------- | --------------- | ------------------- | -------------------- | ------------------ | ----------------- | ------------------------ | ------------------------- | ------------------- | ------------------------------ |
+| 124001 | default | 700             | 350                 | 3                    | 1                  | 10                | 5                        | 800                       | prototype-candidate | docs/specs/bomber/design.md#15 |

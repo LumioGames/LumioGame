@@ -1,0 +1,838 @@
+{
+  "status": "audit-draft",
+  "freezeEligible": false,
+  "originalLedgerSha256": "56d05c2677ceb087302d266ab0cd5a63049b68eb593059c69d83d87ef372ebbb",
+  "originalSourceManifestSha256": "2f9df3553471255cce980ca42b7f090919403f84789368e79fbb1b758a2f9c1b",
+  "priorSchema": "bomber-v4-container-candidate",
+  "schema": "bomber-v5-growth-candidate",
+  "priorActive": 550,
+  "priorRetired": 806,
+  "active": 561,
+  "retired": 1356,
+  "changes": [
+    {
+      "key": "[\"effect-type\",\"101-bomber/gas/effect\",10102]",
+      "before": {
+        "schema": "bomber-v4-container-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberHealEffect",
+        "parametersType": "Lumio.Bomber.Gameplay.BomberHealEffect.Parameters",
+        "id": 10102,
+        "fxKeyFieldId": 2,
+        "instantWrites": [
+          1
+        ],
+        "fact": {
+          "name": "bomber.health",
+          "sourceFieldId": 3,
+          "targetFieldId": 4
+        },
+        "fields": [
+          {
+            "id": 1,
+            "name": "Points",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 2,
+            "name": "Fx",
+            "clrType": "System.String",
+            "maxUtf8Bytes": 32
+          },
+          {
+            "id": 3,
+            "name": "Life",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 4,
+            "name": "Row",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 5,
+            "name": "MatchId",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 6,
+            "name": "Participant",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 7,
+            "name": "Generation",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 8,
+            "name": "Intent",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          }
+        ]
+      },
+      "after": {
+        "schema": "bomber-v5-growth-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberHealEffect",
+        "parametersType": "Lumio.Bomber.Gameplay.BomberHealEffect.Parameters",
+        "id": 10102,
+        "fxKeyFieldId": 2,
+        "instantWrites": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "fact": {
+          "name": "bomber.health",
+          "sourceFieldId": 3,
+          "targetFieldId": 4
+        },
+        "fields": [
+          {
+            "id": 1,
+            "name": "Points",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 2,
+            "name": "Fx",
+            "clrType": "System.String",
+            "maxUtf8Bytes": 32
+          },
+          {
+            "id": 3,
+            "name": "Life",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 4,
+            "name": "Row",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 5,
+            "name": "MatchId",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 6,
+            "name": "Participant",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 7,
+            "name": "Generation",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 8,
+            "name": "Intent",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 9,
+            "name": "Item",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 10,
+            "name": "Kind",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 11,
+            "name": "MaximumBefore",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 12,
+            "name": "MaximumAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 13,
+            "name": "GoldBefore",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 14,
+            "name": "GoldAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 15,
+            "name": "HatsAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 16,
+            "name": "UpgradeBefore",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 17,
+            "name": "UpgradeAfter",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          }
+        ]
+      }
+    },
+    {
+      "key": "[\"effect-type\",\"101-bomber/gas/effect\",10103]",
+      "before": {
+        "schema": "bomber-v4-container-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberRestoreHealthEffect",
+        "parametersType": "Lumio.Bomber.Gameplay.BomberRestoreHealthEffect.Parameters",
+        "id": 10103,
+        "fxKeyFieldId": 2,
+        "instantWrites": [
+          1
+        ],
+        "fact": {
+          "name": "bomber.health",
+          "sourceFieldId": 3,
+          "targetFieldId": 4
+        },
+        "fields": [
+          {
+            "id": 1,
+            "name": "Points",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 2,
+            "name": "Fx",
+            "clrType": "System.String",
+            "maxUtf8Bytes": 32
+          },
+          {
+            "id": 3,
+            "name": "Life",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 4,
+            "name": "Row",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 5,
+            "name": "MatchId",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 6,
+            "name": "Participant",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 7,
+            "name": "Generation",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 8,
+            "name": "Intent",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          }
+        ]
+      },
+      "after": {
+        "schema": "bomber-v5-growth-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberRestoreHealthEffect",
+        "parametersType": "Lumio.Bomber.Gameplay.BomberRestoreHealthEffect.Parameters",
+        "id": 10103,
+        "fxKeyFieldId": 2,
+        "instantWrites": [
+          1
+        ],
+        "fact": {
+          "name": "bomber.health",
+          "sourceFieldId": 3,
+          "targetFieldId": 4
+        },
+        "fields": [
+          {
+            "id": 1,
+            "name": "Points",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 2,
+            "name": "Fx",
+            "clrType": "System.String",
+            "maxUtf8Bytes": 32
+          },
+          {
+            "id": 3,
+            "name": "Life",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 4,
+            "name": "Row",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 5,
+            "name": "MatchId",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 6,
+            "name": "Participant",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 7,
+            "name": "Generation",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 8,
+            "name": "Intent",
+            "clrType": "System.UInt64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 9,
+            "name": "Item",
+            "clrType": "Lumio.GameRuntime.Ecs.NetEntityId",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 10,
+            "name": "Kind",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 11,
+            "name": "MaximumBefore",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 12,
+            "name": "MaximumAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 13,
+            "name": "GoldBefore",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 14,
+            "name": "GoldAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 15,
+            "name": "HatsAfter",
+            "clrType": "System.Int32",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 16,
+            "name": "UpgradeBefore",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          },
+          {
+            "id": 17,
+            "name": "UpgradeAfter",
+            "clrType": "System.Int64",
+            "maxUtf8Bytes": null
+          }
+        ]
+      }
+    },
+    {
+      "key": "[\"scalar\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState\",\"BomberPlayerState.maximumHealth\"]",
+      "before": {
+        "schema": "bomber-v4-container-candidate",
+        "member": "MaximumHealth",
+        "key": "BomberPlayerState.maximumHealth",
+        "clrType": "System.Int32",
+        "wireType": "i32",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "ordinal": 10,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      },
+      "after": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "MaximumHealth",
+        "key": "BomberPlayerState.maximumHealth",
+        "clrType": "System.Int32",
+        "wireType": "i32",
+        "persistence": "persistent",
+        "scope": "Aoi",
+        "authority": "Server",
+        "ordinal": 10,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": true,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": true,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"event-type\",\"101-bomber/event-types\",\"Lumio.Bomber.Gameplay.BomberPickupKind\"]",
+      "before": {
+        "schema": "bomber-v4-container-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberPickupKind",
+        "typeKind": "enum",
+        "fields": [],
+        "values": [
+          {
+            "name": "Power",
+            "value": 0
+          },
+          {
+            "name": "Capacity",
+            "value": 1
+          },
+          {
+            "name": "Speed",
+            "value": 2
+          },
+          {
+            "name": "Health",
+            "value": 3
+          },
+          {
+            "name": "Skill",
+            "value": 4
+          }
+        ]
+      },
+      "after": {
+        "schema": "bomber-v5-growth-candidate",
+        "clrType": "Lumio.Bomber.Gameplay.BomberPickupKind",
+        "typeKind": "enum",
+        "fields": [],
+        "values": [
+          {
+            "name": "Power",
+            "value": 0
+          },
+          {
+            "name": "Capacity",
+            "value": 1
+          },
+          {
+            "name": "Speed",
+            "value": 2
+          },
+          {
+            "name": "Health",
+            "value": 3
+          },
+          {
+            "name": "Skill",
+            "value": 4
+          },
+          {
+            "name": "GoldenHeart",
+            "value": 5
+          }
+        ]
+      }
+    }
+  ],
+  "added": [
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.item\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "Item",
+        "key": "BomberHealthFacts.item",
+        "clrType": "SyncList<Lumio.GameRuntime.Ecs.NetEntityId>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "Lumio.GameRuntime.Ecs.NetEntityId",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 16,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.kind\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "Kind",
+        "key": "BomberHealthFacts.kind",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 17,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.maximumBefore\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "MaximumBefore",
+        "key": "BomberHealthFacts.maximumBefore",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 18,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.maximumAfter\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "MaximumAfter",
+        "key": "BomberHealthFacts.maximumAfter",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 19,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.goldBefore\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "GoldBefore",
+        "key": "BomberHealthFacts.goldBefore",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 20,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.goldAfter\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "GoldAfter",
+        "key": "BomberHealthFacts.goldAfter",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 21,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.hatsAfter\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "HatsAfter",
+        "key": "BomberHealthFacts.hatsAfter",
+        "clrType": "SyncList<System.Int32>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int32",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 22,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.upgradeBefore\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "UpgradeBefore",
+        "key": "BomberHealthFacts.upgradeBefore",
+        "clrType": "SyncList<System.Int64>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int64",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 23,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"container\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberHealthFacts\",\"BomberHealthFacts.upgradeAfter\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "UpgradeAfter",
+        "key": "BomberHealthFacts.upgradeAfter",
+        "clrType": "SyncList<System.Int64>",
+        "wireType": "list",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "maxCapacity": 1,
+        "containerKind": "SyncList",
+        "elementType": "System.Int64",
+        "keyType": null,
+        "valueType": null,
+        "ordinal": 24,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"scalar\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberPlayerState\",\"BomberPlayerState.goldenHeartCount\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "GoldenHeartCount",
+        "key": "BomberPlayerState.goldenHeartCount",
+        "clrType": "System.Int32",
+        "wireType": "i32",
+        "persistence": "persistent",
+        "scope": "Aoi",
+        "authority": "Server",
+        "ordinal": 14,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": true,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": true,
+            "restorePersist": true
+          }
+        }
+      }
+    },
+    {
+      "key": "[\"scalar\",\"101-bomber/fields/Lumio.Bomber.Gameplay.Contracts.Components.BomberRespawnCarry\",\"BomberRespawnCarry.pendingGoldenHearts\"]",
+      "shape": {
+        "schema": "bomber-v5-growth-candidate",
+        "member": "PendingGoldenHearts",
+        "key": "BomberRespawnCarry.pendingGoldenHearts",
+        "clrType": "System.Int32",
+        "wireType": "i32",
+        "persistence": "persistent",
+        "scope": "None",
+        "authority": "Server",
+        "ordinal": 46,
+        "serialization": {
+          "server": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          },
+          "client": {
+            "capturePersist": true,
+            "captureSync": false,
+            "restorePersist": true
+          }
+        }
+      }
+    }
+  ],
+  "note": "Existing server/client field ordinals remain stable, including MaximumHealth at 10 and all original health columns. New fields append. MaximumHealth changes Scope.None to Scope.Aoi and GoldenHeart appends enum value 5. No identity is reassigned. Root independent review and semantic integration required."
+}

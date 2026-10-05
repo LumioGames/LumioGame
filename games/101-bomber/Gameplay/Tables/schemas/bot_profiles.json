@@ -1,0 +1,217 @@
+{
+  "table": "bot_profiles",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "react_min_ticks",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "react min ticks"
+    },
+    {
+      "name": "react_max_ticks",
+      "ordinal": 3,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "react max ticks"
+    },
+    {
+      "name": "think_every_ticks",
+      "ordinal": 4,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "think every ticks"
+    },
+    {
+      "name": "noise_permille",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "noise permille"
+    },
+    {
+      "name": "attack_skip_permille",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "attack skip permille"
+    },
+    {
+      "name": "trap_permille",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "trap permille"
+    },
+    {
+      "name": "attack_bomb_limit",
+      "ordinal": 8,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "attack bomb limit"
+    },
+    {
+      "name": "attack_bomb_limit_mode",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "attack bomb limit mode"
+    },
+    {
+      "name": "blast_scale_permille",
+      "ordinal": 10,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "blast scale permille"
+    },
+    {
+      "name": "engage_scale_permille",
+      "ordinal": 11,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "engage scale permille"
+    },
+    {
+      "name": "skill_use_permille",
+      "ordinal": 12,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "skill use permille"
+    },
+    {
+      "name": "trade_permille",
+      "ordinal": 13,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "trade permille"
+    },
+    {
+      "name": "reaction_mode",
+      "ordinal": 14,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "reaction mode"
+    },
+    {
+      "name": "frenzy_bypass",
+      "ordinal": 15,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "frenzy bypass"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 16,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 17,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "escape_margin_ticks",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "escape margin ticks"
+    },
+    {
+      "name": "underestimate_permille",
+      "ordinal": 19,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "underestimate permille"
+    },
+    {
+      "name": "risky_pickup_permille",
+      "ordinal": 20,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "risky pickup permille"
+    }
+  ]
+}

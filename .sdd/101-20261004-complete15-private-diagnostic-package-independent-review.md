@@ -1,0 +1,19 @@
+# Complete15 私有诊断完整包身份独审
+
+裁决：**ACCEPT_PRIVATE_DIAGNOSTIC_COMPLETE15_PACKAGE_IDENTITY_GAME_CONSUMER_PENDING**。仅接受新完整15的有限包身份和正常默认 CLR 消费资格；Game 浏览器消费待另封件，未给出游戏体验或性能改善结论。
+
+实际 manifest SHA256：3b04907144c79d71e0a53f998f2ee031262d1ae2b32e161ad33570301745ab19；SDK：ec1f0781d5beafceeeb411d4a0b0b5f5abfc66fb41e964a52052946f91f5ea12；Native：c164ef0793e521f9c2fa38de761ef56a069902bb680a035a2b43b446831de28c；WASM：a5aab23ab737870ccb848f896bd1bc6b7f6431aecd76fa035811211005422d02。Platform 使用实际新镜像 efffd4f0…，未假设与14相同。
+
+独立读取确认：305 个 manifest 载荷逐字节相符，目录306个文件包含 manifest且无额外文件；八仓当前HEAD、官方声明和 clean 状态相符，七仓源引用保持14，Runtime仅0247a914的三个审定源码差异。原作者30项原件/封存字节和两TFM producer Ecs→SDK条目逐一相符。官方 verify 原退出0、JSON files305/版本/镜像一致。
+
+五组实际 PE 使用 System.Reflection.Metadata 静态读取，组数13/10/13/28/20，AssemblyDefinition/Reference版本闭包零缺口。没有把分别编译的 Bot 或 Web Ecs 强制与 SDK 字节相等。五处 Ecs实际编译后均含 Enabled→Core/Measured以及新的 probe、CopyMeasured调用关系，证明诊断分支实际存在。
+
+官方 Runtime producer 使用 DebugType=none，发布门禁止PDB；本审没有其新 PE 的 source-PDB checksum资格，也没有引用旧Task12或14的PDB替代。有限来源依据是精确clean0247的三源码、官方正常buildManaged图（独立ArtifactsPath、无增量、正常Ecs默认Compile items）、实际stage/archive字节以及静态IL。此链不冒称完整Csc命令日志。
+
+新缓存正常默认CLR消费的原构建与实际Native启动均退出0；13个SDK依赖字节与本次新archive一致。它自身的实际应用PE↔portable PDB CodeView一致，四文档当前checksum一致，Program源码绑定实际应用，直接Native Start/HFSM和四个报告程序集的DefaultALC断言成立。RestoreLockedMode=false如实保留，不宣称严格锁恢复，也不把四个ALC断言扩大为所有已加载程序集枚举。
+
+行政错误均保留：首读取错误假设net10文件夹内Hfsm也必须net10；实际所属工程明文单目标NS2.1并为保持setter类型身份合法供net10引用。两次IL工具错误为PowerShell GetToken重载和扩展方法调用，修正后静态读取退出0。没有生产源码或载荷变更、行为RED/性能声明。
+
+最终结果：C:/Work/LumioGames/LumioGame/.run/candidate15-private-diagnostic-identity-audit-01/package-qualification-01.json（SHA256 a347eec0b1aaa6e5c350872f2335cf14ec5cc5ec1648211e0947192fa03fd6b4）。独立PE结果 SHA256 d8d25b4597637e8615fa61052466281af586c245fd83628a1aedb36a23d8fc7b；IL结果 SHA256 74e402309fbf877345802ba5b79f6782cfa063d2e7f270847dc0531a88eba09f。
+
+本审未构建、未执行Native、未启动服务/浏览器、未修改共享源码/pins/ledger。正式whole15产物来源和新身份已经核对，后续Game22WebCIL、普通835目录及on/V9层仍待独立审核。

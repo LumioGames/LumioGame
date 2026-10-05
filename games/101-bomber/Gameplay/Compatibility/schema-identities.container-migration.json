@@ -1,0 +1,33 @@
+{
+  "schema": "bomber-v4-container-candidate",
+  "gameReleaseId": "bomber-0.0.4-main.54930d9",
+  "freezeEligible": false,
+  "publicReleaseApproved": false,
+  "priorLedgerSha256": "5d0b9990adab9cf84e9a1719991d8c0eaebfcc9709b73543ab30ac5d7f9f4092",
+  "status": "finalized-named-container-candidate",
+  "evidence": "schema-identities.container-finalize-evidence.json",
+  "packageRoot": "C:/Work/LumioGames/probe/container-delta-release-02",
+  "manifestSha256": "710d6153165857a5a94168c1c4ad8b6d684f0adfd87d77afb8c5ca9b6ee5f3cf",
+  "activeCount": 463,
+  "retiredCount": 806,
+  "originalActiveRetiredCount": 463,
+  "originalTombstonesPreservedCount": 343,
+  "transition": {
+    "from": "bomber-v3",
+    "to": "bomber-v4-container-candidate",
+    "breaking": true,
+    "releaseDecision": null
+  },
+  "scope": "Schema identity inventory and explicit history migration only; not a public release or save/replay/finalization/life/typed Effect/browser completion.",
+  "pendingDomains": [
+    "B135",
+    "F",
+    "P",
+    "T",
+    "effect-type",
+    "release-decision",
+    "successor-binding",
+    "tag"
+  ],
+  "historicalPendingNote": "Original pending records remain unchanged. B135 generator omission is repaired in package02; its old reason is historical evidence, not a current generator observation. Wider snapshot/restore/hash acceptance remains independently gated."
+}

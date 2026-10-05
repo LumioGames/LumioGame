@@ -1,0 +1,38 @@
+{
+  "skills": [
+    40000,
+    40001,
+    40002
+  ],
+  "effects": [
+    50000,
+    50001,
+    50002
+  ],
+  "drops": [
+    60000,
+    60001,
+    60002
+  ],
+  "movement": [
+    70000,
+    70001
+  ],
+  "mining": [
+    80000,
+    80001
+  ],
+  "attributes": [
+    90000,
+    90001,
+    90002
+  ],
+  "bomb_kinds": [],
+  "skill_levels": [],
+  "pickup_kinds": [],
+  "chest": [],
+  "bot_profiles": [],
+  "blocks": [],
+  "game": [],
+  "regeneration": []
+}

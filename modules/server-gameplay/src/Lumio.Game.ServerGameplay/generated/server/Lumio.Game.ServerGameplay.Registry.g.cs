@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Ecs.Annotations;
-using Lumio.Game.ServerGameplay.Bomber.Contracts.Components;
+using Lumio.GameRuntime.Gas;
 using Lumio.Game.ServerGameplay;
-using Lumio.Game.ServerGameplay.Bomber.Contracts.EntityTypes;
+using Lumio.Game.ServerGameplay.EntityTypes;
 
 namespace Lumio.Game.ServerGameplay;
 
@@ -19,8 +19,17 @@ public sealed class GeneratedRegistry : EcsRegistry
     static GeneratedRegistry()
     {
         WireCodec.RegisterCommandMapping("chat.input", payload => WireCodec.TryReadUtf8Payload(payload, out string text) && WireCodec.StrictUtf8.GetByteCount(text) <= 512);
-        GeneratedAbilityRegistry.RegisterAll();
     }
+
+    /// <summary>Registers gameplay GAS declarations into one World-local owner.</summary>
+    public static void RegisterGasTypes(GasWorldContext context)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+        GeneratedAbilityRegistry.RegisterAll(context.Types);
+        GeneratedEffectRegistry.RegisterAll(context.Types);
+    }
+
+    public override void CreateWorldServices(World world) => RegisterGasTypes(new GasWorldContext(world));
 
     private GeneratedRegistry()
     {
@@ -76,10 +85,20 @@ public sealed class GeneratedRegistry : EcsRegistry
     public override RegistrySide Side => RegistrySide.Server;
 
     /// <inheritdoc />
-    public override Type WorldEntityType => typeof(BomberWorldEntity);
+    public override Type WorldEntityType => typeof(WorldEntity);
+
+    /// <inheritdoc />
+    public override ulong DeclaredTickRateHz => 20UL;
 
     /// <inheritdoc />
     public override IReadOnlyList<FieldAttributeDeclaration> AttributeDeclarations { get; } = BuildAttributes();
+
+    /// <inheritdoc />
+    public override bool IsLethalAttribute(Type entityType, string attributeName)
+    {
+        if (entityType is null || attributeName is null) return false;
+        return false;
+    }
 
     /// <inheritdoc />
     public override IReadOnlyList<EcsSystemDescriptor> Systems { get; } = BuildSystems();
@@ -87,29 +106,13 @@ public sealed class GeneratedRegistry : EcsRegistry
     /// <inheritdoc />
     public override Component[] CreateComponents(Type entityType)
     {
-        if (entityType == typeof(BomberBombEntity))
-        {
-            return BomberBombEntityTemplate.CreateComponents();
-        }
-        if (entityType == typeof(BomberHatPileEntity))
-        {
-            return BomberHatPileEntityTemplate.CreateComponents();
-        }
-        if (entityType == typeof(BomberPickupItemEntity))
-        {
-            return BomberPickupItemEntityTemplate.CreateComponents();
-        }
-        if (entityType == typeof(BomberPlayerEntity))
-        {
-            return BomberPlayerEntityTemplate.CreateComponents();
-        }
-        if (entityType == typeof(BomberWorldEntity))
-        {
-            return BomberWorldEntityTemplate.CreateComponents();
-        }
         if (entityType == typeof(PlayerEntity))
         {
             return PlayerEntityTemplate.CreateComponents();
+        }
+        if (entityType == typeof(WorldEntity))
+        {
+            return WorldEntityTemplate.CreateComponents();
         }
         throw new InvalidOperationException("Unknown entity type " + entityType.Name);
     }
@@ -117,44 +120,16 @@ public sealed class GeneratedRegistry : EcsRegistry
     /// <inheritdoc />
     public override int ComponentIndex(Type entityType, Type componentType)
     {
-        if (entityType == typeof(BomberBombEntity))
-        {
-            if (componentType == typeof(ObserverComponent)) return 0;
-            if (componentType == typeof(LogicTransform)) return 1;
-            if (componentType == typeof(BomberBombState)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberHatPileEntity))
-        {
-            if (componentType == typeof(ObserverComponent)) return 0;
-            if (componentType == typeof(LogicTransform)) return 1;
-            if (componentType == typeof(BomberHatPile)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberPickupItemEntity))
-        {
-            if (componentType == typeof(ObserverComponent)) return 0;
-            if (componentType == typeof(LogicTransform)) return 1;
-            if (componentType == typeof(BomberPickupItem)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberPlayerEntity))
-        {
-            if (componentType == typeof(ObserverComponent)) return 0;
-            if (componentType == typeof(LogicTransform)) return 1;
-            if (componentType == typeof(BomberPlayerState)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberWorldEntity))
-        {
-            if (componentType == typeof(BomberMatchState)) return 0;
-            return -1;
-        }
         if (entityType == typeof(PlayerEntity))
         {
             if (componentType == typeof(ObserverComponent)) return 0;
             if (componentType == typeof(IdentityComponent)) return 1;
             if (componentType == typeof(ChatComponent)) return 2;
+            return -1;
+        }
+        if (entityType == typeof(WorldEntity))
+        {
+            if (componentType == typeof(WorldSaveComponent)) return 0;
             return -1;
         }
         return -1;
@@ -163,44 +138,16 @@ public sealed class GeneratedRegistry : EcsRegistry
     /// <inheritdoc />
     public override int ComponentIndex(Type entityType, string componentName)
     {
-        if (entityType == typeof(BomberBombEntity))
-        {
-            if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
-            if (string.Equals(componentName, "LogicTransform", StringComparison.Ordinal)) return 1;
-            if (string.Equals(componentName, "BomberBombState", StringComparison.Ordinal)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberHatPileEntity))
-        {
-            if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
-            if (string.Equals(componentName, "LogicTransform", StringComparison.Ordinal)) return 1;
-            if (string.Equals(componentName, "BomberHatPile", StringComparison.Ordinal)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberPickupItemEntity))
-        {
-            if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
-            if (string.Equals(componentName, "LogicTransform", StringComparison.Ordinal)) return 1;
-            if (string.Equals(componentName, "BomberPickupItem", StringComparison.Ordinal)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberPlayerEntity))
-        {
-            if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
-            if (string.Equals(componentName, "LogicTransform", StringComparison.Ordinal)) return 1;
-            if (string.Equals(componentName, "BomberPlayerState", StringComparison.Ordinal)) return 2;
-            return -1;
-        }
-        if (entityType == typeof(BomberWorldEntity))
-        {
-            if (string.Equals(componentName, "BomberMatchState", StringComparison.Ordinal)) return 0;
-            return -1;
-        }
         if (entityType == typeof(PlayerEntity))
         {
             if (string.Equals(componentName, "ObserverComponent", StringComparison.Ordinal)) return 0;
             if (string.Equals(componentName, "IdentityComponent", StringComparison.Ordinal)) return 1;
             if (string.Equals(componentName, "ChatComponent", StringComparison.Ordinal)) return 2;
+            return -1;
+        }
+        if (entityType == typeof(WorldEntity))
+        {
+            if (string.Equals(componentName, "WorldSaveComponent", StringComparison.Ordinal)) return 0;
             return -1;
         }
         return -1;
@@ -210,12 +157,8 @@ public sealed class GeneratedRegistry : EcsRegistry
     public override string WireName(Type entityType)
     {
         if (entityType is null) throw new ArgumentNullException(nameof(entityType));
-        if (entityType == typeof(BomberBombEntity)) return "bomberBomb";
-        if (entityType == typeof(BomberHatPileEntity)) return "bomberHatPile";
-        if (entityType == typeof(BomberPickupItemEntity)) return "bomberPickupItem";
-        if (entityType == typeof(BomberPlayerEntity)) return "bomberPlayer";
-        if (entityType == typeof(BomberWorldEntity)) return "bomberWorld";
         if (entityType == typeof(PlayerEntity)) return "player";
+        if (entityType == typeof(WorldEntity)) return "world";
         throw new InvalidOperationException("Unknown entity type " + entityType.Name);
     }
 
@@ -223,18 +166,10 @@ public sealed class GeneratedRegistry : EcsRegistry
     public override bool TryResolveEntityType(string name, out Type entityType)
     {
         entityType = null!;
-        if (string.Equals(name, "bomberBomb", StringComparison.Ordinal) || string.Equals(name, "BomberBombEntity", StringComparison.Ordinal))
-        { entityType = typeof(BomberBombEntity); return true; }
-        if (string.Equals(name, "bomberHatPile", StringComparison.Ordinal) || string.Equals(name, "BomberHatPileEntity", StringComparison.Ordinal))
-        { entityType = typeof(BomberHatPileEntity); return true; }
-        if (string.Equals(name, "bomberPickupItem", StringComparison.Ordinal) || string.Equals(name, "BomberPickupItemEntity", StringComparison.Ordinal))
-        { entityType = typeof(BomberPickupItemEntity); return true; }
-        if (string.Equals(name, "bomberPlayer", StringComparison.Ordinal) || string.Equals(name, "BomberPlayerEntity", StringComparison.Ordinal))
-        { entityType = typeof(BomberPlayerEntity); return true; }
-        if (string.Equals(name, "bomberWorld", StringComparison.Ordinal) || string.Equals(name, "BomberWorldEntity", StringComparison.Ordinal))
-        { entityType = typeof(BomberWorldEntity); return true; }
         if (string.Equals(name, "player", StringComparison.Ordinal) || string.Equals(name, "PlayerEntity", StringComparison.Ordinal))
         { entityType = typeof(PlayerEntity); return true; }
+        if (string.Equals(name, "world", StringComparison.Ordinal) || string.Equals(name, "WorldEntity", StringComparison.Ordinal))
+        { entityType = typeof(WorldEntity); return true; }
         return false;
     }
 
@@ -255,30 +190,6 @@ public sealed class GeneratedRegistry : EcsRegistry
     {
         return new FieldAttributeDeclaration[]
         {
-            new FieldAttributeDeclaration("BomberBombState.bombKind", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.burnUntilTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.chainId", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.dangerUntilTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.explodedAtTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.fuseEndTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.ownerNetEntityIdRaw", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.pierceLayers", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.power", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.reachDown", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.reachLeft", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.reachRight", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberBombState.reachUp", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberHatPile.count", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberHatPile.expireAtTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberMatchState.endTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberMatchState.hatKingNetEntityIdRaw", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberMatchState.matchTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberMatchState.phase", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberMatchState.startTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPickupItem.kind", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPlayerState.hatCount", "i32", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPlayerState.protectedUntilTick", "u64", "persistent", "replicated", "room-public"),
-            new FieldAttributeDeclaration("BomberPlayerState.respawnAtTick", "u64", "persistent", "replicated", "room-public"),
             new FieldAttributeDeclaration("ChatComponent.lastMessageText", "utf8-string", "persistent", "not-replicated", "server-only"),
             new FieldAttributeDeclaration("ChatComponent.lastMessageTick", "u64", "persistent", "not-replicated", "server-only"),
             new FieldAttributeDeclaration("IdentityComponent.accountId", "utf8-string", "persistent", "not-replicated", "server-only"),

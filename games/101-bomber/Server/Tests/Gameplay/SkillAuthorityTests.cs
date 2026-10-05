@@ -20,27 +20,32 @@ public sealed class SkillAuthorityTests
     [Fact]
     public void BlinkFacingStartsDownAndResetsForRespawnAndNextMatch()
     {
-        using WorldManager manager = StartedMatch(out NetEntityId lifeId);
+        using var scene = new BomberTerrainProductionTests.Scene(0, controlled: true);
+        WorldManager manager = scene.Manager;
+        NetEntityId lifeId = scene.Lives[0];
         World world = manager.World;
         BomberPlayerState player = world.Get<BomberPlayerState>(lifeId);
-        NetEntityId participantId = player.Participant.Value;
+        var participant = world.Get<BomberParticipantState>(player.Participant.Value);
+        ulong generation = participant.LifeGeneration.Value;
         Assert.Equal((int)BomberDirection.Down, player.Facing.Value);
         player.Facing.Value = (int)BomberDirection.Up;
-        player.LifePhase.Value = (int)BomberLifePhase.AwaitingRespawn;
-        player.RespawnAtTick.Value = world.Tick;
-        manager.Tick();
-        manager.Tick();
-        BomberParticipantState participant = world.Get<BomberParticipantState>(participantId);
-        NetEntityId successorId = participant.CurrentLife.Value;
-        Assert.NotEqual(lifeId, successorId);
-        player = world.Get<BomberPlayerState>(successorId);
+        for (ulong chain = 1701; chain <= 1703; chain++)
+            BomberEffectIntegrationTests.Bomb(world, scene.Lives[1], lifeId, chain);
+        manager.Tick(); manager.Tick(); manager.Tick();
+        Assert.False(world.IsLive(lifeId));
+        ulong wait = Ticks.FromMilliseconds(BomberConfigBinding.For(world).Life.RespawnMs,
+            BomberConfigBinding.For(world).Game.TickRateHz) + 16;
+        for (ulong i = 0; i < wait && (participant.CurrentLife.Value == lifeId || !world.IsLive(participant.CurrentLife.Value)); i++) scene.TickControlled();
+        Assert.False(participant.CurrentLife.Value.IsDefault);
+        Assert.NotEqual(lifeId, participant.CurrentLife.Value);
+        Assert.True(participant.LifeGeneration.Value > generation);
+        Assert.True(world.IsLive(participant.CurrentLife.Value));
+        Assert.Equal(6, world.Get<AttributeComponent>(participant.CurrentLife.Value).GetCurrentValue(BomberAttributeNames.HealthPoints));
+        player = world.Get<BomberPlayerState>(participant.CurrentLife.Value);
         Assert.Equal((int)BomberDirection.Down, player.Facing.Value);
         player.Facing.Value = (int)BomberDirection.Left;
-        BomberMatchState match = world.Single<BomberMatchState>();
-        match.Phase.Value = (int)BomberMatchPhase.Results;
-        match.PhaseEndTick.Value = world.Tick;
-        manager.Tick();
-        Assert.Equal((int)BomberDirection.Down, world.Get<BomberPlayerState>(successorId).Facing.Value);
+        BomberRoundRolloverTests.EndRound(scene);
+        Assert.Equal((int)BomberDirection.Down, player.Facing.Value);
     }
 
     [Fact]
@@ -60,7 +65,7 @@ public sealed class SkillAuthorityTests
         ability.Execute(new MoveAbility.Input { PrimaryDirection = BomberDirection.Right }, owner);
         Assert.Equal(origin, world.Get<LogicTransform>(lifeId).LocalPosition);
         Assert.Equal((int)BomberDirection.Right, world.Get<BomberPlayerState>(lifeId).Facing.Value);
-        world.Get<BomberSkillState>(lifeId).FrozenUntilTick.Value = world.Tick + 10;
+        BomberFiniteFreezeTests.FreezeForInputFixture(manager, lifeId);
         var move = new MoveAbility.Input { PrimaryDirection = BomberDirection.Down };
         Assert.False(ability.CanActivate(move, owner, out string? reason));
         Assert.Equal("player_frozen", reason);
@@ -72,7 +77,7 @@ public sealed class SkillAuthorityTests
     [Fact]
     public void SelectionUsesConfiguredActiveAndPassiveBindingsWithoutChangingAttributeSeeds()
     {
-        using WorldManager manager = StartedMatch(out NetEntityId lifeId);
+        using WorldManager manager = StartedMatch(out NetEntityId lifeId, withMap: true);
         World world = manager.World;
         AbilityComponent owner = world.Get<AbilityComponent>(lifeId);
         var ability = new SelectCharacterAbility();
@@ -123,6 +128,8 @@ public sealed class SkillAuthorityTests
         ulong start = world.Tick;
         var ability = new UseActiveSkillAbility();
         ability.Execute(default, world.Get<AbilityComponent>(lifeId));
+        // Real finite settlement publishes projections, then the ordinary consumer emits the occurrence.
+        manager.Tick(); manager.Tick();
         Assert.Equal(start + Ticks.FromMilliseconds(row.DurationMs, config.Game.TickRateHz), state.BubbleUntilTick.Value);
         Assert.Equal(start + Ticks.FromMilliseconds(row.CooldownMs, config.Game.TickRateHz), state.CooldownUntilTick.Value);
         Assert.Equal(start, state.CooldownFromTick.Value);
@@ -147,7 +154,7 @@ public sealed class SkillAuthorityTests
         AssertRejected(999, 1, "active_skill_invalid");
         AssertRejected(2, 0, "active_skill_level_invalid");
         AssertRejected(2, 99, "active_skill_level_invalid");
-        AssertRejected(4, 1, "active_skill_unavailable");
+        AssertRejected(4, 1, "active_skill_not_bound");
         AssertRejected(8, 1, "active_skill_unavailable");
         AssertRejected(3, 1, "active_skill_not_bound");
         BindRole(world, lifeId, 118003);
@@ -283,7 +290,11 @@ public sealed class SkillAuthorityTests
         GameRow original = config.Game;
         var disabled = new GameRow(original.Id, original.Name, original.TickRateHz, original.PlayerCount,
             original.MapSize, original.WarmupMs, original.MatchDurationMs, original.PodiumMs,
-            original.ResultsMs, false, original.DefaultBotProfile, original.SourceStatus, original.SourceRef);
+            original.ResultsMs, false, original.DefaultBotProfile, original.SourceStatus, original.SourceRef, original.InitialSeed,
+            original.CentralSupplyEnabled, original.CentralSupplyAnnounceMs, original.CentralSupplyOpenMs,
+            original.CentralSupplyStrengtheningCount, original.CentralSupplyHealthCount, original.CentralSupplyFrenzyCount,
+            original.CentralSupplySpecialCount, original.CentralSupplyGoldenHeartCount, original.FrenzyEnabled,
+            original.FrenzyDurationMs, original.FrenzyFuseMs, original.FrenzyConcurrentLimit, original.FrenzyMinPlacementTicks);
         FieldInfo gameField = config.GetType().GetField("<Game>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
         gameField.SetValue(config, disabled);
         BomberSkillState state = world.Get<BomberSkillState>(lifeId);
@@ -346,9 +357,9 @@ public sealed class SkillAuthorityTests
         SelectCharacterAbility.BindCharacter(world.Get<BomberSkillState>(lifeId), row);
     }
 
-    internal static WorldManager StartedMatch(out NetEntityId lifeId)
+    internal static WorldManager StartedMatch(out NetEntityId lifeId, bool withMap = false, bool persistence = false)
     {
-        WorldManager manager = BomberTestWorld.Start();
+        WorldManager manager = BomberTestWorld.Start(withMap: withMap, persistence: persistence);
         EntityOrder[] players = Enumerable.Range(0, 8).Select(i => BomberTestWorld.QueuePlayer(manager.World, "skill-" + i)).ToArray();
         manager.Tick(); manager.Tick(); manager.Tick();
         lifeId = players[0].AssignedId;

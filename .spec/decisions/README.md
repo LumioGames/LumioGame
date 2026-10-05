@@ -44,7 +44,7 @@
 | [0014](0014-bomber-v04-stage0-convergence.md) | 炸弹人采纳 v0.4 收敛:Stage 0 前置、官方房范围收敛、据点改补给、装备替换需确认 | 生效（血量表示一条被 0017 取代；终局演出 / 不用致死收缩圈 / 死亡不清糖果与无出局观战被 0025 取代；HatPile 被 0028 取代；首发不做角色 / 装备替换确认 / 首测技能清单被 0030 取代） |
 | [0015](0015-bomber-stage0a-runtime-capability-finding.md) | Stage 0a 不依赖 Runtime Processor 与公开 CrossWorldTxn/IVoxelWorldPort,网格改为 Game 自有 EcsComponent 状态 | 生效（「网格为 EcsComponent」一条被 0016 取代,Runtime 能力核验结论继续有效） |
 | [0016](0016-bomber-terrain-out-of-ecs-3d-coords.md) | 炸弹人场景改为三维坐标与 ECS 外的地形存储,地图以数据持久化 | 生效（`ITerrainStore` 三方法签名、`MaterialId` 类型、地形快照口径、不锁 chunk 尺寸、方块目录归属、分帧提交归属六条被 0019 取代,其余继续有效） |
-| [0017](0017-bomber-explosion-and-health-model.md) | 炸弹人爆炸与血量模型修订:炸弹实体持有火焰、血量改半心点、水改为可溺死 | 生效 |
+| [0017](0017-bomber-explosion-and-health-model.md) | 炸弹人爆炸与血量模型修订:炸弹实体持有火焰、血量改半心点、水改为可溺死 | 生效（「水改为可溺死」被 0042 取代；同弹记忆的非组件/非持久表示被 [0046](0046-bomber-bounded-rule-memory.md) 取代） |
 | [0018](0018-bomber-k1-k2-resolution.md) | 解决契约 v1.1.0 的两条缺口:DamageApplied 补来源炸弹身份、两个区间默认值收敛为单值 | 生效 |
 | [0019](0019-bomber-terrain-align-voxel-world-contract.md) | 炸弹人地形口径对齐上游体素契约:坐标映射、BlockId、blockRead / blockWrite 形状 | 生效 |
 | [0020](0020-exit-legacy-contract-regime.md) | 退出旧合同制:删架构镜像与基线闸门,公共语义改指架构仓 Living Architecture | 生效 |
@@ -53,11 +53,27 @@
 | [0023](0023-wire-contract-pinned-in-tests.md) | 契约一致性测试在测试期直接读架构仓 wire JSON,缺检出即失败 | 生效 |
 | [0024](0024-per-game-directories-and-101-web-prototype.md) | 仓库按游戏分目录,炸弹人为 101;网页原型作为抛弃型参考落在 games/101-bomber/prototype | 生效（原型内容范围与「表现层不得依赖 NON-CONTRACT 字段」被 0030 取代） |
 | [0025](0025-bomber-final-circle-and-death-drops.md) | 炸弹人终局改为「最后一命决赛圈」,死亡掉落一半强化 | 生效（帽子资源条款被 0028 取代；90 秒 / 6 分钟封顶 / 3 段安全圈 / 恒定毒速 / 按帽子数定胜负 / 锁入 ≤ 90 秒被 0031 取代） |
-| [0026](0026-bomber-small-map-regen-and-resource-trigger-gate.md) | 19×19 档也做软砖再生,资源触发决赛圈只在再生停止后生效 | 生效 |
+| [0026](0026-bomber-small-map-regen-and-resource-trigger-gate.md) | 19×19 档也做软砖再生,资源触发决赛圈只在再生停止后生效 | 生效（再生停止 60 秒的数值被 0035 取代） |
 | [0027](0027-bomber-powerup-pickup-mints-hat.md) | 炸弹人吃一个强化铸一顶帽,帽子塔同时表示「谁最富」 | 被 0028 取代 |
 | [0028](0028-bomber-hats-are-powerup-count.md) | 炸弹人取消独立的帽子资源,帽子只表示身上的强化数 | 生效（局终帽子最多者胜被 0031 取代） |
 | [0029](0029-bomber-death-drops-blast-protection.md) | 死者掉出的强化落地后 3 秒内不会被爆炸摧毁 | 生效 |
-| [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效（技能糖池权重与宝箱技能糖被 0033 修订） |
-| [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效 |
+| [0030](0030-bomber-characters-exclusive-skills-and-combos.md) | 炸弹人开局选角色:四个角色各带一个专属技能,局内开出技能糖,两个技能凑齐自动进化 | 生效（技能糖池权重与宝箱技能糖被 0033 修订；三槽 / 糖池 / 拾取判定 / 等级 / 组合表被 0041 取代） |
+| [0031](0031-bomber-final-circle-to-one-cell-last-survivor-wins.md) | 炸弹人决赛圈一直缩到 1×1、只剩一人立即结束:活到最后者胜,整局封顶 7 分钟 | 生效（整局封顶 7 分钟被 0035 取代） |
 | [0032](0032-bomber-movement-dual-direction-and-doll-footprint.md) | 炸弹人手感补充:同按两个方向走得通的那个、转角吸附 0.5 格、玩偶视觉占地不超过 0.7 格 | 生效 |
-| [0033](0033-bomber-toxin-and-shock-bombs-from-chests.md) | 炸弹人新增中毒弹与麻痹弹两种炸弹技能,技能糖池偏向炸弹类,决赛圈宝箱保底开出炸弹糖 | 生效 |
+| [0033](0033-bomber-toxin-and-shock-bombs-from-chests.md) | 炸弹人新增中毒弹与麻痹弹两种炸弹技能,技能糖池偏向炸弹类,决赛圈宝箱保底开出炸弹糖 | 被 0041 取代 |
+| [0034](0034-bomber-character-balance-round-1.md) | 炸弹人角色平衡第一轮:削棉花兔回春、加强泡泡 / 闪现 / 火焰光环,普通档 Bot 少放技能 | 生效 |
+| [0035](0035-bomber-pacing-final-circle-at-two-minutes.md) | 炸弹人节奏提速:整局封顶 4 分钟,约 2 分钟开决赛圈 | 生效 |
+| [0036](0036-bomber-acceptance-d-player-enters-ring-on-time.md) | 炸弹人验收 D:脚本玩家按时进圈、不学 Bot 晚进圈,官方 D 由 30 局扩到 100 局 | 生效（对手阵容、地图与门槛被 0043 取代） |
+| [0037](0037-bomber-hat-tower-capped-at-four-with-count-badge.md) | 炸弹人帽子塔封顶 4 顶:最多画 4 顶逐层缩小,超出用「×N」徽章,帽王皇冠戴在塔顶 | 生效 |
+| [0038](0038-bomber-direction-b-growth-brawl-pillars.md) | 炸弹人定调方向 B「成长爽局」:北极星五条、新人六概念、威胁全可见、人人有高光,支柱 2 改为全员同一条成长规则 | 生效 |
+| [0039](0039-bomber-hats-give-hearts-and-gold-hearts.md) | 炸弹人成长与 Boss:帽子给心、金心,心数封顶 8 心,毒圈按上限等比 | 生效 |
+| [0040](0040-bomber-27-map-16-players-tiered-rings-supply.md) | 炸弹人原型默认 16 人 · 27×27,资源按三圈三级越靠中心越好,中央大补给与狂暴糖进原型 | 生效（默认档被 0044 修订） |
+| [0041](0041-bomber-one-special-bomb-slot-five-kinds-favorite-bomb.md) | 炸弹人特殊炸弹一个槽、踩到就换、五种各有形状;每个角色一个最爱炸弹;人人默认会踢弹 | 生效（删除中毒弹 / 人人默认会踢 / 冰冻 1 秒被 0044 取代） |
+| [0042](0042-bomber-moat-and-explosive-barrels.md) | 炸弹人地形重做:护城河(防火线 + 桥作卡点 + 冰桥)取代池塘并取消溺水,爆炸桶取代鞭炮,不做草丛 | 生效 |
+| [0043](0043-bomber-bot-tiers-kill-juice-highlights-new-acceptance.md) | 炸弹人 Bot 分层(菜鸟档、不围剿真人)、击杀手感与成就感,新验收 D / E 改为 16 人 · 27×27 | 生效（验收地图与 D 门槛被 0044 修订） |
+| [0044](0044-bomber-m1-playtest-adjustments.md) | 炸弹人 M1 试玩修订:默认 12 人 · 23×23、中毒保留并削弱、冰冻加强、别人的连杀也播横幅、新角色飞腿袋鼠(飞踢)取代人人默认会踢 | 生效 |
+| [0045](0045-101-bomber-engine-workspace.md) | 101 炸弹人按 Sample 建独立引擎工作区，迁移旧壳并以 v3 草案承接 A–D；接口待真实骨架验收冻结 | 生效 |
+| [0046](0046-bomber-bounded-rule-memory.md) | 炸弹人权威规则记忆归组件快照，旧 19/8 对象预算须按新生产者重算 | 生效 |
+| [0047](0047-bomber-m2-six-bombs-and-fixed-skill-values.md) | 炸弹人 M2 中毒为第六形态、冰冻固定2秒、袋鼠最爱穿透弹缩短成功飞踢冷却 | 生效 |
+| [0048](0048-bomber-m2-map-packages-and-interaction-boundaries.md) | 炸弹人 M2 三档地图参数及金箱穿透、踢弹糖、冰桥和狂暴边界 | 生效 |
+| [0049](0049-bomber-container-capacity-candidate.md) | 炸弹人容器容量、本地候选 Schema 与兼容审计迁移 | 生效 |

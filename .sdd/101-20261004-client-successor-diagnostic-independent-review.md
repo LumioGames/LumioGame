@@ -1,0 +1,13 @@
+# Client successor拒绝点：独立私有诊断审核
+
+裁决：ACCEPT_EXACT_TWO_SOURCE_PRIVATE_DIAGNOSTIC_ONLY。Root为非作者，只接受所属Client新树的两份精确诊断源，不接受生产修复、浏览器性能或完整体验。
+
+来源为a6071a2a28c3cfda78400254654d6da1fef25b92，新树C:/Work/LumioGames/.101-pack07/LumioClientSuccessorDiagnostic。Admission源码SHA af970394c32deb3d09f25b7cdb54590141992a82514546dad442d6909c2bc922；Session源码SHA fa09598c1322be0aeb49a0ba0e4e5e40f5d7c7074cdf75637d73b934ab212336。
+
+Root独立从Git取两原blob，去掉允许的静态诊断开关、helper和日志，将十处观测helper返回还原原枚举，并还原FailSuccessor无参签名；整个LF源码逐字等于原blob，1497+1156个原tokens一致。全部原guard表达式、短路顺序、处理顺序及拒绝返回不变。精确1环境开关默认关闭，两处静态计数每处至多八行，每进程至多十六行。来源行号区分拒绝分支，不能区分该复合条件的单个失败操作数。
+
+日志只取既有当前/候选结构和Session字段，不增加Runtime/Bound查询。admission/socket只输出相等布尔，未输出票据、凭据、原payload或连接字符串。完整participant/life/world身份用于关联。Console I/O仍可能增加开销或抛异常，不能称零影响或普通页面性能资格。
+
+独立脚本和原字节为父仓.run/client-successor-diagnostic-independent-review-02/review.mjs及result.json，实际exit0。第一次review-01在全部逆源校验完成后，因status.trim剥去首行前导空格而使路径清单assert失败；原脚本与副本保留，不计接受。review-02只纠正为trimEnd并另存全新输出。
+
+真实诊断局中三Bot successor bad_envelope及跨reservation revision作用域仍须真实Host原授权、Client原guard和Native回归定位。这份静态审核不证明该根因，也不授权删除guard或全局继承per-reservation revision。

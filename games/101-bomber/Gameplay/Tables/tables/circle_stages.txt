@@ -1,0 +1,16 @@
+table: circle_stages
+schema: schemas/circle_stages.json
+
+| id     | name   | at_ms  | side_cells | spawn_chest | clear_soft | poison_points | source_status | source_ref                     |
+| ------ | ------ | ------ | ---------- | ----------- | ---------- | ------------- | ------------- | ------------------------------ |
+| 112001 | stage1 | 10000  | 13         | true        | false      | 1             | design        | docs/specs/bomber/design.md#15 |
+
+| 112002 | stage2 | 35000  | 9          | true        | false      | 1             | design        | docs/specs/bomber/design.md#15 |
+
+| 112003 | stage3 | 55000  | 7          | true        | false      | 1             | design        | docs/specs/bomber/design.md#15 |
+
+| 112004 | stage4 | 75000  | 5          | true        | true       | 2             | design        | docs/specs/bomber/design.md#15 |
+
+| 112005 | stage5 | 95000  | 3          | true        | true       | 2             | design        | docs/specs/bomber/design.md#15 |
+
+| 112006 | stage6 | 110000 | 1          | false       | true       | 2             | design        | docs/specs/bomber/design.md#15 |

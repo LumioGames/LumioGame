@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <!-- Packed SDK enables generate by default; this assembly is not gameplay. -->
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+    <!-- ADR-115: Server/ holds data only, so no .csproj may live there. The cases
+         are server-side gameplay tests, so their sources stay under Server/Tests/
+         and only this project file sits outside it. Depth from the repo root is
+         unchanged (two levels), which is what the tests' AppContext.BaseDirectory
+         walk relies on. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <LumioClientReplicaRoot Condition="'$(LumioClientReplicaRoot)' == ''">$(LumioEngineRoot)web/replica/netstandard2.1/</LumioClientReplicaRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/Gameplay/**/*.cs" Link="Gameplay/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/EngineRelease.cs" Link="EngineRelease.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Gameplay/Lumio.Bomber.Gameplay.csproj" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Platform" />
+    <!-- WorldManager.Create needs this at runtime. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="10.0.11" />
+    <Reference Include="Lumio.Client.Gameplay.ECS" HintPath="$(LumioClientReplicaRoot)Lumio.Client.Gameplay.ECS.dll" />
+    <Reference Include="Lumio.Client.Log" HintPath="$(LumioClientReplicaRoot)Lumio.Client.Log.dll" />
+    <Reference Include="Lumio.Client.Network.Connection" HintPath="$(LumioClientReplicaRoot)Lumio.Client.Network.Connection.dll" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,73 @@
+{
+  "contentFingerprint": "9c86ea462efa5c999d06c54970cbc967bd3b86951bb4dd64aaa1f9cf7cf21d9f",
+  "rows": [
+    {
+      "at_ms": 10000,
+      "clear_soft": false,
+      "id": 112001,
+      "name": "stage1",
+      "poison_points": 1,
+      "side_cells": 13,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": true
+    },
+    {
+      "at_ms": 40950,
+      "clear_soft": false,
+      "id": 112002,
+      "name": "stage2",
+      "poison_points": 1,
+      "side_cells": 9,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": true
+    },
+    {
+      "at_ms": 65700,
+      "clear_soft": false,
+      "id": 112003,
+      "name": "stage3",
+      "poison_points": 1,
+      "side_cells": 7,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": true
+    },
+    {
+      "at_ms": 90450,
+      "clear_soft": true,
+      "id": 112004,
+      "name": "stage4",
+      "poison_points": 2,
+      "side_cells": 5,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": true
+    },
+    {
+      "at_ms": 115200,
+      "clear_soft": true,
+      "id": 112005,
+      "name": "stage5",
+      "poison_points": 2,
+      "side_cells": 3,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": true
+    },
+    {
+      "at_ms": 133800,
+      "clear_soft": true,
+      "id": 112006,
+      "name": "stage6",
+      "poison_points": 2,
+      "side_cells": 1,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_chest": false
+    }
+  ],
+  "table": "circle_stages",
+  "target": "C"
+}

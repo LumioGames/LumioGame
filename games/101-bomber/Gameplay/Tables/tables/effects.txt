@@ -1,0 +1,32 @@
+table: effects
+schema: schemas/effects.json
+
+| id     | name            | attribute_name     | lifetime | operation               | value_source                     | source_status                        | source_ref                                                                           |
+| ------ | --------------- | ------------------ | -------- | ----------------------- | -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| 121001 | BombDamage      | HealthPoints       | Instant  | Damage                  | bomb.damage_points               | design                               | docs/specs/bomber/design.md#15                                                       |
+
+| 121002 | DrownDamage     | HealthPoints       | Periodic | Damage                  | life.drown_points                | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121003 | RingPoison      | HealthPoints       | Periodic | Damage                  | circle_stages.poison_points      | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121004 | FireExposure    | HealthPoints       | Periodic | Damage                  | skill_rules.fire_points          | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121005 | Toxin           | HealthPoints       | Periodic | Damage                  | skill_rules.toxin_points         | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121006 | HealthPack      | HealthPoints       | Instant  | Heal                    | life.health_pack_points          | design                               | docs/specs/bomber/design.md#15                                                       |
+
+| 121007 | Regen           | HealthPoints       | Periodic | Heal                    | skill_levels.heal_points         | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121008 | PowerUpgrade    | BombPower          | Instant  | BaseUpgrade             | attributes.upgrade_step          | design                               | docs/specs/bomber/design.md#15                                                       |
+
+| 121009 | CapacityUpgrade | BombCapacity       | Instant  | BaseUpgradeAndAvailable | attributes.upgrade_step          | design                               | docs/specs/bomber/design.md#15                                                       |
+
+| 121010 | SpeedUpgrade    | SpeedTier          | Instant  | BaseTierLookup          | speed_tiers.speed_milli          | design                               | docs/specs/bomber/design.md#15                                                       |
+
+| 121011 | Freeze          | None               | Duration | ControlLock             | skill_levels.freeze_ms           | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121012 | ControlImmunity | None               | Duration | ControlImmune           | skill_rules.control_immunity_ms  | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121013 | Bubble          | None               | Duration | Invulnerable            | skill_levels.duration_ms         | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |
+
+| 121014 | Shock           | MovementSpeedMilli | Duration | CurrentScale            | skill_rules.shock_speed_permille | design; effect SDK semantics pending | docs/specs/bomber/design.md#15; docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046 |

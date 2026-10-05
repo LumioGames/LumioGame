@@ -1,0 +1,22 @@
+{
+  "contentFingerprint": "f82dbd281c573fca5d5a678c2da18196c332247fa79bfbd91c4d310bfc0e87e4",
+  "rows": [
+    {
+      "corner_assist_milli": 500,
+      "id": 103001,
+      "name": "default",
+      "place_buffer_ms": 125,
+      "player_collision": false,
+      "repeat_assist_milli": 250,
+      "repeat_window_ticks": 6,
+      "secondary_axis_permille": 500,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "spawn_facing": "Down",
+      "turn_buffer_ticks": 6,
+      "water_speed_permille": 700
+    }
+  ],
+  "table": "movement",
+  "target": "S"
+}

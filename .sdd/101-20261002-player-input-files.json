@@ -1,0 +1,122 @@
+[
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\index.ts",
+    "status": "modified",
+    "bytes": 5964,
+    "sha256": "AA47A0F5CA1272038D4535C3FA1DE000BD1CD88DC89894943D80F6671F59E957"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\hud\\index.ts",
+    "status": "modified",
+    "bytes": 25104,
+    "sha256": "DAFDB7859714E90B3007CC7C7DE7370EB84084FEAC8035C4AAC4367B61FCBA1F"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\hud\\overlays.ts",
+    "status": "modified",
+    "bytes": 5035,
+    "sha256": "141FBAB5FF54849D5F8332546C25C4B97D5A31F101E157BED65A65A88982F4EF"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\hud\\character-select.ts",
+    "status": "modified",
+    "bytes": 9308,
+    "sha256": "716E5B66A66EE1E76DF22FD6D359D61E5BAAEF2192CAAC0AC13F80EE4EEF933B"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\presentation.css",
+    "status": "modified",
+    "bytes": 1546,
+    "sha256": "B788052B04FE0D8128FCA25B2B0D919A68A9D3486E56D41E311803E0FC8B58C2"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\game-view.mjs",
+    "status": "modified",
+    "bytes": 3536,
+    "sha256": "2EC9BFFC08F42386E431DA2BC8470CBE38B18F37F0C2F5E845F6A8A3B05DBB9E"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\game-view.test.mjs",
+    "status": "modified",
+    "bytes": 4231,
+    "sha256": "F0B599E954ADF6AEA0B302006BD9B7113AA6B58A3225FA02082E1B3C8209C0C2"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\player-controls.mjs",
+    "status": "modified",
+    "bytes": 3811,
+    "sha256": "FF3F9348DE177BADB0496F98D810F248536005F22A6577A23EFBD054ADB406D4"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\player-controls.test.mjs",
+    "status": "modified",
+    "bytes": 6514,
+    "sha256": "9D04964E272BC2CC466498BAF48153AB79E3A900E751D770C1382D258E463469"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\main.js",
+    "status": "modified",
+    "bytes": 42222,
+    "sha256": "1A5A4B2B4D57DD201AC622953D8ADD2A51342ECB82FEC67E77649D78D7AC0395"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\spectator.css",
+    "status": "modified",
+    "bytes": 5076,
+    "sha256": "4C49E9AD5F737606FD14D8B49B5450CC73FA1416126A2E4582BF79C13400B734"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\tests\\visual.ts",
+    "status": "modified",
+    "bytes": 1670,
+    "sha256": "DA756060CA81075C5EE7C8177A1AE381287DE0D0E625C70089C1BBEA266B5073"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\UI\\Spectator\\main.test.mjs",
+    "status": "modified",
+    "bytes": 48503,
+    "sha256": "064AE3EA5DC3BCE75CE984FA8108D66D7BF320796E54A3242D46F97084FCF164"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.ts",
+    "status": "new",
+    "bytes": 2840,
+    "sha256": "37C29D63D8127492F4915ADA3450ED7A2975C9D3261BF79958460FB752748CF7"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\present\\joystick.test.ts",
+    "status": "new",
+    "bytes": 1711,
+    "sha256": "3DF64FBF960CE9BA56D8FFA3CD9121E34FBB290DBCB8AB82158B588CE1143715"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\present\\touch-controls.ts",
+    "status": "new",
+    "bytes": 9021,
+    "sha256": "C4E7C53FF56AC815E748F9C2F92FDD97E066F52DE1165847C8E802800615A47E"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\src\\present\\touch.css",
+    "status": "new",
+    "bytes": 4939,
+    "sha256": "9AE8420E79A887D80C242FE64F596873768DC96D66CBC34AF2BB3D6B9B9F33A3"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\tests\\player-input.html",
+    "status": "new",
+    "bytes": 476,
+    "sha256": "6BF0608C98B1DBC57FDDB30797DA0891D46717AF7C44D42007787A270F29B1FE"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\tests\\player-input.js",
+    "status": "new",
+    "bytes": 2528,
+    "sha256": "633363AFA842D7FA402959E03DD2404F7EAC41562059DB17551E855C5B537846"
+  },
+  {
+    "path": "games\\101-bomber\\Client\\Presentation\\tests\\player-input-browser.mjs",
+    "status": "new",
+    "bytes": 8994,
+    "sha256": "4C068A81D62F76632C393861B0F2ADE8C774774D1B43C83A9DCB92D79DD9F5FE"
+  }
+]

@@ -1,0 +1,282 @@
+{
+  "table": "map",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "width",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "width"
+    },
+    {
+      "name": "depth",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "depth"
+    },
+    {
+      "name": "boundary_cells",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "boundary cells"
+    },
+    {
+      "name": "ground_layer",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "ground layer"
+    },
+    {
+      "name": "obstacle_layer",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "obstacle layer"
+    },
+    {
+      "name": "hard_pillar_stride",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hard pillar stride"
+    },
+    {
+      "name": "soft_brick_permille",
+      "ordinal": 8,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "soft brick permille"
+    },
+    {
+      "name": "spawn_min_distance",
+      "ordinal": 9,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "spawn min distance"
+    },
+    {
+      "name": "spawn_safe_cells",
+      "ordinal": 10,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "spawn safe cells"
+    },
+    {
+      "name": "crate_quadrant_min",
+      "ordinal": 11,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "crate quadrant min"
+    },
+    {
+      "name": "crate_quadrant_max",
+      "ordinal": 12,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "crate quadrant max"
+    },
+    {
+      "name": "pond_quadrant_min",
+      "ordinal": 13,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "pond quadrant min"
+    },
+    {
+      "name": "pond_quadrant_max",
+      "ordinal": 14,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "pond quadrant max"
+    },
+    {
+      "name": "water_max_permille",
+      "ordinal": 15,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "water max permille"
+    },
+    {
+      "name": "cover_reach_cells",
+      "ordinal": 16,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "cover reach cells"
+    },
+    {
+      "name": "potential_min_per_player",
+      "ordinal": 17,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "potential min per player"
+    },
+    {
+      "name": "potential_max_per_player",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "potential max per player"
+    },
+    {
+      "name": "open_min_per_player",
+      "ordinal": 19,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "open min per player"
+    },
+    {
+      "name": "pond_max_span_cells",
+      "ordinal": 20,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "pond max span cells"
+    },
+    {
+      "name": "spawn_search_mode",
+      "ordinal": 21,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "spawn search mode"
+    },
+    {
+      "name": "entity_budget_mode",
+      "ordinal": 22,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "entity budget mode"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 23,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 24,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "layout_kind",
+      "ordinal": 25,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "author-time layout algorithm"
+    },
+    {
+      "name": "moat_radius_cells",
+      "ordinal": 26,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "M2 moat Chebyshev radius"
+    },
+    {
+      "name": "moat_branch_cells",
+      "ordinal": 27,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "M2 branch length per quadrant"
+    }
+  ]
+}

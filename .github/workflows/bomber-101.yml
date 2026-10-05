@@ -1,0 +1,223 @@
+name: LumioBomber CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'games/101-bomber/**'
+  pull_request:
+    paths:
+      - 'games/101-bomber/**'
+  # ADR-113 决策 6: the zero-skip obligation binds `push` to main and a daily
+  # job, not PRs. The server-host job below carries it, so this workflow needs a
+  # daily trigger to have somewhere to carry it to.
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# ADR-123: the engine is the read-only submodule Engine/ (LumioEngineRelease, a public
+# repository pinned at a release tag). Every job gets it with the checkout
+# (`submodules: true`) and nothing else: no private repository is checked out and no
+# secret is read anywhere in this workflow. Engine/ is pinned at v0.0.1.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: games/101-bomber
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: .
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: games/101-bomber/global.json
+      - run: dotnet build LumioBomber.slnx
+      - name: Checkout Workflow spec-lint
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@v7
+        with:
+          repository: LumioGames/workflow-plugin
+          ref: dc8cab318d7509978b17a144120c93a1753e0510
+          path: .run/workflow-plugin
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        with:
+          node-version: '22.16.0'
+          package-manager-cache: false
+      - name: Spec lint
+        # Optional layout checks may report BLOCKED_ENV without a sibling architecture checkout.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        env:
+          WORKFLOW_PLUGIN_ROOT: ${{ github.workspace }}/.run/workflow-plugin
+        run: node .spec/tools/lint-extensions.mjs
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: games/101-bomber
+    env:
+      LUMIO_CONFIG_ROOT: ${{ github.workspace }}/LumioConfig
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: .
+          submodules: true
+          persist-credentials: false
+      # Public authoring compiler; Engine/v0.0.1 includes readers but not the Python compiler.
+      - name: Checkout LumioConfig
+        uses: actions/checkout@v7
+        with:
+          repository: LumioGames/LumioConfig
+          ref: dd127edd87a00764b2b3ffb210df9f4b8d44d70a
+          path: LumioConfig
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: games/101-bomber/global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.16.0'
+          package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      # MTP requires a build first. GAS and map guards use the pinned release native.
+      - run: dotnet build LumioBomber.slnx
+      - run: dotnet test LumioBomber.slnx --no-build -- --minimum-expected-tests 1
+      # Compile guard for the spectator: both game sources against the release's browser
+      # replica DLLs (Engine/web/replica/netstandard2.1/, incl. Lumio.Client.Spectator.dll)
+      # and this game's client gameplay. Compile only; the wasm host needs wasm-tools.
+      - name: Build spectator shared sources against the pinned engine
+        run: dotnet build Client/UI/Spectator/tests/Lumio.Bomber.Client.Spectator.Tests.csproj -c Release
+      - name: Spectator page (node)
+        run: node --test Client/UI/Spectator/main.test.mjs
+      - run: node --test Tools/verify-evidence.test.mjs
+      - run: node --test Tools/engine-release.test.mjs
+      - run: node --test Tools/release-version.test.mjs
+      - run: node --test Tools/update-engine.test.mjs
+      - run: node --test Tools/account-client.test.mjs
+      - run: node --test Tools/ds-ready.test.mjs
+      - run: node --test Tools/launcher.test.mjs
+      - run: node --test Tools/world-assert.test.mjs
+      - run: node --test Tools/capture-basemap.test.mjs
+      - run: node --test Tools/server-profile.test.mjs
+      - run: node --test Tools/ds-config.test.mjs
+      - run: node --test Tools/sync-config-readers.test.mjs
+      - run: node --test Tools/bomber-config.test.mjs Tools/config-source-root.test.mjs Tools/config-side-isolation.test.mjs Tools/foundation-boundaries.test.mjs
+      - run: node Tools/verify-config-artifacts.mjs "$RUNNER_TEMP/bomber-config-artifacts"
+      # Official Bomber catalog and render assets remain real gates.
+      - run: node --test Tools/check-block-assets.test.mjs Tools/official-catalog.test.mjs
+      - run: node Tools/check-block-assets.mjs
+      - run: node Tools/official-catalog.mjs --check
+      # Pure unit checks over the server-host wiring: no engine binary needed, so they
+      # run on every PR even though the job they guard is push/schedule only.
+      - run: node --test Tools/test-server-host.test.mjs
+      - run: node --test Tools/prepare-server-host-inputs.test.mjs
+
+  # ADR-123 验证 Fixture 1: what an outsider does. A plain anonymous `git clone
+  # --recursive` of this public repository — no actions/checkout, no token, no other
+  # repository — and `dotnet build` against the pinned public engine release.
+  external-clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clone like an outsider (anonymous, --recursive)
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          set -euo pipefail
+          git clone --recursive "https://github.com/${GITHUB_REPOSITORY}.git" "$RUNNER_TEMP/external"
+          cd "$RUNNER_TEMP/external"
+          git fetch --depth 1 origin "$HEAD_SHA"
+          git checkout --detach "$HEAD_SHA"
+          # The commit under test may pin another engine than the default branch.
+          git submodule update --init --depth 1 games/101-bomber/Engine
+          git submodule status
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: ${{ runner.temp }}/external/games/101-bomber/global.json
+      - name: Build the clone
+        working-directory: ${{ runner.temp }}/external/games/101-bomber
+        run: dotnet build LumioBomber.slnx
+
+  # R-00692 moved LumioServer's two engine-level admit/spawn cases here. What they
+  # guard is the engine's contract on this game's registry: the retained catalog bytes
+  # are a defensive copy; a corrupted voxel half makes restore refuse without changing
+  # the live `Manager`; a successful restore keeps `IngressBudget` identity while
+  # `Manager` is new; all five Bomber abilities reject with bomber_match_not_ready; a
+  # `runtime-only` snapshot carries no `voxelBase64`; `Physics` follows the voxel profile.
+  #
+  # ADR-123: HostEntry, the Runtime three-path and the native image are the Engine/
+  # release's; the gameplay is built against that release's SDK, the only one the build
+  # knows (ADR-102 matched release); the catalog world is authored by this game on that
+  # release native (R-00785).
+  # ADR-113 决策 6 / ADR-088: push to main and the daily job only.
+  server-host:
+    name: Engine admit/spawn cases on the Bomber registry (ADR-115 §3)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: games/101-bomber
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: .
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: games/101-bomber/global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.16.0'
+          package-manager-cache: false
+      - name: Build the server-side Bomber gameplay against the pinned engine
+        run: dotnet build Gameplay/Lumio.Bomber.Gameplay.csproj -c Release
+      # The voxel case's catalog world is this game's own (R-00785, ADR-117): its base map
+      # restored on the release native, one public write, one capture. The Gameplay test that
+      # authors and checks it writes the three files where LUMIO_BOMBER_CATALOG_WORLD_OUTPUT says.
+      - name: Author the catalog world on the release native
+        env:
+          LUMIO_BOMBER_CATALOG_WORLD_OUTPUT: ${{ runner.temp }}/catalog-world
+        run: |
+          dotnet build Tools/Lumio.Bomber.Gameplay.Tests/Lumio.Bomber.Gameplay.Tests.csproj -c Release
+          dotnet test Tools/Lumio.Bomber.Gameplay.Tests/Lumio.Bomber.Gameplay.Tests.csproj -c Release --no-build -- --filter-method Lumio.Bomber.Gameplay.Tests.CatalogWorldTests.AuthorsTheWallSceneOnTheReleaseNative --minimum-expected-tests 1
+      # Checks every engine input in Engine/ (fails by name, nothing is skipped) and the
+      # catalog world's evidence against the release native, then exports the game-side
+      # values through GITHUB_ENV.
+      - name: Name the host suite inputs
+        run: node Tools/prepare-server-host-inputs.mjs --gameplay-bin Gameplay/bin/Release/net10.0 --voxel-fixture "$RUNNER_TEMP/catalog-world"
+      # HostEntry is one process-scoped managed context, so the runner gives each case its
+      # own process. The HOST_SUITE line is asserted rather than trusted: `skipped=0` is the
+      # ADR-113 决策 1 measurement.
+      - name: Run the two engine admit/spawn cases
+        run: |
+          set -euo pipefail
+          node Tools/test-server-host.mjs "$RUNNER_TEMP/host-results" | tee "$RUNNER_TEMP/host-suite.txt"
+          grep -q 'HOST_SUITE cases=2 total=2 passed=2 failed=0 skipped=0' "$RUNNER_TEMP/host-suite.txt"
+      - name: Retain the per-case logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-host-results
+          path: |
+            ${{ runner.temp }}/host-results/**
+            ${{ runner.temp }}/host-suite.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+# The game lives under games/101-bomber; all build and test commands are scoped there.

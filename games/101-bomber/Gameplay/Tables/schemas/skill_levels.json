@@ -1,0 +1,181 @@
+{
+  "table": "skill_levels",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "skill_id",
+      "ordinal": 2,
+      "type": "ref",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "refTarget": "skills",
+      "description": "skill id"
+    },
+    {
+      "name": "level",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "level"
+    },
+    {
+      "name": "duration_ms",
+      "ordinal": 4,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "duration ms"
+    },
+    {
+      "name": "cooldown_ms",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "cooldown ms"
+    },
+    {
+      "name": "interval_ms",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "interval ms"
+    },
+    {
+      "name": "heal_points",
+      "ordinal": 7,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "heal points"
+    },
+    {
+      "name": "range_cells",
+      "ordinal": 8,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "range cells"
+    },
+    {
+      "name": "range_mode",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "range mode"
+    },
+    {
+      "name": "freeze_ms",
+      "ordinal": 10,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "freeze ms"
+    },
+    {
+      "name": "pierce_layers",
+      "ordinal": 11,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "pierce layers"
+    },
+    {
+      "name": "pierce_mode",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "pierce mode"
+    },
+    {
+      "name": "wall_ms",
+      "ordinal": 13,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "wall ms"
+    },
+    {
+      "name": "kick_range_cells",
+      "ordinal": 14,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "kick range cells"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 15,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 16,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "favorite_cooldown_ms",
+      "ordinal": 17,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Cooldown captured on successful flyKick while holding the favorite pierce bomb; zero for unrelated skills"
+    }
+  ]
+}

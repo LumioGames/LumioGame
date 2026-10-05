@@ -1,0 +1,67 @@
+{
+  "contentFingerprint": "16ed1949c8ae82bc02a0af79827240b09cca7c4d2d4ab61cd8cecdb7235b4bf4",
+  "rows": [
+    {
+      "id": 101001,
+      "initial": 6,
+      "maximum": 16,
+      "minimum": 0,
+      "name": "HealthPoints",
+      "source_ref": "ADR-0039; docs/specs/bomber/design.md#12",
+      "source_status": "design",
+      "upgrade_step": 0
+    },
+    {
+      "id": 101002,
+      "initial": 1,
+      "maximum": 6,
+      "minimum": 1,
+      "name": "BombPower",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "upgrade_step": 1
+    },
+    {
+      "id": 101003,
+      "initial": 1,
+      "maximum": 6,
+      "minimum": 1,
+      "name": "BombCapacity",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "upgrade_step": 1
+    },
+    {
+      "id": 101004,
+      "initial": 1,
+      "maximum": 6,
+      "minimum": 0,
+      "name": "AvailableBombs",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "upgrade_step": 0
+    },
+    {
+      "id": 101005,
+      "initial": 0,
+      "maximum": 8,
+      "minimum": 0,
+      "name": "SpeedTier",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "upgrade_step": 1
+    },
+    {
+      "id": 101006,
+      "initial": 3500,
+      "maximum": 6000,
+      "minimum": 3500,
+      "name": "MovementSpeedMilli",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "upgrade_step": 350
+    }
+  ],
+  "table": "attributes",
+  "target": "C"
+}

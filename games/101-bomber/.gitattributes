@@ -1,0 +1,15 @@
+# Placeholder map SHA is frozen in Server/Config/Startup/server.json. Autocrlf must not rewrite bytes.
+Server/Assets/Maps/sample.voxel binary
+Server/Assets/Maps/acceptance-lakeside.voxel binary
+Server/Assets/Maps/official-catalog.json text eol=lf
+# MC import mapping and reports carry each other's sha256 (ADR-124 D10); keep bytes stable.
+Server/Assets/Maps/mc-import/*.json text eol=lf
+# Compiler exports and Readers are verified byte-for-byte on every platform.
+Server/Config/Tables/manifest.json text eol=lf
+Server/Config/Tables/origins.json text eol=lf
+Server/Config/Tables/server/*.json text eol=lf
+Server/Config/Tables/voxel/*.json text eol=lf
+Client/Config/Tables/manifest.json text eol=lf
+Client/Config/Tables/client/*.json text eol=lf
+Server/Config/Generated/*.cs text eol=lf
+Client/Config/Generated/*.cs text eol=lf

@@ -1,0 +1,26 @@
+{
+  "package": {
+    "manifestSha256": "2838fc6248c1829e1635aa9ce64bbccc67f5c3521b1928ea1c92ee6422632fce",
+    "sdkSha256": "6c7e21eafd5108c85db85915a0e3485ab12e55852a4ac211e94215b227192362",
+    "filesVerified": 131
+  },
+  "provenance": {
+    "sourceSnapshotSha256": "5668c942fa22b269a96a72baed889fd09e107c990359985d3fa6acedc6f86d8b",
+    "postpackComparison": [],
+    "verifierSha256": "c5401093f7e97bd705ac4b623780b7ec7e7d70ab139f38c3f8195d797a7da40a"
+  },
+  "schema": {
+    "identities": 463,
+    "inputs": 134,
+    "active": 463,
+    "retired": 806,
+    "pending": 8,
+    "ledgerSha256": "e6f3b7ff0ea0528a85254b5ff66d93fa8ff4257b634344fd3369a5cea165ceb4",
+    "diagnostics": 0,
+    "freezeEligible": false
+  },
+  "logs": {
+    "testsSha256": "4a798e6583f008c50fed7876dce328e4f336293bfbd77fbb9d39388dad71040d",
+    "cliSha256": "377193abba76f5523ccdc1debe61a979194f8e86433a4cd55959d7de7aa4349c"
+  }
+}

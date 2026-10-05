@@ -1,0 +1,10 @@
+table: circle_stages
+schema: schemas/circle_stages.json
+
+| name | spawn_chest | source_status | source_ref |
+| --- | --- | --- | --- |
+| stage1 | false | inferred; author-only; unverified | ADR-0048 |
+| stage2 | false | inferred; author-only; unverified | ADR-0048 |
+| stage3 | false | inferred; author-only; unverified | ADR-0048 |
+| stage4 | false | inferred; author-only; unverified | ADR-0048 |
+| stage5 | false | inferred; author-only; unverified | ADR-0048 |

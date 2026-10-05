@@ -1,0 +1,10 @@
+table: circle_stages
+schema: schemas/circle_stages.json
+
+| name | at_ms |
+| --- | --- |
+| stage2 | 40950 |
+| stage3 | 65700 |
+| stage4 | 90450 |
+| stage5 | 115200 |
+| stage6 | 133800 |

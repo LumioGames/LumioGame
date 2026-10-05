@@ -28,6 +28,13 @@ metadata:
 | [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 与 IdentityComponent 归本仓——声明、声明生成、SendMessage 与 persist last-message、测试世界启动 |
 | [`features/tools/clone-all.md`](features/tools/clone-all.md) | 组织仓一次性 clone 工具——查失败分级(远端授权 vs 本地/网络)、退出码语义与清单维护纪律 |
 
+## Lumio Bomber 101
+
+| 文档 | 用途 |
+|------|------|
+| [bomber-gameplay.md](../../games/101-bomber/.spec/knowledge/features/bomber-gameplay.md) | 炸弹人玩法与世界模型——查实体、配表、原型取舍和 Sample 省略项时使用。 |
+| [bomber-tour.md](../../games/101-bomber/.spec/knowledge/features/bomber-tour.md) | 炸弹人启动与取证——查八 Bot 准入、整局十四步、回放和旁观证据时使用。 |
+
 ## lessons(经验教训 · 复发问题暂存区)
 
 | 文档 | 一句话 |

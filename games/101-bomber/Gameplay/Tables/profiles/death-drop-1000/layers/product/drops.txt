@@ -1,0 +1,6 @@
+table: drops
+schema: schemas/drops.json
+
+| name | death_drop_permille |
+| --- | --- |
+| default | 1000 |

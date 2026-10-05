@@ -1,0 +1,88 @@
+{
+  "allocation": {
+    "serverAudience": "replace-server-audience",
+    "gameId": "replace-game-id",
+    "gameReleaseId": "replace-release-id",
+    "contractId": "replace-contract-id",
+    "roomId": "replace-room-id",
+    "allocationId": "replace-allocation-id"
+  },
+  "admission_key_id": 1,
+  "admission_public_key_hex": "REPLACE_WITH_PLATFORM_32_BYTE_PUBLIC_KEY_HEX",
+  "clr": {
+    "entry_type": "Lumio.Server.HostEntry.HostEntry, Lumio.Server.HostEntry",
+    "entry_method": "LumioHostEntry",
+    "registry_assembly": "../../../Gameplay/bin/Debug/net10.0/Lumio.Bomber.Gameplay.dll",
+    "kernel_config": {
+      "maxContexts": 64,
+      "maxHandles": 4096,
+      "maxNativeBytes": 67108864,
+      "maxJobsQueued": 256,
+      "maxJobsRunning": 4,
+      "maxCompletionItems": 1024,
+      "logMailboxCapacity": 8192
+    }
+  },
+  "store_path": "../../Storage/Worlds",
+  "config_dir": "../Tables",
+  "world_profile": "runtime+voxel",
+  "durability": "snapshot_only",
+  "base_map_id": "bomber",
+  "base_map_version": "0.1.0",
+  "base_map_path": "../../Assets/Maps/bomber.voxel",
+  "voxel_baseline_region": {
+    "min_x": 0,
+    "min_y": 0,
+    "min_z": 0,
+    "max_x": 1,
+    "max_y": 0,
+    "max_z": 1
+  },
+  "base_map_content_sha256": "ffc6b13ac8f7a24469a3348b38f720cb128f54c3284e13fe0fd8652fd7b8e019",
+  "checkpoint_seconds": 30,
+  "checkpoint_max_bytes": 67108864,
+  "watchdog_timeout_ms": 2000,
+  "logging": {
+    "dir": "../../Diagnostics/Logs",
+    "min_level": "info",
+    "file_size_mb": 64,
+    "retention_days": 7,
+    "mailbox_capacity": 8192
+  },
+  "transport": {
+    "listen_address": "127.0.0.1",
+    "listen_port": 0,
+    "max_socket_tasks": 1024,
+    "max_admissions_per_second": 32,
+    "handshake_timeout_ms": 5000,
+    "write_timeout_ms": 5000,
+    "max_wire_text_bytes": 65536,
+    "world_change_parts": true,
+    "egress_slots": 16,
+    "unauthenticated_quota_bytes": 1024,
+    "idle_timeout_ms": 30000,
+    "voxel_quota_bytes": 65536
+  },
+  "host": {
+    "max_pending_admissions": 1024,
+    "max_pending_egress_per_connection": 8,
+    "max_pending_egress_connections": 1024,
+    "max_deferred_frames_per_connection": 64,
+    "max_deferred_frame_bytes_per_connection": 8388608,
+    "max_deferred_frame_connections": 1024,
+    "ingress_queue_per_connection": 32,
+    "max_pending_wire_inputs": 1024,
+    "max_inputs_per_tick": 32,
+    "max_pending_queries": 1024,
+    "reconnect_window_ms": 300000,
+    "owner_call_timeout_ms": 2000,
+    "owner_cold_start_timeout_ms": 30000,
+    "quiesce_timeout_ms": 3000,
+    "checkpoint_timeout_ms": 30000,
+    "pending_checkpoint_timeout_ms": 30000,
+    "final_checkpoint_timeout_ms": 30000,
+    "checkpoint_retention_generations": 3,
+    "cleanup_watchdog_join_timeout_ms": 1000
+  },
+  "voxel_catalog": "../../Assets/Maps/official-catalog.json"
+}

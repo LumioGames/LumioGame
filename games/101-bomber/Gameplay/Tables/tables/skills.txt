@@ -1,0 +1,36 @@
+table: skills
+schema: schemas/skills.json
+
+| id    | name         | slot    | is_combo | candy_weight | bomb_kind_code | removes_protection | trigger      | effect_key   | source_status                                                   | source_ref                                        |
+| ----- | ------------ | ------- | -------- | ------------ | -------------- | ------------------ | ------------ | ------------ | --------------------------------------------------------------- | ------------------------------------------------- |
+| 1     | regen        | Passive | false    | 0            | 0              | false              | OutOfCombat  | Regen        | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 2     | bubble       | Active  | false    | 1            | 0              | false              | Activate     | Bubble       | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 3     | blink        | Active  | false    | 1            | 0              | false              | Activate     | Teleport     | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 4     | fireAura     | Active  | false    | 1            | 0              | true               | Activate     | FireExposure | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 5     | kick         | Passive | false    | 1            | 0              | false              | MoveIntoBomb | Kick         | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 6     | freezeBomb   | Bomb    | false    | 2            | 1              | true               | PlaceBomb    | Freeze       | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 7     | pierceBomb   | Bomb    | false    | 2            | 3              | true               | PlaceBomb    | Pierce       | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 8     | fireDash     | Active  | true     | 0            | 0              | true               | Activate     | FireWall     | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 9     | bounceBubble | Active  | true     | 0            | 0              | false              | Activate     | BubbleKick   | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 10    | glacierBomb  | Bomb    | true     | 0            | 1              | true               | PlaceBomb    | FreezePierce | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 11    | toxinBomb    | Bomb    | false    | 2            | 5              | true               | PlaceBomb    | Toxin        | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 12    | shockBomb    | Bomb    | false    | 2            | 6              | true               | PlaceBomb    | Shock        | design                                                          | docs/specs/bomber/design.md#15                    |
+
+| 13    | flyKick      | Active  | false    | 0            | 0              | false              | Activate     | Kick         | design; balance unverified                                      | docs/specs/bomber/design.md#8; ADR-0047; ADR-0048 |
+
+| 40003 | fireBomb     | Bomb    | false    | 0            | 2              | true               | PlaceBomb    | FireResidue  | dormant design content pending producer/effect/budget migration | ADR-0047                                          |
+
+| 40004 | remoteBomb   | Bomb    | false    | 0            | 7              | true               | PlaceBomb    | Remote       | dormant design content pending producer/effect/budget migration | ADR-0047                                          |
+
+| 40005 | splitBomb    | Bomb    | false    | 0            | 4              | true               | PlaceBomb    | Split        | dormant design content pending producer/effect/budget migration | ADR-0047                                          |

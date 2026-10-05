@@ -1,0 +1,21 @@
+{
+  "contentFingerprint": "59d78b4f66975e11384991639b65f7019a409cc1a697304f3d949cf55685bf9b",
+  "rows": [
+    {
+      "barrel_roll_denominator": 32,
+      "chest_roll_denominator": 6,
+      "first_trigger_ms": 8000,
+      "id": 110001,
+      "interval_ms": 8000,
+      "max_mirror_orbits": 4,
+      "name": "default",
+      "source_ref": "ADR-0048",
+      "source_status": "inferred; author-only; unverified",
+      "stop_before_final_ms": 20000,
+      "target_initial_permille": 600,
+      "threat_distance_cells": 3
+    }
+  ],
+  "table": "regeneration",
+  "target": "C"
+}

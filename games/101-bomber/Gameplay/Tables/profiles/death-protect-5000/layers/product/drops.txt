@@ -1,0 +1,6 @@
+table: drops
+schema: schemas/drops.json
+
+| name | death_protection_ms |
+| --- | --- |
+| default | 5000 |

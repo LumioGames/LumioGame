@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Gameplay/">
+    <Project Path="Gameplay/Lumio.Bomber.Gameplay.csproj" />
+  </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="Tools/Lumio.Bomber.Gameplay.Tests/Lumio.Bomber.Gameplay.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,19 @@
+# Resume7 contact / finite Freeze independent review
+
+Verdict: PASS for this frozen Game delta. This is not final Platform/DS or whole-match acceptance.
+
+Reviewed exact 66-path patch SHA256 `46b423ced1524b69943976b825e36371f4c348e2882301bbc059114181dd0f41` in GTCG `.artifacts/resume-20261002/resume7-contact-freeze.patch`. All 66 replay file hashes independently matched `resume7-contact-freeze-proof.json`. Exact tested outputs independently matched every `resume7-binaries-proof.json` entry; no build of the author's mutable checkout was used.
+
+- Freeze 10108 and immunity 10109 use the formal finite owner rows. Server movement/bomb/skill guards query those rows; replicated Until fields are display/client projections. Dependent CanSettle binds the full admitted damage handle, row, life/generation, participant, match and same-Tick Ready surviving fact. Existing immunity prevents another Freeze. Death/expired-generation checks remain.
+- The damage request is held behind HitDependentsAdmitted; a capacity refusal of the required finite request rejects the whole contact. Rejected contact rows are removed for a retry only while the original Danger or already accepted terrain obligation permits it. Danger contacts enumerate all lives, retaining one full-life hit identity per bomb; no first-occupant omission or deadline extension was found.
+- Paired restore rebinds only matching instance/generation owner handles; result retirement matches complete handles. Same-Tick multiple hits, lethal paths, expiry/reapplication and no-damage profile have actual tests.
+- Settlement/outcome split retains final damage and successor correlation. Outcome MaxWrites215 is bounded by the existing exactly-eight ParticipantLimit; result360 and health2160/settlement3600 plus outcome215 stay within configured reducer6000. This does not authorize other participant budgets.
+- v8 adds two exact finite effect schemas and private correlation fields while retaining captured v7 bytes, all mandatory historical snapshots, exact retirement evidence and uint DamageGeneration. The independently required history list still drives complete compareHistory, not candidate references. Root's newer physical candidate resolver must be merged, not replaced by the older reader base.
+
+Independent actual execution in Root evidence `games/101-bomber/.run/20261002-client-session-integration/`:
+
+- `resume7-freeze-review-03.log/.exit`: 24 passed, 0 failed, 0 skipped, exit0, actual frozen test DLL + official a5fa Native. Classes: BomberFiniteFreezeTests, BomberDangerContactTests, BomberFreezeReplicaTests. Includes actual Native authority -> authenticated real WebSocket receipt -> authorized client compilation Freeze/immunity projection. This carrier is explicitly not the Server Host provider.
+- `resume7-schema-review-02.log/.exit`: 7 passed, 0 failed/skipped, exit0, from ten individually hash-verified narrow source/snapshot inputs materialized under `resume7-schema-review-source`. Includes complete historical comparisons and missing latest retirement rejection.
+- Preserved setup failures: native01 used xUnit CLI syntax against the MTP executable; native02 requested absent CTRF reporter; schema01 tried the intentionally sparse replay without its prior snapshot dependencies. No tests were skipped or assertions changed to fix these; correct executable options and hash-verified dependencies were used.
+
+Author's 646/646 complete Game and 385/385 Tools results were inspected as author evidence, not claimed as independent executions. Root must still rebuild integrated Resume7 with the actual published selector and run its full gates.

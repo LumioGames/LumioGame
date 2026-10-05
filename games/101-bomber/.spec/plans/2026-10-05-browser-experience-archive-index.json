@@ -1,0 +1,648 @@
+{
+  "releaseAcceptance": false,
+  "archivalOnly": true,
+  "checkouts": [
+    {
+      "name": "LumioClient",
+      "originalHead": "a6071a2a28c3cfda78400254654d6da1fef25b92",
+      "savedHead": "a6071a2a28c3cfda78400254654d6da1fef25b92",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient12Composition",
+      "originalHead": "38ead5ff3656b3b3fed8a0edbdbf07c34801cd2a",
+      "savedHead": "38ead5ff3656b3b3fed8a0edbdbf07c34801cd2a",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient13Composition",
+      "originalHead": "b9c2d415e09520c7946cc5eed8aec8a6c59244b1",
+      "savedHead": "b9c2d415e09520c7946cc5eed8aec8a6c59244b1",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient14Composition",
+      "originalHead": "862f3ed231bdd0d8b9f9e953291222b2e07a67f7",
+      "savedHead": "862f3ed231bdd0d8b9f9e953291222b2e07a67f7",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient15WasmMarshalTrimClosure",
+      "originalHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "savedHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient15WasmMarshalTrimCrLfCompositionAttempt01",
+      "originalHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "savedHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioClient15WasmMarshalTrimLfComposition",
+      "originalHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "savedHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClient16WorkingReadByteCodec",
+      "originalHead": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "savedHead": "c361151828b9b512bd6ab3826692c4bbbf288814",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioClientDiagEngine11",
+      "originalHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "savedHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "commonGitDir": "C:/Users/g923/LumioGames/LumioGameEngine/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClientDiagRuntime11",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClientSingleCellTraceRepair",
+      "originalHead": "862f3ed231bdd0d8b9f9e953291222b2e07a67f7",
+      "savedHead": "862f3ed231bdd0d8b9f9e953291222b2e07a67f7",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioClientSuccessorDiagnostic",
+      "originalHead": "a6071a2a28c3cfda78400254654d6da1fef25b92",
+      "savedHead": "223a843a2c1f65bafc39d71450dc61266d95f5a0",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioClientSuccessorRevisionRepair",
+      "originalHead": "38ead5ff3656b3b3fed8a0edbdbf07c34801cd2a",
+      "savedHead": "38ead5ff3656b3b3fed8a0edbdbf07c34801cd2a",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioClientWasmV2HeaderRepair",
+      "originalHead": "b9c2d415e09520c7946cc5eed8aec8a6c59244b1",
+      "savedHead": "b9c2d415e09520c7946cc5eed8aec8a6c59244b1",
+      "commonGitDir": "C:/Work/LumioGames/LumioClient/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameEngine11SdkClosure",
+      "originalHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "savedHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "commonGitDir": "C:/Users/g923/LumioGames/LumioGameEngine/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameEngine11SdkClosureLfComposition24",
+      "originalHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "savedHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "commonGitDir": "C:/Users/g923/LumioGames/LumioGameEngine/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameEngineOfflineObservationContract",
+      "originalHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "savedHead": "3443135bd35cc0e99c146a31add5c17be3f1869c",
+      "commonGitDir": "C:/Users/g923/LumioGames/LumioGameEngine/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameEngineSdkClosureRepair",
+      "originalHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "savedHead": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "commonGitDir": "C:/Users/g923/LumioGames/LumioGameEngine/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime",
+      "originalHead": "d8ae3da3793d5d95785606be319668a4318af85a",
+      "savedHead": "d8ae3da3793d5d95785606be319668a4318af85a",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime09Diagnostic",
+      "originalHead": "0053ea4d2b9b9743f2871156e725e13a842e0d6a",
+      "savedHead": "0053ea4d2b9b9743f2871156e725e13a842e0d6a",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime10Composition",
+      "originalHead": "8afdffdd6d5de3a6bde9ba4ec57c22d5549aa1d9",
+      "savedHead": "8afdffdd6d5de3a6bde9ba4ec57c22d5549aa1d9",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime11Composition",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime15AuthorityCaptureDiagnosticComposition",
+      "originalHead": "0247a914edfca401dd232e30fb250cfba9561986",
+      "savedHead": "0247a914edfca401dd232e30fb250cfba9561986",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime16SuccessorPublicationRetirementComposition",
+      "originalHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "savedHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime17TerminalPolicyComposition",
+      "originalHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "savedHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime17TerminalPolicyComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime17TerminalPolicyExactComposition",
+      "originalHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "savedHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime17TerminalPolicyExactComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime17TerminalPolicyLfComposition",
+      "originalHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "savedHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime17TerminalPolicyLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime18PublicationOrderingLfComposition",
+      "originalHead": "520c492644b750adb80f6cb45a5e3cdad93b88a0",
+      "savedHead": "520c492644b750adb80f6cb45a5e3cdad93b88a0",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime18PublicationOrderingLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime19TraceIndexCrlfFailed01",
+      "originalHead": "abc281a85a73bfb533c9a39b79f9f58c8600eff2",
+      "savedHead": "abc281a85a73bfb533c9a39b79f9f58c8600eff2",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexCrlfFailed01/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime19TraceIndexLfComposition",
+      "originalHead": "abc281a85a73bfb533c9a39b79f9f58c8600eff2",
+      "savedHead": "abc281a85a73bfb533c9a39b79f9f58c8600eff2",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime20TransformTypedCaptureLfComposition",
+      "originalHead": "40f098c3865be3310527fe3c9d70b160cb1bb4d3",
+      "savedHead": "40f098c3865be3310527fe3c9d70b160cb1bb4d3",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime21AdmissionCaptureRepair",
+      "originalHead": "23687bb147d99f0640a894aa854eb64cc57bbc74",
+      "savedHead": "23687bb147d99f0640a894aa854eb64cc57bbc74",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime21AdmissionCaptureRepairLfComposition",
+      "originalHead": "23687bb147d99f0640a894aa854eb64cc57bbc74",
+      "savedHead": "23687bb147d99f0640a894aa854eb64cc57bbc74",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime22SelectivePhaseDiagnosticLfComposition",
+      "originalHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "savedHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime23ReducerValidationDenseControl",
+      "originalHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "savedHead": "925c98ef7d0fdbb2c2cb5aa1ffede0ea5fe75646",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime23ReducerValidationFastPath",
+      "originalHead": "928a19b81b7b7718e001946954520438556b625a",
+      "savedHead": "928a19b81b7b7718e001946954520438556b625a",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime23ReducerValidationLfComposition",
+      "originalHead": "928a19b81b7b7718e001946954520438556b625a",
+      "savedHead": "928a19b81b7b7718e001946954520438556b625a",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime23RefreshAllocationDiagnostic",
+      "originalHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "savedHead": "3fb12c12953f6911b42805d6171d499fe2a4c056",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntime23TransformMetadataMembership",
+      "originalHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "savedHead": "7b30c5cff1d3179efed417a54ef3246cb9ab528c",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime24EffectJsonAotClosure",
+      "originalHead": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "savedHead": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime24EffectJsonAotLfComposition",
+      "originalHead": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "savedHead": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntime25OfflineDeath",
+      "originalHead": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "savedHead": "41405896c7409d0c9ed4db8333b0ba721bc89191",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeAuthorityCaptureBaseline",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeAuthorityCaptureDiagnostic",
+      "originalHead": "0247a914edfca401dd232e30fb250cfba9561986",
+      "savedHead": "0247a914edfca401dd232e30fb250cfba9561986",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeControlledReadmissionDeath",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "53f375e8fefee40817b4d949759bf59dd65363fa",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeDiagnostic",
+      "originalHead": "0053ea4d2b9b9743f2871156e725e13a842e0d6a",
+      "savedHead": "0053ea4d2b9b9743f2871156e725e13a842e0d6a",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeGasTraceObservationIndex",
+      "originalHead": "abc281a85a73bfb533c9a39b79f9f58c8600eff2",
+      "savedHead": "445bf0dae463e11dc21abc4e58eac8fb9b214593",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime18PublicationOrderingLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeObserverReconnect",
+      "originalHead": "8afdffdd6d5de3a6bde9ba4ec57c22d5549aa1d9",
+      "savedHead": "d5007cbec74da8554c26ceaaf131b130df6b100b",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeOfflineDeath",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "2f92de6d95eb5cdaca64d455a772e9bc41cf5368",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeOfflineDeathRedExact",
+      "originalHead": "520ffe482e1c48fb6e48187925eecec986cdb9c8",
+      "savedHead": "848e3b9cfe650874675ff077789f8ed0f54ff7a8",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeReattachPublicationOrderingRepair",
+      "originalHead": "520c492644b750adb80f6cb45a5e3cdad93b88a0",
+      "savedHead": "520c492644b750adb80f6cb45a5e3cdad93b88a0",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeScratchCapture",
+      "originalHead": "dd6182cf77f269c4b8b71802dcb439a516c23e38",
+      "savedHead": "dd6182cf77f269c4b8b71802dcb439a516c23e38",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeSdkClosureProbe",
+      "originalHead": "8afdffdd6d5de3a6bde9ba4ec57c22d5549aa1d9",
+      "savedHead": "8afdffdd6d5de3a6bde9ba4ec57c22d5549aa1d9",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeSelectiveRebuildPhaseDiagnostic",
+      "originalHead": "4d519e6272f92e604e1e73bb33b69f3650f89906",
+      "savedHead": "5317da6c6b2efa8bfdc33d429a43f2fbe7bdf599",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeSuccessorPublicationRetirement",
+      "originalHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "savedHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeTerminalObserve",
+      "originalHead": "810eb18c07d88e95bdd9d4fe1a5eb7754b6df98c",
+      "savedHead": "810eb18c07d88e95bdd9d4fe1a5eb7754b6df98c",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeTerminalPolicyReattach",
+      "originalHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "savedHead": "cec7d322fb3b86ea641629e78f292b3eda357b49",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeTerminalPolicyReattachRepair",
+      "originalHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "savedHead": "b4f7d78f599262e5ab9556850ff7fa37e4f6811f",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioGameRuntimeTerminalPolicyReattachRepairRedV2",
+      "originalHead": "da24b0d6a401adbcb2c1cbcda8464fcac6287d66",
+      "savedHead": "942e7891b2fb03ae41b3310836cb4b173cd4e44a",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeTransformCapture",
+      "originalHead": "cc1f909489ff9ee484df7728e9222447d594bbbf",
+      "savedHead": "cc1f909489ff9ee484df7728e9222447d594bbbf",
+      "commonGitDir": "C:/Work/LumioGames/LumioGameRuntime/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioGameRuntimeTransformTypedCapture20",
+      "originalHead": "40f098c3865be3310527fe3c9d70b160cb1bb4d3",
+      "savedHead": "359033a33490c2f8aebd63bf6a6c3206f51b327e",
+      "commonGitDir": "C:/Work/LumioGames/.101-pack07/LumioGameRuntime19TraceIndexLfComposition/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioNativeCore",
+      "originalHead": "81b2501a621db2657bd087db2afa808ecfb9e846",
+      "savedHead": "81b2501a621db2657bd087db2afa808ecfb9e846",
+      "commonGitDir": "C:/Work/LumioGames/LumioNativeCore/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServer",
+      "originalHead": "448c90b57fa2e071a224b58b0ef1acfb4189a355",
+      "savedHead": "448c90b57fa2e071a224b58b0ef1acfb4189a355",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServer08",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServer10Diagnostic",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "38575f5bab16d6e2776d134375f2cdbc03062957",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServer11PreparedReentry",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServer12OfflineDeath",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "11cdb390498c0315fc36dafe91b9a90394eb9683",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerHoldDiagnostic",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "1f6604e766a01e29fdad46a5e3f21deb8f411cf2",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerInitialObserveTrace",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "6a36983c6aed5654941c658e74d2a8c8f5643a6b",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerOfflineDeath",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "952548e6a4d84b9e603f9b57688ceb6c2471379f",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerOfflineDeathExactRed",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "342cfbaa6e2849fcf78c0d76c63af2fd38707b78",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerPreparedExactRed",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "6485e61e8986a733fafd1d6249b16bd3f880866b",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerPreparedReentry",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServerSuccessorPublicationRetirement",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "d57b933f2ac9dce442fc3bd8325f55c989ef4f0d",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioServerTerminalCandidateVerify",
+      "originalHead": "15418fc104a97fc30f7de45fd0f0c7c93309777c",
+      "savedHead": "659522619a033221059009fb6661a3c0e4ccc479",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": true
+    },
+    {
+      "name": "LumioServerTwoLifeReentry",
+      "originalHead": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "savedHead": "0e3d4c0f1bcddc08c7a646dbc54baf1271d889c4",
+      "commonGitDir": "C:/Work/LumioGames/LumioServer/.git",
+      "draftOrDiagnostic": false
+    },
+    {
+      "name": "LumioVoxelEngine",
+      "originalHead": "2ba61e431d8080ff6450a07e6ee447e3f0994e0b",
+      "savedHead": "2ba61e431d8080ff6450a07e6ee447e3f0994e0b",
+      "commonGitDir": "C:/Work/LumioGames/LumioVoxelEngine/.git",
+      "draftOrDiagnostic": false
+    }
+  ],
+  "notesPrefix": "refs/notes/101-bomber-handoff-20261005-closeout01/",
+  "parentRef": "refs/notes/101-bomber-handoff-20261005-closeout01/game-workspace",
+  "inheritedEngine": {
+    "originalBranch": "candidate/101-uint",
+    "verified": true,
+    "schema": "101-inherited-engine-archive-v1",
+    "officialComplete24Unchanged": true,
+    "remote": "702f9d903e4a6ee78e8d9c4cb06408599c6a19c8\trefs/notes/101-bomber-handoff-20261005-closeout01/inherited-engine-snapshot",
+    "repositoryUrl": "https://github.com/LumioGames/LumioEngineRelease.git",
+    "snapshot": "702f9d903e4a6ee78e8d9c4cb06408599c6a19c8",
+    "releaseApproved": false,
+    "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/inherited-engine-snapshot.bundle",
+    "oldHead": "7e798301f0d1fda4c646dd18b16cb1dc608a0c9d",
+    "byteBackup": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/preserved/engine-dirty-bytes",
+    "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/inherited-engine-snapshot"
+  },
+  "schema": "101-public-closeout-archive-index-v1",
+  "groups": [
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameEngine.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-01-lumioclientdiagengine11",
+      "archiveCommit": "662baab78f791558bb86c4f5d174fcc4f011639a",
+      "checkoutCount": 5,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-01-lumioclientdiagengine11.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-02-lumiogameruntime17terminalpolicycomposition",
+      "archiveCommit": "669a28c5910917d31e96050c3497d38a166d4d1f",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-02-lumiogameruntime17terminalpolicycomposition.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-03-lumiogameruntime17terminalpolicyexactcomposition",
+      "archiveCommit": "4e0d67b88322eabd999a1959320f30dfd96b198e",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-03-lumiogameruntime17terminalpolicyexactcomposition.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-04-lumiogameruntime17terminalpolicylfcomposition",
+      "archiveCommit": "0a417a79c59e3122e65b1c9be0091e8b6bd7e49d",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-04-lumiogameruntime17terminalpolicylfcomposition.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-05-lumiogameruntime18publicationorderinglfcomposition",
+      "archiveCommit": "b03ed97273e98afe5b9eb8cbc8b2a01c5a7b7af7",
+      "checkoutCount": 2,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-05-lumiogameruntime18publicationorderinglfcomposition.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-06-lumiogameruntime19traceindexcrlffailed01",
+      "archiveCommit": "e5f3042872a07ba54a4ab488d69559fa352a7df3",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-06-lumiogameruntime19traceindexcrlffailed01.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-07-lumiogameruntime19traceindexlfcomposition",
+      "archiveCommit": "2b37ca8f615ebd75476dbcf0d6dd44a583b8a3d4",
+      "checkoutCount": 15,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-07-lumiogameruntime19traceindexlfcomposition.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioClient.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-08-lumioclient",
+      "archiveCommit": "a72d9ddf2b2b543556e3ddc1764cb412d6fc1b1b",
+      "checkoutCount": 12,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-08-lumioclient.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-09-lumioclientdiagruntime11",
+      "archiveCommit": "f6364961affb07a391ab119d663864b31b2b99eb",
+      "checkoutCount": 23,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-09-lumioclientdiagruntime11.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioNativeCore.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-10-lumionativecore",
+      "archiveCommit": "cc24a21df3732d98684b1486a6c39b6c61804d60",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-10-lumionativecore.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioServer.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-11-lumioserver",
+      "archiveCommit": "8b4fc473df11f7ceb21258987ee615baf96f8367",
+      "checkoutCount": 14,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-11-lumioserver.bundle"
+    },
+    {
+      "repositoryUrl": "https://github.com/LumioGames/LumioVoxelEngine.git",
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout01/group-12-lumiovoxelengine",
+      "archiveCommit": "658f71d658a6f1b66e350aca9450205034c2ad47",
+      "checkoutCount": 1,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-final-handoff-01/bundles/group-12-lumiovoxelengine.bundle"
+    }
+  ]
+}

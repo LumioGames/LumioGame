@@ -1,0 +1,6 @@
+table: movement
+schema: schemas/movement.json
+
+| name | place_buffer_ms |
+| --- | --- |
+| default | 100 |
