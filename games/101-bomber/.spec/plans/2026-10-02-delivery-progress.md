@@ -10,6 +10,12 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint53,Publish增量表现键全链路:复审ACCEPT→complete27六阶段raw0→Game29→scene29实测 p50 5.5ms/Hz 9.7/max 161ms,十轮 7/10 双侧可玩（2026-10-06 2:0x +08）
+
+Publish 阶段全世界表现键遍历(97实体~215KB/组,inbound_queue_full断连链)在所属仓修复:World 缓存每实体 key+脏集,只对写入choke(OnLocalWrite/OnContainerWrite双分支/MarkTransformChange双分支/ReducerScalar/AddReducerContainer/SetSilent)、Attach全部实体、Detach、WriteStructure/ProjectStructure、ProjectPendingCommands、refresh拷贝循环标记过的实体重推导;逐key计费精确等价。门测:无变化组≤4次重推导(实测1)vs 全量97;一字段组≤5(实测2)。三套件基线(Gas 948:943仅5环境;ECS仅预存generator-pipeline;Coordination 202绿)。独立复审-02 ACCEPT(16/16 checks,2P2键别名/多源break为当前无触发形态的潜在项,3P3)。complete27 官方整包六阶段 raw0(manifest 0a5a4636,Runtime a5907448 唯一delta);Game29普通835+严格AOT 376 raw0;scene29(新账号g/h)SERVING。
+
+**浏览器实测三代进程**:tick p50 11-12ms(Game26)→6.0-6.1(Game28)→**5.5ms**(Game29);有效Hz 7-8.3→~6.1→**9.7**;max长帧 892→770→**161ms**。15秒双移动窗口无断连;放弹落权威(双端见爆);重连+重进通过。十次真实关闭/新开:A侧10/10可操控,B侧7/10(第5-7轮HUD渲染但控件禁用=已在scene28记录的ADR142未决死亡/继任链重进挂起,非本引擎回归)。剩余:~1Hz周期停顿p95~105-111ms仍存、组合活动下inbound_queue_full仍可触发(频率降低)、B侧重进挂起待Owner裁定ADR142。全部证据:.run/live-ordinary29-root-01/ten-close-reopen.json、live-private-29-root-01/{measurement-summary,bilateral-bomb-verification}.json。goal ACTIVE;其余交付门保留。
+
 ### 真机体验优先交接：checkpoint52补充,scene28 restart-02 亦遭第六次死亡fatal(tick21084),证据保全现场清理（2026-10-06 1:5x +08）
 
 restart-02 在双向窗口+断连证据+十轮尝试之后同样死于 "Death structure intent" fatal(tick21084,DS exit、watchdog、六Bot退出):fault 日志 SHA 保全于 live-ordinary28-root-02/hostentry_fault.log.scene28r02-preserved(receipt occurrence=6);运行时副本恢复306;aux 18105 精确停止,全部浏览器页已关,18101/18105/18331 空闲,受保护端口14监听未动。至此六份现场死亡证据齐备(11:52Z/12:28Z/13:49Z/14:32Z/tick10341/tick21084),全部先于/后于测量的封存边界清晰,供 ADR142 Owner 裁定。本轮全部结论(增量刷新 p50 砍半、inbound_queue_full 断连链、十轮不可玩挂起)不受影响。goal ACTIVE。
