@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint57补充,唯一标签对照:自动化会话内IAB窗格可见性不可控(仅存A页仍raf=0/hz3.33)——Hz与停顿周期在本环境不可测,真实体验验收须用户可见浏览器（2026-10-06 4:2x +08）
+
+对照实验封死结论:关闭B仅存A页,15秒右移窗口 raf 仍为0、hz 3.33、环值与前一窗完全相同——**rAF由宿主IAB窗格可见性决定,标签级前台操作无法恢复**;自动化会话中窗格对用户不可见,全部Hz/停顿间隔数字(含历史18.56Hz与scene29的9.7Hz)都受窗格可见性上界约束,不构成用户体验结论。**有效指标仅:每tick托管工作p50 5.4-5.7ms、追赶max~640ms、native边界0.4-20ms/组、稳态零undo(离线门)**;真实浏览器的Hz/停顿/断连相关验收只能在用户自己的可见浏览器中执行——这是验收环境边界,非代码缺陷。runtime28废止维持;complete28未启动(无Runtime修复可消费,不造作修复)。九份fatal证据链与其余交付门保持。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint57,决定性发现:残余~1Hz停顿主要是"后台标签页rAF饥饿"测量伪影——隐藏页整窗raf=0、停顿前间隔850-960ms;前台残余p50 5.4/p95 87.6远小于此前口径,runtime28目标废止（2026-10-06 4:1x +08）
 
 scene32(m/n新账号)SERVING+私有测量UI 18105,双移动窗口采集:**被隐藏的A页整个窗口 raf=0/visible=0,8个连续停顿tick(569-577)前都有850-960ms调度间隔,tick本体仅~100ms追赶工作(native仅7-20ms)**;同页安静12秒监听 rAF 回调为**零**——IAB单前台制下隐藏页 rAF 被节流,泵被饿死。**结论:此前归档的"停顿tick内native突发18×"(runtime28)主要是追赶伪影,不是Runtime路径成本;双标签同窗采样对隐藏侧系统性地失真。**前台侧(B)残余:p50 5.4ms/p95 87.6ms/max 135.8ms/17长任务——真实但远小,归因须前台钉住采样,首选候选=游戏仓客户端UI(applyDump/DOM重建),不在Runtime仓。runtime28-residual-stall-target **废止**(handoff v3);稳态undo门(1222ff6f)保留为回归守卫。测量纪律修正:今后移动采样必须前台钉住或仅读前台页。证据 live-private-32-root-01/{stall-attribution,dual-move-01-cutA/B}.json(SHA)。**无Runtime侧RED门存在——未盲目实施publication-version门控**;complete28链路未启动(无修复可消费)。fatal证据链(九份封顶)与其余交付门保持。goal ACTIVE。
