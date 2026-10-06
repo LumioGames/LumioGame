@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充7,os-error-5第八击(gen60),停止盲目重开循环——机器级退化(空闲RAM 2.0-2.7/16GB,间隔坍缩至分钟级),验收在此状态下不可能;等待用户重启/释放内存/Defender排除（2026-10-06 7:0x +08）
+
+restart-09(g/h)gen60 第八次 os-error-5(记录+SHA保全)。八击序列 gen12/37/213/327/22/startup/224/60,间隔坍缩;死亡时空闲RAM均 2.0-2.7GB/16GB。**决定:停止重开循环**——世界分钟级死亡使十轮验收在任何新世界上都不可完成;继续重开只是重复失败。现场已清理(18101/18331空闲,受保护端口14监听未动)。**等待用户机器级处理**:重启电脑 / 关闭大内存应用 / 给 .run 加 Defender 排除;完成后用户说"重开"即重建。死亡链(ADR142,11次)与os-error-5(8次)两个缺陷均已保全完整证据;Owner裁定与用户验收继续等待。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充6,os-error-5第六击(DS_READY后即死)+一次行政绑定失败,restart-08(e/f)SERVING;外部复现2000/2000通过=DS进程特有;建议用户Defender排除或重启（2026-10-06 6:4x +08）
 
 restart-07(c/d)在 DS_READY 后约2分钟即死于第六次 os-error-5;一次行政性失败(rebind脚本静默失败导致账号前缀断言)已修正为脚本文件方式。**外部复现**:同一 .run 树下 2000 次检查点样式写+删全部成功——失败是 DS 进程特有(当时空闲RAM 2.7GB,node/bash 20进程)。restart-08(e/f)SERVING,指引含明确建议:**若再快速死亡,请用户给 C:/Work/LumioGames/LumioGame/.run 加 Defender 排除或重启机器**,然后要求重开。goal ACTIVE。
