@@ -1582,3 +1582,17 @@ restart-09（complete27拷贝，无诊断）于约11:51 +08在generation 60发�
 **Scene30现场（首次complete28验收现场）**：6 Bot准入+2玩家账号预留成功，DS从complete28-runtime-copy启动（cmdline与二进制SHA 71486a5b核验），DS_READY后检查点持续推进。玩家URL：`http://127.0.0.1:18101/play/?player=A`与`?player=B`，证据目录`.run/live-acceptance-613040`。**complete28的checkpoint_io八阶段诊断首次在现场存活**：任何os-error-5复发将直接打印阶段/路径/generation/errno，转化为根因证据。现场切换由本主协调者按用户"自己处理"指令执行；protected端口未再触碰。
 
 前台体验证据、ADR142 Owner裁定、18085发布身份、生产schema采用继续OPEN。os-error-5根因（现为第8次后带诊断监控中）与死亡链ADR142（Draft，不自动启用）保持待裁定。goal按用户指令继续自主推进。
+
+
+### 交付接续：checkpoint78，os-error-5根因证据落地并完成RED→最小修复→GREEN：rename有界重试250ee41已推送，独审进行中（2026-10-06 15:2x +08）
+
+**Scene30第9次发生提供决定性归因**：[第9次封存](../../../../.run/20261006-os-error5-ninth-01/receipt.json)带complete28诊断原文——`checkpoint_io operation=rename generation=65`，draft三件完整、目标不存在、失败精确落在draft→published的rename调用。同时现场证据否证低内存直接因果：gen47时空闲RAM 1.6GB存活（低于既往死亡带2.0-2.7GB），死亡时2.2GB。九次现场形态一致：完整draft+无目标+rename被拒——唯一自洽解释是外部瞬时句柄（扫描/索引类软件对刚写入的draft持有无删除共享句柄）。
+
+**Server仓RED→最小修复→GREEN**（worktree `LumioServer12CheckpointIoDiagnostics`，分支codex/101-checkpoint-io-diagnostics）：
+- RED：新回归 `publish_survives_transient_external_handle_on_draft`（Windows-only）——watcher等runtime.bin出现后以CreateFileW无FILE_SHARE_DELETE持有draft目录400ms，现实现rename立即失败（真实断言失败CheckpointIoError共享冲突，非构建错误）。
+- 最小修复 `rename_publishing`：仅当 `PermissionDenied`(os 5) 或 raw 32（共享冲突）且目标不存在时，有界重试6次、50ms指数退避（总阻塞上界~1.55s）；其余一切失败立即走原fatal路径（poisoned+DS_FATAL+完整CheckpointIoError上下文）。成功路径语义零改动（成功后仍执行root sync）；不重写draft、不吞错、不改判定。
+- GREEN：聚焦回归通过；Storage全量28/28、ds 62+30+2（2为既有ADR-113 ignore）、fmt/clippy -D warnings全清洁。
+- 提交 **250ee41c95786d3c069d3ba35e17ff62fccf33e0** 已推送并ls-remote读回一致。[修复报告与原始收据](../../../../.run/20261006-checkpoint-rename-retry-fix-01/report.json)。windows-sys仅cfg(windows) dev-dep，feature最小集。
+- 独立审查已派发进行中；官方整包重打包（complete29序列）与现场验证待独审后执行。
+
+Scene30现场已于第9次后退出（launcher waitForAcceptance随DS fatal退出，端口释放）。ADR142仍Draft/Owner Pending不自动启用；18085/生产schema裁定不变。用户前台验收材料仍未收到。
