@@ -1596,3 +1596,15 @@ restart-09（complete27拷贝，无诊断）于约11:51 +08在generation 60发�
 - 独立审查已派发进行中；官方整包重打包（complete29序列）与现场验证待独审后执行。
 
 Scene30现场已于第9次后退出（launcher waitForAcceptance随DS fatal退出，端口释放）。ADR142仍Draft/Owner Pending不自动启用；18085/生产schema裁定不变。用户前台验收材料仍未收到。
+
+### 交付接续：checkpoint79，独审ACCEPT后complete29官方整包+Game31消费构建+Scene31现场启动：重试修复二进制已在线服务且检查点正常发布（2026-10-06 16:1x +08）
+
+**独审通过**：[独立审查result](../../../../.run/20261006-checkpoint-rename-retry-fix-01/independent-review/result.json) `sourceVerdict=ACCEPT`（head 250ee41）——语义不变、无吞错、6次/1.55s上界、仅单一rename调用点受限重试，F1/F2均为info级记录在案。
+
+**complete29官方整包**（delivery-02）：八仓sources（Server=250ee41，其余同28）pack exit 0、verify exit 0、305载荷零失配，manifest SHA `4e193c1d09eaea56119e431db63e40ea406cb64ee8b0416ab4e57d8c9d6c2109`，platformImage `…@sha256:b9caec91…`（重启后平台栈，与28的b3311ee0不同属正常）。root-acceptance签发`ACCEPT_COMPLETE29_OFFICIAL_PACKAGE_FOR_NORMAL_GAME31_CONSUMPTION_AND_SEPARATE_STRICT_HOST_AOT_ATTEMPT`（含嵌套manifest别名；wasm bg pin `14616a52…`勘误后定稿）。
+
+**Game31消费构建**：release-fence/read-ui-approval全gate过，四阶段（server/client/browser/publish-browser）raw0，`ORDINARY_GAME31_UI_NORMAL_PUBLISH_ENGINE29_ONLY`绑定4e1931cd级manifest；strict AOT publish另行raw0（376成员wwwroot，execution.json存证）。构建期MSB1009（Client csproj不存在）按Game30真实结构改为三侧循环修复；"Preserve prior attempt"残留以完整rm重置后重跑。
+
+**Scene31现场**（`browser-experience-scene31-source-preparation-01`）：守卫链全绿（835文件bundle、306 runtime copy零失配、DS config指向Game31 server DLL sha `81b8515a…`、AOT载体376、账号八枚全新PlayScene31Oct06a*且与176历史名零重叠）。启动：6Bot入场PASS、DS=complete29 lumio-ds.exe（hash与包manifest逐字节一致，PID 21112@18331）、玩家页200（player=A/B）。**检查点已正常发布**（gen2/3/4落盘、无draft残留、DS_READY零告警）——重试修复二进制在线表现正常。现场证据`.run/live-acceptance-3116030/`，[用户验收指引](../../../../.run/live-acceptance-3116030/user-acceptance-guide.json)已写入。
+
+待办不变：用户前台十轮关闭/重开+整浏览器退出证据、Defender核查、ADR142 Owner裁定（保持Draft）、18085发布身份/生产schema采用裁定；以上未闭合前交付不标complete。若os-error-5第10次发生，本现场将直接给出重试后存活或耗尽后完整上下文，二者均为决定性证据。
