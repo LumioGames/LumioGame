@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充6,os-error-5第六击(DS_READY后即死)+一次行政绑定失败,restart-08(e/f)SERVING;外部复现2000/2000通过=DS进程特有;建议用户Defender排除或重启（2026-10-06 6:4x +08）
+
+restart-07(c/d)在 DS_READY 后约2分钟即死于第六次 os-error-5;一次行政性失败(rebind脚本静默失败导致账号前缀断言)已修正为脚本文件方式。**外部复现**:同一 .run 树下 2000 次检查点样式写+删全部成功——失败是 DS 进程特有(当时空闲RAM 2.7GB,node/bash 20进程)。restart-08(e/f)SERVING,指引含明确建议:**若再快速死亡,请用户给 C:/Work/LumioGames/LumioGame/.run 加 Defender 排除或重启机器**,然后要求重开。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充5,restart-05 死于死亡链第11次(tick18488,用户验收会话中),restart-06(y/z)已重建 SERVING 供用户继续（2026-10-06 6:1x +08）
 
 restart-05(w/x)在用户前台验收进行中死于死亡结构链 fatal(tick18488)——**与此前四次 os-error-5 不同型**,按封顶纪律一行登记(receipt chainOccurrence=11,SHA 保全于 live-ordinary33-root-05)。fault 后现场立即清理,_restart-06(y/z 新账号)同基线重建 **SERVING**,验收指引迁移至 live-ordinary33-root-06 并注明"页面变 failed 是已知 ADR142 未决缺陷,非用户操作问题,重开页面重进即可继续"。用户验收继续;Owner 三项裁定(ADR142、18085、schema15)与 Defender 排除决定继续等待。goal ACTIVE。
@@ -1278,3 +1282,30 @@ Root完成本Scene18第1～6轮真实关闭/新页，入口检查均两玩家act
 
 
 
+
+### 真机体验优先交接：checkpoint59,接手只读复审完成；新增缓存寿命P2、校正严格pins与收据边界，正式门保持OPEN（2026-10-06 09:14 +08）
+
+按用户指定顺序读取父仓/101入口、知识导航、checkpoint43至58补充4及原始handoff后完成只读源码/证据复审。封件：[Root裁决](../../../../../.run/20261006-delivery-takeover-review-01/root-review.json)、[证据恢复入口](../../../../../.run/20261006-delivery-takeover-review-01/handoff.json)。Client c3611518与Runtime 1222ff6f均核对远端分支头；候选4+16文件与提交一致，Runtime原有48件生成物dirty逐字归一化后均仅行尾差异，未修改/还原。无生产改动、构建、测试套件重跑、浏览器操作、停服务或换DLL；未启动complete28。
+
+**源码裁决**：Client16保留（原68/68、strict publish/执行raw0、源码/日志/产物SHA实核）；增量刷新七通道、双集空间守卫、实际写入见证、兄弟序与首刷兜底未发现本轮新增101 P1；四处测试调整属于全量拷贝副作用的再定基，额度/协议/唯一权威World/模拟频率未改，但宽计数与“subset”实际只检查次数上界的P3边界保留。发布键原有共享key删除/多source首项break两P2继续OPEN；**新增P2：非预测Server/confirmed World无条件累积presentation dirty历史ID，却无对应消费清理**，已独审确认（[报告](../../../../../.run/20261006-delivery-takeover-review-01/schema15-independent-review/runtime-cache-lifetime-review.json)）。受MaxCounterBudget寿命上限约束，未证明OOM/当前卡顿或fatal因果；未夸大为P1，行为RED尚未执行，不造作修复。
+
+**测试口径纠正**：GAS刷新948/943/5、发布949/944/5、稳态门后950/945/5（门单测1/1）；五失败为四个缺test-support native＋一个预存StructuralScratch字节断言12706/12070（纯净基线947/942/5同败），不能统称“五环境”或全绿。ECS 610/609/1为既有generator环境失败，Coordination 204/202/2跳过。1222ff6f只加GREEN回归门，complete27消费的是a5907448，未把该测试称性能修复。
+
+**产物与可重放边界**：complete25/26/27各305项，合计915项实际SHA全匹配，PE/域字节和manifest均匹配。Game27/28/29各4090冻结源＋UI构成4092输入，普通835与严格AOT376文件；普通四阶段/严格AOT原raw0和日志SHA实核。Root与独审首次checker误把sourceInputManifestSha256对向构建前清单，已保留原结果并以correction02改对实际producer的input-manifest.json，全部吻合，不是产品RED。complete25/26六阶段原数值退出收据实核；complete27可定位pack/verify/ctor数值0及audit/PE/domain成功结构报告，未定位后三项独立数值退出收据，不追认未见的原raw。今日只读重放旧审批脚本：25 raw0，26 raw1（绑定的candidate-handoff已由旧SHA变v10），27 raw1（硬钉远端头a590，但分支已正常前进1222）；**历史包字节有效不等于旧helper今天可重放**，旧封件及hash不修改。
+
+**schema独审纠正**：[最终独审79/79](../../../../../.run/20261006-delivery-takeover-review-01/schema15-independent-review/result-correction02.json)。BomberPlayObservation.cs与replica-adapter.test.ts当前已精确匹配各自正式pins及独审。V15严格门实际被其他13项阻断：11项属已独审schema16闭包，2项属Game21移动/Game25 sourcegen有限源资格；52件生成物仍精确匹配final122。当前产品是schema16，V16仍有7项作者源差异与包身份缺口；不能换两hash或更新历史V15来认证当前组合，完整schema门保持OPEN。
+
+用户前台移动/放弹/单序列十轮/整浏览器退出结果尚未收到；未以IAB Hz、构建或SERVING关闭任何体验门。Defender排除决定未收到、未自行施加；ADR142仍Draft/Owner Pending；公开18085发布身份仍待Owner，未改签或发布。goal ACTIVE，全部其余正式门沿用OPEN。
+
+checkpoint59现场补充（同链第11次，仅一行登记）：restart-05于2026-10-06 09:05:22 +08自行出现Death structure intent fatal（gameplay tick18488/host18489，最后checkpoint gen30），verification转FAIL、18101/18331自行退出；[只读保全收据](../../../../../.run/20261006-delivery-takeover-review-01/scene33-occurrence11/receipt.json)已绑定日志SHA，14受保护监听未变；未重启/关页/手动停服务，非os-error-5，未将故障前未报告的人类操作判通过或失败。
+
+
+### 真机体验优先交接：checkpoint60,os-error-5第五次的只读取证；五份完整草稿将疑点缩至manifest尾段/目录发布，Defender决定与验收门仍OPEN（2026-10-06 09:21 +08）
+
+接续时只读发现已有restart-06（y/z账号，非本会话发起）于09:06:13启动，09:17:49.491 +08被process_supervisor封为ds_fatal，最后成功generation22、遗留待发布generation23.draft（快照tick13796，最后Host committed13797，随后abort13798）；DS原始输出为拒绝访问(os error 5)，退出code2，verification FAIL，零死亡结构标记。这是第五次os-error-5，不计死亡结构第12次。**时序口径修正：checkpoint59及其handoff的FAIL_SELF_EXITED状态只适用于restart-05，不能用它代表09:06–09:17期间已另起的restart-06；旧记录不改。** 当前只读端口快照18101/18105/18331均无监听，14条受保护监听仍为原PID46248。本会话未重启、关页或停止任何进程。
+
+[新封件](../../../../../.run/20261006-delivery-takeover-followup-01/os-error5-fifth-receipt.json)复制保全28件restart-06日志/验证/三代已发布及一代草稿，逐件SHA绑定；[五次草稿横向核验](../../../../../.run/20261006-delivery-takeover-followup-01/five-occurrence-comparison.json)确认此前gen12/37/213/327实际是最后成功代，失败待发布草稿为13/38/214/328，本次为23。五份均有完整manifest与Runtime/Voxel payload，实际长度和SHA全吻合，各自对应已发布目录不存在。
+
+Server冻结源00886107（clean，与complete27身份一致）Storage/src/lib.rs:489–496依次写Runtime、Voxel、manifest，再同步目录、rename发布；snapshot_only的目录同步为空操作。证据把疑点缩到manifest写入/同步至目录rename的尾段，**不能仅凭完整文件判定fsync成功或精确认定rename失败**。Application/ds/src/main.rs:1041仍只把裸IO错误转字符串，没有阶段/路径/generation上下文。此为后续错误归因RED的明确切口，不是已复现的系统调用根因；未写重试或诊断补丁、未构建测试。
+
+本次启动器的Defender诊断仍为no-related-events，不证明也不排除扫描/文件争用；没有收到用户排除决定，故不记作“排除后仍复发”，未改系统设置或发起复测。用户前台移动/放弹/十轮/整浏览器结果仍未收到，检查指引所指root-01与当前root-06未见用户截图/笔记，不推断其他位置不存在。所有体验门、ADR142 Owner、18085发布身份及完整schema16资格继续OPEN；goal ACTIVE。
