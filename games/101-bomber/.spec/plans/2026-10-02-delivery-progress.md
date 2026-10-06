@@ -1608,3 +1608,9 @@ Scene30现场已于第9次后退出（launcher waitForAcceptance随DS fatal退�
 **Scene31现场**（`browser-experience-scene31-source-preparation-01`）：守卫链全绿（835文件bundle、306 runtime copy零失配、DS config指向Game31 server DLL sha `81b8515a…`、AOT载体376、账号八枚全新PlayScene31Oct06a*且与176历史名零重叠）。启动：6Bot入场PASS、DS=complete29 lumio-ds.exe（hash与包manifest逐字节一致，PID 21112@18331）、玩家页200（player=A/B）。**检查点已正常发布**（gen2/3/4落盘、无draft残留、DS_READY零告警）——重试修复二进制在线表现正常。现场证据`.run/live-acceptance-3116030/`，[用户验收指引](../../../../.run/live-acceptance-3116030/user-acceptance-guide.json)已写入。
 
 待办不变：用户前台十轮关闭/重开+整浏览器退出证据、Defender核查、ADR142 Owner裁定（保持Draft）、18085发布身份/生产schema采用裁定；以上未闭合前交付不标complete。若os-error-5第10次发生，本现场将直接给出重试后存活或耗尽后完整上下文，二者均为决定性证据。
+
+### 交付接续：checkpoint80，死亡链第12次简洁登记（Scene31首启43.5分钟后，客户端inbound队列满；DS存活87代——OS5修复持续生效），restart-01已SERVING（2026-10-06 17:0x +08）
+
+Scene31首启现场（checkpoint79，无人类玩家连接）于43.5分钟后出现**死亡链第12次（ADR142家族）**：客户端Critical `ws_close detail=inbound_queue_full queue_depth=256/256 since_drain_nonempty_ms=12842`→重连successor被拒`protocol_rejected exception=bad_envelope`→6 Bot会话Active→Faulted(session_faulted, drained=278>256)→launcher生命周期守卫拆除现场。**关键区分：本次非os-error-5**——DS全程存活、87代检查点零错误发布、零DS_FATAL，rename重试二进制在真实负载下保持正确；死亡纯因客户端入站队列排空停滞。[只读保全收据](../../../../.run/20261006-scene31-occurrence12/receipt.json)已绑定DS/Bot六份日志SHA与前两代hex解码原文。按用户指令仅简洁登记：ADR142保持Draft/Owner Pending，不自动批准、不部署Draft。
+
+restart-01以全新b系列账号（PlayScene31Oct06b*，a系列已入prior，[prefix收据](../../../../.run/browser-experience-scene31-source-preparation-01/restart-01-prefix-receipt.json)）同基线重建**SERVING**（6Bot入场PASS、DS=complete29、gen1-3检查点已发布、玩家页18101 A/B 200），[验收指引](../../../../.run/live-acceptance-31restart01/user-acceptance-guide.json)。若再退出：登记第13次并重启，不改动门。用户前台验收、Defender、ADR142、18085/生产schema裁定继续OPEN。
