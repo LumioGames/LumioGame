@@ -1499,3 +1499,19 @@ composition28_review完成只读独审，裁决ACCEPT_EXACT_COMPLETE28_GAME30_OF
 另一个会话提交46eebb2时已一并保存本会话checkpoint72；本会话窄提交的暂存文件集守卫发现仅Server诊断计划仍未入库后主动停止，未误提交其他文件。后续只保存本段与已完成Server计划。当前工具get_goal实际仍ACTIVE，另一个会话的blocked是其自身状态；本轮已有Scene30文件准备和独审的实质progress，不以外部状态代改本goal。
 
 文档验证：父仓lint-extensions OK/raw0；101 spec-lint raw0且仍两项既有结构报告（“触及子被追加”旧悬空链接、.sdd并行根），未改旧段或放宽检查。准备、取证边界、两个prefix保全收据及本轮lint收据都在[Scene30准备根](../../../../.run/browser-experience-scene30-source-preparation-01/)。本轮不把任何离线资格、旧包现场存活或其他分支的ADR142候选当作正式体验通过。
+
+### 真机体验优先交接：checkpoint74，complete28/Game30完整离线schema候选验证及独审闭合，未应用生产（2026-10-06 11:12:32 +08）
+
+本轮补齐checkpoint72/73所缺的精确新组合reader、纯迁移、历史与负例见证。直接调用未改生产reader/model/storage/history/migration导出API，显式传入上一轮独审认可的精确组合envelope；68作者/52生成沿用历史reader接口，另6作者纳入完整74+52前后字节围栏及6个扰动负例。未修改历史pins、Tools、Game30输入或生产schema账本。[执行与完整结果](../../../../.run/20261006-complete28-schema-validation-01/result.json)；raw exit **0**，155 checks（其中145个有界内存负例，不代表145个端到端场景）。
+
+完整reader实际读取295项输入，观察787身份。原pure prepare从精确v15前身9188条退休记录产生9975条；当前v16的43页、9975行及顺序逐字保留，4份v16编码页字节与现存页一致。18个active行只更新manifest/SDK证据SHA，其中6个external component另更新runtime来源；头部只变runtimeRevision。身份、类型、ordinal、authority、持久化、scope、模拟频率和协议均无变化。原账本对新观察的25项拒绝（18 evidence、6 origin shape、1 runtime provenance）另存，不把历史拒绝改写成通过。候选SHA **3c7c378487599d7a5baabaccbbf46d91a734a6ff96c4e9139088d6a9cfc40d79**，保留NOT-APPLIED。
+
+正式模型核对v15/现v16历史、观察与候选，全数无诊断；13份local历史快照、5个固定Git revision的127个认证文件、57项有界历史输入均检查。固定输入和比较索引8MiB上限未放宽。145负例覆盖122个作者/生成/包字节扰动、6个额外作者扰动及17个清单、来源、声明、历史、读取围栏控制，全部真实拒绝。最终复核41个Tools文件、76个Game30 Compatibility文件及完整来源输入未变。
+
+独立reviewer复读实际脚本、收据、候选差异、295输入/126闭集/历史与Git blob，并重放5个小型只读拒绝检查后 **ACCEPT**；新增P0/P1/P2均0。[独审报告](../../../../.run/20261006-complete28-schema-review-01/report.md)，result SHA **bb2a8b770a101da324321ca4b72692425c2299cae4f05d81672b09fc7627d57e**，report SHA **a69e418afb1159a64c1fd1b6b334efe4c67d3ad9b024212f9b63dad94bff324a**。继承此前动态组合测试P2限制，不称已补测。
+
+本轮闭合范围只到“精确离线候选”的reader/纯迁移/历史/负例及其独审。生产接入和旧默认CLI未改；supportedInventoryConsistent=true、freezeEligible=false，B135/F/P/T/release-decision/successor-binding/tag仍pending。公开身份、ADR142 Owner、os-error-5真实根因/Defender决定、用户前台移动/放弹/连续十轮/整浏览器重进及新场景实测门继续OPEN。没有从离线ACCEPT推导正式发行或体验通过。
+
+仅追加只读现场快照：restart-08至generation197，18101/18331仍PID32228/8640，14条受保护监听仍PID46248，18105无监听；前台证据候选仅旧guide，无新用户材料。未操作浏览器/进程/服务/端口/Defender，现场仍complete27/Game29；Scene30仍FILES_PREPARED_NOT_LAUNCH_APPROVED。[交回](../../../../.run/20261006-complete28-schema-validation-01/handoff.json) SHA **203dcbe8901b04538582327aab4cd2d6f459514d6c61581043be31e00bd1f5e8**。[封存清单](../../../../.run/20261006-complete28-schema-validation-01/evidence-seal.json) SHA **33265d01bc660c3fa1b04cc7e9e31f243c32671bafde58f4727845206597b0a3**，23份验证文件+2份独审文件共5370937字节逐项hash读回吻合；随后closeout里的账本/文档检查/提交收据不在该固定清单范围内。
+
+本轮有新离线验证与独审的实质progress，goal保持ACTIVE；不借并行会话blocked状态替代本goal。知识沉淀豁免：仅补既有修复的组合验证证据，未改变公共设计或规则，按用户要求只追加唯一账本，既有记录全部保全。
