@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充9,一键重开脚本已备(reopen-acceptance-scene.mjs:自动换新账号+生成launch命令),空闲RAM 1.9GB仍未处理——继续等待用户"重开"或机器处理（2026-10-06 8:0x +08）
+
+为缩短用户机器处理后的重建路径,写好一键重开脚本 .run/reopen-acceptance-scene.mjs(输入序号→自动绑定全新八账号→输出精确launch命令;探测运行已验证并还原)。机器:空闲RAM 1.9GB(更差),未重启。**继续等待**:用户重启/释放内存/Defender排除后说"重开"。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充8,裸DS冒烟未成行(手写配置达不到launcher派生完整度),机器未重启(9/27)空闲RAM 2.3GB,维持等待用户"重开"（2026-10-06 7:4x +08）
 
 裸DS(无Bot无页面)冒烟以鉴别os-error-5是否环境性:三轮手写配置逐步补全clr字段后在runtime startup被拒(exit 4)——launcher派生配置含额外必要项,手写达不到完整度,冒烟未成行。机器:上次开机2026-09-27,空闲RAM 2.3GB,游戏端口空闲,受保护端口14监听未动。**维持等待用户机器级处理(重启/释放内存/Defender排除)后回复"重开"**。goal ACTIVE。
