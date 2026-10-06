@@ -1467,3 +1467,27 @@ checkpoint69封件补充：本轮[证据封件](../../.run/20261006-confirmed-fi
 真实Native（complete-release-27，SHA b08c8afe…）：离线死亡族32/32、successor全类227/227、Replication 333/333、ECS 623/623均零失败零跳过raw0；GAS 945/950的5例为缺voxel test-support镜像的基线固有环境缺口（干净基线同败已记录），非重放导致。Replication首跑5例缺LumioEngineRoot失败原件保留，补环境后全绿。[证据与逐命令收据](../../../../.run/20261006-offline-death-replay-01/result.json)。
 
 [ADR142裁定材料](../../../../../.sdd/101-20261006-adr142-owner-decision-brief.md)已更新：批准后Runtime合入步骤可直接采用98578621，剩余获批后工作仅Engine定稿、Server12三份生产文件+Host接线、完整包与双玩家验收。本轮未启用Draft、未改wire/ADR正文、未推送；主仓与Runtime28树未动，现场服务未触碰。用户前台证据、Defender、ADR142 Owner、公开18085身份继续OPEN；goal ACTIVE。
+
+### 真机体验优先交接：checkpoint72，complete28/Game30新组合独审ACCEPT，历史strict pins原样保留；完整schema与现场门仍OPEN（2026-10-06 10:54:19 +08）
+
+composition28_review完成只读独审，裁决ACCEPT_EXACT_COMPLETE28_GAME30_OFFLINE_COMPOSITION__FORMAL_DELIVERY_GATES_OPEN，无新增P0/P1、不阻断离线准备或精确消费。独立[结果](../../../../.run/20261006-complete28-composition-review-01/result.json)SHA106737150eb638179eb86a285a42bf4018855c95cbb5d0c1077fabad536258f9；[报告](../../../../.run/20261006-complete28-composition-review-01/report.md)SHA0843cc3b161c53e240604641a206913d766e43ef77e5359c6f4353b402d5a3fb。Root已读取完整报告，未将离线裁决扩为切场/公开发行许可。
+
+复核实际覆盖Runtime a5907448..36ea3ae3三文件（中间1222ff6f仅新增Gas预算测试，生产仍只有World.cs）及Server00886107..179586e2的Storage单文件。当前树和Game30各74作者/52生成物与v16c27全匹配；完整305payload、4092inputs、835/376网页产物、六阶段raw0/log、84个PE报告所列DLL、15个域绑定、8个消费程序集、4个SDK locks、86个证据引用均无哈希漂移。此为独立读取/哈希核验，不称本次重跑PE、probe、构建或测试。
+
+指定BomberPlayObservation.cs与replica-adapter.test.ts在当前/Game30/V15/V16final122/V16c27中的身份一致，原独审资格保留、不换hash。V15整体仍3作者+10生成物差异；final122仍7作者差异；旧v16c27包manifest/SDK不能覆盖complete28。新报告只追加组合裁决，不把旧gate拒绝改成通过、不追溯补complete27缺失退出码。继承P2多dirty异常重试组合未专门动态覆盖（非阻断）与P3历史配方标签，均保留，不扩成已测试。
+
+完整当前schema门仍OPEN：尚无精确complete28/Game30的full reader、migration/history、strict negative controls见证；本报告和构建/AOT不能替代。后续可先核对这些离线验证的可执行入口及现有证据，不直接更换历史pins。前台双移动/放弹/连续十轮/整浏览器重进、新场景实测、os-error-5根因/Defender、ADR142和公开签名门同样保持OPEN。本组合GAS仍保留四个专用Native缺失与一个既有structural scratch差异，不称全绿。
+
+本轮另按computer-use技能只读调用cua.getState一次：仅两空IAB/MCP Apps面板，用户外部浏览器未连接，故没有取得前台截图，没有创建/打开/切换/刷新标签页。[取证限制](../../../../.run/browser-experience-scene30-source-preparation-01/foreground-observation-limit.json)。不可把面板空或当前日志存活当作用户验收结果。
+
+并行落账保护：本段首次准备追加时发现另一会话已写checkpoint71并提交a7df5ef，预期最新编号守卫主动退出，未写入重复71；读回后采用72，原段保持。本轮新包仍严格Runtime36ea3ae3/Server179586e2，未消费checkpoint71另一个ADR142重放候选或代Owner启用它。
+
+知识沉淀豁免：本轮为既有缓存语义修复、最小IO归因与离线消费取证，未改产品/公共设计真值；历史与证据按用户指定继续落唯一账本，未复制规则到知识库。checkpoint70标题采用分钟近似，精确写入时间为其prefix收据02:42:46.486Z；全部事件以数值收据UTC为准。本轮分类progress（文件准备+新组合独审），goal ACTIVE。
+
+### 交付接续：checkpoint72，本会话blocked如实登记——全部可独立工作已完成封存，四项外部门多轮未到，现场保全（2026-10-06 10:55 +08）
+
+本接续会话自checkpoint68起完成：schema16组合资格新不可变记录v16c27（74作者/52生成/complete27包闭包，校验器SEALED_BYTES_MATCH，差异独审7/7 ACCEPT）、ADR142裁定材料及其获批前置隔离验证（七源零冲突重放98578621，32/32+227/227 GREEN）、os-error-5备选诊断cddc6c2独审ACCEPT并让渡canonical于179586e2、Runtime P2第三份独立复审与Replication/三向probe补充证据、迁移验收矩阵静态核对、Workflow RM-00013现查NOT_VERIFIED如实记录、complete28/Game30离线资格独立核验吻合。
+
+四项外部门在本会话连续多轮未收到：用户前台移动/放弹/十次关闭重开/整浏览器退出证据（两次结构化提问均无答复，`.run/live-ordinary33-root-08/`及全部验收目录无新用户文件）、Defender排除决定、ADR142 Owner裁定（Engine仓仍为Draft）、公开18085发布身份决定（现网仍0.0.4 ecece8a）。这些输入无法推断或自动化；按持续目标阻塞规则，本会话goal登记**blocked**。并行会话的composition28_readonly复审未返回，Scene30文件保持FILES_PREPARED_NOT_LAUNCH_APPROVED，均不改变本判定。
+
+现场保全：restart-08消费complete27/Game29，至generation174，本运行累计零os-error-5、零死亡fatal；18101/18331仍PID32228/8640，14条受保护监听仍PID46248；未重启、未换包、未操作浏览器。恢复路径：任一项输入到达即按[pending-inputs-runbook](../../../../.run/20261006-delivery-continuation-01/pending-inputs-runbook.md)执行（ADR142批准→Engine定稿→98578621合入→Server接线→完整包→双玩家验收；前台证据→逐项登记验收门；Defender→complete28现场复测；18085→Scene30切换流程）。blocked不是取消目标或宣称完成；正式交付门全部保持OPEN。
