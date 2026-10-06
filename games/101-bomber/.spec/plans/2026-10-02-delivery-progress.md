@@ -10,6 +10,10 @@
 
 **实测结论(对比Game26/27基线,同窗口同探针)**:同窗双移动(A上/B右15s),tick **p50从11-12ms砍半至6.0-6.1ms**(A mean28.7/B mean23.0,~1Hz周期长任务28个仍在,max 770ms);刷新本体38KB vs 全量1.73MB的改善真实到达浏览器。剩余主导成本=Publish阶段全世界表现键遍历(97实体~215KB/组),为下一优化目标;有效Hz仍~6不能宣称体验已修好,人数因果未证明。证据:.run/live-private-28-root-01/measurement-summary.json+双探针JSON;scene28现场SERVING保留(18101/18105/18331),受保护端口未动。交付门保留:十次重进终验OPEN、整浏览器退出UNTESTED、18085身份、schema15 pins、ADR142。goal ACTIVE。
 
+### 真机体验优先交接：checkpoint58补充5,restart-05 死于死亡链第11次(tick18488,用户验收会话中),restart-06(y/z)已重建 SERVING 供用户继续（2026-10-06 6:1x +08）
+
+restart-05(w/x)在用户前台验收进行中死于死亡结构链 fatal(tick18488)——**与此前四次 os-error-5 不同型**,按封顶纪律一行登记(receipt chainOccurrence=11,SHA 保全于 live-ordinary33-root-05)。fault 后现场立即清理,_restart-06(y/z 新账号)同基线重建 **SERVING**,验收指引迁移至 live-ordinary33-root-06 并注明"页面变 failed 是已知 ADR142 未决缺陷,非用户操作问题,重开页面重进即可继续"。用户验收继续;Owner 三项裁定(ADR142、18085、schema15)与 Defender 排除决定继续等待。goal ACTIVE。
+
 ### 真机体验优先交接：checkpoint58补充4,os-error-5四连发(u/v世界gen327),OS事件日志无Defender检出/无应用错误/句柄正常;restart-05(w/x)SERVING为当前验收现场（2026-10-06 5:5x +08）
 
 u/v 世界 gen327 第四次同型 os-error-5(检查点写入,非死亡链)。OS侧排查:Defender事件日志(1116/1117)两小时空、应用错误日志一小时空、句柄最高System 7696无爆炸、磁盘938GB——无外部锁直接证据,失败仍只在 DS 检查点写入处复现。四份记录+SHA保全(gen12/37/213/327)。**Defender目录排除是用户系统级决定,持续未自行施加**。restart-05(w/x)SERVING,验收指引在 live-ordinary33-root-05。用户前台验收与Owner三项裁定继续等待。goal ACTIVE。
