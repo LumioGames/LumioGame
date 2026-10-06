@@ -1309,3 +1309,118 @@ checkpoint59现场补充（同链第11次，仅一行登记）：restart-05于20
 Server冻结源00886107（clean，与complete27身份一致）Storage/src/lib.rs:489–496依次写Runtime、Voxel、manifest，再同步目录、rename发布；snapshot_only的目录同步为空操作。证据把疑点缩到manifest写入/同步至目录rename的尾段，**不能仅凭完整文件判定fsync成功或精确认定rename失败**。Application/ds/src/main.rs:1041仍只把裸IO错误转字符串，没有阶段/路径/generation上下文。此为后续错误归因RED的明确切口，不是已复现的系统调用根因；未写重试或诊断补丁、未构建测试。
 
 本次启动器的Defender诊断仍为no-related-events，不证明也不排除扫描/文件争用；没有收到用户排除决定，故不记作“排除后仍复发”，未改系统设置或发起复测。用户前台移动/放弹/十轮/整浏览器结果仍未收到，检查指引所指root-01与当前root-06未见用户截图/笔记，不推断其他位置不存在。所有体验门、ADR142 Owner、18085发布身份及完整schema16资格继续OPEN；goal ACTIVE。
+
+
+### 真机体验优先交接：checkpoint61,缓存寿命P2在官方包取得真实RED并独审确认；外部验收/Owner门连续三轮未到，goal转BLOCKED，所有门仍OPEN（2026-10-06 09:32 +08）
+
+Runtime缓存寿命P2补了离线行为证据：[同源probe及原始收据](../../../../../.run/20261006-presentation-retention-red-01/)、[独立复核63/63](../../../../../.run/20261006-presentation-retention-red-01/independent-review-01/result.json)。两个小型验证程序直接引用complete26/27各自官方包的15个Managed DLL，全部与包及manifest逐字相符；仅编译probe，无Runtime生产重编译、源码或现场DLL写入。complete27有4条目标断言RED/raw1：两批各256个实体Attach/Detach后，Server dirty从1→257→513而live始终回到1，confirmed从0→256→512而live回到0，表现额度记账均0。complete26无该集合，同一Program.cs（PE/PDB源SHA一致）4条对照GREEN/raw0；这是旧版基线，不是修复GREEN。Dispose后513/512是额外观察，未冒充新断言。
+
+覆盖边界为真实Managed内部Attach/Detach存储接缝及保留ID计数，反射设置confirmed InstanceId与读取内部计数；未跑Tick/完整Host/网络/Native，未量GC字节或证明OOM、用户卡顿及任何fatal因果。独审接受真实回归RED，维持P2，并建议**独立后续修复、继续OPEN，不自动升级P1或触发complete28**。后续修复须保留predicted初始化与键淘汰验证，再独审及正式包消费；本轮没有生产修复。
+
+现场只读补记：曾读到restart-07于09:19:53首次DS_CHECKPOINT之前再次os-error-5/exit2（第六次观察），后续原目录已不可读，故仅保留工具观察摘要，不声称取得原件SHA封存或排除后复测；本会话未删除/移动该目录。[现场快照](../../../../../.run/20261006-delivery-takeover-followup-02/scene-observation.json)确认另起restart-08实际进程DS8640/launcher32228存活，18101/18331有监听、6Bot+2玩家（HumanScene26Oct06fA/B），同complete27复制包，非本会话重建。只读快照不等于用户验收；未访问/操纵浏览器，未改Defender或受保护服务。
+
+[逐项完成/阻塞审计](../../../../../.run/20261006-delivery-takeover-followup-02/final-blocked-audit.json)覆盖13项要求；首轮30件已封证据重核SHA无变。可独立的代码、pins、原包收据及P2行为复核已完成；实际前台移动/放弹/单一十轮/整浏览器结果、Defender排除决定、ADR142 Owner与公开18085发布身份决定连续三轮未收到，完整schema16资格及旧账本其余正式门继续OPEN。按持续目标的三轮阻塞规则，goal工具已返回**blocked**；这不是暂停现场、取消目标、P2修复完成或正式交付通过。收到实际外部证据/裁定后按原目标恢复；不发明验收结果、不重启场景、不启用Draft、不改历史pins。
+
+
+### 真机体验优先交接：checkpoint62，Owner新指令修复已发现问题；Runtime隔离树取得12项真实RED，现场与其他Owner门保持原状（2026-10-06 09:49 +08）
+
+用户新指令“那你修复发现的问题”已将goal恢复ACTIVE。按writing-plans与subagent-driven-development建立[Runtime修复计划](2026-10-06-runtime-presentation-cache-repair.md)，从1222ff6f0f22662b290ffe421782852201b522da创建独立树C:/Work/LumioGames/.101-restore-01/LumioGameRuntime28PresentationCacheFix、分支codex/101-presentation-cache-correctness；旧候选树和官方包不改。Task1由独立实现代理执行，Root记录的BASE为1222ff6f，后续以全范围diff交独审。
+
+修生产源之前新增聚焦回归13例，12失败/1通过、raw exit2（实现树.run下red-02.log，精确路径及SHA待冻结报告）；真实复现共享key移除/变更导致另一实体丢key、多provider仅取首项、非consumer dirty两批256增至512/513，以及Dispose保留辅助集合。Provider异常未被调用也在RED中体现。此为源码测试RED，补充checkpoint61官方包寿命RED；尚不称修复或全量通过。批准普通Native来自complete27，实算SHA与sidecar均b08c8afe2abc6aac378bc63d8d96f45f09334bcba70c5b5734ab670d5f0841cf；四项专用voxel test-support缺失仍单列，不借普通DLL替代。
+
+Server只读调查确认裸IO错误在Storage publish到DS_FATAL之间丢失阶段/路径/generation，拟另立最小错误归因任务并取得真实文件系统RED；未把Defender当根因，未加入猜测重试。当前指令不代替ADR142、公开签名与Defender系统设置的明确Owner决定。未操作用户浏览器、现场服务或替换DLL，全部体验验收门仍OPEN。
+
+checkpoint62时间校正（只追加）：标题09:49为记录笔误；该段实际已在clock工具2026-10-06 01:44:36 UTC（09:44:36 +08）读时之前写入，不应按标题推定事件时序。修复工作时序以工具与原始日志时间为准。
+
+
+### 真机体验优先交接：checkpoint63，Runtime三项缓存修复已提交并通过任务独审；同源寿命probe转GREEN，Server错误归因开始隔离执行（2026-10-06 09:52:43 +08）
+
+Runtime Task1 complete（1222ff6f..36ea3ae3c1206028e8d0baa50824a4527507a248，spec compliant + quality Approved）。仅提交World.cs和新回归测试，参考[实现报告](../../../../../.run/20261006-confirmed-fixes-01/runtime-task-1-report.md)、[任务独审](../../../../../.run/20261006-confirmed-fixes-01/runtime-task-1-review.md)。12项修前真实RED转13/13 GREEN，加预测/预算45/45、两条真实Native gate 2/2，均raw0；候选未推送或部署。缓存按每实体去重、跨实体计数保留全部provider贡献，只在预测clone接收dirty，退役清空辅助成员；公共协议、额度、频率与唯一权威World不动。生成物仅行尾漂移未暂存/还原。
+
+独审无P0/P1，新增P2：当前异常回归未覆盖“前一个dirty实体已经替换贡献、后一个抛出”的多实体重试顺序；源码检查认为幂等，建议补覆盖。保留为最终whole-branch review必读项，未静默丢弃。独审无法仅从diff证明现场不被操作的过程要求由Root工具记录核实，本会话未进行任何浏览器/服务变更。
+
+Root复用checkpoint61完全相同Program.cs，独立引用本次源构建程序集（不是冒称official包），4/4寿命断言raw0，Server/confirmed两批256 ID后dirty均为0，Dispose也为0。加载ECS SHA4160584e74a53613c1f0d9f971d77bc27875fb1713f44b8ee863f07248bcb6ba；日志[run-02](../../../../../.run/20261006-confirmed-fixes-01/fixed-retention-probe/run-02.json)。首次probe因缺Logging.Abstractions运行失败保留原收据，仅补真实依赖后通过，不计产品RED。
+
+三套件当前：ECS623/623、零跳过、raw0（正确LumioArchRoot使原generator环境项也通过）；Coordination204/204、零跳过、raw0（使用实核Native sidecar身份）。第一次GAS/Coordination遗漏LUMIO_ENGINE_NATIVE_PATH的原结果完整保存，不能拿环境不足运行代替验收；GAS正在补齐环境后重跑，尚不结论。父仓spec lint通过；101 lint raw0但报告仍2项既有结构诊断，未将raw0等同lint全绿。
+
+另立[Server错误归因计划](2026-10-06-server-checkpoint-io-diagnostics.md)，新隔离树LumioServer12CheckpointIoDiagnostics，base008861074a2d3c9da1b0407325ede6f851704fd5；只补publish的create/write/sync/rename上下文，先真实文件系统RED，不加重试、不改Defender或已启动现场。ADR142、公开签名及前台体验门仍OPEN。
+
+
+### 真机体验优先交接：checkpoint64，Runtime整体独审可合入且新分支已推送；完整三套件未新增失败，Server两项真实IO归因RED已取得（2026-10-06 09:58:34 +08）
+
+[Runtime最终独审](../../../../../.run/20261006-confirmed-fixes-01/runtime-final-review.md)裁决Ready to merge: Yes，无P0/P1。针对任务复审P2，多实体重试的计数不变量与幂等性已独立核查，本轮不要求补测试才能合入；组合覆盖建议继续保留，不冒称实跑。仅授予World.cs及新测试的源码合入就绪，不授予旧包/新SDK/现场/死亡链资格。新分支codex/101-presentation-cache-correctness已推送，远端读回精确36ea3ae3c1206028e8d0baa50824a4527507a248，见[收据](../../../../../.run/20261006-confirmed-fixes-01/runtime-remote-receipt.json)。未合main、未替换当前验收包。
+
+Root最终三套件：ECS623/623 raw0，Coordination204/204 raw0，均零跳过；GAS950/945/5/0、raw2，五项与原1222ff6f基线日志逐项一致（四项缺voxel test-support Native；一项StructuralScratch12706/12070）。[验证汇总与SHA](../../../../../.run/20261006-confirmed-fixes-01/runtime-root-validation.json)、[probe最终绑定](../../../../../.run/20261006-confirmed-fixes-01/fixed-retention-probe/bindings-final.json)；不称GAS全绿。首次漏Native变量和probe缺依赖的失败保持原样。
+
+Server新增两项真实文件系统RED各执行1项、raw101：非空发布目标rename为os error145，draft普通文件remove_dir_all为os error267；原状态、旧组与字节保护先通过，缺operation上下文断言失败。不是现场os-error-5复现；最小诊断修复进行中，不增加重试。101 lint两项精确为既有账本“触及子被追加”伪链接及既有.sdd并行文档根；未改旧账本/删除外部文件或放宽检查。
+
+只读[现场快照](../../../../../.run/20261006-confirmed-fixes-01/scene-readonly-01/receipt.json)记录restart-08至generation60，18101 PID32228、18331 PID8640；14条受保护监听仍PID46248。本会话没有浏览器/服务操作，checkpoint推进不代表移动/放弹/十轮/整浏览器体验通过；用户结果、Defender决定、ADR142与公开身份仍OPEN。goal ACTIVE。
+
+
+checkpoint59–64证据链接校正（只追加，不改历史）：上述指向父仓`.run/`的相对链接多写了一层`../`；实际根为C:/Work/LumioGames/LumioGame/.run。以下更正目标已逐一验证存在，文件内容与历史收据不变：
+
+- [Root裁决](../../../../.run/20261006-delivery-takeover-review-01/root-review.json)
+- [证据恢复入口](../../../../.run/20261006-delivery-takeover-review-01/handoff.json)
+- [报告](../../../../.run/20261006-delivery-takeover-review-01/schema15-independent-review/runtime-cache-lifetime-review.json)
+- [最终独审79/79](../../../../.run/20261006-delivery-takeover-review-01/schema15-independent-review/result-correction02.json)
+- [只读保全收据](../../../../.run/20261006-delivery-takeover-review-01/scene33-occurrence11/receipt.json)
+- [新封件](../../../../.run/20261006-delivery-takeover-followup-01/os-error5-fifth-receipt.json)
+- [五次草稿横向核验](../../../../.run/20261006-delivery-takeover-followup-01/five-occurrence-comparison.json)
+- [同源probe及原始收据](../../../../.run/20261006-presentation-retention-red-01/)
+- [独立复核63/63](../../../../.run/20261006-presentation-retention-red-01/independent-review-01/result.json)
+- [现场快照](../../../../.run/20261006-delivery-takeover-followup-02/scene-observation.json)
+- [逐项完成/阻塞审计](../../../../.run/20261006-delivery-takeover-followup-02/final-blocked-audit.json)
+- [实现报告](../../../../.run/20261006-confirmed-fixes-01/runtime-task-1-report.md)
+- [任务独审](../../../../.run/20261006-confirmed-fixes-01/runtime-task-1-review.md)
+- [run-02](../../../../.run/20261006-confirmed-fixes-01/fixed-retention-probe/run-02.json)
+- [Runtime最终独审](../../../../.run/20261006-confirmed-fixes-01/runtime-final-review.md)
+- [收据](../../../../.run/20261006-confirmed-fixes-01/runtime-remote-receipt.json)
+- [验证汇总与SHA](../../../../.run/20261006-confirmed-fixes-01/runtime-root-validation.json)
+- [probe最终绑定](../../../../.run/20261006-confirmed-fixes-01/fixed-retention-probe/bindings-final.json)
+- [现场快照](../../../../.run/20261006-confirmed-fixes-01/scene-readonly-01/receipt.json)
+
+
+### 真机体验优先交接：checkpoint65，Server最小错误归因提交179586e2并通过任务独审，保留原始失败语义（2026-10-06 10:01:09 +08）
+
+Server Task1 complete（00886107..179586e22365c2886571bc6b42bf9c2667beab12，spec compliant + quality Approved，无P0/P1/P2）。[实现报告](../../../../.run/20261006-confirmed-fixes-01/server-task-1-report.md)、[任务独审](../../../../.run/20261006-confirmed-fixes-01/server-task-1-review.md)。仅Storage/src/lib.rs，private IO上下文逐操作标出generation、path，rename另含destination；原始ErrorKind、source链与日志OS code保留，Display以原文开始保持stable_code前缀。包装后的外层raw_os_error为None这一边界在测试及报告中明确，不虚称其返回值保留。
+
+真实文件系统RED为rename占用目标与draft路径普通文件，各raw101；修后Storage27/27零失败/忽略raw0，Clippy -D warnings、全仓fmt --check、diff-check均raw0。没有改原成功断言、发布次序、poisoned规则或generation推进，不加重试/吞错/线程。构造os error5只是表示单测，不是现场根因复现；不宣称停止真实os-error-5复发。整体最终独审尚待，分支尚未推送/合main/打包部署；所有现场和Owner门维持OPEN。goal ACTIVE。
+
+
+### 真机体验优先交接：checkpoint66，本轮已确认源码问题修复封存，Runtime/Server双层独审及远端SHA闭合；正式验收与Owner门继续OPEN（2026-10-06 10:05:59 +08）
+
+Server[最终独审](../../../../.run/20261006-confirmed-fixes-01/server-final-review.md)Ready to merge: Yes，无P0/P1/P2；新分支codex/101-checkpoint-io-diagnostics已推送，远端读回精确179586e22365c2886571bc6b42bf9c2667beab12，见[远端收据](../../../../.run/20261006-confirmed-fixes-01/server-remote-receipt.json)。Runtime新分支仍为36ea3ae3c1206028e8d0baa50824a4527507a248。两仓最终提交范围逐一核实为Runtime两文件、Server一文件，Runtime工作区仅保留既有生成换行状态，Server内容clean；见[范围与SHA](../../../../.run/20261006-confirmed-fixes-01/final-source-scope.json)。两份修复计划已completed，不代表整项101正式交付完成。
+
+恢复入口：[本轮handoff](../../../../.run/20261006-confirmed-fixes-01/handoff.json)，SHA256 d69fa7b636edc9d973b3dd37eb36a501b2e6dcfd66acc89f52eb8623845c82f7；[封件清单](../../../../.run/20261006-confirmed-fixes-01/seal-manifest.json)。44件作者证据/源码/diff已另复制并逐件SHA一致，七份Server日志与四份独审报告同根封存。原始失败、补环境前结果、probe依赖失败及只读现场快照均保留；旧包、旧封件、旧账本正文未改。checkpoint59–64相对证据链接曾多一层../，已在checkpoint64之后用追加清单校正并逐一查存在。
+
+交付结论严格限定：三个缓存语义/寿命问题和发布IO错误归因缺口已修复并通过相应回归/独审。Runtime ECS623/623、Coordination204/204、source probe4/4；GAS945/950，只有五项明确预存失败；Server Storage27/27、Clippy/fmt raw0。未将这些证据当作现场体验或os-error-5根因修复。本次没有新P1，未启动complete28或重建当前场景；后续实际消费修复仍须按官方整包流程，不拼DLL。
+
+本会话未收到用户前台移动/放弹/单序列十轮/整浏览器结果或Defender决定，未代用户裁定ADR142和公开Platform身份。未合main、未操作浏览器或当前服务、未修改系统设置/频率/额度/协议guard。上述外部门与完整发行资格全部OPEN；Runtime多实体异常重试组合测试建议保留P2（两轮独审均判非阻断）。goal保持ACTIVE，禁止用源码修复完成冒充101体验交付完成。
+
+
+### 真机体验优先交接：checkpoint67，接续推进修复的官方整包消费资格；complete28以独立干净源树启动，用户现场保留（2026-10-06 10:10:01 +08）
+
+上一goal turn分类为progress（两仓代码/回归/独审/推送已完成）。本轮重新读取当前HEAD、账本和封件，Runtime36ea3ae3、Server179586e2未漂移；当前18101/18331仍PID32228/8640。源码修复尚无整包消费资格，因此继续离线构建complete28，不等待或代替用户体验结果，不重启任何现有场景。
+
+创建全新干净检出C:/Work/LumioGames/.101-restore-01/LumioGameRuntime29CacheFixConsumer@36ea3ae3；原Runtime28测试树生成换行状态不还原。复用complete27六个未变仓的精确commit；Runtime和Server仅消费双层独审后的新commit。八仓HEAD/clean检查及Root新输入封件均通过。输入：[full-pack-28-input](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-input.json)；[本轮源资格绑定](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-root-01/complete28-approval.json)钉住complete27旧manifest、两仓新review及修复封件SHA，旧审批/收据不改。
+
+实际调用未改的pack-reviewed-composition.mjs，内部走架构仓官方packFromMain/defaultBuilders；Windows/WSL Docker只构建本地新产物，不推镜像、不签发行、不启动Platform/DS。输出为此前不存在且确认位于本轮根目录下的complete-release-28，底版本仍0.0.5，身份必须按manifest/SDK哈希区分，不能只凭版本名。pack已启动，exec会话43007；每阶段新raw数值收据单独落盘，失败保留，不复用历史raw0。
+
+后续顺序：官方verify、305payload/SDK/Native/WASM身份审计、实际五组PE依赖、Runtime域身份、真实Native默认CLR构造核验；当前尚未完成，不授予消费或发行资格。旧complete25/26/27及用户现场未变，ADR142/公开身份/体验门继续OPEN，goal ACTIVE。
+
+
+### 交付接续：checkpoint68，schema16组合资格重封（v16c27新不可变记录）、ADR142裁定材料、验收矩阵静态核对；检测到并行Root会话并让渡整包协调（2026-10-06 10:20 +08）
+
+本会话为独立接手goal的协调Root，与checkpoint62–67的并行会话在同一工作区汇合（Runtime修复在36ea3ae3自然收敛为同一提交）。检测到checkpoint67正在构建complete28后，本会话停止一切与其重叠的协调动作（不pack、不推送分支、不写锁文件），整包与现场切换协调权归该活跃会话；本条只登记本会话独有成果与撞车整合裁定。
+
+**schema16组合资格完成**：7项作者源差异全部来自c53cbc7（2026-10-05收尾保全），[差异独审](../../../../.run/20261006-schema16-requalification-01/diff-review-01/result.json)7/7 ACCEPT（3个Spectator文件为匿名类型→源生成DTO的机械替换、JSON线形状不变；4个移动链文件为地形管线重构，权威Server路径与final122行为等价，客户端预测可用性门由全图Ready收窄为被触及格Ready——不伪造数据、中止先于任何位置写入）。独审另发现c53cbc7引入6个final122闭封集之外的承重文件（BomberMovementTerrain.cs、SpectatorJsonContracts.cs、SpectatorJsonContext.cs及3个Spectator测试），已并入新闭封集。52/52生成物与final122 pins一致、Game29的4092输入与当前HEAD逐字节一致、complete27全部305文件盘上复验吻合。新不可变记录[Tools/schema-identity-v16c27-evidence.mjs](../../Tools/schema-identity-v16c27-evidence.mjs)（74作者+52生成+complete27包闭包）与校验器[Tools/schema-identity-v16c27-verify.mjs](../../Tools/schema-identity-v16c27-verify.mjs)端到端SEALED_BYTES_MATCH/raw0；V15与final122 pins原样保留，complete27 audit/PE/domain三项数值退出收据仍标未取得。树内Engine子模块仍钉ecece8a，与complete27服务拷贝的包身份差以新记录显式登记，不改子模块。
+
+**ADR142裁定材料**：[.sdd/101-20261006-adr142-owner-decision-brief.md](../../../../../.sdd/101-20261006-adr142-owner-decision-brief.md)汇总唯一待裁语义（离线保留窗口内本地observe Applied死亡结算）、三候选状态（Engine wire Draft 3443135b、Runtime25 41405896含32/32+227/227、Server12仅测试）、回滚条件（获批前零动作即安全；无DB/schema/wire形状变化）与六条验收条件。死亡链第11次收件不变，Draft未启用。
+
+**迁移验收矩阵静态核对**：[matrix-check.md](../../../../.run/20261006-delivery-continuation-01/matrix-check.md)——六炸弹中火焰/冰冻/集束/穿透/遥控均已有生产源+测试，中毒弹与回春类周期技卡在周期typed fact Owner门；19/23/27档位卡SelectByReservedSlot 8→16 Owner门；运行级验证待场景门。Workflow RM-00013现查未果（端口仅SPA、无CLI），[如实记录NOT_VERIFIED](../../../../.run/20261006-delivery-continuation-01/workflow-rm00013-check.json)，未编造单号或回写。
+
+**Server诊断双实现整合裁定**：本会话执行者在LumioServer-101-checkpoint-error-context产出cddc6c2（Storage 8阶段PublishIoError + Application/ds端到端DS_FATAL上下文，TDD RED 3+1→GREEN 27/95+2ignored/22，fmt+clippy -D warnings raw0，[任务独审](../../../../.run/20261006-checkpoint-error-context-01/independent-review-01/result.json) ACCEPT_DIAGNOSTIC_ONLY，F1为COLLECT_PARTITIONS包裹窄路径coded错误改桶的minor边界）。该分支与并行会话已推送并纳入complete28的179586e2（Storage-only、Display以原文开始故DS_FATAL行经由save()的to_string()亦携带上下文）覆盖同一诊断缺口。裁定：**179586e2为canonical**（已推送、已终审、已被complete28消费）；cddc6c2保留为本地未推送备选，其ds层DS_FATAL格式端到端测试可作为后续delta按需移植，不再作为独立分支推进、不推送、不合main。
+
+**Runtime补充证据**：在36ea3ae3上复跑Replication 301/301/raw0与三向probe（修复程序集四条RED转GREEN、complete26对照保持GREEN、complete27原件四条RED原样复现），[证据](../../../../.run/20261006-confirmed-fixes-01/root-regression-01/)；与checkpoint64的ECS/Coordination/GAS结果互补不冲突。第三份独立复审[independent-review-01](../../../../.run/20261006-confirmed-fixes-01/independent-review-01/result.json)同样ACCEPT_P2_FIX_ISOLATED。
+
+现场只读：restart-08至generation44+期间零os-error-5、零死亡fatal（本轮30+分钟）；接手清单与包身份核对见[takeover-checklist](../../../../.run/20261006-delivery-continuation-01/takeover-checklist.json)。用户前台证据、Defender决定、ADR142 Owner、公开18085身份及complete28消费资格全部继续OPEN；goal ACTIVE。
