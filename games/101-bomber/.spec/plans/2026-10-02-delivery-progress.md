@@ -1550,3 +1550,10 @@ checkpoint75之后三个连续goal轮均只做只读核对，未发现新的用�
 现有已确认修复、源码回归、独审、complete28/Game30离线资格与Scene30文件准备已完成其各自范围；不能据此关闭正式交付。剩余工作依赖用户前台结果与当前现场可切换条件、Defender排除决定及其后的OS5实测、ADR142 Owner裁定、公开Platform18085发布身份与生产schema采用裁定。历史pins和NOT-APPLIED候选保持不变；未自动启用Draft、修改Defender、切场或替换DLL。当前现场仍complete27/Game29。
 
 同一外部阻塞连续三轮复核成立，按goal续跑规则调用update_goal后已读回本chat状态blocked，完整目标“那你修复发现的问题”未缩小、未标complete。此状态取代checkpoint75当时的ACTIVE快照；所有未闭合验收门继续OPEN。获得相关真实证据或裁定后可据此接续，不制造无RED修复、不重复已通过套件。[第三轮阻塞审计](../../../../.run/20261006-repair-goal-external-input-audit-01/turn-03.json)，[实际goal状态回执](../../../../.run/20261006-repair-goal-external-input-audit-01/goal-transition.json)。前两轮审计同目录保留，既有账本字节不改。知识沉淀豁免：仅同步交付状态及外部依赖，不新增设计或公共规则。
+
+
+### 交付接续：checkpoint75，os-error-5第8次发生在restart-09（仅27分钟/60代后），间隔显著缩短，已只读封存（2026-10-06 11:52 +08）
+
+restart-09（complete27拷贝，无诊断）于约11:51 +08在generation 60发布成功后立即`DS_FATAL 拒绝访问。(os error 5)`+cleanup失败，遗留`checkpoint-...61.draft`三件齐全；launcher/DS全部退出，18101/18331无监听，受保护Platform PID46248未受影响。[第8次封存收据](../../../../.run/20261006-os-error5-eighth-01/receipt.json)已绑定日志/验证SHA。
+
+发生间隔从第7次的120分钟/224代缩短至约27分钟/60代——32分钟内两次杀死验收现场，间歇性外部争用假设的紧迫性显著上升。complete28（含checkpoint_io八阶段诊断）仍未部署：每次以旧包重建现场都在浪费一次可定位根因的复发机会。Defender排除决定与complete28现场切换（启动绑定在整包线）现在是最高优先级用户输入。本会话未重启现场、未动受保护服务；ADR142、Defender、18085与前台证据门继续OPEN，goal维持blocked。
