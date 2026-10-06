@@ -1522,3 +1522,22 @@ composition28_review完成只读独审，裁决ACCEPT_EXACT_COMPLETE28_GAME30_OF
 restart-08（complete27/Game29，无checkpoint_io诊断）于约11:19:45 +08在generation 224发布成功后立即`DS_FATAL ds_fatal 拒绝访问。(os error 5)`，随后`cleanup failed: host faulted during execution or cleanup`；launcher 32228/DS 8640均退出，18101/18331无监听，受保护Platform PID46248未触碰。存储遗留`checkpoint-...225.draft`（manifest.json+runtime.bin+voxel.bin三件齐全，与既往五次封存草稿同构），224为最后成功代。[第7次封存收据](../../../../.run/20261006-os-error5-seventh-01/receipt.json)已绑定日志/验证/launcher日志SHA。
 
 本次运行健康时长约120分钟/224代，为历次最长——确认间歇性外部争用特征，非启动期问题。complete28（含179586e2八阶段诊断与Runtime修复）仍未部署：若下一现场以complete28重建，复发时DS_FATAL将直接给出阶段/路径/generation/原始errno。用户验收现场已死，前台体验测试现无对象；Defender排除决定与complete28现场切换决定（Scene30文件已备、launcher/env/账号绑定未备，属并行会话整包线）现在成为恢复验收的唯一路径。本会话未重启/未新建现场、未动受保护服务；ADR142裁定、Defender、18085公开身份与前台证据门继续OPEN，goal保持blocked直至外部输入到达。
+
+
+### 真机体验优先交接：checkpoint75，Runtime多实体异常重试P2已补回归并推送；核实现有restart-09，OS5仍未归因（2026-10-06 11:36:28 +08）
+
+上一goal轮的完整离线schema验证/独审为progress；本轮核对外部门后发现仍有可独立完成的历史P2回归建议，未把外部等待当作无事可做。先在真实complete28官方ECS程序集执行两dirty实体共享键、前一替换完成后后一provider抛出/重试/最终holder删除的四种组合：**4/4、152断言、8次provider异常，raw0**；15份加载侧Managed DLL与官方SDK字节一致，完整包305载荷重新hash吻合。[探针资格](../../../../.run/20261006-runtime-cache-retry-probe-01/probe-qualification.json)。显式在探针内存中注入一份残余引用的负控在last-holder-removal准确raw1；这是断言敏感性证据，不是新生产RED，没有据此改生产代码。
+
+按既有subagent-driven-development流程，将该行为沉淀为源码回归。Runtime分支codex/101-presentation-cache-correctness从36ea3ae3新增唯一文件PresentationKeyCacheRetryTests.cs（203行），提交 **b10f79d12bdf80b7c3ce09825359919542193b81**，已普通fast-forward推送并ls-remote读回一致。四例覆盖实际dirty遍历顺序正反、后序失败1/3次；逐次检查前序已替换/后序旧贡献、shared=2与unique=1、dirty保留、发布键/delta及额度不变，再检查重试与full collector一致、首个holder删除shared仍在、最后真实holder退出后所有键与三辅助集合清空。反射只读状态，直接调用真实internal生产接口，没有注入人工污染到源码测试。
+
+聚焦 **4/4/0fail/0skip**，受影响ECS全套一次 **627/627/0fail/0skip**，均raw0。首轮新测试CA1305编译错误raw1完整保留，只修正常量标签；不能称作生产RED。新源SHA **09aa6f3faa78bec54068ee0fec3a2e1262fd9adf1c098f54f7f585f7830b4d79**与成功收据/提交一致。921份既有C#源相对开工字节不变；原86份generated换行漂移保留未提交，生产源、原测试、工程配置的commit diff为零。[实现与原始收据](../../../../.run/20261006-runtime-cache-retry-probe-01/implementation/report.md)。本轮测试沿用已成功的ECS环境及complete27 Native输入；实际complete28程序集资格来自上述另行绑定的官方probe，不能混写。
+
+任务独审Spec Compliant/Quality Approved；随后对1222ff6f..b10f79d1全分支两提交三文件再次终审，**Ready to merge: Yes，P0/P1/P2均0，历史P2 Closed**。[终审](../../../../.run/20261006-runtime-cache-retry-probe-01/final-review.md)，result SHA **6b0e2a79dbd2d2392987fad588d08735b0706ca7eb50eb5ed82a14f034a804f1**，report SHA **bf3656f907348a4307c15543cd6a45babb4029941990e36996f56abb9c3a9725**。两名reviewer均独立核验源/日志哈希，未重跑套件。旧P2记录不改，本段为补足后的新裁决；此前GAS950/945/5及Coord204证据仍归属36ea，不称b10的新三套件全绿。
+
+**包身份与现场保持分开：** b10是tests-only后继，complete28/Game30仍精确绑定Runtime36ea3ae3、Server179586e2及既有封件；没有重标旧manifest、重建包或换DLL，没有改历史pins/协议/额度/频率/唯一权威世界。无新生产缺陷证据，不制造complete29或启动新场景。
+
+并行账本再次出现两个checkpoint74，以完整标题区分、旧段不动。后一个74记录的restart-08第7次OS5已对原日志核实，最后成功generation224，旧PID32228/8640已退出。但本轮03:32:03Z只读快照已核实另有 **restart-09**：launcher **51968**（03:20:19Z启动）、DS **48928**（03:20:30Z启动），18101/18331监听，至generation22；真实DS路径与boot配置仍来自complete27/Game29，6 Bots+2玩家，受保护14监听仍PID46248，18105无监听。本会话没有启动、终止或操作两个场景/浏览器；不能继续把“现场已死”旧快照作为当前事实，也不能把新场景存活当作前台验收。[只读快照](../../../../.run/20261006-runtime-cache-retry-probe-01/scene09-readonly-observation/snapshot.json)。
+
+按旧日志LastWriteUtc03:19:24.381Z前后两分钟定界，新查Defender Operational/System/Application共3/4/7事件，均未匹配Lumio/ds-store/checkpoint/access-denied/CFA关键词；原始范围和查询结果见[第7次Windows事件复核](../../../../.run/20261006-os-error5-seventh-root-audit-01/windows-events.json)。未修改系统设置。第7次发生间隔、完整draft和关键词无匹配均不足以证实“外部争用”或Defender；后一个74中的外部争用判断仍只能作为假设，OS5根因保持OPEN，complete28诊断仍未在现场消费。
+
+[本轮交回](../../../../.run/20261006-runtime-cache-retry-probe-01/handoff.json) SHA **b06fd6dd03e4f7d1e11200c848aba080ee7368751f0aaec656f101a7b99cec77**；[封存清单](../../../../.run/20261006-runtime-cache-retry-probe-01/evidence-seal.json) SHA **b474ebb47d055445372d44a62e3e5f6f050bf7b11295ad64fa48c2cb509a5014**，61份核心文件+1份外部事件复核逐项hash读回吻合。后续closeout账本/文档检查/提交收据不在该固定清单范围。知识沉淀豁免：仅补既有行为回归与取证，未变公共设计，继续按用户指定落唯一账本。前台移动/放弹/连续十轮/整浏览器重进、complete28新场景验收、Defender决定/OS5根因、ADR142与公开身份Owner门均OPEN；本轮有实际新增回归、双独审、推送和现场状态纠正，goal保持ACTIVE。
