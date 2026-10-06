@@ -1515,3 +1515,10 @@ composition28_review完成只读独审，裁决ACCEPT_EXACT_COMPLETE28_GAME30_OF
 仅追加只读现场快照：restart-08至generation197，18101/18331仍PID32228/8640，14条受保护监听仍PID46248，18105无监听；前台证据候选仅旧guide，无新用户材料。未操作浏览器/进程/服务/端口/Defender，现场仍complete27/Game29；Scene30仍FILES_PREPARED_NOT_LAUNCH_APPROVED。[交回](../../../../.run/20261006-complete28-schema-validation-01/handoff.json) SHA **203dcbe8901b04538582327aab4cd2d6f459514d6c61581043be31e00bd1f5e8**。[封存清单](../../../../.run/20261006-complete28-schema-validation-01/evidence-seal.json) SHA **33265d01bc660c3fa1b04cc7e9e31f243c32671bafde58f4727845206597b0a3**，23份验证文件+2份独审文件共5370937字节逐项hash读回吻合；随后closeout里的账本/文档检查/提交收据不在该固定清单范围内。
 
 本轮有新离线验证与独审的实质progress，goal保持ACTIVE；不借并行会话blocked状态替代本goal。知识沉淀豁免：仅补既有修复的组合验证证据，未改变公共设计或规则，按用户要求只追加唯一账本，既有记录全部保全。
+
+
+### 交付接续：checkpoint74，os-error-5第7次发生在用户验收现场restart-08（120分钟/224代后），已只读封存；现场已死，Defender/complete28切换决定变为决定性（2026-10-06 11:22 +08）
+
+restart-08（complete27/Game29，无checkpoint_io诊断）于约11:19:45 +08在generation 224发布成功后立即`DS_FATAL ds_fatal 拒绝访问。(os error 5)`，随后`cleanup failed: host faulted during execution or cleanup`；launcher 32228/DS 8640均退出，18101/18331无监听，受保护Platform PID46248未触碰。存储遗留`checkpoint-...225.draft`（manifest.json+runtime.bin+voxel.bin三件齐全，与既往五次封存草稿同构），224为最后成功代。[第7次封存收据](../../../../.run/20261006-os-error5-seventh-01/receipt.json)已绑定日志/验证/launcher日志SHA。
+
+本次运行健康时长约120分钟/224代，为历次最长——确认间歇性外部争用特征，非启动期问题。complete28（含179586e2八阶段诊断与Runtime修复）仍未部署：若下一现场以complete28重建，复发时DS_FATAL将直接给出阶段/路径/generation/原始errno。用户验收现场已死，前台体验测试现无对象；Defender排除决定与complete28现场切换决定（Scene30文件已备、launcher/env/账号绑定未备，属并行会话整包线）现在成为恢复验收的唯一路径。本会话未重启/未新建现场、未动受保护服务；ADR142裁定、Defender、18085公开身份与前台证据门继续OPEN，goal保持blocked直至外部输入到达。
