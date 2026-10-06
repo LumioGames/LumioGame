@@ -1491,3 +1491,11 @@ composition28_review完成只读独审，裁决ACCEPT_EXACT_COMPLETE28_GAME30_OF
 四项外部门在本会话连续多轮未收到：用户前台移动/放弹/十次关闭重开/整浏览器退出证据（两次结构化提问均无答复，`.run/live-ordinary33-root-08/`及全部验收目录无新用户文件）、Defender排除决定、ADR142 Owner裁定（Engine仓仍为Draft）、公开18085发布身份决定（现网仍0.0.4 ecece8a）。这些输入无法推断或自动化；按持续目标阻塞规则，本会话goal登记**blocked**。并行会话的composition28_readonly复审未返回，Scene30文件保持FILES_PREPARED_NOT_LAUNCH_APPROVED，均不改变本判定。
 
 现场保全：restart-08消费complete27/Game29，至generation174，本运行累计零os-error-5、零死亡fatal；18101/18331仍PID32228/8640，14条受保护监听仍PID46248；未重启、未换包、未操作浏览器。恢复路径：任一项输入到达即按[pending-inputs-runbook](../../../../.run/20261006-delivery-continuation-01/pending-inputs-runbook.md)执行（ADR142批准→Engine定稿→98578621合入→Server接线→完整包→双玩家验收；前台证据→逐项登记验收门；Defender→complete28现场复测；18085→Scene30切换流程）。blocked不是取消目标或宣称完成；正式交付门全部保持OPEN。
+
+### 真机体验优先交接：checkpoint73，并行账本状态澄清与本轮收口（2026-10-06 10:56:11 +08）
+
+两个checkpoint72来自不同会话，以完整标题区分，旧记录不改。当前组合独审已经返回并落盘（result SHA10673715…、report SHA0843cc3b…，见前一checkpoint72链接），后一个72所述“复审未返回”为其快照，不能覆盖已存在的最终报告。离线组合ACCEPT、历史pins不变；完整当前schema reader/migration-history/negative-controls、用户前台和Owner门仍OPEN，未发生切场。
+
+另一个会话提交46eebb2时已一并保存本会话checkpoint72；本会话窄提交的暂存文件集守卫发现仅Server诊断计划仍未入库后主动停止，未误提交其他文件。后续只保存本段与已完成Server计划。当前工具get_goal实际仍ACTIVE，另一个会话的blocked是其自身状态；本轮已有Scene30文件准备和独审的实质progress，不以外部状态代改本goal。
+
+文档验证：父仓lint-extensions OK/raw0；101 spec-lint raw0且仍两项既有结构报告（“触及子被追加”旧悬空链接、.sdd并行根），未改旧段或放宽检查。准备、取证边界、两个prefix保全收据及本轮lint收据都在[Scene30准备根](../../../../.run/browser-experience-scene30-source-preparation-01/)。本轮不把任何离线资格、旧包现场存活或其他分支的ADR142候选当作正式体验通过。
