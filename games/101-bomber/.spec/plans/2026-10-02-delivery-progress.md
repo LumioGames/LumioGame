@@ -1424,3 +1424,46 @@ Server[最终独审](../../../../.run/20261006-confirmed-fixes-01/server-final-r
 **Runtime补充证据**：在36ea3ae3上复跑Replication 301/301/raw0与三向probe（修复程序集四条RED转GREEN、complete26对照保持GREEN、complete27原件四条RED原样复现），[证据](../../../../.run/20261006-confirmed-fixes-01/root-regression-01/)；与checkpoint64的ECS/Coordination/GAS结果互补不冲突。第三份独立复审[independent-review-01](../../../../.run/20261006-confirmed-fixes-01/independent-review-01/result.json)同样ACCEPT_P2_FIX_ISOLATED。
 
 现场只读：restart-08至generation44+期间零os-error-5、零死亡fatal（本轮30+分钟）；接手清单与包身份核对见[takeover-checklist](../../../../.run/20261006-delivery-continuation-01/takeover-checklist.json)。用户前台证据、Defender决定、ADR142 Owner、公开18085身份及complete28消费资格全部继续OPEN；goal ACTIVE。
+
+
+### 真机体验优先交接：checkpoint68，complete28官方整包六阶段实际raw0；官方包缓存probe4/4，Game30普通消费已启动（2026-10-06 10:20:02 +08）
+
+complete28 pack于02:09:13–02:16:36 UTC实际完成raw0，后续verify/audit/PE/domain/ctor五阶段均另有独立数值退出收据raw0，全部位于[本轮资格根](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-root-01/)。305payload逐字节SHA全匹配，8仓精确commit/clean符合输入，无额外文件及既定私有调试marker。实际PE五组13/10/13/28/20个程序集均无依赖版本缺口；Runtime15域身份均0.1.0.0；默认CLR真实Native构造返回REAL_NATIVE_HOSTING_CTOR_DEFAULT_CLR_GREEN。Producer既有warning完整保留，不能把raw0称为全链零警告。
+
+[Root整包裁决](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-root-01/root-acceptance.json)仅接受离线消费资格：manifest SHA9fc608a097e29e25e162d2394cf426dde0e1e33349fc67b058cbf1e74591165d，SDK27c0ce3c9afd70bc0c10b4260898e7085aef95b3982ddb799bfc75a581d4b719，Native888357f60f0b7ab5de088ef585c0ee942fefd7b37cbde8900ddf3ea127c5c086，WASM1d6fb5fc41aed8cc90444ac79970b85225c30daffadd906f94f8bf1f8a174b3e。Runtime36ea3ae3、Server179586e2、Clientc3611518，其他六仓沿用complete27。版本仍0.0.5-main.523c3d3，必须用新manifest/SDK SHA区分。
+
+[修复实物核验](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-root-01/additional-repair-verification.json)：与修前完全相同Program.cs实际引用官方包Managed DLL，寿命4/4 raw0，loaded ECS SHA16721ae40084662a58f3b72501ba0c35850edbe21c3e9b1464dbf3b3abc4a27a精确匹配新manifest，dirty字段存在。新lumio-ds.exe与manifest SHA匹配且包含checkpoint_io operation=，只证明诊断进入产物，不证明os-error-5根因已修。没有使用旧DLL替换。
+
+新[Game30消费根](../../../../.run/game30-confirmed-fixes-consumer-01/)沿用Game29同一已冻结4090源和重新构建的2UI文件；只换为已核complete28，fresh NuGet/输出、普通四阶段及随后九条严格AOT标志单独记录。Root源门精确绑定新manifest、两仓新commit及当前裁决，并保留原UI/移动/sourcegen有限资格与完整schema仍OPEN的边界。普通构建已启动，exec会话17911，尚不宣称通过。当前用户场景未换包/未重启，ADR142/公开签名/Defender与前台验收门仍OPEN，goal ACTIVE。
+
+
+### 真机体验优先交接：checkpoint69，complete28与Game30离线消费资格封存，普通四阶段及严格AOT实际raw0；当前验收场景不变（2026-10-06 10:35:24 +08）
+
+[Game30最终审计](../../../../.run/game30-confirmed-fixes-consumer-01/consumer-audit-02.json)38/38 raw0。4092个冻结输入构建后逐字节一致，其中4090核心源与Game29相同，2个UI为本轮新构建；共享UI/旧dist的205文件保持原样。四项普通消费build-server/build-client/build-browser/publish-browser各有独立raw0与日志SHA；严格AOT于02:24:31–02:27:41 UTC完成raw0，九项严格标志逐项核实。普通wwwroot835件、严格AOT376件各有全量SHA清单。fresh NuGet缓存SDK实物SHA及四项SDK lock contentHash均精确匹配complete28，服务端/客户端/浏览器玩法及宿主的ECS/GAS均与各自官方producer一致；未只凭同名0.0.5版本授予资格。
+
+首次Root消费审计raw1保留：两项浏览器宿主程序集误以SDK NS2.1为对照。源码项目明确引用官方web/replica闭包，实际ECS ae9acd56、GAS636a0ae2与complete28对应manifest载荷一致；按真实producer修正检查器，新增manifest一致性检查后38/38，通过依据没有放宽，未改产品源或任何产物。见[归因与前后脚本SHA](../../../../.run/game30-confirmed-fixes-consumer-01/audit-correction-01.json)。继承冻结脚本的历史标签仍写Game26/Engine24，实际本轮身份由新输入/manifest/数值收据绑定，未改写历史记录。
+
+[离线交接](../../.run/20261006-confirmed-fixes-delivery/offline-handoff.json)SHA256 047150d73b3c0ad02f86f8cc1c9fe6448e80b548f7622954c5f58bdf61fb1246；complete28六阶段均raw0、官方包寿命probe4/4，消费Runtime36ea3ae3/Server179586e2/Clientc3611518，manifest9fc608a0、SDK27c0ce3c。Server诊断标记进入实际可执行文件，不证明现场os-error-5已被消除。全部构建会话已退出，不再占用运行中的任务。
+
+[现场只读副本](../../.run/20261006-confirmed-fixes-delivery/full-pack-28-root-01/scene-readonly-01/receipt.json)记录restart-08日志至generation119，18101/18331仍PID32228/8640、受保护14条监听仍PID46248；仍消费complete27/Game29，未换包或重启。未收到用户前台结果，checkpoint推进不替代体验验收。移动/放弹/单序列十轮/整浏览器重进、Defender、真实os-error-5归因、ADR142与公开身份均OPEN。完成的是离线资格，重建现场须等当前用户验收现场释放；本轮为实质progress，goal ACTIVE。
+
+并行记录说明（仅追加）：上一段有两个独立checkpoint68标题，分别是“schema16组合资格重封”与“complete28官方整包六阶段”；以完整标题和证据根区分，不改旧编号。前者的新v16c27组合证据属于complete27，不自动覆盖本轮complete28。其整包协调让渡和179586e2 canonical裁定已读取，本会话未改其证据或再次推送备选实现。
+
+checkpoint69封件补充：本轮[证据封件](../../.run/20261006-confirmed-fixes-delivery/offline-evidence-seal.json)收录126件、10,754,985字节，逐件复读SHA一致；封件SHA256 29abcb9bc24da1a7128559039fb862742c998796461ac518e185830a3031e248。原始audit-01失败和修正audit-02均在封件内，产物分别由305payload manifest与835/376浏览器清单绑定，不把编译缓存当封件正文。父仓spec lint raw0且OK；101 spec lint raw0但仍报告既有“触及子被追加”悬空链接与.sdd并行根两项，未改旧账本或放宽检查。
+### 真机体验优先交接：checkpoint70，complete28/Game30下一场文件准备完成，1518件精确复制；新组合只读独审进行中，现有用户现场继续保留（2026-10-06 10:43 +08）
+
+上一goal turn为progress（complete28六阶段与Game30普通/AOT资格完成并封存）。本轮读回父仓HEAD41e9242、最新账本、当前进程及restart-08日志；当前仍18101 PID32228、18331 PID8640，14条受保护监听仍PID46248。所有restart根顶层仅发现既有user-acceptance-guide，没有用户新结果/截图；不将指南或checkpoint增长当验收结果。
+
+在此前不存在的[Scene30独立准备根](../../../../.run/browser-experience-scene30-source-preparation-01/preparation.json)整理文件：官方release305载荷+manifest共306件、普通网页835件、严格AOT网页376件、启动配置模板1件，共1518；源与复制件逐件SHA一致，完整[清单](../../../../.run/browser-experience-scene30-source-preparation-01/staged-files-inventory.json)。preparation SHA6feb04881960f76590a7b83398fd2bf559848766757144cf21ec031b82133d9b。配置只解析文件位置、隔离未来存储/日志路径及绑定localhost:18331；还原这些路径字段后与冻结输入逐项deep-equal，额度/超时/权威世界/体素/协议/玩法均未变。两个人类+六Bot范围保持。
+
+此节点严格是FILES_PREPARED_AND_HASH_VERIFIED_NOT_STARTED_OR_LAUNCH_APPROVED：[Root执行收据](../../../../.run/browser-experience-scene30-source-preparation-01/root-execution-receipt.json)记录实际工具raw0及准备后监听。没有生成可执行launcher、Platform env、seed SQL或compose覆盖，没有注册账号、启动DS或写当前存储。配置文件明确NOT-LAUNCH-APPROVED，不能绕过真实签名绑定直接启动。当前验收现场仍完整消费complete27/Game29。
+
+为解决本轮新组合尚未获得schema继承资格的缺口，按用户独立复审要求派出composition28_review，只读核对v16c27不可变源/生成物资格、两指定strict-pins历史复审、新Runtime/Server diff及complete28/Game30真实产物；仅写新.run报告，禁止改pins/原证据/账本与任何现场操作。复审尚未返回，不提前授予通过。当前用户验收、Defender、ADR142及公开身份门继续OPEN，goal ACTIVE；本轮已经完成离线文件准备的实质progress。
+
+### 交付接续：checkpoint71，ADR142获批前置隔离验证完成——Runtime离线死亡七源在complete28基线36ea3ae3零冲突重放、核心族全GREEN（2026-10-06 10:46 +08）
+
+目标允许「批准前可做隔离验证」。从GitHub归档ref恢复Runtime25精确savedHead `41405896`（merge-base恰为候选parent 57bd5303，新基线前进10提交未触碰候选任何文件），在新隔离树`.101-restore-01/LumioGameRuntime30OfflineDeathReplay`（分支codex/101-offline-death-replay-36ea）cherry-pick零冲突：实际为**七份生产源+1新测试**（收尾记录seven-source patch口径，任务误写五源已如实更正），重放diff与原候选diff SHA-256逐字节一致（610cbc15…）。本地提交`98578621`未推送。
+
+真实Native（complete-release-27，SHA b08c8afe…）：离线死亡族32/32、successor全类227/227、Replication 333/333、ECS 623/623均零失败零跳过raw0；GAS 945/950的5例为缺voxel test-support镜像的基线固有环境缺口（干净基线同败已记录），非重放导致。Replication首跑5例缺LumioEngineRoot失败原件保留，补环境后全绿。[证据与逐命令收据](../../../../.run/20261006-offline-death-replay-01/result.json)。
+
+[ADR142裁定材料](../../../../../.sdd/101-20261006-adr142-owner-decision-brief.md)已更新：批准后Runtime合入步骤可直接采用98578621，剩余获批后工作仅Engine定稿、Server12三份生产文件+Host接线、完整包与双玩家验收。本轮未启用Draft、未改wire/ADR正文、未推送；主仓与Runtime28树未动，现场服务未触碰。用户前台证据、Defender、ADR142 Owner、公开18085身份继续OPEN；goal ACTIVE。
