@@ -1638,3 +1638,13 @@ DS结构化日志最终18,181,228字节、Bot1为533,606字节，末尾都到11:
 表现层的[独立受控复现](../../../../.run/20261007-movement-investigation-01/feed-probe.json)证明：同样每50ms发布0.175位移，authority Tick重复/跳号会使60Hz画面单步从0.05833增至0.175。隔离Game分支18868cc已实现本地已发布位姿接收时间插值，RED8失败后GREEN41/41，全量Presentation722/722、typecheck/build/guard均raw0，见[实现报告](../../../../.run/20261007-movement-investigation-01/presentation-fix/report.md)。仅为第二处缺陷的候选修复，尚未合入、独审或打包，不宣称整体移动已修复。
 
 [节拍分析第二次收据](../../../../.run/20261007-movement-investigation-01/cadence-analysis-02.json)保留首轮解析不足：用户窗口服务器确有最高154ms间隔；所谓冻结后的日志包含持续事件，不能凭文件观察断言磁盘/Defender根因。19:42左右复核原restart03端口仍在；其仍是原complete29基线。ADR142、18085及生产schema门保持OPEN，用户手感验收保持失败。
+
+### 移动手感排障：checkpoint84，表现修复两轮独审后合入；主要预测时间缺口形成具体Owner裁定提案（2026-10-07 19:48 +08）
+
+表现修复18868cc通过[任务独审](../../../../.run/20261007-movement-investigation-01/presentation-review-task/receipt.json)与[集成终审](../../../../.run/20261007-movement-investigation-01/presentation-review-final/receipt.json)，无P0/P1；仅保留Vitest性能提示P2。game-view既有换局/本地handle变更dispose再创建、main关闭dispose路径均核对。cherry-pick合入当前分支b475473，源文件与被审head diff为空，[源资格收据](../../../../.run/20261007-movement-investigation-01/presentation-source-qualification.json)限定仅表现层，不给整体移动或打包开绿灯。相同源码已验证，无无因重复测试。
+
+[独立预测契约审计](../../../../.run/20261007-movement-investigation-01/prediction-contract-audit/report.md)确认：统一Tick+1冷却来自Runtime历史实现，早期切片约定默认0，但当前101依赖它维持同一权威Tick一个移动额度（已有MultipleCommandsInOneAuthorityTickCannotSpendMultipleMovementBudgets断言）。删冷却、预测跳过冷却或把sequence当Tick均不能安全交付；只加服务器分支也会留下本地转角/缓冲时间停滞。
+
+当前公共契约缺少本地采样帧与GAS执行/重放时间的映射。按根开工提示词§1第2条例外「引擎公共契约 / 公共错误码的语义新增或改变（单纯补实现不算）」需Owner裁定，当前任务也明确禁止自行批准。提案已具体化：按声明Hz的本地采样帧、同帧输入共享时间、保留帧间距、保守权威重定位、选择性时间依赖、部分ACK的有界准入来源、无输入不自产生移动、不补发追赶突发、原额度/冷却/体素保持。候选公式与局限见审计末节，尚非生效契约；尤其部分ACK不能当激活成功，必须以实际结果/状态证明。
+
+Runtime/Client生产修复未写，complete30/Game32/Scene32未构建或启动；已准备的管线脚本不构成资格。等待该项Owner语义决定，ADR142/18085/生产schema仍独立OPEN。当前现场仅原restart03，用户手感验收继续不通过，不能把已完成表现修复当全任务完成。
