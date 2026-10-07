@@ -1628,3 +1628,13 @@ DS结构化日志最终18,181,228字节、Bot1为533,606字节，末尾都到11:
 仅恢复已命名18097平台及postgres容器（WSL Ubuntu Docker），healthz双ok。全新d系列账号更新freshAccounts并追加[restart03前缀收据](../../../../.run/browser-experience-scene31-source-preparation-01/restart-03-prefix-receipt.json)，旧gate另存原字节。第一次启动原守卫发现runtime-copy多一份崩溃生成hostentry_fault.log（307/306）而拒绝；将该新增日志移出包目录逐字节哈希保全，见[搬迁收据](../../../../.run/20261007-movement-investigation-01/crash-log-relocation.json)，未改305载荷或manifest。第二次经独立隐藏pwsh Start-Process启动restart-03，2玩家账号+6Bot准入PASS、18101双玩家URL恢复，仍为原complete29/Game31而非修复版。失败启动日志保留。
 
 源码追踪确认SpectatorDump.PublishedPosition已消费完成发布的预测World，不能定案为只画权威位置。待隔离判别：预测位置与authority Tick快照时间轴混用、server cadence及暂时文件停写。新[隔离测量计划](../../../../.run/20261007-movement-investigation-01/measurement-plan.md)仅测真实SDK/Native，不在用户现场注入实验。知识沉淀按纯取证豁免，唯一账本只追加；移动修复、独审、新整包、新消费者与用户重验均未完成，Owner门保持OPEN。
+
+### 移动手感排障：checkpoint83，真实Native复现连续预测停在第一步；表现层另有独立跳步，修复待独审（2026-10-07 19:4x +08）
+
+[真实SDK/Native隔离报告](../../../../.run/20261007-movement-investigation-01/native-probe/report.json)绑定complete29全部身份。旧四例4/4通过、零跳过；新增连续推进测量两例均RED，measurement-04实际exit2。权威固定Tick3时连续8条合法Move输入，confirmed X始终7.5、published X始终7.675：后7条没有前进。另一例真实服务端每Tick一条输入，每两条本地输入后交回两次权威，偶数输入仍先停住、随后权威向前补0.175，最终双方8.900002，无回跳。隔离夹具使用真实Native、GAS和复制但不包含正式Platform/Server.Host或渲染，不冒充用户现场轨迹；早期环境/载体失败与修正记录全部保留。
+
+源码与实测一致：预测World.Tick保持3，Ability成功后无条件设置cooldown=4；后续激活被GAS第2步拒绝。缺失预测发生在表现层之前。正确修法仍核对架构既有冷却/预测时间契约，禁止把输入序号擅自当帧号或取消业务冷却掩盖问题。
+
+表现层的[独立受控复现](../../../../.run/20261007-movement-investigation-01/feed-probe.json)证明：同样每50ms发布0.175位移，authority Tick重复/跳号会使60Hz画面单步从0.05833增至0.175。隔离Game分支18868cc已实现本地已发布位姿接收时间插值，RED8失败后GREEN41/41，全量Presentation722/722、typecheck/build/guard均raw0，见[实现报告](../../../../.run/20261007-movement-investigation-01/presentation-fix/report.md)。仅为第二处缺陷的候选修复，尚未合入、独审或打包，不宣称整体移动已修复。
+
+[节拍分析第二次收据](../../../../.run/20261007-movement-investigation-01/cadence-analysis-02.json)保留首轮解析不足：用户窗口服务器确有最高154ms间隔；所谓冻结后的日志包含持续事件，不能凭文件观察断言磁盘/Defender根因。19:42左右复核原restart03端口仍在；其仍是原complete29基线。ADR142、18085及生产schema门保持OPEN，用户手感验收保持失败。
