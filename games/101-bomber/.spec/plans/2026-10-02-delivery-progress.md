@@ -1692,3 +1692,11 @@ Runtime新增提交`95f5bab9f56892a50fdc996f4d06b10adc642c0a`，两个真实Nati
 [旧scratch差额完整证明](../../../../.run/20261007-runtime-movement-repair-01/task-1b-scratch-report.md)结合历史`cc1f9094`消除重复捕获与`40f098c3`类型化捕获、两轮真实计费采样，得到旧双份文本1480减当前四字段844恰为636。结构pending恢复费用8384保持，当前总额12070；原12706断言来自优化之前，未发现需要凑数的生产漏计。[root独立核对收据](../../../../.run/20261007-runtime-movement-repair-01/task-1b-root-review.json)确认原断言文件SHA不变。临时等价诊断全部恢复/生命周期/父链接断言通过，源码已恢复clean，原全套950项仍949通过/1失败/0跳过。单行测试数值修订仅为未应用补丁；鉴于用户§七明确保护断言，已就该具体例外异步询问，未获回复前不修改，不因此停止其余移动修复。
 
 Client/Game后续任务已具体化：确认SendMove先排队、下一owner pump才进入GAS，输入重复与pump各有50ms定时器；隔离浏览器必须测错相/迟到和实际60/120Hz显示，不能用理想同步数学序列替代前台证据。尚无Runtime Model、Client接线、新完整包或新Scene；用户手感验收仍失败，ADR142/18085/正式schema采用保持原门状态。
+
+### 移动手感排障：checkpoint90，Runtime预测固定步切片独审通过，继续Runtime原实体Model接线（2026-10-07 21:18 +08）
+
+Runtime最终增量`ef2f56740b5d80743b4f278a0ea3d46962746cb3`把经过步提交移到既有CaptureIngress初相；TickCore只暂存验证后的值并在退出清理，不再按returned rejection猜测是否执行。真实Native RED证明旧修复在authority5/public11后把S9倒退为S2，最小修复GREEN证明S9/public11一致、同S9拒绝且S10恢复。最终clock23/23、presentation8/8、十三相5/5均零跳过/raw0，双TFM生产构建无警告错误。
+
+[最终任务独审](../../../../.run/20261007-runtime-movement-repair-01/task-1-final-review.md)结合前两轮审查给出spec compliant / quality approved，无P0/P1；分类后的formatter workspace P2仍保留。这仅使Task1（Runtime ECS/GAS时钟与重放）完成，提交范围`36ea3ae3..ef2f5674`；旧scratch断言及完整GAS全绿仍未解决，不包装成整体验收成功。
+
+按既有设计进入[Runtime Model任务](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-brief.md)：完整预测结果按成功发布序号交给确认世界原实体Model，正常运动即时跟随，仅真实纠偏残差按实际渲染时间衰减，单步外推有界且输入停止后回到真目标。要求真实Native八步预测与60/120Hz表现轨迹，不以数学夹具代替整条链路。此段开始实施，尚未交付；Client、完整新包、Game消费者、新Scene和用户重验继续待办，原Owner门保持。
