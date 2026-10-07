@@ -44,8 +44,7 @@ export function edgeArrowPlacement(p: ScreenPointLike, width: number, height: nu
 /** 插值后的实体位置（米，引擎轴）；瞬移后不插值（与 view 同口径）。 */
 export function interpolatedPlayerPos(sample: FeedSample, id: U64): { x: number; z: number } | null {
   const c = sample.curr.Players.find((p) => p.NetEntityIdRaw === id)
-  if (!c || c.positionKnown === false) return null
-  if (sample.ownerPose?.id === id) return { x: sample.ownerPose.x, z: sample.ownerPose.z }
+  if (!c) return null
   const p = sample.prev.Players.find((q) => q.NetEntityIdRaw === id)
   const cw = c.LogicTransform.WorldPosition
   if (!p || c.teleportTick > sample.prev.Tick) return { x: cw.x, z: cw.z }

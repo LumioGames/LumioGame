@@ -9,8 +9,6 @@ import type { WorldSnapshot } from '../contract/snapshot'
  * renderTick、事件派发、规则层与输入照常按真实时间走。
  */
 export interface FeedSample {
-  /** 本机已发布位置的显示插值，不受权威 Tick 的重复或跳帧影响。 */
-  ownerPose?: { id: number; x: number; z: number }
   /** 插值起点（上一帧）。 */
   prev: WorldSnapshot
   /** 插值终点（最新帧）。 */
@@ -41,14 +39,6 @@ interface Received {
   recvAt: number
 }
 
-interface OwnerSegment {
-  id: number
-  epoch: string
-  from: { x: number; z: number }
-  to: { x: number; z: number }
-  recvAt: number
-}
-
 export class PresentationFeed {
   private a: Received | null = null
   private b: Received | null = null
@@ -60,13 +50,11 @@ export class PresentationFeed {
   private viewClock = 0
   private lastReal = -1
   private last: FeedSample | null = null
-  private owner: OwnerSegment | null = null
 
-  constructor(private readonly tickMs: number, private readonly localPlayerId = 0) {}
+  constructor(private readonly tickMs: number) {}
 
   push(frame: TickFrame, recvAt: number): void {
     if (this.b && frame.snapshot.Tick < this.b.snapshot.Tick) return
-    this.receiveOwner(frame.snapshot, recvAt)
     if (this.b && frame.snapshot.Tick === this.b.snapshot.Tick) {
       // Voxel delivery may follow the entity frame for the same committed tick.
       // Replace that display data without restarting interpolation or replaying FX.
@@ -85,29 +73,6 @@ export class PresentationFeed {
       this.b = r
     }
     this.enqueue(owned.events)
-  }
-
-  private receiveOwner(snapshot: WorldSnapshot, recvAt: number): void {
-    if (!this.localPlayerId) return
-    const player = snapshot.Players.find(p => p.NetEntityIdRaw === this.localPlayerId)
-    if (!player || player.positionKnown === false) {
-      this.owner = null
-      return
-    }
-    const { x, z } = player.LogicTransform.WorldPosition
-    const epoch = player.poseEpoch ?? `teleport:${player.teleportTick}`
-    const prior = this.owner
-    if (prior?.epoch === epoch && prior.to.x === x && prior.to.z === z) return
-    const from = prior?.epoch === epoch ? this.sampleOwner(recvAt)! : { x, z }
-    this.owner = { id: this.localPlayerId, epoch, from: { x: from.x, z: from.z }, to: { x, z }, recvAt }
-  }
-
-  private sampleOwner(at: number): FeedSample['ownerPose'] {
-    if (!this.owner) return undefined
-    const { id, from, to, recvAt } = this.owner
-    const alpha = Math.min(1, Math.max(0, (at - recvAt) / this.tickMs))
-    if (alpha === 1) return { id, x: to.x, z: to.z }
-    return { id, x: from.x + (to.x - from.x) * alpha, z: from.z + (to.z - from.z) * alpha }
   }
 
   private enqueue(events: readonly BomberEvent[]): void {
@@ -143,7 +108,6 @@ export class PresentationFeed {
   /** 新局 / 重连时清空。 */
   reset(): void {
     this.a = this.b = null
-    this.owner = null
     this.queue = []
     this.eventKeys.clear()
     this.last = null
@@ -178,7 +142,6 @@ export class PresentationFeed {
     }
     this.queue.length = keep
     const s: FeedSample = {
-      ...(this.owner ? { ownerPose: this.sampleOwner(realNow) } : {}),
       prev,
       curr,
       alpha,

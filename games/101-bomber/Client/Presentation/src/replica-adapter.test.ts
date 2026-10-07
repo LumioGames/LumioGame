@@ -35,21 +35,6 @@ const terrain = { size: 19, ground: new Uint8Array(361).fill(6), brick: new Uint
 const adapter = () => createReplicaAdapter({ characters: new Map([[118003, 'cat']]), skills: new Map([[3, 'blink']]) })
 
 describe('production replica presentation', () => {
-  it('preserves full life, generation and teleport identity in same-tick pose epochs', () => {
-    const a = adapter(), f = fixture()
-    const player = f.players[0]
-    player.lifeGeneration = '18446744073709551599'
-    player.skills.teleportSequence = '18446744073709551600'
-    expect(a.project(f, terrain)!.Players[0].poseEpoch).toBe(`${life}:18446744073709551599:18446744073709551600`)
-    player.skills.teleportSequence = '18446744073709551601'
-    expect(a.project(f, terrain)!.Players[0].poseEpoch).toBe(`${life}:18446744073709551599:18446744073709551601`)
-    player.lifeGeneration = '18446744073709551600'
-    expect(a.project(f, terrain)!.Players[0].poseEpoch).toBe(`${life}:18446744073709551600:18446744073709551601`)
-    player.id = 'ffffffffffffffff0000000000000032'
-    expect(a.project(f, terrain)!.Players[0].poseEpoch).toBe(`${player.id}:18446744073709551600:18446744073709551601`)
-    expect(a.localPlayerId).toBe(a.project(f, terrain)!.Players[0].NetEntityIdRaw)
-  })
-
   it.each([2, 3])('binds a fresh observing participant Self in life phase %i without inventing a live pose', lifePhase => {
     const a = adapter(), f = fixture()
     f.selfId = participant; f.players = []

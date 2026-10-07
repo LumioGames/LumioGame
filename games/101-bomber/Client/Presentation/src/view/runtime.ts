@@ -1302,12 +1302,7 @@ export class ViewRuntime {
       if (p.eliminated && doll.visual === 'alive' && !this.deaths.some((d) => d.id === p.NetEntityIdRaw)) doll.hide()
       // 刚闪现过：不跨闪现插值（规则层没推进 teleportTick 时也不「滑」3 格）。
       const prevP = this.blinkSnap.has(p.NetEntityIdRaw) ? undefined : this.prevMap.get(p.NetEntityIdRaw)
-      if (s.ownerPose?.id === p.NetEntityIdRaw) {
-        this.pos.x = s.ownerPose.x
-        this.pos.z = s.ownerPose.z
-      } else {
-        interpolateXZ(this.pos, prevP ? xz(prevP) : undefined, xz(p), p.teleportTick, prev.Tick, alpha)
-      }
+      interpolateXZ(this.pos, prevP ? xz(prevP) : undefined, xz(p), p.teleportTick, prev.Tick, alpha)
       const inWater = this.terrain.groundAt(Math.floor(this.pos.x), Math.floor(this.pos.z)) === BlockType.水
       doll.groundY += ((inWater ? WATER_FX.wadeY : 0) - doll.groundY) * Math.min(1, dt * 10)
       // 走进水：水花 + 涟漪；在水里走：每走一小段泛一圈涟漪（用户 2026-09-28 反馈）。
