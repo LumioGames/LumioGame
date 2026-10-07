@@ -1,5 +1,5 @@
 import './base.css'
-import { CHARACTER_ORDER, DEFAULT_RULES, type CharacterId, type ProtoRules } from '../contract'
+import { CHARACTER_ORDER, type CharacterId, type ProtoRules } from '../contract'
 import { createAudio } from '../audio'
 import { createHud } from '../hud'
 import { loadLastCharacter, pickCharacter, saveLastCharacter, type Portraits } from '../hud/character-select'
@@ -8,16 +8,26 @@ import { PresentationFeed } from '../present/feed'
 import { loadSettings, saveSettings } from '../present/settings'
 import { createView, renderDollPortraits } from '../view'
 import { LocalHost } from './local-host'
-import { appConfig, DEV_FAST_SCALE, devEvolveCandies, parseAppParams } from './params'
+import { appConfig, appLineup, appRules, DEV_FAST_SCALE, devEvolveCandies, parseAppParams } from './params'
 
 /**
- * 组装入口。URL 参数见 params.ts（?seed / ?match / ?bots / ?ai / ?char，开发时另有 ?dev=evolve,autopilot,fast）。
+ * 组装入口。URL 参数见 params.ts（?seed / ?match / ?map / ?bots / ?ai / ?char，开发时另有 ?dev=evolve,autopilot,fast）。
  * 第 4 轮（ADR 0030）：先选角（`?char=` 跳过），再建宿主、视图、HUD 与输入——选角屏只是开局仪式里的一屏。
+ * 方向 B（ADR 0040 / 0043）：默认 16 人 · 27×27（你 + 15 Bot）；没给 `?ai=` 时 Bot 用默认阵容（菜鸟 / 普通 / 困难）。
  */
 const params = parseAppParams(location.search, import.meta.env.DEV)
+const platformOrigin = new URLSearchParams(location.search).get('lumioOrigin')
+if (platformOrigin && window.parent !== window) {
+  try {
+    window.parent.postMessage({ type: 'lumio:ready' }, platformOrigin)
+  } catch {
+    // 平台地址无效时游戏照常在本页运行。
+  }
+}
 const seed = (params.seed ?? Math.floor(Math.random() * 0x7fffffff)) >>> 0
-const config = appConfig(params)
-const rules: ProtoRules = { ...DEFAULT_RULES, playerCount: params.bots + 1 }
+const rules: ProtoRules = appRules(params)
+const config = appConfig(params, rules)
+const lineup = appLineup(params)
 const timeScale = params.dev.has('fast') ? DEV_FAST_SCALE : 1
 
 const $ = (id: string): HTMLElement => {
@@ -62,6 +72,7 @@ async function boot(): Promise<void> {
     botCount: params.bots,
     localCharacter: character,
     ai: params.ai,
+    ...(lineup ? { botLineup: lineup } : {}),
     ...(params.dev.has('autopilot') ? { localAutopilot: { profile: 'player' as const } } : {}),
   })
   if (params.dev.has('evolve')) host.devSpawnSkillCandies(devEvolveCandies(rules, character))

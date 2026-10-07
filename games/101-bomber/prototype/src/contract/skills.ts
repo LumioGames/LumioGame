@@ -37,6 +37,7 @@ export type SkillId =
   | 'glacierBomb'
   | 'toxinBomb'
   | 'shockBomb'
+  | 'flyKick'
 
 /** 稳定顺序：code = 下标 + 1（哈希用）；也是技能糖池的掷骰顺序。 */
 export const SKILL_IDS: readonly SkillId[] = [
@@ -53,6 +54,8 @@ export const SKILL_IDS: readonly SkillId[] = [
   // 原型扩展（NON-CONTRACT，ADR 0033）：追加在末尾，已有技能码不变。
   'toxinBomb',
   'shockBomb',
+  // 原型扩展（NON-CONTRACT，用户 2026-09-28）：飞腿袋鼠的专属主动技，追加在末尾，已有技能码不变。
+  'flyKick',
 ]
 
 /** 踢弹「直到被挡」/ 穿透「整条线」的哨兵值（格 / 层）。 */
@@ -105,11 +108,11 @@ export interface ComboDef {
   src: SourceNote
 }
 
-export type CharacterId = 'rabbit' | 'duck' | 'cat' | 'bear'
+export type CharacterId = 'rabbit' | 'duck' | 'cat' | 'bear' | 'kangaroo'
 /** 选角结果：具体角色，或 'auto' = 由规则层按均衡原则分配（Bot 用）。 */
 export type CharacterPick = CharacterId | 'auto'
-/** 选角界面与领奖台的顺序；code = 下标 + 1。 */
-export const CHARACTER_ORDER: readonly CharacterId[] = ['rabbit', 'duck', 'cat', 'bear']
+/** 选角界面与领奖台的顺序；code = 下标 + 1（新角色只在末尾追加，已有角色码不变）。 */
+export const CHARACTER_ORDER: readonly CharacterId[] = ['rabbit', 'duck', 'cat', 'bear', 'kangaroo']
 
 export interface CharacterDef {
   id: CharacterId
@@ -127,9 +130,11 @@ const ZERO: SkillParams = { cdMs: 0, durationMs: 0, rangeCells: 0, intervalMs: 0
 const lv = (p: Partial<SkillParams>): SkillParams => ({ ...ZERO, ...p })
 
 /**
- * 技能表（ADR 0030，design §8.4 / §12）。L1 取自用户第 4 轮口述；L2 / L3 为推断待验证（CD 逐级缩短、效果逐级增强）。
- * 糖池权重（ADR 0033 修订 RESOLUTIONS #2 的等权）：炸弹类（冰冻 / 穿透 / 中毒 / 麻痹）各 2，泡泡 / 闪现 / 火焰光环 / 踢弹各 1；
- * 回春只随棉花兔出生、不进池也不掉落，L2 / L3 因此实际不可达。
+ * 技能表（ADR 0030，design §8.4 / §12）。L1 原取自用户第 4 轮口述，四个专属技能的数值经「第 4 轮平衡（D 验收）」（ADR 0034）改过，
+ * 闪现距离之外均为推断待验证；L2 / L3 为推断待验证（CD 逐级缩短、效果逐级增强）。
+ * 糖池权重（ADR 0033 修订 RESOLUTIONS #2 的等权；用户 2026-09-28 拍板「踢弹改罕见掉落」再改）：其余技能整体 ×3——
+ * 炸弹类（冰冻 / 穿透 / 中毒 / 麻痹）各 6，泡泡 / 闪现 / 火焰光环各 3——踢弹保持 1（1 / 34 ≈ 3%），其余技能之间的相对比例不变。
+ * 回春只随棉花兔出生、飞踢只随飞腿袋鼠出生（用户 2026-09-28），都不进池也不掉落，L2 / L3 因此实际不可达。
  */
 export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   regen: {
@@ -139,48 +144,52 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     combo: false,
     candyWeight: 0,
     endsProtection: false,
-    levels: [lv({ intervalMs: 10000, points: 2 }), lv({ intervalMs: 8000, points: 2 }), lv({ intervalMs: 6000, points: 2 })],
+    levels: [lv({ intervalMs: 20000, points: 1 }), lv({ intervalMs: 16000, points: 1 }), lv({ intervalMs: 12000, points: 1 })],
     desc: '受伤后 {interval} 秒没再挨打回 {heal} 心，之后每 {interval} 秒再回，满血为止',
-    src: '推断待验证：L1 = 用户第 4 轮（10 秒，A/B 5 / 10 秒，上限满血）；L2 / L3 参照 §8.4 厚棉花去掉脱战等待',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 20 / 16 / 12 秒、每次 0.5 心（原 L1 = 用户第 4 轮 10 秒 / 1 心，棉花兔一家独大）；上限满血；L2 / L3 参照 §8.4 厚棉花去掉脱战等待',
   },
   bubble: {
     id: 'bubble',
     name: '泡泡',
     slot: 'active',
     combo: false,
-    candyWeight: 1,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 1，推断待验证）。
+    candyWeight: 3,
     endsProtection: false,
-    levels: [lv({ durationMs: 3000, cdMs: 18000 }), lv({ durationMs: 3500, cdMs: 15000 }), lv({ durationMs: 4000, cdMs: 12000 })],
+    levels: [lv({ durationMs: 3500, cdMs: 14000 }), lv({ durationMs: 4000, cdMs: 12000 }), lv({ durationMs: 4500, cdMs: 10000 })],
     desc: '吹个泡泡，{dur} 秒内不受伤、不能放弹（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮（取代 §8.4 一次性护盾）；L2 / L3 推断',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 3.5 / 4 / 4.5 秒、CD 14 / 12 / 10 秒（原 L1 = 用户第 4 轮 3 秒 / 18 秒，取代 §8.4 一次性护盾）',
   },
   blink: {
     id: 'blink',
     name: '闪现',
     slot: 'active',
     combo: false,
-    candyWeight: 1,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 1，推断待验证）。
+    candyWeight: 3,
     endsProtection: false,
-    levels: [lv({ rangeCells: 3, cdMs: 12000 }), lv({ rangeCells: 3, cdMs: 10000 }), lv({ rangeCells: 4, cdMs: 8000 })],
+    levels: [lv({ rangeCells: 3, cdMs: 10000 }), lv({ rangeCells: 3, cdMs: 8000 }), lv({ rangeCells: 4, cdMs: 6000 })],
     desc: '朝面向瞬移至多 {range}，越过砖块、炸弹和宝箱（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮（取代 §8.4 冲刺）；L2 / L3 推断',
+    src: '推断待验证：距离 L1 = 用户第 4 轮（3 格，取代 §8.4 冲刺）；CD 10 / 8 / 6 秒 = 第 4 轮平衡（D 验收，ADR 0034，原 L1 12 秒）；L2 / L3 推断',
   },
   fireAura: {
     id: 'fireAura',
     name: '火焰光环',
     slot: 'active',
     combo: false,
-    candyWeight: 1,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 1，推断待验证）。
+    candyWeight: 3,
     endsProtection: true,
-    levels: [lv({ durationMs: 4000, cdMs: 20000 }), lv({ durationMs: 4500, cdMs: 17000 }), lv({ durationMs: 5000, cdMs: 14000 })],
+    levels: [lv({ durationMs: 5500, cdMs: 16000 }), lv({ durationMs: 6000, cdMs: 14000 }), lv({ durationMs: 6500, cdMs: 12000 })],
     desc: '点燃身边一圈 {dur} 秒，碰到的对手{burn}（冷却 {cd} 秒）',
-    src: '推断待验证：L1 = 用户第 4 轮；伤害口径同 §12 留火；L2 / L3 推断',
+    src: '推断待验证：第 4 轮平衡（D 验收，ADR 0034）改为 5.5 / 6 / 6.5 秒、CD 16 / 14 / 12 秒（原 L1 = 用户第 4 轮 4 秒 / 20 秒）；伤害口径同 §12 留火；L2 / L3 推断',
   },
   kick: {
     id: 'kick',
     name: '踢弹',
     slot: 'passive',
     combo: false,
+    // 用户 2026-09-28 拍板：踢弹糖改罕见掉落——其余技能 ×3、它保持 1（占池约 3%，推断待验证）。
     candyWeight: 1,
     endsProtection: false,
     levels: [lv({ rangeCells: 3 }), lv({ rangeCells: 5 }), lv({ rangeCells: UNTIL_BLOCKED })],
@@ -193,11 +202,13 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Freeze,
-    candyWeight: 2,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 2，推断待验证）。
+    candyWeight: 6,
     endsProtection: false,
-    levels: [lv({ freezeMs: 800 }), lv({ freezeMs: 1000 }), lv({ freezeMs: 1200 })],
+    // 用户 2026-09-28 试玩反馈「冰冻僵直有点弱」：0.8 / 1.0 / 1.2 → 1.5 / 2.0 / 2.5 秒（推断待验证）。
+    levels: [lv({ freezeMs: 1500 }), lv({ freezeMs: 2000 }), lv({ freezeMs: 2500 })],
     desc: '炸到的对手还会被冻住 {freeze} 秒',
-    src: '引用 design §8.4 冰冻弹（0.8 / 1.0 / 1.2 秒）；照常伤害 = 第 4 轮 Q1 裁定（freezeBombDamages，推断待验证）；糖池权重 2 = ADR 0033（推断待验证）',
+    src: '引用 design §8.4 冰冻弹（0.8 / 1.0 / 1.2 秒）；照常伤害 = 第 4 轮 Q1 裁定（freezeBombDamages，推断待验证）；糖池权重 6 = ADR 0033 的 2 × 3（用户 2026-09-28 踢弹改罕见，推断待验证）',
   },
   pierceBomb: {
     id: 'pierceBomb',
@@ -205,11 +216,12 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Pierce,
-    candyWeight: 2,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 2，推断待验证）。
+    candyWeight: 6,
     endsProtection: false,
     levels: [lv({ pierceLayers: 1 }), lv({ pierceLayers: 2 }), lv({ pierceLayers: UNTIL_BLOCKED })],
     desc: '火焰多穿透 {layers}',
-    src: '引用 design §8.4 穿透弹（1 / 2 / 整条线；原型提前实现）；糖池权重 2 = ADR 0033（推断待验证）',
+    src: '引用 design §8.4 穿透弹（1 / 2 / 整条线；原型提前实现）；糖池权重 6 = ADR 0033 的 2 × 3（用户 2026-09-28 踢弹改罕见，推断待验证）',
   },
   fireDash: {
     id: 'fireDash',
@@ -241,7 +253,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     bombKind: BombKind.Freeze,
     candyWeight: 0,
     endsProtection: false,
-    levels: [lv({ freezeMs: 1000, pierceLayers: 1 })],
+    // 冰川弹冻结随冰冻弹加强：1.0 → 2.0 秒（用户 2026-09-28）。
+    levels: [lv({ freezeMs: 2000, pierceLayers: 1 })],
     desc: '火焰多穿透 {layers}，炸到的对手还会被冻住 {freeze} 秒',
     src: '推断待验证：用户第 4 轮（冰冻弹 + 穿透弹）',
   },
@@ -252,7 +265,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Toxin,
-    candyWeight: 2,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 2，推断待验证）。
+    candyWeight: 6,
     endsProtection: false,
     levels: [lv({ durationMs: 3000 }), lv({ durationMs: 4000 }), lv({ durationMs: 5000 })],
     desc: '炸到的对手还会中毒 {dur} 秒，{toxin}，可致死',
@@ -264,11 +278,32 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     slot: 'bomb',
     combo: false,
     bombKind: BombKind.Shock,
-    candyWeight: 2,
+    // 用户 2026-09-28 拍板「踢弹改罕见掉落」：除踢弹外整体 ×3（原 2，推断待验证）。
+    candyWeight: 6,
     endsProtection: false,
     levels: [lv({ durationMs: 2000, slowPermille: 300 }), lv({ durationMs: 2500, slowPermille: 300 }), lv({ durationMs: 3000, slowPermille: 300 })],
     desc: '炸到的对手还会麻痹 {dur} 秒，移速降到 {slow}',
     src: '推断待验证：用户 2026-09-26 追加（「麻痹弹会让行速极其缓慢」）；2 / 2.5 / 3 秒、降到 30% = ADR 0033',
+  },
+  // ---- 原型扩展（NON-CONTRACT，用户 2026-09-28 拍板）：飞腿袋鼠的专属主动技 ----
+  flyKick: {
+    id: 'flyKick',
+    name: '飞踢',
+    slot: 'active',
+    combo: false,
+    // 只属于飞腿袋鼠、不进技能糖池（同回春）；L2 / L3 因此实际不可达，表里照给三级。
+    candyWeight: 0,
+    // 同被动踢弹：踢弹不算「出手」，不解除重生保护（推断待验证）。
+    endsProtection: false,
+    // 规则见 sim/skills.ts applySkill 与 shared/skill-geometry flyKickTarget：沿面朝踢相邻（或隔一格空地后）的静止炸弹，
+    // 按 kickSpeedMilli 一直滑到被挡住（UNTIL_BLOCKED）；面前没有可踢的炸弹 → 施放失败、不进冷却。
+    levels: [
+      lv({ cdMs: 4000, rangeCells: UNTIL_BLOCKED }),
+      lv({ cdMs: 3500, rangeCells: UNTIL_BLOCKED }),
+      lv({ cdMs: 3000, rangeCells: UNTIL_BLOCKED }),
+    ],
+    desc: '把面前（隔一格也行）的炸弹一脚踢出去，一直滑到被挡住，踢进水里就熄灭（冷却 {cd} 秒）',
+    src: '推断待验证：用户 2026-09-28 拍板（CD 4 / 3.5 / 3 秒、直到被挡、滑速同踢弹；只属于飞腿袋鼠、candyWeight 0）',
   },
 }
 
@@ -279,7 +314,7 @@ export const COMBOS: readonly ComboDef[] = [
   { a: 'freezeBomb', b: 'pierceBomb', result: 'glacierBomb', src: '引用 用户第 4 轮' },
 ]
 
-/** 四个可选角色（ADR 0030 取代 0014 的「无职业」）。 */
+/** 五个可选角色（ADR 0030 取代 0014 的「无职业」；飞腿袋鼠 = 用户 2026-09-28 追加）。 */
 export const CHARACTERS: Readonly<Record<CharacterId, CharacterDef>> = {
   rabbit: {
     id: 'rabbit',
@@ -295,7 +330,7 @@ export const CHARACTERS: Readonly<Record<CharacterId, CharacterDef>> = {
     animal: 'duck',
     name: '泡泡鸭',
     skill: 'bubble',
-    tagline: '吹个泡泡，3 秒刀枪不入',
+    tagline: '吹个泡泡，3.5 秒刀枪不入',
     botNames: ['泡泡鸭', '肥皂鸭'],
     src: '引用 用户第 4 轮',
   },
@@ -316,6 +351,16 @@ export const CHARACTERS: Readonly<Record<CharacterId, CharacterDef>> = {
     tagline: '点燃身边一圈',
     botNames: ['火焰熊', '炭炭熊'],
     src: '引用 用户第 4 轮',
+  },
+  // 原型扩展（NON-CONTRACT，用户 2026-09-28 拍板）：基础属性与其他角色完全相同，只差专属主动技「飞踢」。
+  kangaroo: {
+    id: 'kangaroo',
+    animal: 'kangaroo',
+    name: '飞腿袋鼠',
+    skill: 'flyKick',
+    tagline: '按 Shift 把面前的炸弹一脚踢出去，一直滑到被挡住（冷却 4 秒）',
+    botNames: ['飞腿袋鼠', '蹦蹦袋鼠'],
+    src: '引用 用户 2026-09-28',
   },
 }
 

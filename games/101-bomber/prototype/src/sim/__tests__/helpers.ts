@@ -2,13 +2,16 @@ import {
   BlockType,
   DEFAULT_CONFIG,
   DEFAULT_RULES,
+  MAP_TIERS,
   MatchPhase,
+  rulesForMap,
   方向,
   type AbilityActivation,
   type AnimalId,
   type BomberConfig,
   type BomberEvent,
   type CharacterPick,
+  type MapTierId,
   type ProtoRules,
   type TickFrame,
 } from '../../contract'
@@ -17,6 +20,7 @@ import type { SimPlayerSpec } from '../local-sim'
 import { advanceRing, startFinalCircle } from '../final-circle'
 import { createWorld } from '../match-phase'
 import { stepWorld } from '../step'
+import { setupSupply } from '../supply'
 import { centerMilli, countResource, findPlayer, makeBomb, type SimBomb, type SimPlayer, type World } from '../world'
 
 /**
@@ -64,6 +68,8 @@ export function makeWorld(opts: WorldOpts = {}): World {
       if (w.brick[c] !== BlockType.铁皮) w.brick[c] = BlockType.Air
       w.ground[c] = BlockType.地面
     }
+    // 原型扩展（ADR 0040）：砖层清空了，资源箱登记也一并清掉。
+    w.resourceBoxes = []
     // 清空后的场地不应立刻满足「资源耗尽」触发决赛圈。
     w.resourceInitial = countResource(w)
   }
@@ -71,8 +77,18 @@ export function makeWorld(opts: WorldOpts = {}): World {
     w.match.phase = MatchPhase.Running
     w.match.startTick = w.t
     w.match.endTick = w.t + 1_000_000
+    // 中央补给的时刻相对开局 StartTick（ADR 0040）：开局挪了，补给跟着重排。
+    setupSupply(w)
   }
   return w
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040）：按地图档建世界的选项——规则取 `rulesForMap(DEFAULT_RULES, size, players)`，
+ * 配置的 mapSize 跟档走。`over` 再覆盖个别规则键。
+ */
+export function tierOpts(size: MapTierId, players: number = MAP_TIERS[size].defaultPlayers, over: Partial<ProtoRules> = {}): WorldOpts {
+  return { players, cfg: { mapSize: size }, rules: { ...rulesForMap(DEFAULT_RULES, size, players), ...over } }
 }
 
 export function player(w: World, id: number): SimPlayer {

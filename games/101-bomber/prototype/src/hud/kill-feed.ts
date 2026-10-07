@@ -3,7 +3,8 @@ import { DeathCause, type PlayerDied, type U64 } from '../contract'
 /**
  * Top-10 下方的紧凑击杀栏（design §9.6「帽子与强化的流向可见」的本地可读性辅助，不是全场横幅）：
  * 只留最近 4 条；死者掉了几个强化（= 几顶帽子，ADR 0028）定下来后补上「· B 掉了 N 个强化」；
- * 决赛圈出局的条目追加「出局」标签（PlayerEliminated 在死亡的下一 Tick 到达）。
+ * 决赛圈出局的条目追加「出局」标签（PlayerEliminated 在死亡的下一 Tick 到达）；
+ * 击杀者这一杀跨上连杀称号时追加称号标签（双杀 … 暴走 / 大杀特杀 / 主宰 / 超神，design §3.1 连杀行，ADR 0043）。
  */
 /** 'toxin' = 原型扩展（NON-CONTRACT，ADR 0033）：中毒弹毒倒（击杀者 = 投弹者）。 */
 export type FeedKind = 'kill' | 'self' | 'drown' | 'poison' | 'burn' | 'toxin'
@@ -19,6 +20,8 @@ export interface FeedEntry {
   lost: number | null
   /** 原型扩展（NON-CONTRACT，ADR 0033）：炸死时那颗特殊炸弹的名字（「中毒弹」/「麻痹弹」…）；标准弹 / 查不到为 null。 */
   bombName: string | null
+  /** 这一杀跨上的连杀称号（present/kill-juice）；没有为 null。 */
+  badge: string | null
   eliminated: boolean
   involvesLocal: boolean
   tick: U64
@@ -81,8 +84,11 @@ export class KillFeed {
 
   constructor(private readonly localId: U64) {}
 
-  /** @param bombName 炸死（Cause = Bomb）时那颗特殊炸弹的名字（ADR 0033）；缺省 / null = 不写弹种。 */
-  onDied(e: PlayerDied, nameOf: (id: U64) => string, bombName: string | null = null): void {
+  /**
+   * @param bombName 炸死（Cause = Bomb）时那颗特殊炸弹的名字（ADR 0033）；缺省 / null = 不写弹种。
+   * @param badge 这一杀跨上的连杀称号（ADR 0043）；缺省 / null = 无。
+   */
+  onDied(e: PlayerDied, nameOf: (id: U64) => string, bombName: string | null = null, badge: string | null = null): void {
     const victim = e.VictimNetEntityIdRaw
     const killer = e.KillerNetEntityIdRaw
     const kind: FeedKind =
@@ -107,6 +113,7 @@ export class KillFeed {
       victimName: victim === me ? '你' : nameOf(victim),
       lost: null,
       bombName: kind === 'kill' || kind === 'self' ? bombName : null,
+      badge,
       eliminated: false,
       involvesLocal: killer === me || victim === me,
       tick: e.Tick,

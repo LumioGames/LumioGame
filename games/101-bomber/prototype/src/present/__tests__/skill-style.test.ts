@@ -24,6 +24,13 @@ describe('skill-style (技能表现数据)', () => {
     expect(new Set(SKILL_IDS.map((id) => SKILL_ICON[id])).size).toBe(SKILL_IDS.length)
   })
 
+  it('flyKick (飞腿袋鼠，用户 2026-09-28): its own footprint icon (not the kick boot) and a colour distinct from every other skill', () => {
+    const rgb = (c: number): number[] => [(c >> 16) & 255, (c >> 8) & 255, c & 255]
+    const dist = (a: number, b: number): number => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]))
+    expect(SKILL_ICON.flyKick).not.toBe(SKILL_ICON.kick)
+    for (const other of SKILL_IDS) if (other !== 'flyKick') expect(dist(SKILL_COLOR.flyKick, SKILL_COLOR[other]), other).toBeGreaterThan(40)
+  })
+
   it('COMBO_FORM keys are exactly the combo results', () => {
     expect(Object.keys(COMBO_FORM).sort()).toEqual(COMBOS.map((c) => c.result).sort())
   })

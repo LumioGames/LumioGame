@@ -1,12 +1,17 @@
 import {
   CHARACTER_ORDER,
   DEFAULT_RULES,
+  lineupFor,
+  MAP_TIERS,
   parseBotDifficulty,
   parseCharacterId,
+  parseMapTier,
   protoConfig,
+  rulesForMap,
   type BomberConfig,
   type BotDifficulty,
   type CharacterId,
+  type MapTierId,
   type ProtoRules,
   type SkillId,
 } from '../contract'
@@ -14,9 +19,10 @@ import {
 /**
  * 页面 URL 参数（纯函数，可单测）。全部可选：
  *   ?seed=123       固定地图与 Bot 随机种子（默认随机）
- *   ?match=150      局时秒数（默认 = 7 分钟上限 ProtoRules.matchCapMs，ADR 0031；≤ 决赛圈时长时整局都是决赛圈）
- *   ?bots=7         Bot 数量 0–7（默认 7）
- *   ?ai=normal      Bot 难度 easy / normal / hard（默认 normal，design §15 Bot 难度分档（原型工具））
+ *   ?match=150      局时秒数（默认 = 4 分钟上限 ProtoRules.matchCapMs，ADR 0035；≤ 决赛圈时长时整局都是决赛圈）
+ *   ?map=27         地图档 19 / 23 / 27（默认 27 = 16 人，ADR 0040；未知值 = 默认）
+ *   ?bots=15        Bot 数量 0 – 该档默认人数 − 1（默认也是它：27 → 15、23 → 11、19 → 7）
+ *   ?ai=normal      全员 Bot 难度 rookie / easy / normal / hard；不给 = ADR 0043 默认阵容（lineupFor，15 个 = 菜鸟 7 / 普通 6 / 困难 2）
  *   ?char=cat       本机角色（跳过选角界面；未知值 = 照常显示选角）
  *   ?dev=evolve,autopilot,fast   开发开关，只在 `import.meta.env.DEV` 下生效（pnpm build 里恒为空）
  */
@@ -32,14 +38,27 @@ export interface AppParams {
   seed: number | null
   /** 局时秒数；null = 默认。 */
   matchSec: number | null
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：地图档。 */
+  map: MapTierId
   bots: number
   ai: BotDifficulty
+  /** URL 里给了 `?ai=`：全员按 ai；否则用 ADR 0043 默认阵容（{@link appLineup}）。 */
+  aiExplicit: boolean
   character: CharacterId | null
   dev: ReadonlySet<DevFlag>
 }
 
-/** 原型固定 8 人档：你 + 至多 7 个 Bot（design §5）。 */
-export const MAX_BOTS = DEFAULT_RULES.playerCount - 1
+/**
+ * 原型扩展（NON-CONTRACT）：页面默认地图档——12 人 · 23×23（用户 2026-09-28 试玩反馈「人太多了有点乱」，修订 ADR 0040 的 16 人 · 27×27；
+ * `?map=27` 仍是 16 人）。`DEFAULT_RULES` 仍是 19 档（旧测试的规则对象）。
+ */
+export const DEFAULT_PAGE_MAP: MapTierId = 23
+/** 某档的 Bot 上限 = 该档默认人数（= 出生候选数）− 你（19 → 7、23 → 11、27 → 15）。 */
+export function maxBotsFor(map: MapTierId): number {
+  return MAP_TIERS[map].defaultPlayers - 1
+}
+/** 最大档的 Bot 上限（ADR 0040：你 + 15 个 Bot）。 */
+export const MAX_BOTS = maxBotsFor(27)
 /** fast 开发开关的倍速。 */
 export const DEV_FAST_SCALE = 4
 
@@ -61,18 +80,39 @@ export function parseAppParams(search: string, devEnabled: boolean): AppParams {
       if (DEV_FLAGS.includes(f)) dev.add(f)
     }
   }
+  const map = parseMapTier(q.get('map'), DEFAULT_PAGE_MAP)
+  const maxBots = maxBotsFor(map)
+  const ai = q.get('ai')
   return {
     seed: intParam(q, 'seed'),
     matchSec: match !== null && match > 0 ? match : null,
-    bots: Math.max(0, Math.min(MAX_BOTS, intParam(q, 'bots') ?? MAX_BOTS)),
-    ai: parseBotDifficulty(q.get('ai')),
+    map,
+    bots: Math.max(0, Math.min(maxBots, intParam(q, 'bots') ?? maxBots)),
+    ai: parseBotDifficulty(ai),
+    aiExplicit: ai !== null && ai.trim() !== '',
     character: parseCharacterId(q.get('char')),
     dev,
   }
 }
 
-/** 本局配置：契约默认 + 7 分钟上限（protoConfig），`?match=` 覆盖局时。 */
-export function appConfig(p: Pick<AppParams, 'matchSec'>, rules: Pick<ProtoRules, 'matchCapMs'> = DEFAULT_RULES): BomberConfig {
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040）：本局规则 = `rulesForMap(DEFAULT_RULES, ?map, 你 + ?bots)`（段表、再生组数、人数、地图档随档走）。
+ * `?map=19` 且 8 人时就是 `DEFAULT_RULES` 本身。
+ */
+export function appRules(p: Pick<AppParams, 'map' | 'bots'>): ProtoRules {
+  return rulesForMap(DEFAULT_RULES, p.map, p.bots + 1)
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0043）：没给 `?ai=` 时的逐个 Bot 难度阵容（contract lineupFor）；给了 → null（全员 ai）。 */
+export function appLineup(p: Pick<AppParams, 'bots' | 'aiExplicit'>): BotDifficulty[] | null {
+  return p.aiExplicit ? null : lineupFor(p.bots)
+}
+
+/**
+ * 本局配置：契约默认 + 4 分钟上限（protoConfig，ADR 0035），`?match=` 覆盖局时；
+ * 原型扩展（ADR 0040）：rules 带 map 时 mapSize 跟档走（传 {@link appRules} 的结果）。
+ */
+export function appConfig(p: Pick<AppParams, 'matchSec'>, rules: Pick<ProtoRules, 'matchCapMs'> & Partial<Pick<ProtoRules, 'map'>> = DEFAULT_RULES): BomberConfig {
   return protoConfig(rules, p.matchSec !== null ? { matchDurationMs: p.matchSec * 1000 } : {})
 }
 

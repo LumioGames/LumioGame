@@ -1,11 +1,10 @@
-import { HAT } from './hat-layout'
 import { hash01 } from './rand'
 
 /**
  * 帽子流向（design §9.2 / §9.6，ADR 0028：帽子 = 身上的强化数，只是表现）的纯逻辑。
  * 一切从快照里的 `BomberPlayerState.HatCount` 变化推出来：
- * - 活着时帽数 +N → N 顶帽子从头顶上方落到帽塔顶（吃强化，含死者掉出的、宝箱喷出的）；
- * - 死亡后帽数 −N → N 顶帽子从帽塔顶沿抛物线飞向掉出的强化所在格（格子不够时飞向死亡点附近随机格）；
+ * - 活着时帽数 +N → N 顶帽子从头顶上方落到帽塔顶（吃强化，含死者掉出的、宝箱喷出的）；塔已满 4 顶时落上即被收进「×N」牌；
+ * - 死亡后帽数 −N → N 顶帽子从帽塔（超出 4 顶的先从塔顶飞，再从上往下逐层，见 hat-layout lossLaunch）沿抛物线飞向掉出的强化所在格（格子不够时飞向死亡点附近随机格）；
  * - 活着时帽数减少（规则层口径变化等）只让帽塔变矮，不演飞帽。
  * `PickupSpawned(Source='death')` / `PickupView.droppedBy` 只用来找落点，缺席时退回附近随机格。
  */
@@ -113,11 +112,6 @@ export const HAT_LOSS_LAND_Y = 0.35
 export function dropOnHeight(u: number): number {
   const t = Math.min(1, Math.max(0, u))
   return HAT_DROP_HEIGHT * (1 - t * t)
-}
-
-/** 落帽的落点高度：塔顶（最上一顶帽子的底 = 塔高 − 帽高 + 间距）；空塔落在头顶。 */
-export function dropLandingOffset(towerHeight: number): number {
-  return towerHeight > 0 ? towerHeight - HAT.height + HAT.spacing : 0
 }
 
 /** 死亡飞帽 u ∈ [0, 1] 时的位置：起点 → 落点直线插值 + 抛物线抬高。 */

@@ -10,9 +10,41 @@ interface BannerItem {
   mine: boolean
 }
 
+const BANNER_ICON: Readonly<Record<BannerTone, 'ring' | 'spark' | 'flame' | 'crown' | 'heart' | 'gift'>> = {
+  crown: 'crown',
+  fall: 'crown',
+  final: 'ring',
+  evolve: 'spark',
+  streak: 'flame',
+  boss: 'heart',
+  supply: 'gift',
+}
+
+/** 横幅排队最多留几条。 */
+export const BANNER_QUEUE_MAX = 3
+
+/**
+ * 横幅排队规则（纯逻辑）：决赛圈开场插队到最前（它改变的是生死规则）；本人连杀紧跟其后（这一杀的即时反馈，
+ * 排在别人的加冕 / 倒台后面就失去意义了，ADR 0043）；其余按到达顺序。超过上限时先挤掉最早的普通横幅，插队的两种不被挤掉。
+ */
+export function queueBanner<T extends { tone: BannerTone }>(queue: T[], b: T, max = BANNER_QUEUE_MAX): void {
+  if (b.tone === 'final') queue.unshift(b)
+  else if (b.tone === 'streak') {
+    let i = 0
+    while (i < queue.length && (queue[i].tone === 'final' || queue[i].tone === 'streak')) i++
+    queue.splice(i, 0, b)
+  } else queue.push(b)
+  while (queue.length > max) {
+    const i = queue.findIndex((x) => x.tone !== 'final' && x.tone !== 'streak')
+    queue.splice(i >= 0 ? i : 0, 1)
+  }
+}
+
 /**
  * 全场横幅：只播加冕 / 倒台 / 决赛圈开场（design §3.1、§4.2），排队逐条播放。
  * 原型扩展（NON-CONTRACT，ADR 0030）：本人进化「进化：火焰冲刺！」也走横幅（tone 'evolve'，只给本人看）。
+ * 本人连杀（tone 'streak'，ADR 0043）：双杀 … 暴走 / 大杀特杀 / 主宰 / 超神，只给本人看。
+ * 全场大事件（方向 B）：击倒 Boss（tone 'boss'，ADR 0043）、中央补给预告 / 开启（tone 'supply'，ADR 0040）。
  */
 export class BannerQueue {
   private readonly root: HTMLDivElement
@@ -36,11 +68,7 @@ export class BannerQueue {
   }
 
   push(b: BannerItem): void {
-    // 决赛圈开场插队到最前：它改变的是生死规则，不能排在两条加冕后面。
-    if (b.tone === 'final') this.queue.unshift(b)
-    else this.queue.push(b)
-    // 连续大事件时只留最新几条，免得横幅播到下一轮才结束。
-    while (this.queue.length > 3) this.queue.shift()
+    queueBanner(this.queue, b)
   }
 
   update(now: number): void {
@@ -51,9 +79,14 @@ export class BannerQueue {
       return
     }
     this.until =
-      now + (next.tone === 'final' ? BannerQueue.FINAL_DURATION_MS : next.tone === 'evolve' ? BannerQueue.EVOLVE_DURATION_MS : BannerQueue.DURATION_MS)
+      now +
+      (next.tone === 'final'
+        ? BannerQueue.FINAL_DURATION_MS
+        : next.tone === 'evolve' || next.tone === 'boss' || next.tone === 'supply'
+          ? BannerQueue.EVOLVE_DURATION_MS
+          : BannerQueue.DURATION_MS)
     this.root.dataset.tone = next.tone
-    setIcon(this.icon, next.tone === 'final' ? 'ring' : next.tone === 'evolve' ? 'spark' : 'crown')
+    setIcon(this.icon, BANNER_ICON[next.tone])
     this.root.classList.toggle('is-mine', next.mine)
     setText(this.title, next.title)
     setText(this.sub, next.sub)
@@ -72,7 +105,7 @@ interface PopupEntry {
   until: number
 }
 
-/** 本人弹字（×N 连锁 / 双杀 / 拆迁 / 收割 / 逆袭）。同 key 的弹字原地升级而不是叠一条新的。 */
+/** 本人弹字（×N 连锁 / 双杀 / 拆迁 / 收割 / 逆袭 / 击飞 XX！+N / 首次 ×N 连锁）。同 key 的弹字原地升级而不是叠一条新的。 */
 export class PopupStack {
   private readonly root: HTMLDivElement
   private readonly entries = new Map<string, PopupEntry>()

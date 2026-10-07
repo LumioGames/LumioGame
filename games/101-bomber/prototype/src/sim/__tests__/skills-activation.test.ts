@@ -19,15 +19,18 @@ describe('activation and cooldown', () => {
     expect(player(w, 1).cdUntilTick).toBe(0)
   })
 
-  it('duck bubble L1: CD 360 ticks, SkillActivated fields, cooldown failure, ready again at T+360', () => {
+  it('duck bubble L1: CD / duration from the tick table, SkillActivated fields, cooldown failure, ready again at T+CD', () => {
     const w = makeWorld({ picks: ['duck', null] })
+    // 泡泡 L1 读配表（第 4 轮平衡后 3.5 s / 14 s，ADR 0034），换算见 data-model「tick table」。
+    const { cd: CD, duration: DUR } = w.ticks.skills.bubble[0]
+    expect(CD).toBeGreaterThan(100 + DUR)
     const p = put(w, 1, 5, 5)
     put(w, 2, 13, 13)
     const f = cast(w)
     const T = w.t
     expect(p.cdFromTick).toBe(T)
-    expect(p.cdUntilTick).toBe(T + 360)
-    expect(p.bubbleUntilTick).toBe(T + 60)
+    expect(p.cdUntilTick).toBe(T + CD)
+    expect(p.bubbleUntilTick).toBe(T + DUR)
     expect(evs(f, 'SkillActivated')).toEqual([
       {
         type: 'SkillActivated',
@@ -37,8 +40,8 @@ describe('activation and cooldown', () => {
         Level: 1,
         Cell: { X: 5, Y: 5 },
         ToCell: { X: 5, Y: 5 },
-        UntilTick: T + 60,
-        CdUntilTick: T + 360,
+        UntilTick: T + DUR,
+        CdUntilTick: T + CD,
         Tick: T,
       },
     ])
@@ -47,20 +50,21 @@ describe('activation and cooldown', () => {
     expect(w.t).toBe(T + 100)
     expect(evs(g, 'SkillFailed')).toMatchObject([{ Skill: 'bubble', Reason: 'cooldown' }])
     expect(evs(g, 'SkillActivated')).toHaveLength(0)
-    expect(p.cdUntilTick).toBe(T + 360)
-    expect(p.bubbleUntilTick).toBe(T + 60)
-    run(w, 258)
+    expect(p.cdUntilTick).toBe(T + CD)
+    expect(p.bubbleUntilTick).toBe(T + DUR)
+    run(w, CD - 102)
     expect(evs(cast(w), 'SkillFailed')).toMatchObject([{ Reason: 'cooldown' }])
-    expect(w.t).toBe(T + 359)
+    expect(w.t).toBe(T + CD - 1)
     expect(evs(cast(w), 'SkillActivated')).toHaveLength(1)
-    expect(p.cdUntilTick).toBe(T + 360 + 360)
+    expect(p.cdUntilTick).toBe(T + CD + CD)
   })
 
-  it('per-level CD: bubble L2 = 300, L3 = 240 ticks', () => {
-    for (const [level, cd, dur] of [
-      [2, 300, 70],
-      [3, 240, 80],
-    ] as const) {
+  it('per-level CD: bubble L2 / L3 use their own rows (CD shorter, duration longer than L1)', () => {
+    const rows = makeWorld().ticks.skills.bubble
+    for (const level of [2, 3] as const) {
+      const { cd, duration: dur } = rows[level - 1]
+      expect(cd).toBeLessThan(rows[level - 2].cd)
+      expect(dur).toBeGreaterThan(rows[level - 2].duration)
       const w = makeWorld({ picks: ['duck', null] })
       put(w, 1, 5, 5)
       put(w, 2, 13, 13)

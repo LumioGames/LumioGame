@@ -1,5 +1,6 @@
 import {
   BlockType,
+  DEFAULT_CONFIG,
   DEFAULT_RULES,
   MATERIALS,
   MatchPhase,
@@ -11,9 +12,21 @@ import {
 } from '../contract'
 import { BombStatusWatch } from '../present/bomb-status'
 import type { FeedSample } from '../present/feed'
+import { KillJuice, killPitchRatio, settleHoldTicks, type JuiceResult, type KillInfo } from '../present/kill-juice'
 import { cellCenter } from '../shared/grid'
-import { CrownWatch, DEATH_AFTER_HIT_SEC, HatGainWatch, hitCues, isPowerup, localIsWinner, SkillCueWatch } from './cues'
-import { chainDelaySec, RateLimiter, spatialize } from './mixing'
+import { coinCascadeCount, CrownWatch, DEATH_AFTER_HIT_SEC, duckTrigger, HatGainWatch, hitCues, isPowerup, localBombHits, localIsWinner, SkillCueWatch } from './cues'
+import {
+  chainDelaySec,
+  distanceLowpassHz,
+  ExplosionCap,
+  explosionThump,
+  FOOTSTEP,
+  FootstepClock,
+  otherBombPlaceGain,
+  RateLimiter,
+  rumbleGain,
+  spatialize,
+} from './mixing'
 import { musicMode, MusicSequencer } from './music'
 import * as sfx from './sounds'
 import { Synth } from './synth'
@@ -32,7 +45,10 @@ export interface AudioSystem {
   dispose(): void
 }
 
-/** 听得见引信 / 危险提示音的距离（格）。 */
+/**
+ * 听得见引信 / 危险提示音的距离（格）。其余有世界位置的音效一律经 mixing.spatialize 按距离衰减
+ * （SPATIAL：4 格内满音量、14 格外静音，推断待验证）；本人自己的操作音、击杀 / 命中确认音与全场提示（号角、决赛圈、补给预告）不衰减。
+ */
 const NEAR_CELLS = 9
 const HEARTBEAT_MS = 900
 /** 帽子连拾音高递增的连续间隔（秒）。 */
@@ -65,6 +81,10 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
   let stallSince = 0
   let matchEndedTick: number | null = null
   const boomLimit = new RateLimiter(6, 0.1)
+  /** 分层混音（用户 2026-09-28 反馈）：爆炸同时最多 4 声，超出的合并成一次更大的轰鸣；本人脚步。 */
+  const boomCap = new ExplosionCap()
+  const footsteps = new FootstepClock()
+  let footAlt = false
   const clackLimit = new RateLimiter(4, 0.1)
   const blips = new Map<U64, number>()
   let lastHeartbeat = -Infinity
@@ -75,6 +95,19 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
   let lastBrick: Uint8Array | null = null
   let lastRev = -1
   let lastMatch = -1
+  /** 击杀手感（ADR 0043）：击杀音音高级数、整局最后一杀。静音时也照常吃事件，解除静音后音高接得上。 */
+  let juice: KillJuice | null = null
+  let juiceMatch = -1
+
+  const trackJuice = (sample: FeedSample, me: U64): JuiceResult | null => {
+    const snap = sample.curr
+    juice ??= new KillJuice({ localId: me, tickRateHz: snap.match.tickRateHz })
+    if (snap.match.matchIndex !== juiceMatch) {
+      juiceMatch = snap.match.matchIndex
+      juice.reset()
+    }
+    return sample.dueEvents.length ? juice.consume(sample.dueEvents) : null
+  }
 
   const posOf = (snap: WorldSnapshot, id: U64): { x: number; z: number } | null => {
     const p = snap.Players.find((q) => q.NetEntityIdRaw === id)
@@ -99,15 +132,24 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     return null
   }
 
-  const run = (s: Synth, sample: FeedSample, me: U64): void => {
+  const run = (s: Synth, sample: FeedSample, me: U64, jr: JuiceResult | null): void => {
     const t0 = s.now() + 0.01
     const snap = sample.curr
+    const rate = snap.match.tickRateHz
+    const kills = new Map<string, KillInfo>()
+    for (const k of jr?.kills ?? []) kills.set(`${k.tick}:${k.victim}`, k)
     const listener = posOf(snap, me) ?? { x: snap.Terrain.size / 2, z: snap.Terrain.size / 2 }
+    const distTo = (x: number, z: number): number => Math.hypot(x - listener.x, z - listener.z)
+    /**
+     * 别人的声音（世界总线）：按距离衰减 + 声像 + 越远越闷的低通（分层混音，用户 2026-09-28 反馈）。
+     * 本人的声音（本人总线）走 here()：不衰减、不滤波；全场提示走 announce()（UI 总线）。
+     */
     const at = (x: number, z: number, scale = 1, delay = 0): sfx.Placement => {
       const sp = spatialize(x - listener.x, z - listener.z)
-      return { at: t0 + delay, gain: sp.gain * scale, pan: sp.pan }
+      return { at: t0 + delay, gain: sp.gain * scale, pan: sp.pan, bus: 'world', lowpassHz: distanceLowpassHz(distTo(x, z)) }
     }
-    const here = (scale = 1, delay = 0): sfx.Placement => ({ at: t0 + delay, gain: scale, pan: 0 })
+    const here = (scale = 1, delay = 0): sfx.Placement => ({ at: t0 + delay, gain: scale, pan: 0, bus: 'self' })
+    const announce = (scale = 1, delay = 0): sfx.Placement => ({ at: t0 + delay, gain: scale, pan: 0, bus: 'ui' })
     /** 本人帽塔 +n：帽子落上去那一刻「啵」一声，连吃音高递增（design §3.1 收割）。 */
     const hatPop = (n: number): void => {
       if (t0 - hatStreakAt > HAT_STREAK_SEC) hatStreak = 0
@@ -143,13 +185,20 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       }
       lastHit.set(v, cues.reduce((m, c) => Math.max(m, c.delay), 0))
     }
+    // 命中音（design §3.1 命中）：自己的炸弹打到别人，跟那一击的连锁节奏。
+    for (const h of localBombHits(sample.dueEvents, me)) sfx.hitConfirm(s, here(0.7, h.delay))
 
     // ---- 一次性事件 ----
     const chains = new Map<U64, BombExploded[]>()
     for (const e of sample.dueEvents) {
       switch (e.type) {
         case 'BombPlaced':
-          sfx.bombPlace(s, e.OwnerNetEntityIdRaw === me ? here(0.9) : cellAt(e.Cell.X, e.Cell.Y, 0.8))
+          if (e.OwnerNetEntityIdRaw === me) sfx.bombPlace(s, here(0.9))
+          else {
+            // 别人的放弹：只在约 6 格内、很轻（用户 2026-09-28 反馈「炸弹声人多有点乱」）。
+            const g = otherBombPlaceGain(distTo(e.Cell.X + 0.5, e.Cell.Y + 0.5))
+            if (g > 0) sfx.bombPlace(s, { ...cellAt(e.Cell.X, e.Cell.Y), gain: g })
+          }
           break
         case 'BombExploded': {
           const list = chains.get(e.ChainId)
@@ -169,7 +218,13 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           sfx.death(s, e.VictimNetEntityIdRaw === me ? here(1, d) : cellAt(e.Cell.X, e.Cell.Y, 0.8, d))
           // 倒台：死的是帽王、且死前帽塔够光柱阈值（与 HUD 倒台横幅同口径）。
           const hats = sample.prev.Players.find((p) => p.NetEntityIdRaw === e.VictimNetEntityIdRaw)?.BomberPlayerState.HatCount ?? 0
-          if (prevKing !== 0 && e.VictimNetEntityIdRaw === prevKing && hats >= minHats) sfx.kingFall(s, here(0.8, 0.15))
+          if (prevKing !== 0 && e.VictimNetEntityIdRaw === prevKing && hats >= minHats) sfx.kingFall(s, announce(0.8, 0.15))
+          // 本人击杀的专属音：8 秒内连杀音高递增（ADR 0043）。
+          const ki = kills.get(`${e.Tick}:${e.VictimNetEntityIdRaw}`)
+          if (ki && ki.killer === me) sfx.killConfirm(s, here(1, d + 0.02), killPitchRatio(ki.pitchStep))
+          // 大爆装（死者 ≥ 6 帽）：掉落喷出时一串金币声。
+          const coins = coinCascadeCount(hats, e.proto?.HatsLost)
+          if (coins > 0) sfx.coinCascade(s, e.VictimNetEntityIdRaw === me ? here(0.8, d + 0.2) : cellAt(e.Cell.X, e.Cell.Y, 1, d + 0.2), coins)
           break
         }
         case 'PlayerRespawned':
@@ -261,12 +316,23 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           sfx.cureChime(s, e.NetEntityIdRaw === me ? here(0.8, 0.1) : p ? at(p.x, p.z, 0.35, 0.1) : here(0.2, 0.1))
           break
         }
-        case 'MatchEnded':
-          // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
-          matchEndedTick = e.Tick
-          sfx.victoryFanfare(s, t0 + 0.05, localIsWinner(snap, me))
-          sfx.applause(s, t0 + APPLAUSE_AFTER_SEC, () => Math.random())
+        // ---- 原型扩展（NON-CONTRACT，ADR 0040）：中央补给——预告是全场提示（不衰减），开启在补给格按距离衰减 ----
+        case 'SupplyAnnounced':
+          sfx.ringWarn(s, t0 + 0.05)
           break
+        case 'SupplyOpened':
+          sfx.chestOpen(s, cellAt(e.Cell.X, e.Cell.Y, 1.2, 0.05))
+          break
+        case 'MatchEnded': {
+          // 领奖台开场（design §13）：胜利号角（本人是冠军——名次 1，活到最后者赢——时更亮）+ 短掌声。
+          // 局是被一记击杀终结的：领奖台晚一个慢镜时长开（ADR 0043），号角与音乐同样顺延。
+          const holdTicks = jr?.finalKill ? settleHoldTicks(rate) : 0
+          const hold = holdTicks / rate
+          matchEndedTick = e.Tick + holdTicks
+          sfx.victoryFanfare(s, t0 + 0.05 + hold, localIsWinner(snap, me))
+          sfx.applause(s, t0 + APPLAUSE_AFTER_SEC + hold, () => Math.random())
+          break
+        }
         default:
           break
       }
@@ -275,7 +341,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     if (snap !== crownSnap) {
       crownSnap = snap
       const king = crown.check(snap)
-      if (king !== 0) sfx.fanfare(s, here(king === me ? 0.9 : 0.5, 0.1))
+      if (king !== 0) sfx.fanfare(s, king === me ? here(0.9, 0.1) : announce(0.5, 0.1))
       // 快照兜底看 sample.prev：curr 比到期事件领先一帧（事件要等 renderTick ≥ e.Tick），看 curr 会在真事件
       // 到来前一帧就判「没见过事件」而先响一声兜底，下一帧真事件再响一遍。prev.Tick ≤ renderTick，
       // 其事件已在上面的 dueEvents 里处理过（noteEvent 已记上）。
@@ -293,17 +359,40 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         else sfx.cureChime(s, here(0.8))
       }
     }
+    // 爆炸（分层混音，用户 2026-09-28 反馈）：近处加低频冲击、远处低通只剩闷响；同时最多 4 声，
+    // 超出的合并成一次更大的轰鸣（放在被挡下的里最近的那颗的位置）；原有的 6 声 / 100 ms 限流照旧在前。
+    let merged: sfx.Placement | null = null
+    let mergedDist = Infinity
     for (const list of chains.values()) {
       list.sort((a, b) => (a.proto?.IndexInChain ?? 0) - (b.proto?.IndexInChain ?? 0))
       const used = new Set<U64>()
-      list.forEach((e, i) => {
+      for (let i = 0; i < list.length; i++) {
         const d = chainDelaySec(i)
-        const p = explosionPos(e, sample, used)
-        const place = p ? at(p.x, p.z, 1, d) : here(0.8, d)
-        if (boomLimit.allow(place.at)) sfx.explosion(s, place, 0.92 + Math.random() * 0.16)
+        const p = explosionPos(list[i], sample, used)
+        const dist = p ? distTo(p.x, p.z) : 12
+        const place: sfx.Placement = p ? at(p.x, p.z, 1, d) : { ...announce(0.5, d), bus: 'world', lowpassHz: distanceLowpassHz(dist) }
+        if (!boomLimit.allow(place.at)) continue
+        if (!boomCap.admit(place.at)) {
+          if (dist < mergedDist) {
+            merged = place
+            mergedDist = dist
+          }
+          continue
+        }
+        sfx.explosion(s, place, 0.92 + Math.random() * 0.16, explosionThump(dist))
         if (list.length >= 2) sfx.chainNote(s, { ...place, gain: place.gain * 0.8 }, i)
-      })
+      }
     }
+    const overflow = boomCap.takeOverflow()
+    if (overflow > 0 && merged) sfx.rumble(s, { ...merged, gain: merged.gain * rumbleGain(overflow) })
+
+    // 大事件（本人击杀、击倒 Boss、补给开启）：世界总线短暂压低 6 dB（本人总线的击杀确认音不受影响）。
+    const bossPoints = rules.bossMinHearts * DEFAULT_CONFIG.healthPointsPerHeart
+    const bossVictim = (id: U64): boolean => {
+      const max = sample.prev.Players.find((p) => p.NetEntityIdRaw === id)?.maxHealth
+      return max !== undefined && max >= bossPoints
+    }
+    if (duckTrigger(sample.dueEvents, me, bossVictim)) s.duck(t0)
 
     // ---- 没有 BrickDestroyed 表现事件的数据源：用地形 diff 出方块碎裂声 ----
     const terr = snap.Terrain
@@ -325,7 +414,6 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     }
 
     // ---- 持续音：引信嘶嘶、危险提示、心跳、倒计时 ----
-    const rate = snap.match.tickRateHz
     const dangerTicks = Math.ceil(0.4 * rate)
     let hiss = 0
     const alive = new Set<U64>()
@@ -356,6 +444,17 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
 
     const mine = snap.Players.find((p) => p.NetEntityIdRaw === me)
     const hp = mine?.玩家属性.血量当前 ?? 0
+    // 本人脚步（别人的脚步不发声，用户 2026-09-28 反馈）：每走半格一声，在水里换成水声。
+    const phaseNow = snap.BomberMatchState.Phase
+    if (mine && hp > 0 && !mine.eliminated && (phaseNow === MatchPhase.Running || phaseNow === MatchPhase.Endgame)) {
+      const w = mine.LogicTransform.WorldPosition
+      const gx = Math.floor(w.x)
+      const gz = Math.floor(w.z)
+      const inWater = snap.Terrain.ground[gz * snap.Terrain.size + gx] === BlockType.水
+      const step = footsteps.advance(w.x, w.z, inWater)
+      if (step === 'ground') sfx.footstep(s, here(FOOTSTEP.gain), (footAlt = !footAlt))
+      else if (step === 'water') sfx.waterStep(s, here(FOOTSTEP.waterGain))
+    } else footsteps.reset()
     if (hp > 0 && hp <= 2 && sample.realNow - lastHeartbeat >= HEARTBEAT_MS) {
       lastHeartbeat = sample.realNow
       sfx.heartbeat(s, t0)
@@ -368,10 +467,10 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     if (counting && sec !== lastCountdown) sfx.countdownTick(s, t0, phase === MatchPhase.Warmup || sec <= 3)
     lastCountdown = counting ? sec : -1
 
-    runMusic(s, sample)
+    runMusic(s, sample, me)
   }
 
-  const runMusic = (s: Synth, sample: FeedSample): void => {
+  const runMusic = (s: Synth, sample: FeedSample, me: U64): void => {
     const snap = sample.curr
     if (snap.Tick !== stallTick) {
       stallTick = snap.Tick
@@ -379,6 +478,9 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
     }
     const phase = snap.BomberMatchState.Phase
     if (phase !== MatchPhase.Settlement) matchEndedTick = null
+    // 本人狂暴（ADR 0040）：音乐换加速层。
+    const mine = snap.Players.find((p) => p.NetEntityIdRaw === me)
+    const frenzy = !!mine && (mine.frenzyUntilTick ?? 0) > sample.renderTick
     const mode = musicOn
       ? musicMode({
           phase,
@@ -387,6 +489,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
           matchEndedTick,
           podiumMs: rules.podiumMs,
           stalled: sample.realNow - stallSince > STALL_MS,
+          frenzy,
         })
       : 'silent'
     seq.setMode(mode)
@@ -427,6 +530,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
       if (!on) seq.setMode('silent')
     },
     update(sample: FeedSample, localPlayerId: U64) {
+      const jr = trackJuice(sample, localPlayerId)
       if (!synth || sample.frozen) return
       if (muted) {
         synth.setHiss(0)
@@ -436,7 +540,7 @@ export function createAudio(opts: { muted: boolean; music?: boolean; rules?: Pro
         lastRev = -1
         return
       }
-      run(synth, sample, localPlayerId)
+      run(synth, sample, localPlayerId, jr)
     },
     ui(kind: 'select' | 'confirm') {
       if (!synth || muted) return

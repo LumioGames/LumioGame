@@ -19,6 +19,8 @@ export interface BombGateInput {
   slowPerCell?: number
   /** 原型扩展（NON-CONTRACT，ADR 0030）：自己炸弹的穿透层数（缺省 0）。 */
   pierce?: number
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：逃生路线的危险窗余量（= BotProfile.escapeMarginTicks；缺省 2）。 */
+  margin?: number
 }
 
 export interface BombEvaluation {
@@ -51,6 +53,7 @@ export function evaluateBomb(board: Board, g: BombGateInput): BombEvaluation {
     tpcWater: g.tpcWater,
     slowPerCell: g.slowPerCell,
     allowWater: false,
+    ...(g.margin !== undefined ? { margin: g.margin } : {}),
   })
   let ok = false
   const hereOut = board.poisonAt[here] <= g.placeTick

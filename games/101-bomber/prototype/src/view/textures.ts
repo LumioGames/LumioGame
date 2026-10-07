@@ -1,7 +1,18 @@
-import { CanvasTexture, ClampToEdgeWrapping, LinearMipmapLinearFilter, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
+import {
+  CanvasTexture,
+  ClampToEdgeWrapping,
+  DataTexture,
+  LinearMipmapLinearFilter,
+  NearestFilter,
+  RepeatWrapping,
+  RGBAFormat,
+  SRGBColorSpace,
+  type Texture,
+} from 'three'
 import { BlockType } from '../contract'
 import { hexCss } from './palette'
 import { RING_TEX } from './logic/doll-fit'
+import { TOON_RAMP_STEPS } from './logic/doll-look'
 import { mulberry32 } from './logic/rand'
 
 /** 程序化贴图（CanvasTexture），不读任何资源文件。 */
@@ -77,6 +88,30 @@ export function previewTexture(): Texture {
   g.roundRect(10, 10, 108, 108, 16)
   g.stroke()
   return tex(c)
+}
+
+let toonRamp: DataTexture | null = null
+
+/**
+ * 玩偶卡通分阶光照的梯度（3×1 灰度，Nearest、无 mipmap）：MeshToonMaterial 按 dotNL·0.5+0.5 取样，
+ * 三档分界落在 dotNL = ±1/3。不依赖 DOM（DataTexture），node 下也能建。单例：所有玩偶共用一张。
+ */
+export function toonRampTexture(): DataTexture {
+  if (toonRamp) return toonRamp
+  const n = TOON_RAMP_STEPS.length
+  const data = new Uint8Array(n * 4)
+  for (let i = 0; i < n; i++) {
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = TOON_RAMP_STEPS[i]
+    data[i * 4 + 3] = 255
+  }
+  const t = new DataTexture(data, n, 1, RGBAFormat)
+  t.minFilter = NearestFilter
+  t.magFilter = NearestFilter
+  t.generateMipmaps = false
+  t.wrapS = t.wrapT = ClampToEdgeWrapping
+  t.needsUpdate = true
+  toonRamp = t
+  return t
 }
 
 /** 压缩帽塔段的条纹（墨色 + 金带交替）。 */

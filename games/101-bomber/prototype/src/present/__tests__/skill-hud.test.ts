@@ -77,12 +77,15 @@ describe('skillHudModel', () => {
   })
 
   it('duck bubble: effect fraction and bubbled flag', () => {
-    const duck = skills({ character: 'duck', slots: { bomb: null, active: slot('bubble', 1, true), passive: null }, bubbleUntilTick: 160 })
+    // 泡泡 L1 持续读配表（第 4 轮平衡后 3.5 s = 70 Tick，ADR 0034）；看的是还剩一半的那一刻。
+    const dur = Math.ceil((DEFAULT_RULES.skills.bubble.levels[0].durationMs * R) / 1000)
+    const until = 130 + dur / 2
+    const duck = skills({ character: 'duck', slots: { bomb: null, active: slot('bubble', 1, true), passive: null }, bubbleUntilTick: until })
     const m = model(me(duck), 130)
     expect(m.chips[1].effectFrac).toBeCloseTo(0.5)
     expect(m.bubbled).toBe(true)
     expect(skillButtonView(m)?.effect).toBe(true)
-    expect(model(me(duck), 160).chips[1].effectFrac).toBe(0)
+    expect(model(me(duck), until).chips[1].effectFrac).toBe(0)
   })
 
   it('rabbit regen ring beside the hearts: progress and seconds left; hidden at full hp', () => {
@@ -113,7 +116,7 @@ describe('skillHudModel', () => {
   it('ADR 0033 bomb chips: exact describeSkill text with the toxin cadence and the slow percentage', () => {
     const toxin = model(me(skills({ slots: { bomb: slot('toxinBomb', 2), active: null, passive: null } })), 0).chips[0]
     expect([toxin.skill, toxin.name, toxin.key]).toEqual(['toxinBomb', '中毒弹', '放弹时'])
-    expect(toxin.desc).toBe('炸到的对手还会中毒 4 秒，每 1 秒 −0.5 心，可致死')
+    expect(toxin.desc).toBe('炸到的对手还会中毒 4 秒，每 2 秒 −0.5 心，可致死')
     const shock = model(me(skills({ slots: { bomb: slot('shockBomb', 3), active: null, passive: null } })), 0).chips[0]
     expect(shock.desc).toBe('炸到的对手还会麻痹 3 秒，移速降到 30%')
   })

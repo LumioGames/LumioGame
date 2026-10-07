@@ -55,51 +55,76 @@
   border-top-color: #3db8da;
 }
 
-.bv-hats {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12px;
+/* 帽塔超过 4 顶时贴着塔顶（或皇冠）的「×N」金色胶囊牌；三档越强越显眼。 */
+.bv-stack {
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
   color: #2b2320;
   background: #ffc93c;
-  padding: 1px 6px 1px 4px;
+  border: 2px solid #2b2320;
   border-radius: 999px;
-  box-shadow: 0 1px 0 rgba(43, 35, 32, 0.3);
+  padding: 0 7px 1px;
+  box-shadow: 0 2px 0 rgba(43, 35, 32, 0.3);
 }
 
-.bv-hats svg {
-  width: 14px;
-  height: 12px;
+/* 本机「你」胶囊下面有 5px 的小箭头：×N 牌在它下面时让出位置，箭头不压牌。 */
+.bv-local .bv-stack {
+  margin-top: 4px;
 }
 
-.bv-crown {
-  display: none;
+.bv-king .bv-stack {
+  background: linear-gradient(#fff1a8, #ffc93c);
 }
 
-.bv-crown svg {
-  width: 20px;
-  height: 15px;
-  filter: drop-shadow(0 1px 0 rgba(43, 35, 32, 0.35));
+.bv-stack.bv-stack-t2 {
+  font-size: 15px;
 }
 
-.bv-king .bv-crown {
-  display: inline-flex;
-  animation: bv-crown-bob 1.2s ease-in-out infinite;
+.bv-stack.bv-stack-t3 {
+  font-size: 17px;
+  box-shadow:
+    0 2px 0 rgba(43, 35, 32, 0.3),
+    0 0 0 2px #fff3c4,
+    0 0 10px rgba(255, 201, 60, 0.8);
+}
+
+.bv-stack.bv-stack-pop {
+  animation: bv-stack-pop 220ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.bv-stack.bv-stack-drop {
+  animation: bv-stack-drop 160ms ease-out;
+}
+
+@keyframes bv-stack-pop {
+  0% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.28;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@keyframes bv-stack-drop {
+  0% {
+    scale: 1;
+  }
+  50% {
+    scale: 0.85;
+  }
+  100% {
+    scale: 1;
+  }
 }
 
 .bv-king .bv-name {
   background: rgba(255, 201, 60, 0.9);
   color: #2b2320;
-}
-
-@keyframes bv-crown-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
 }
 
 .bv-pips {
@@ -234,4 +259,66 @@
 .bv-float-shock svg {
   width: 17px;
   height: 17px;
+}
+
+/* =====================================================================
+ * 方向 B（ADR 0039 / 0040 / 0043）：命中「−1♥」、心条（金心格 / Boss 常驻放大）、中央补给名牌
+ * ===================================================================== */
+.bv-float-hurt {
+  color: #ff3b4f;
+  font-size: 19px;
+  -webkit-text-stroke: 1px #2b2320;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(43, 35, 32, 0.5);
+}
+
+.bv-float-hurt svg {
+  width: 17px;
+  height: 16px;
+}
+
+.bv-pips i.gold {
+  background: rgba(255, 201, 60, 0.35);
+}
+
+.bv-pips i.on.gold {
+  background: #ffc93c;
+}
+
+/* Boss：心条常驻，格子更大，外面一圈暗底，一眼看出「这是一个 N 心的大家伙」。 */
+.bv-boss .bv-pips {
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: rgba(43, 35, 32, 0.55);
+}
+
+.bv-boss .bv-pips i {
+  width: 11px;
+  height: 7px;
+}
+
+.bv-beacon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform;
+  translate: -50% -100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 5px;
+  border-radius: 999px;
+  background: rgba(43, 35, 32, 0.62);
+  color: #5ee0c8;
+  font-family: ui-rounded, 'SF Pro Rounded', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.bv-beacon svg {
+  width: 20px;
+  height: 20px;
 }

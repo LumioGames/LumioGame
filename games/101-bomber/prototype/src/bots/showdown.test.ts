@@ -50,6 +50,28 @@ describe('showdown helpers', () => {
     expect(hitPoints(dm, cellIdx(9, 10), config, rules)).toBe(4)
     expect(hitPoints(dm, cellIdx(9, 12), config, rules)).toBe(0)
   })
+
+  it('ADR 0039: the poison rate scales with the bot\'s own cap (same formula as the rules), hitPoints caps at the victim\'s cap', () => {
+    const at = (stageIndex: number) => ({ ...finalCircle({ ring: 9 }), stageIndex })
+    const scale = (maxHealth: number) => ({ cfg: config, maxHealth })
+    expect([poisonRate(rules, at(2), scale(6)), poisonRate(rules, at(3), scale(6))]).toEqual([1, 2])
+    expect([poisonRate(rules, at(2), scale(16)), poisonRate(rules, at(3), scale(16))]).toEqual([3, 6])
+    expect(poisonRate(rules, null, scale(8))).toBe(2)
+    const board = buildBoard(
+      makeSnapshot({
+        map: standardMap(),
+        players: [],
+        bombs: [
+          { id: 1, X: 9, Y: 8, owner: 2, fuseEndTick: 140 },
+          { id: 2, X: 9, Y: 10, owner: 2, fuseEndTick: 140 },
+          { id: 3, X: 8, Y: 9, owner: 2, fuseEndTick: 140 },
+        ],
+      }),
+    )
+    const dm = buildDangerMap(board, 8, { X: 10, Y: 9, power: 2, fuseEndTick: 150 })
+    expect(hitPoints(dm, cellIdx(9, 9), config, rules)).toBe(config.maxHealthPoints)
+    expect(hitPoints(dm, cellIdx(9, 9), config, rules, 10)).toBe(8)
+  })
 })
 
 describe('late entry', () => {
@@ -99,6 +121,76 @@ describe('late entry', () => {
     const g = goals(brain('roamer'), spec(BOT_TACTICS.lateEntryTicks - 5))
     expect(g.length).toBeGreaterThan(0)
     expect(g.every((x) => x === '9,9')).toBe(true)
+  })
+  // 原型扩展（NON-CONTRACT，ADR 0036）：进圈纪律按档。Bot（'late'）离收缩还远时在臂上逗留；
+  // 脚本普通玩家（'onTime'）下一圈一预告就只往中心走。
+  it("ringEntry 'late' (every bot tier) still loiters on the arms while the shrink is far off", () => {
+    for (const k of ['easy', 'normal', 'hard'] as const) expect(BOT_PROFILES[k].ringEntry).toBe('late')
+    const g = goals(brain('roamer', 1, 1, BOT_PROFILES.normal), spec(200))
+    expect(g.length).toBeGreaterThan(0)
+    expect(g.some((x) => x !== '9,9')).toBe(true)
+  })
+
+  it("ringEntry 'onTime' (the D player script) walks into the announced ring at once", () => {
+    expect(BOT_PROFILES.player.ringEntry).toBe('onTime')
+    for (const p of ['roamer', 'hunter', 'farmer'] as const) {
+      const g = goals(brain(p, 1, 1, BOT_PROFILES.player), spec(200))
+      expect(g.length).toBeGreaterThan(0)
+      expect(g.every((x) => x === '9,9')).toBe(true)
+    }
+    // 只差这一个开关：同一 normal 档改成 onTime 也立刻进圈。
+    const g = goals(brain('roamer', 1, 1, { ...BOT_PROFILES.normal, ringEntry: 'onTime' }), spec(200))
+    expect(g.every((x) => x === '9,9')).toBe(true)
+  })
+})
+
+describe('ring discipline (ADR 0036)', () => {
+  // 7×7 圈（6..12），已预告 5×5（7..11）还有 200 Tick：(6,9) 在当前圈内、下一圈外。
+  // 我在 (7,9)，别人的弹在 (7,10)（火力 2，十字盖 7 列与 10 行，12 Tick 后炸）；一步可躲的格：左 (6,9)（将变毒）、右 (8,9)（下一圈内）。
+  const dodge = (t: number): SnapSpec => ({
+    map: standardMap(),
+    tick: t,
+    players: [
+      { id: 1, X: 7, Y: 9 },
+      { id: 2, X: 11, Y: 11 },
+    ],
+    bombs: [{ id: 50, X: 7, Y: 10, owner: 2, power: 2, fuseEndTick: 312 }],
+    finalCircle: finalCircle({ tick: t, ring: 7, next: 5, nextTick: 500, alive: 2 }),
+  })
+  const escapeGoal = (profile: BotProfile): string | null => {
+    const b = brain('farmer', 1, 1, profile)
+    for (let t = 300; t < 312; t++) {
+      b.decide(makeSnapshot(dodge(t)))
+      const d = b.debugState()
+      if (d.mode === 'escape' && d.goal) return `${d.goal.X},${d.goal.Y}`
+    }
+    return null
+  }
+
+  it("'late' dodges to the first cell that stays clean for a while — here the soon-poisoned (6,9)", () => {
+    expect(escapeGoal(BOT_PROFILES.hard)).toBe('6,9')
+  })
+
+  it("'onTime' dodges into the announced ring instead: (8,9)", () => {
+    expect(escapeGoal({ ...BOT_PROFILES.hard, ringEntry: 'onTime' })).toBe('8,9')
+  })
+
+  it("'onTime' pushed out of the ring walks straight back to the nearest ring cell", () => {
+    // 5×5 圈（7..11），我在圈外 (5,9)：最近的圈内格是 (7,9)。
+    const out = (t: number): SnapSpec => ({
+      map: standardMap(),
+      tick: t,
+      players: [
+        { id: 1, X: 5, Y: 9 },
+        { id: 2, X: 11, Y: 11 },
+      ],
+      finalCircle: finalCircle({ tick: t, ring: 5, alive: 2 }),
+    })
+    for (let seed = 1; seed <= 5; seed++) {
+      const b = brain('roamer', 1, seed, { ...BOT_PROFILES.player, noisePermille: 0 })
+      b.decide(makeSnapshot(out(300)))
+      expect(b.debugState().goal).toEqual({ X: 7, Y: 9 })
+    }
   })
 })
 

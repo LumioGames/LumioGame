@@ -4,15 +4,17 @@ import {
   cameraOffset,
   clampFollow,
   followDistanceForAspect,
+  overviewDistanceFor,
   shakeNoise,
 } from './logic/camera-math'
 import { clamp01, easeInOutCubic, smoothDamp, type DampState } from './logic/interp'
 import type { CamPose } from './logic/podium'
 
 /**
- * 跟随镜头：透视 FOV 42°、固定俯角 58°、距离 12.5（窄屏自动拉远），不给玩家旋转。
+ * 跟随镜头（默认局部视角，用户试玩反馈 2026-09-28）：透视 FOV 45°、固定俯角 46°、距离 9.5（16:9 横向约 14 格；窄屏自动拉远），不给玩家旋转。
+ * 每局开局回到跟随本机（{@link CameraRig.resetView}），全图俯瞰只在按 V 时切换。
  * 跟随目标 = 插值位置 + 0.6 格前瞻，0.15 s 平滑，离棋盘边 ≥ 4 格夹紧；V 键 0.4 s 过渡到全局俯瞰。
- * 震动只平移（不转），幅度 × 设置里的强度，0 = 完全不动。
+ * 震动只平移（不转），幅度 × 设置里的强度，0 = 完全不动。俯瞰距离随棋盘边长放大（ADR 0040：27×27 档）。
  */
 export class CameraRig {
   readonly camera: PerspectiveCamera
@@ -46,6 +48,13 @@ export class CameraRig {
 
   toggleOverview(): void {
     this.overview = !this.overview
+  }
+
+  /** 新局开局：回到跟随本机的局部视角（不演 0.4 s 过渡；跟随点下一帧直接落到本机，不从上一局的位置滑过来）。 */
+  resetView(): void {
+    this.overview = false
+    this.blend = 0
+    this.initialized = false
   }
 
   get isOverview(): boolean {
@@ -93,7 +102,7 @@ export class CameraRig {
     const e = easeInOutCubic(this.blend)
     const lookX = this.sx.value + (this.center - this.sx.value) * e
     const lookZ = this.sz.value + (this.center - this.sz.value) * e
-    const dist = this.followDist + (Math.max(this.followDist, CAMERA.overviewDistance) - this.followDist) * e
+    const dist = this.followDist + (Math.max(this.followDist, overviewDistanceFor(size)) - this.followDist) * e
     cameraOffset(dist, this.off)
 
     // 震动：线性衰减 0.2 s，按设置强度缩放。

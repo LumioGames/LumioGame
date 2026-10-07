@@ -10,15 +10,16 @@ pnpm dev          # http://127.0.0.1:5173
 pnpm test         # 规则替身 / Bot / 表现层纯逻辑 / 接缝守卫 / 手感路径 / 整局联调（默认不跑整局统计，很快）
 pnpm build        # 类型检查 + 生产构建到 dist/
 pnpm accept       # BOMBER_ACCEPT=1：验收 E，6 个种子全员 normal Bot 各打一整局（无界面）
-pnpm stats        # BOMBER_STATS=1：统计批次——E 20 种子全员 normal、D 脚本玩家对 7 个 normal ×30、easy ×30、hard ×30（约 3.5 分钟）
+pnpm stats        # BOMBER_STATS=1：统计批次——E 20 种子全员 normal、D 脚本玩家对 7 个 normal ×100（种子 1–100，ADR 0036）、easy ×30、hard ×30
 ```
 
 URL 参数（可选）：
 
 - `?seed=123` 固定地图与 Bot 随机种子（默认随机）。
-- `?match=175` 局时秒数（默认 420 = 7 分钟封顶）。决赛圈固定 115 秒，`?match=` ≤ 115 时整局都是决赛圈。
-- `?bots=7` Bot 数 0–7（默认 7）。
-- `?ai=normal` Bot 难度 `easy` / `normal` / `hard`（默认 normal；hard = 第 3 轮强度）。
+- `?match=175` 局时秒数（默认 240 = 4 分钟封顶，ADR 0035；原 ADR 0031 为 420）。决赛圈固定 115 秒，`?match=` ≤ 115 时整局都是决赛圈。
+- `?map=23` 地图档 `19` / `23` / `27`（默认 23 = 12 人；27 = 16 人；19 = 旧 8 人规则，ADR 0040 / 0044）。
+- `?bots=11` Bot 数，上限按档 7 / 11 / 15（默认 = 该档上限）；不带 `?ai=` 时按默认阵容 `lineupFor`（菜鸟为主，ADR 0043）。
+- `?ai=normal` 让全部 Bot 用同一难度 `rookie` / `easy` / `normal` / `hard`（不带时用默认阵容；hard = 第 3 轮强度）。
 - `?char=cat` 本机角色 `rabbit` / `duck` / `cat` / `bear`，跳过选角界面（未知值照常显示选角）。
 - `?dev=evolve,autopilot,fast` 开发开关，只在 `pnpm dev` 下生效（`pnpm build` 里编译掉）：evolve = 开局在脚下放几颗能直接进化的技能糖；autopilot = 本机由脚本玩家驾驶；fast = 4 倍速。
 
@@ -30,19 +31,32 @@ URL 参数（可选）：
 
 ## 内容范围
 
-- **Stage 0 + 1 规则**：19×19（含外圈铁皮）、你 + 7 个 Bot（动物玩偶）、四向移动与转角修正、离格穿透、125 ms 放弹缓冲；引信 2.1 s、危险窗 0.4 s、火力 2、连锁同 Tick 结算（同弹同人一次、同链同人 ≤ 3 心）；三心（半心点）、死亡晚一帧、3 s 重生 + 3 s 保护（放弹、施放火焰光环 / 火焰冲刺即解除）；三种糖果 + 血包；帽王光柱 + 边缘箭头 + Top-10；封顶 7 分钟一局 → 领奖台 + 结算共 16 s → 自动下一局。
+**方向 B「成长爽局」M1（ADR 0038–0044，2026-09-28）**——在下面第 4 轮内容之上：
+- **地图**：页面默认 12 人 · 23×23（`?map=27` 16 人）；三圈三级资源箱（外圈木箱 / 中圈铁箱 / 核心金箱要 2 次命中），积木按圈掉率 25 / 35 / 45%，再生约 1/6 长成当圈的箱子；23 / 27 档核心 3×3 广场，0:50 预告、1:00 中央大补给（糖 5、血包 2、狂暴糖 1、技能糖 2、金心 1）；各档决赛圈段表见 `MAP_TIERS`。
+- **成长与 Boss**：心数上限 = 3 + 帽子（每 4 顶 +1，最多 +2）+ 金心（最多 +3），封顶 8 心；金心死亡全掉；毒圈按上限等比；上限 ≥ 6 心 = Boss（只加高、头顶常驻心条、被击倒全场播报）。
+- **狂暴糖**：回满血 + 6 秒，引信 1.2 秒、同时在场额外 ≤ 6 颗、放弹间隔 ≥ 5 Tick、自己的狂暴弹炸不到自己。
+- **角色**：新增第五个角色飞腿袋鼠——主动技飞踢（Shift 把面前相邻 / 隔一格的静止炸弹踢到被挡住，冷却 4 秒）；被动踢弹糖改为罕见（约 3%）。
+- **数值修订**：中毒每 2 秒 −0.5 心；冰冻 1.5 / 2.0 / 2.5 秒（上限 2.5，冰川弹 2 秒）。
+- **Bot**：新增菜鸟档（会犯致命错误），默认阵容以菜鸟为主；不围剿真人（只有离真人最近的 2 个 Bot 会把真人当目标）；认识金心 / 分级箱 / 补给 / 狂暴威胁。袋鼠 Bot 暂不放飞踢。
+- **爽感与成就感**：单杀「击飞 XX！+N」、定帧、镜头冲击、命中飘字、爆装喷泉、最后一杀慢镜；连杀横幅（本人全部、别人三杀及以上与不死连杀）；首次 ×5 / ×8 连锁；局末每人一张高光卡；本地个人最佳「新纪录！」。
+- **表现**：默认跟随本机的局部视角（V 切俯瞰）；音效距离衰减与分层混音（只有本人脚步声）；水重做为蓝色水池。
+- **统计**：`pnpm accept` = 验收 E（12 人 · 23×23、全员 normal）；`pnpm stats` 含新验收 D（脚本玩家对默认阵容，进前 3 ≥ 50%、K/D ≥ 1.0）与 M1 报告项。
+
+**第 4 轮内容**（以下为 M1 之前的原型范围，被上面修订的以上面为准）：
+
+- **Stage 0 + 1 规则**：19×19（含外圈铁皮）、你 + 7 个 Bot（动物玩偶）、四向移动与转角修正、离格穿透、125 ms 放弹缓冲；引信 2.1 s、危险窗 0.4 s、火力 2、连锁同 Tick 结算（同弹同人一次、同链同人 ≤ 3 心）；三心（半心点）、死亡晚一帧、3 s 重生 + 3 s 保护（放弹、施放火焰光环 / 火焰冲刺即解除）；三种糖果 + 血包；帽王光柱 + 边缘箭头 + Top-10；封顶 4 分钟一局（ADR 0035，决赛圈约 1:45–2:05 开始） → 领奖台 + 结算共 16 s → 自动下一局。
 - **Stage 2 材质（用户要求提前放入）**：木箱（必掉 1 个：一半技能糖、一半糖果 / 血包）、水方格（减速 30%、放弹即熄灭、火焰覆盖首格后停、每秒 −0.5 心溺水、踢进水的炸弹熄灭）。
-- **开局选角 + 专属技能（ADR [0030](../../../.spec/decisions/0030-bomber-characters-exclusive-skills-and-combos.md)，design §8.0）**：棉花兔（被动·回春：10 秒没掉血回 1 心，之后每 10 秒再回，满血为止）、泡泡鸭（主动·泡泡：3 秒完整无敌、期间不能放弹，CD 18 s）、闪电猫（主动·闪现：朝面向最远 3 格、可越过砖块 / 炸弹 / 宝箱，CD 12 s）、火焰熊（主动·火焰光环：脚下 3×3 着火 4 秒，CD 20 s）。基础属性完全相同；Bot 每局重分角色，8 人时每个角色 2 个。
+- **开局选角 + 专属技能（ADR [0030](../../../.spec/decisions/0030-bomber-characters-exclusive-skills-and-combos.md)，design §8.0）**：棉花兔（被动·回春：20 秒没掉血回半心，之后每 20 秒再回，满血为止）、泡泡鸭（主动·泡泡：3.5 秒完整无敌、期间不能放弹，CD 14 s）、闪电猫（主动·闪现：朝面向最远 3 格、可越过砖块 / 炸弹 / 宝箱，CD 10 s）、火焰熊（主动·火焰光环：脚下 3×3 着火 5.5 秒，CD 16 s）。数值为角色平衡第一轮（ADR [0034](../../../.spec/decisions/0034-bomber-character-balance-round-1.md)）后的值。基础属性完全相同；Bot 每局重分角色，8 人时每个角色 2 个。
 - **技能糖、三槽与组合进化（ADR 0030，design §8.1–§8.4）**：炸弹槽 / 主动槽 / 被动槽，专属技能占自己的槽且绑定。走过技能糖按顺序判定、不按键：能和身上某个技能配成组合 → 立即进化；同技能 → 升 1 级（上限 Lv3）；对应槽空 → 装上；其余捡不起、留在地上（**不做替换确认**，Shift 只管主动技能）。3 条组合：闪现 + 火焰光环 → 火焰冲刺；泡泡 + 踢弹 → 弹射泡泡；冰冻弹 + 穿透弹 → 冰川弹。死亡时拾取的技能每个 50% 掉成技能糖（保留等级；决赛圈出局全掉），专属技能永不掉。技能不算帽子。
 - **中毒弹 / 麻痹弹（ADR [0033](../../../.spec/decisions/0033-bomber-toxin-and-shock-bombs-from-chests.md)，design §8.2 / §8.4 / §12）**：炸弹槽两种新形态，直击照常 −1 心。中毒 3 / 4 / 5 秒、每秒 −0.5 心、可致死（记投弹者），泡泡与血包解毒；麻痹 2 / 2.5 / 3 秒、移速降到 30%。技能糖池 = 泡泡 / 闪现 / 火焰光环 / 踢弹 / 冰冻弹 / 穿透弹 / 中毒弹 / 麻痹弹，炸弹类权重各 2、其余各 1（炸弹类约 2/3）；决赛圈强力宝箱每个多喷 1 颗、保底炸弹类。
 - **决赛圈缩到 1×1、活到最后者胜（ADR [0031](../../../.spec/decisions/0031-bomber-final-circle-to-one-cell-last-survivor-wins.md)，design §4 / §4.2）**：积木剩 < 20%（再生停止后才生效）或局时只剩 115 秒时触发，固定 115 秒；不能复活。安全圈相对触发 +10 / 35 / 55 / 75 / 95 / 110 秒缩到 13 / 9 / 7 / 5 / 3 / 1 格，+115 秒局终；末三段（5×5 / 3×3 / 1×1）生效时清掉新圈内的积木与木箱（只清这两种）。强力宝箱 5 个，1×1 段不落、不落中心格。圈外毒：5×5 前每秒 −0.5 心，5×5 起每秒 −1 心。只剩 1 人时在致死的同一 Tick 结束、他是第 1 名；时间到仍 ≥ 2 人存活按帽数排（并列同名次）；出局者排在存活者之后，出局越晚越靠前。
-- **软砖再生（ADR [0026](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)，design §5）**：常规阶段每 8 秒在无人区域补回镜像积木，距时间触发 60 秒（4:05）时停止；资源触发只在再生停止后生效。
+- **软砖再生（ADR [0026](../../../.spec/decisions/0026-bomber-small-map-regen-and-resource-trigger-gate.md)，design §5）**：常规阶段每 8 秒在无人区域补回镜像积木，距时间触发 20 秒（1:45）时停止（ADR 0035；原 60 秒）；资源触发只在再生停止后生效。
 - **帽子 = 强化数（ADR [0028](../../../.spec/decisions/0028-bomber-hats-are-powerup-count.md)，design §9）**：没有独立的帽子资源，头顶几顶帽子就是身上几个强化（火力 / 炸弹 / 速度高出初始值的级数）；吃强化 +1 顶，死亡掉一半强化帽塔同步变矮，决赛圈出局强化全掉；地上不再有帽堆、击杀不单独铸帽。技能（专属、技能糖、等级、组合技）都不计帽数。
 - **死者掉落保护（ADR [0029](../../../.spec/decisions/0029-bomber-death-drops-blast-protection.md)）**：死者掉出的强化与技能糖落地后 3 秒内炸不掉，外罩淡金色泡泡。
 - **死亡掉强化（ADR [0025](../../../.spec/decisions/0025-bomber-final-circle-and-death-drops.md)，design §8.5）**：已吃的火力+ / 炸弹+ / 速度+ 每级 50% 掉在死亡点周围，谁捡归谁。
 - **手感（ADR [0032](../../../.spec/decisions/0032-bomber-movement-dual-direction-and-doll-footprint.md)，design §6.1）**：同按两个方向时新按的优先，走不通就沿旧方向滑行，一旦走得通立即转入；转角吸附 0.5 格（连续转角 0.25 格）；玩偶视觉占地 ≤ 0.7 格（脚圈 0.7、前伸 ≤ 0.35），脚圈与影子画在逻辑位置。
 - **火焰按暴露时长烧（design §8.4 / §12）**：在别人的光环或火墙里连续站满 1 秒才掉第一颗心，之后每满 1 秒再掉 1 颗，离开即重新计时（接触即烧让熊独大，见下文实测）。
-- **Bot 难度分档（design §15「Bot 难度分档（原型工具）」）**：easy / normal（默认）/ hard（= 第 3 轮强度）；三档都会施放技能、抢技能糖，决赛圈末段有对决战术（晚入圈、以血换血、追最弱）。
+- **Bot 难度分档（design §15「Bot 难度分档（原型工具）」）**：easy / normal（默认）/ hard（= 第 3 轮强度）；三档都会施放技能、抢技能糖（满足条件时真的施放的概率 easy 10% / normal 20% / hard 100%，ADR 0034），决赛圈末段有对决战术（晚入圈、以血换血、追最弱）。
 - **领奖台（design §13）**：结算前 10 秒 3D 领奖台，前三名戴着帽子塔上台庆祝（第 1 名戴皇冠，并列都戴），之后 6 秒结算表（结束方式、角色、本局技能与进化）并自动下一局。
 - **不做**：替换确认（占槽的技能糖捡不起，只能靠进化或死亡掉落换技能）；其余技能厚棉花 / 火焰弹 / 分裂弹 / 钻头 / 磁铁 / 筑墙 / 幽灵 / 长手 / 遗爆；中毒弹 / 麻痹弹的组合；狂暴糖、分区补给箱与中央大补给（决赛圈强力宝箱除外）、分区、木头 / 鞭炮 / 冰面、中途加入补偿、联网。
 
@@ -81,11 +95,20 @@ tests/harness/  无界面整局统计（pnpm accept / pnpm stats）
 - 表现事件（`presentationOnly`）：`BrickDestroyed`、`PickupSpawned`（第 4 轮加 `Skill` / `SkillLevel`）、`PickupDestroyed`、`BombExtinguished`、`ChainResolved`、`MatchStarted`、`BricksRegrown`、`PowerupsDropped`、`FinalCircleStarted`、`RingShrinkAnnounced`、`RingShrunk`、`PlayerEliminated`、`ChestSpawned` / `ChestHit` / `ChestOpened`（`HatMinted` 已停用）；第 4 轮 `SkillActivated`、`SkillFailed`、`SkillGained`、`SkillEvolved`、`SkillsDropped`、`PlayerHealed`、`BombKicked`、`PlayerFrozen`、`PlayerPoisoned`、`PlayerShocked`、`PlayerCured`。表现层把它们当提示，快照 diff 才是依据。
 - `PlayerMeta`（名字 / 动物 / 槽位）、`MatchMeta.phaseEndTick`、`EntityView.teleportTick`。
 - `ProtoRules`（`src/contract/config.ts`）：契约 §5 未收录但 design.md 给了数值（或原型自定）的规则参数，逐项注明出处。第 4 轮新增或改值：
-  - 局时与决赛圈：`matchCapMs` = 420000（经 `protoConfig()` 覆盖局时；契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000）、`finalCircleMs` 90000 → 115000、`ringStages` 6 段且每段带 `chest` / `clearInside` / `poisonPoints`（`RingStage`、`poisonPointsAt()`）；
+  - 局时与决赛圈：`matchCapMs` = 240000（ADR 0035，原 420000；经 `protoConfig()` 覆盖局时；契约 `DEFAULT_CONFIG.matchDurationMs` 仍是 360000）、`finalCircleMs` 90000 → 115000、`ringStages` 6 段且每段带 `chest` / `clearInside` / `poisonPoints`（`RingStage`、`poisonPointsAt()`）；
   - 手感：`cornerAssistMilli` 400 → 500、`cornerAssistRepeatMilli` 200 → 250、`assistRepeatWindowTicks`、`dollFootprintMilli` / `dollReachMilli`（纯表现）；
   - 角色与技能：`characters` / `skills` / `combos`、`skillMaxLevel`、`skillCandyLevel`、`crateSkillCandyPermille`、`chestSkillCandies`、`chestSkillCandyPool`、`skillDeathDropPermille`、`burnIntervalMs` / `burnPointsPerInterval`、`toxinIntervalMs` / `toxinPointsPerInterval`、`freezeCapMs` / `freezeImmuneMs` / `freezeBombDamages`、`kickSpeedMilli`。
 - 数据表（`src/contract/skills.ts`，ADR 0030 / 0033）：`SKILLS`（`SkillId`；`SKILL_IDS` 编码只在末尾追加；`SkillParams` 含 `slowPermille`）、`COMBOS`、`CHARACTERS`，以及 `candyPool()` / `bombCandyPool()` / `describeSkill()`。
-- Bot 难度（`src/contract/ai.ts`，design §15「Bot 难度分档（原型工具）」）：`BOT_PROFILES`（`easy` / `normal` / `hard`，外加验收用的脚本玩家 `player`）、`BOT_TACTICS`（决赛圈对决与技能施放常量）、`parseBotDifficulty()`。规则层不读，只有 `src/bots` 与宿主读。
+- Bot 难度（`src/contract/ai.ts`，design §15「Bot 难度分档（原型工具）」）：`BOT_PROFILES`（`easy` / `normal` / `hard`，外加验收用的脚本玩家 `player`；`ringEntry` 决赛圈进圈纪律：三档 Bot 为 `late` 晚进圈战术，`player` 为 `onTime` 按时进圈，ADR 0036）、`BOT_TACTICS`（决赛圈对决与技能施放常量）、`parseBotDifficulty()`。规则层不读，只有 `src/bots` 与宿主读。
+- **方向 B · M1 接口冻结（ADR [0039](../../../.spec/decisions/0039-bomber-hats-give-hearts-and-gold-hearts.md) / [0040](../../../.spec/decisions/0040-bomber-27-map-16-players-tiered-rings-supply.md) / [0043](../../../.spec/decisions/0043-bomber-bot-tiers-kill-juice-highlights-new-acceptance.md)，M1-1）**：M1 各卡对着下面这些名字并行开发；已冻结字段只追加、不改语义。
+  - 枚举扩值：`BomberPickupItem.Kind` = 5 `GoldHeart` 金心、6 `Frenzy` 狂暴糖（都不是强化，`isPowerupKind` 为假）；`PickupSpawned.Source` 加 `'supply'`（中央大补给喷发）；`PlayerHealed.Source` 加 `'boss'`（心数上限上涨、新心是满的：帽子跨阈值或吃到金心，排在同 Tick 的 `PickupTaken` 之后）。
+  - 新表现事件（`presentationOnly`）：`SupplyAnnounced`（`Cell` / `AtTick`）、`SupplyOpened`（`Cell`；战利品随后逐件 `PickupSpawned` Source = `'supply'`）。
+  - 快照：`PlayerView.maxHealth`（本人当前心数上限，半心点 6–16）/ `goldHearts` / `frenzyUntilTick`（均可选，缺席时用 `maxHealthOfView()` 退回 `maxHealthPoints`）；`BombView.uncounted`（只在为真时出现：不计炸弹数与帽数的狂暴炸弹 / 集束子弹）；`WorldSnapshot.ResourceBoxes`（`ResourceBoxView` = `Cell` / `tier` = `'wood' | 'iron' | 'gold'` / `HitsLeft` / `HitsRequired`；资源箱在砖层**一律仍是 `BlockType.木箱`**，不在列表里的木箱格 = 木箱 1 / 1）；`MatchMeta.map`（`MapView` = `tier` / `size` / `zones`）、`MatchMeta.supply`（`SupplyView` = `Cell` / `announceTick` / `openTick` / `state` = `'pending' | 'announced' | 'opened'`；本档没有补给为 null）。
+  - `ProtoRules` 新键：`heartsPerHats` 4、`maxHatHearts` 2、`maxGoldHearts` 3、`bossMinHearts` 6、`goldBoxGoldHeartPermille` 200、`powerChestGoldHeartPermille` 200、`boxLoot`（`BoxLoot` 每级 `candies` / `specialBombPermille`）、`supplyAnnounceMs` 50000、`supplyOpenMs` 60000、`supplyLoot`（`SupplyLoot` = 糖 5 / 血包 2 / 狂暴 1 / 特殊炸弹 2 / 金心 1）、`frenzyMs` 6000、`frenzyFuseMs` 1200、`frenzyExtraBombs` 6、`frenzyMinIntervalTicks` 5、`map`（本局 `MapTierRules`；`DEFAULT_RULES.map` = 19 档）。
+  - 地图档：`MapTierId` = 19 / 23 / 27、`MAP_TIERS`（`MapTierRules`：`size` / `defaultPlayers` / `zones`（`ZoneRadii` = `coreMaxD` / `midMaxD`）/ `boxes` / `brickDropPermille` / `regenOrbitsPerInterval` / `regenBoxOneIn` / `ringStages` / `powerChests` / `centralSupply` / `plazaSide` / `src`）、`DEFAULT_MAP_TIER` = 19（切 27 归 M1-2）、`rulesForMap(base, size, players?)`（`rulesForMap(DEFAULT_RULES, 19, 8)` 与 `DEFAULT_RULES` 逐项相等）、`parseMapTier()`、`RingZone` / `ResourceBoxTier` / `ZONE_BOX`、`centerDistance()` / `ringZoneOf()`；`protoConfig(rules)` 在 rules 带 `map` 时写 `mapSize`。19 / 23 档箱数与 23 档三圈为派生值（design §5.0 面积缩放，推断待验证）。
+  - 纯函数：`maxHealthFor(cfg, rules, hats, goldHearts)`、`maxHealthCeiling()`（HUD 预建心格，16 点 = 8 心）、`isBoss()`、`poisonPointsFor(cfg, stagePoints, maxHealth)`（毒圈每跳 ⌈段点数 × 上限 / 6⌉）；规则层 `sim/death-drops.ts` 的 `maxHealthOf(w, p)`。同链伤害上限、血包、回春、重生、Bot 残血判断与毒速、HUD 心格一律读每人上限。
+  - Bot（`contract/ai.ts`）：`BotDifficulty` 加 `'rookie'`（`?ai=rookie` 可解析）；`BotProfile` 加 `escapeMarginTicks` / `misperceivePermille` / `greedyPickupPermille`（easy / normal / hard / player = 2 / 0 / 0，行为不变；rookie 取 ADR 0043 值、其余照抄 easy，接线与调参归 M1-3）；`LINEUP_WEIGHTS` 与 `lineupFor(botCount)`（15 → 菜鸟 7 / 普通 6 / 困难 2，更少按最大余数法）。宿主 `LocalHostOptions.botLineup`（缺省 = 全员 `ai`）；`BotOptions.softTargets` 由宿主填真人 id（M1-3 再读）。
+  - 规则层预留（状态进哈希、快照已发布，规则归 M1-2）：`SimPlayer.goldHearts` / `frenzyUntilTick`、`SimBomb.uncounted`（`liveBombsOf` 跳过它，帽数随之不算）、`World.resourceBoxes` / `supply`、`TickTable.frenzy` / `frenzyFuse` / `supplyAnnounce` / `supplyOpen`。新状态全为缺省时不写进 StateHash，旧对局哈希逐位不变。
 - 以上扩展是否进契约，等原型验证后走契约修订另议（ADR 0025、0030–0033「后果」）。
 
 ## 规则替身对「契约未规定处」的取舍（C# 落地时逐条核对）
@@ -104,7 +127,40 @@ tests/harness/  无界面整局统计（pnpm accept / pnpm stats）
 - 名次由规则层算（`sim/results.ts` → `shared/ranking.ts`），经 `match.results` 与 `MatchEnded.proto` 发布，表现层只读。决赛圈内扣掉本 Tick 待死者后存活 ≤ 1 → 在致死的同一 Tick 结束；同 Tick 出局并列同名次；全灭时最后一批并列第 1。
 - 玩家互不阻挡，1×1 那一格可以同时站好几个人（时间到按帽数排名）。
 
-## 验收与实测（第 4 轮，2026-09-26）
+## 验收与实测
+
+### 节奏提速 + 验收 D 按时进圈（ADR [0035](../../../.spec/decisions/0035-bomber-pacing-final-circle-at-two-minutes.md) / [0036](../../../.spec/decisions/0036-bomber-acceptance-d-player-enters-ring-on-time.md)，2026-09-27）
+
+用户试玩反馈「为啥不缩圈呢，时间太久了」→ 选「约 2 分钟开圈」：`matchCapMs` 420000 → 240000（4 分钟封顶，时间触发 2:05），`regenStopBeforeFinalMs` 60000 → 20000（再生 1:45 停）；决赛圈 115 秒、段表、毒速、清场、胜负规则都不变。验收 D 按用户定义「让脚本玩家更像普通人」：`player` 档 `ringEntry: 'onTime'`（按时进圈，不学 Bot 的晚进圈），反应 / 噪声不变；官方 D 由 30 局扩到 100 局（种子 1–100），阈值 ≥ 50% 不变。三档 Bot 与 `BOT_TACTICS` 未改。官方种子只跑了一次（Wilson 95% 区间）：
+
+| 批次 | 局数 | 平均局长（最长） | 唯一存活 | 场均帽王更替 | 场均进化 | 本机前 3 | 结论 |
+|---|---|---|---|---|---|---|---|
+| 验收 E · 6 种子 · 全员 normal | 6 | 3.2 分（3.6） | 100%（区间 61–100%） | 8.2 | 0.8 | 83% | 通过 |
+| 统计 E · 种子 1–20 · 全员 normal | 20 | 3.2 分（3.6） | 100%（区间 84–100%） | 7.7 | 0.8 | 70% | 通过 |
+| 统计 D · 种子 1–100 · 脚本玩家 vs 7 normal | 100 | 3.2 分（3.6） | 100% | 7.1 | 1.1 | **42%（42/100，区间 33–52%）** | **未达标** |
+
+- 开圈时刻：官方三批 100% 由资源触发（再生一停就触发），即 1:45 开圈；0 局时间到，0 局打到 1×1（1×1 可进入仍由 `src/sim/__tests__/final-cell.test.ts` 断言）。E 20 种子场均毒死 2.5 次（原 3.75），约占「击杀 + 自爆 + 毒圈」22%。
+- D：官方 D 第 1 名（全 8 席）按角色为兔 33 / 鸭 29 / 熊 23 / 猫 15；脚本玩家第 1 名 19%、平均名次 4.2。留出种子 8001–8200（200 局）上按时进圈 49.5%（区间 43–56%），同种子晚进圈基线 43.5%；上线前的 ≥ 55% 预验证线也没过。`pnpm stats` 以 D 断言失败退出（exit 1），不改断言、不换种子；剩余杠杆见 ADR 0036。
+- 下面两节是 7 分钟局的旧数字，留作对照。
+
+### 角色平衡第一轮（ADR [0034](../../../.spec/decisions/0034-bomber-character-balance-round-1.md)，2026-09-27）
+
+用户要求「调一下角色平衡，让 D 达标」。改了四个专属技能的数值（回春 20 s / 半心、泡泡 3.5 s / CD 14 s、闪现 CD 10 s、光环 5.5 s / CD 16 s，L2 / L3 同步），normal 档施放技能概率 70% → 20%（easy 40% → 10%），光环施放距离 1 → 2 格。D9 定值、脚本玩家档、胜负规则、安全圈与毒、验收阈值和种子都没动；调参只用留出种子，官方种子只在最后跑了一次。
+
+| 批次 | 局数 | 调整前 | 调整后 |
+|---|---|---|---|
+| 官方 E · 种子 1–20 · 唯一存活 | 20 | 100% | **100%**（通过） |
+| 官方 D · 种子 1–30 · 脚本玩家进前 3 | 30 | 43%（13/30） | **37%（11/30，95% 区间 22–55%）——未达标** |
+| 留出 D · 种子 5001–5200 · 进前 3 | 200 | 42%（区间 35–49%） | 51%（区间 44–58%） |
+| 留出 E · 种子 6001–6040 · 唯一存活 | 40 | 100% | 100% |
+| 留出 D · 全 8 席第 1 名占比 兔 / 鸭 / 猫 / 熊 | 200 | 44.5 / 27.5 / 10.5 / 17.5% | 22.9 / 30.3 / 14.9 / 31.8% |
+| 留出 D · 脚本玩家按角色进前 3 兔 / 鸭 / 猫 / 熊 | 200 | 58 / 34 / 28 / 48% | 46 / 52 / 54 / 52% |
+
+- 官方 D 批次第 1 名按角色为鸭 10 / 熊 9 / 兔 7 / 猫 4；脚本玩家用鸭 5/8、兔 3/7、熊 3/7、猫 0/8 进前 3。官方 E 批次第 1 名为兔 6 / 鸭 5 / 猫 5 / 熊 4，平均局长 5.5 分，场均进化 0.8；官方 D 平均局长 5.5 分，唯一存活 100%，场均进化 1.0。
+- 角色不再主导名次（留出种子上兔 / 熊 / 鸭都落进 15–35% 带），但 **D 仍未达标**：30 局的区间 ±16 个百分点，官方 37% 与留出 51% 并不矛盾；可 51% 本身也离「稳过 50%」差一截。上限在脚本玩家档只比 normal 略强，要稳过需加强 `player` 档或重新定义 D，这两项留给策划评审。闪电猫仍偏弱（第 1 名约 10–15%），是下一轮平衡的第一个对象。
+- 下表 easy / hard 两行是调整前的数字，本轮没有在官方种子上重跑；留出种子 5001–5060 的旁证：脚本玩家对 easy 40% → 55%、对 hard 47% → 55%（同种子对 normal 58%）。
+
+### 第 4 轮（2026-09-26，调整前）
 
 `pnpm accept` 与 `pnpm stats` 的交付数字（缺省种子，不换种子；E 的「本机」是 0 号位按 normal 档自动驾驶的 Bot，D / easy / hard 的本机是脚本玩家 `player` 档、角色逐局轮换）：
 
@@ -117,8 +173,8 @@ tests/harness/  无界面整局统计（pnpm accept / pnpm stats）
 | hard · 脚本玩家 vs 7 hard | 30 | 5.5 分 | 100% | 0% | 7.1 | 7.3 | 40% | 0.9 |
 
 - **验收 E 通过**（ADR 0031 口径：唯一存活 ≥ 85%、时间到的存活中位 ≤ 2、1×1 可进入、平均局长 ≤ 7 分钟；最后一条由封顶本身保证，实测均值 5.6 分钟）。决赛圈 100% 由资源触发（约 4:05，再生停止即触发），多数局在 5×5 / 3×3 段就分出胜负；真正打到 1×1 的只有 E 0/20（6 种子是其子集）、D 1/30、easy 5/30、hard 1/30，所以 1×1 可进入另由 `src/sim/__tests__/final-cell.test.ts`（种子 1–100 的真实地图）断言。
-- **验收 D 未达标**：目标脚本玩家对 7 个 normal Bot 进前 3 ≥ 50%，实测 43%（烧伤改按暴露时长之前那一版为 47%）；`pnpm stats` 因此以 D 断言失败退出（exit 1），不改断言、不换种子。
+- **验收 D 未达标**（调整前；调整后见上一节）：目标脚本玩家对 7 个 normal Bot 进前 3 ≥ 50%，实测 43%（烧伤改按暴露时长之前那一版为 47%）；`pnpm stats` 因此以 D 断言失败退出（exit 1），不改断言、不换种子。
   - 原因：角色强弱主导名次。脚本玩家用棉花兔 6/7 进前 3，用火焰熊 3/7、泡泡鸭 2/8、闪电猫 2/8；D 批次第 1 名按角色为兔 16 / 鸭 8 / 熊 6 / 猫 2（32 人次，含 2 局同 Tick 全灭并列第 1）。改按暴露时长之前是熊独大（第 1 名熊 19/30）。此外脚本玩家档在调参前就固定（反应 3–5 Tick、噪声 5%、不设陷阱、同时 1 颗进攻弹），本身只比 normal（D9：反应 4–7 Tick、噪声 15%）略强。
-  - 可用杠杆（design §15，另行决策）：先调角色平衡，例如回春间隔 A/B（兔子偏强，往长试）、闪现 CD（猫偏弱，往短试）；或经策划评审重新定义「普通水平玩家」这一基准。
+  - 可用杠杆（design §15，另行决策）：先调角色平衡，例如回春间隔 A/B（兔子偏强，往长试）、闪现 CD（猫偏弱，往短试）；或经策划评审重新定义「普通水平玩家」这一基准。角色平衡已在 ADR 0034 做了第一轮。
 
-美术：本原型不构成美术定调（仍在 ADR 0007 比稿中）；遵守世界观 ADR 0008，配色借比稿方向 B 色板。
+美术：本原型不构成美术定调（仍在 ADR 0007 比稿中）；遵守世界观 ADR 0008。第 4 轮末按用户反馈把 8 只玩偶程序化精修成 Q 版（大头、带高光的大眼 + 腮红 + ω 嘴、卡通分阶光照 + 暖墨描边 + 轮廓光、物种特征夸张化、配色离地形色 ΔE ≥ 20），帽子塔改为最多画 4 顶 + 「×N」徽章（ADR 0037）——描边、分阶光照与造型都是原型占位，正式角色美术以比稿定调后的规范为准。

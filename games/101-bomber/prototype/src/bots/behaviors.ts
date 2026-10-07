@@ -1,6 +1,7 @@
 import {
   BlockType,
   BombKind,
+  maxHealthOfView,
   msToTicks,
   PickupKind,
   type BomberConfig,
@@ -8,6 +9,7 @@ import {
   type PickupView,
   type PlayerView,
   type ProtoRules,
+  type ResourceBoxView,
   type RingRect,
   type U64,
   type WorldSnapshot,
@@ -60,6 +62,15 @@ export interface ThinkContext {
   /** 原型扩展（NON-CONTRACT，ADR 0031）：当前（含已预告段）圈外每跳毒伤的半心点。 */
   poisonRate: number
   tactics: BotTactics
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0036）：进圈纪律（= BotProfile.ringEntry；缺省 'late'）。'onTime' 逃生时先找
+   * 圈内永不进毒圈、路线也不穿毒的落脚格，找不到才退回常规逃生口径。
+   */
+  ringEntry?: 'late' | 'onTime'
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：「到达后能待」的危险窗余量（= BotProfile.escapeMarginTicks；缺省 2）。 */
+  escapeMargin?: number
+  /** 原型扩展（NON-CONTRACT，ADR 0043）：本快照「不围剿真人」的结论（{@link softTargetVerdict}）；缺省 = 没有软目标。 */
+  soft?: SoftTargetVerdict
 }
 
 export interface Goal {
@@ -96,15 +107,16 @@ function calmEnough(ctx: ThinkContext, c: number): boolean {
   if (ctx.immuneUntil >= 0 && ctx.dm.until[c] + 2 <= ctx.immuneUntil) return true
   const slack = ctx.fireSlack
   if (slack === null || slack === undefined) return false
-  return restsAt(ctx.dm, c, ctx.field.enter[c]) || ctx.dm.from[c] > ctx.field.enterLate[c] + slack
+  return restsAt(ctx.dm, c, ctx.field.enter[c], ctx.escapeMargin) || ctx.dm.from[c] > ctx.field.enterLate[c] + slack
 }
 
 /**
  * 从 field 的起点出发，c 是否可达且到达后不再着火（不论水陆、不看毒圈）。
  * `immuneUntil` ≥ 0（泡泡护体）时按「到达时刻与护体结束取晚者」判。
+ * 原型扩展（NON-CONTRACT，ADR 0043）：`margin` = 难度档逃生余量（缺省 2）。
  */
-export function reachesRest(field: PathField, dm: DangerMap, c: number, immuneUntil = -1): boolean {
-  return field.steps[c] >= 0 && restsAt(dm, c, Math.max(field.enter[c], immuneUntil))
+export function reachesRest(field: PathField, dm: DangerMap, c: number, immuneUntil = -1, margin = 2): boolean {
+  return field.steps[c] >= 0 && restsAt(dm, c, Math.max(field.enter[c], immuneUntil), margin)
 }
 
 /** 活着、没出局的对手。 */
@@ -122,13 +134,22 @@ export function protectedAtDetonation(ctx: ThinkContext, p: PlayerView): boolean
  * 逃生：最近的永不着火格，先陆地后水，且到达后短期内不进毒圈；都没有时同样顺序但不看毒圈（毒是慢慢掉血，火是一下一心）。
  * 再没有时，先找「危险还远」（余量 ≥ landSlack）的陆地格——泡在水里干等会溺死，上岸重置溺水计时、危险临近再回水里；
  * 再不行才挑危险来得最晚的可达格。
+ * 原型扩展（NON-CONTRACT，ADR 0036）：ringEntry 'onTime'（普通人）在这一切之前先找最近的「圈内」陆地落脚格
+ * （永不进毒圈、路线不穿毒）——躲弹往圈里躲，不往毒里躲。
  */
 export function pickEscape(ctx: ThinkContext, landSlack = Infinity): Goal {
   const { field, dm, board } = ctx
+  const margin = ctx.escapeMargin
+  if (ctx.ringEntry === 'onTime') {
+    for (const c of field.reached) {
+      if (c === field.start || isWater(board, c) || field.viaPoison[c] !== 0 || !poisonFreeAfter(dm, c, STRICT_REST)) continue
+      if (restsAt(dm, c, Math.max(field.enter[c], ctx.immuneUntil), margin)) return { cell: c, bombOnArrival: false }
+    }
+  }
   let water = -1
   for (const poisonAware of [true, false]) {
     for (const c of field.reached) {
-      if (c === field.start || !restsAt(dm, c, Math.max(field.enter[c], ctx.immuneUntil))) continue
+      if (c === field.start || !restsAt(dm, c, Math.max(field.enter[c], ctx.immuneUntil), margin)) continue
       if (poisonAware && !poisonFreeAfter(dm, c, field.enter[c] + 40)) continue
       if (!isWater(board, c)) return { cell: c, bombOnArrival: false }
       if (water < 0) water = c
@@ -188,10 +209,18 @@ export function candyOutcome(ctx: Pick<ThinkContext, 'rules' | 'me'>, p: PickupV
  * 原型扩展（NON-CONTRACT，ADR 0030 / 0031）：技能糖按 {@link candyOutcome} 估值（进化 > 升级 > 装备）；
  * 决赛圈里任何掉血都值得去找血包（healReachSteps）。
  */
-export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8, fresh?: ReadonlySet<U64>, droppedOnly = false): Goal | null {
+export function pickPickup(
+  ctx: ThinkContext,
+  maxSteps: number,
+  droppedBonus = 8,
+  fresh?: ReadonlySet<U64>,
+  droppedOnly = false,
+  accept?: (p: PickupView) => boolean,
+): Goal | null {
   const a = ctx.me.玩家属性
+  // 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：不计数的炸弹（狂暴弹 / 集束子弹）不占炸弹+ 上限。
   let ownLive = 0
-  for (const b of ctx.board.pending) if (b.owner === ctx.self) ownLive++
+  for (const b of ctx.board.pending) if (b.owner === ctx.self && !b.uncounted) ownLive++
   const inCircle = ctx.board.finalCircle !== null
   /** −1 = 不值得；否则 [多追的步数, 打分优先]。 */
   const value = (p: PickupView): [number, number] | null => {
@@ -206,7 +235,7 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         // 原型扩展（NON-CONTRACT，ADR 0033）：血包解毒——中毒时满血也值得吃，且按残血口径多追。
         const toxin = toxinPointsLeft(ctx.rules, ctx.skills, ctx.board.now, ctx.config.tickRateHz)
         if (toxin > 0) return [Math.max(HEAL_BONUS, inCircle ? ctx.tactics.healReachSteps : 0), 0]
-        if (a.血量当前 >= ctx.config.maxHealthPoints) return null
+        if (a.血量当前 >= maxHealthOfView(ctx.me, ctx.config)) return null
         if (inCircle) return [ctx.tactics.healReachSteps, 0]
         return [a.血量当前 <= ctx.rules.bombDamagePoints ? HEAL_BONUS : 0, 0]
       }
@@ -214,6 +243,12 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
         const o = candyOutcome(ctx, p)
         return o ? [ctx.tactics.candyBonusSteps[o.kind], CANDY_SCORE[o.kind]] : null
       }
+      // 原型扩展（NON-CONTRACT，ADR 0039 / 0043 价值表）：金心 = +1 心上限（新心是满的），满 maxGoldHearts 颗规则层不让捡。
+      case PickupKind.GoldHeart:
+        return (ctx.me.goldHearts ?? 0) < ctx.rules.maxGoldHearts ? [ctx.tactics.goldHeartBonusSteps, ctx.tactics.goldHeartScore] : null
+      // 原型扩展（NON-CONTRACT，ADR 0040 / 0043 价值表）：狂暴糖 = 回满血 + 6 秒有界狂暴，只出自中央补给。
+      case PickupKind.Frenzy:
+        return [ctx.tactics.frenzyCandyBonusSteps, ctx.tactics.frenzyCandyScore]
     }
   }
   let best: Goal | null = null
@@ -229,6 +264,7 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
     const isFresh = dropped && fresh !== undefined && fresh.has(p.NetEntityIdRaw)
     const reach = maxSteps + v[0] + (dropped ? droppedBonus : 0)
     if (d > reach) continue
+    if (accept && !accept(p)) continue
     const score = d - (dropped ? 3 : 0) - (isFresh ? 2 : 0) - v[1]
     if (score < bestScore) {
       bestScore = score
@@ -238,19 +274,33 @@ export function pickPickup(ctx: ThinkContext, maxSteps: number, droppedBonus = 8
   return best
 }
 
-/** 从格 c 放一颗火力 power 的炸弹能炸到的、还没被别的炸弹预定的可破坏砖（木箱必掉，权重 1.5），加上宝箱命中。 */
+/**
+ * 从格 c 放一颗火力 power 的炸弹能炸到的、还没被别的炸弹预定的可破坏砖（积木 1；木箱按资源箱等级查价值表），加上宝箱命中。
+ * 原型扩展（NON-CONTRACT，ADR 0040 / 0043）：资源箱整箱价值 BotTactics.boxValue 按 HitsRequired 均摊到每一击；
+ * 还差不止一击的箱（金箱）别人已经在炸也照样值钱。
+ */
 export function brickValue(ctx: ThinkContext, c: number, power: number): number {
   const size = ctx.board.size
   const X = c % size
   const bl = traceBlast(ctx.board, X, (c - X) / size, power, { covered: [], bricks: [], chests: [] }, undefined, ctx.pierce)
   let v = 0
   for (const b of bl.bricks) {
-    if (ctx.dm.doomedAt[b] !== NEVER) continue
-    v += ctx.board.brick[b] === BlockType.木箱 ? 1.5 : 1
+    if (ctx.board.brick[b] !== BlockType.木箱) {
+      if (ctx.dm.doomedAt[b] === NEVER) v += 1
+      continue
+    }
+    const box = ctx.board.boxes.get(b)
+    if (ctx.dm.doomedAt[b] !== NEVER && !(box !== undefined && box.HitsLeft > 1)) continue
+    v += boxHitValue(ctx.tactics, box)
   }
   // 宝箱每颗炸弹各算一次命中，别人已经在炸也照样值钱。
   v += (bl.chests?.length ?? 0) * CHEST_HIT_VALUE
   return v
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040 / 0043）：资源箱一击的价值；不在 ResourceBoxes 里的木箱按 wood。 */
+export function boxHitValue(t: Pick<BotTactics, 'boxValue'>, box: ResourceBoxView | undefined): number {
+  return box ? t.boxValue[box.tier] / Math.max(1, box.HitsRequired) : t.boxValue.wood
 }
 
 /** 发育：到能炸最多砖 / 宝箱的格子放弹，价值 / (d + 3)。`avoid` 是最近放弹自检失败的格子。 */
@@ -283,11 +333,12 @@ export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 
   const king = ctx.snap.BomberMatchState.HatKingNetEntityIdRaw
   const hereX = ctx.here % ctx.board.size
   const hereY = (ctx.here - hereX) / ctx.board.size
-  const maxHp = ctx.config.maxHealthPoints
   let best: PlayerView | null = null
   let bestScore = Infinity
   for (const p of ctx.snap.Players) {
     if (!isActiveEnemy(ctx, p)) continue
+    // 原型扩展（NON-CONTRACT，ADR 0043）：不围剿真人——轮不到本 Bot 的软目标不选。
+    if (ctx.soft?.blocked.has(p.NetEntityIdRaw)) continue
     const c = cellIndexOf(ctx.board, p.LogicTransform.WorldPosition)
     if (c < 0) continue
     const X = c % ctx.board.size
@@ -299,9 +350,13 @@ export function pickHuntTarget(ctx: ThinkContext, prefer: U64 = 0, richWeight = 
       if (p.NetEntityIdRaw === king) score -= 10
       score -= Math.min(RICH_CAP, richWeight * p.BomberPlayerState.HatCount)
     }
-    score -= (maxHp - p.玩家属性.血量当前) * weakWeight
+    score -= (maxHealthOfView(p, ctx.config) - p.玩家属性.血量当前) * weakWeight
     if (protectedAtDetonation(ctx, p)) score += 12
     if (p.NetEntityIdRaw === prefer) score -= 3
+    // 原型扩展（NON-CONTRACT，ADR 0043）：软目标 +6 步；狂暴中的对手是高威胁，几乎不追。
+    const soft = ctx.soft?.penalty.get(p.NetEntityIdRaw)
+    if (soft !== undefined) score += soft
+    if (isFrenzied(p, ctx.board.now)) score += ctx.tactics.frenzyHuntPenaltySteps
     if (score < bestScore) {
       bestScore = score
       best = p
@@ -382,15 +437,20 @@ function distanceFrom(board: Board, t: number): Int32Array {
   return d
 }
 
-/** 离自己路程最近的对手（步数 ≤ maxSteps），用于「近身就开打」。 */
+/**
+ * 离自己路程最近的对手（步数 ≤ maxSteps），用于「近身就开打」。
+ * 原型扩展（NON-CONTRACT，ADR 0043）：轮不到本 Bot 的软目标不选、软目标路程 + 惩罚步数；狂暴中的对手不去招惹。
+ */
 export function nearestEnemyWithin(ctx: ThinkContext, maxSteps: number): PlayerView | null {
   let best: PlayerView | null = null
   let bestD = maxSteps + 1
   for (const p of ctx.snap.Players) {
     if (!isActiveEnemy(ctx, p) || protectedAtDetonation(ctx, p)) continue
+    if (ctx.soft?.blocked.has(p.NetEntityIdRaw) || isFrenzied(p, ctx.board.now)) continue
     const c = cellIndexOf(ctx.board, p.LogicTransform.WorldPosition)
     if (c < 0) continue
-    const d = ctx.field.steps[c]
+    const steps = ctx.field.steps[c]
+    const d = steps < 0 ? -1 : steps + (ctx.soft?.penalty.get(p.NetEntityIdRaw) ?? 0)
     if (d >= 0 && d < bestD) {
       bestD = d
       best = p
@@ -505,7 +565,7 @@ export function pickInward(ctx: ThinkContext, ring: RingRect): Goal | null {
   let inside = -1
   for (const c of field.reached) {
     if (c === ctx.here || isWater(ctx.board, c) || ringDistance(ring, c, size) > 0) continue
-    if (!restsAt(dm, c, field.enter[c]) && dm.from[c] < field.enterLate[c] + INSIDE_SLACK) continue
+    if (!restsAt(dm, c, field.enter[c], ctx.escapeMargin) && dm.from[c] < field.enterLate[c] + INSIDE_SLACK) continue
     if (inside < 0 || field.steps[c] < field.steps[inside]) inside = c
   }
   if (inside >= 0 && ringDistance(ring, ctx.here, size) > 0) return { cell: inside, bombOnArrival: false }
@@ -541,4 +601,117 @@ export function pickRandomNeighbor(ctx: ThinkContext): Goal | null {
 export function cellIndexOf(board: Board, p: { x: number; z: number }): number {
   const c = cellOf(p.x, p.z)
   return inBounds(c.X, c.Y, board.size) ? idx(c.X, c.Y, board.size) : -1
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040）：该玩家在 now 时处于狂暴（PlayerView.frenzyUntilTick，不含）。 */
+export function isFrenzied(p: Pick<PlayerView, 'frenzyUntilTick'>, now: number): boolean {
+  return (p.frenzyUntilTick ?? 0) > now
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：「不围剿真人」对本 Bot 的结论。`blocked` = 本 Bot 不能选的软目标；
+ * `penalty` = 能选、但作为目标要加的步数。
+ */
+export interface SoftTargetVerdict {
+  blocked: ReadonlySet<U64>
+  penalty: ReadonlyMap<U64, number>
+}
+
+const NO_SOFT: SoftTargetVerdict = { blocked: new Set(), penalty: new Map() }
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0043）：不围剿真人（无状态：每个 Bot 从同一快照算出同一结论）。对每个活着的软目标 T：
+ * - T 是帽王，或离本 Bot 格曼哈顿 ≤ softTargetCloseCells → 例外（不限、不罚）；
+ * - 否则把所有活着、不是软目标的玩家（= Bot，含自己）按到 T 的格曼哈顿距离排序（同距离 id 小者在前），
+ *   前 softTargetHunters 个能选 T、作为目标 + softTargetPenaltySteps；其余不能选。
+ */
+export function softTargetVerdict(
+  snap: WorldSnapshot,
+  self: U64,
+  softTargets: readonly U64[] | undefined,
+  t: Pick<BotTactics, 'softTargetPenaltySteps' | 'softTargetHunters' | 'softTargetCloseCells'>,
+): SoftTargetVerdict {
+  if (!softTargets || softTargets.length === 0) return NO_SOFT
+  const alive = (p: PlayerView): boolean => p.玩家属性.血量当前 > 0 && !p.eliminated
+  const cellXY = (p: PlayerView): { X: number; Y: number } => cellOf(p.LogicTransform.WorldPosition.x, p.LogicTransform.WorldPosition.z)
+  const me = snap.Players.find((p) => p.NetEntityIdRaw === self)
+  if (!me) return NO_SOFT
+  const mc = cellXY(me)
+  const king = snap.BomberMatchState.HatKingNetEntityIdRaw
+  const blocked = new Set<U64>()
+  const penalty = new Map<U64, number>()
+  for (const id of softTargets) {
+    if (id === self) continue
+    const target = snap.Players.find((p) => p.NetEntityIdRaw === id)
+    if (!target || !alive(target) || id === king) continue
+    const tc = cellXY(target)
+    const dist = (c: { X: number; Y: number }): number => Math.abs(c.X - tc.X) + Math.abs(c.Y - tc.Y)
+    if (dist(mc) <= t.softTargetCloseCells) continue
+    const bots = snap.Players.filter((p) => alive(p) && !softTargets.includes(p.NetEntityIdRaw))
+      .map((p) => ({ id: p.NetEntityIdRaw, d: dist(cellXY(p)) }))
+      .sort((a, b) => a.d - b.d || a.id - b.id)
+    const k = bots.findIndex((b) => b.id === self)
+    if (k >= 0 && k < t.softTargetHunters) penalty.set(id, t.softTargetPenaltySteps)
+    else blocked.add(id)
+  }
+  return { blocked, penalty }
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040 / 0043 价值表）：中央补给已预告时去开启点守着——路程 ≤ supplyReachSteps、
+ * 离开启点切比雪夫 ≤ supplyHoldCells 的最近可待格。未预告 / 已开启 / 本档没有补给 → null（开启后战利品按拾取价值抢）。
+ */
+export function pickSupply(ctx: ThinkContext): Goal | null {
+  const s = ctx.snap.match?.supply
+  if (!s || s.state !== 'announced') return null
+  const size = ctx.board.size
+  let best = -1
+  for (const c of ctx.field.reached) {
+    const steps = ctx.field.steps[c]
+    if (steps > ctx.tactics.supplyReachSteps) continue
+    const X = c % size
+    const Y = (c - X) / size
+    if (Math.max(Math.abs(X - s.Cell.X), Math.abs(Y - s.Cell.Y)) > ctx.tactics.supplyHoldCells || !isRestCell(ctx, c)) continue
+    if (best < 0 || steps < ctx.field.steps[best]) best = c
+  }
+  return best >= 0 ? { cell: best, bombOnArrival: false } : null
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040 / 0043 价值表）：狂暴中的对手 = 高威胁。离最近的狂暴对手曼哈顿 ≤ frenzyFleeCells 时，
+ * 去 frenzyFleeSteps 步内离所有狂暴对手最远的可待格（同距离取近的）；自己也在狂暴、或没有更远的格 → null。
+ */
+export function pickFrenzyFlee(ctx: ThinkContext): Goal | null {
+  const now = ctx.board.now
+  if (isFrenzied(ctx.me, now)) return null
+  const size = ctx.board.size
+  const threats: { X: number; Y: number }[] = []
+  for (const p of ctx.snap.Players) {
+    if (!isActiveEnemy(ctx, p) || !isFrenzied(p, now)) continue
+    threats.push(cellOf(p.LogicTransform.WorldPosition.x, p.LogicTransform.WorldPosition.z))
+  }
+  if (threats.length === 0) return null
+  const dist = (c: number): number => {
+    const X = c % size
+    const Y = (c - X) / size
+    let d = Infinity
+    for (const t of threats) d = Math.min(d, Math.abs(X - t.X) + Math.abs(Y - t.Y))
+    return d
+  }
+  const hereD = dist(ctx.here)
+  if (hereD > ctx.tactics.frenzyFleeCells) return null
+  let best = -1
+  let bestD = hereD
+  let bestSteps = Infinity
+  for (const c of ctx.field.reached) {
+    const steps = ctx.field.steps[c]
+    if (steps > ctx.tactics.frenzyFleeSteps || !isRestCell(ctx, c)) continue
+    const d = dist(c)
+    if (d > bestD || (d === bestD && best >= 0 && steps < bestSteps)) {
+      best = c
+      bestD = d
+      bestSteps = steps
+    }
+  }
+  return best >= 0 && best !== ctx.here ? { cell: best, bombOnArrival: false } : null
 }

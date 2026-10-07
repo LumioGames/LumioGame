@@ -76,6 +76,12 @@ export class ChainLedger {
     return Math.max(e.resolvedBricks, e.eventBricks, this.sawBrickEvents ? 0 : e.derivedBricks)
   }
 
+  /** 该链里放了炸弹的人（高光卡「最长连锁」按人累计用）。 */
+  owners(chainId: U64): readonly U64[] {
+    const e = this.chains.get(chainId)
+    return e ? [...e.owners] : []
+  }
+
   /** 该链里有没有 `owner` 放的炸弹（或他炸掉的方块）。 */
   involves(chainId: U64, owner: U64): boolean {
     const e = this.chains.get(chainId)

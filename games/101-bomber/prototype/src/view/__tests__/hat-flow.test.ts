@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { HatFlyFx } from '../fx/hat-fly'
+import { HatFlyFx, type DropTarget } from '../fx/hat-fly'
 import {
   diffHatCounts,
-  dropLandingOffset,
   dropOnHeight,
   HAT_DROP_HEIGHT,
   HAT_DROP_MS,
@@ -13,7 +12,7 @@ import {
   towerCount,
   type HatFlow,
 } from '../logic/hat-flow'
-import { HAT, hatStackLayout } from '../logic/hat-layout'
+import { dropLanding, hatLevelOffset, hatLevelScale, HAT_STACK, lossScale } from '../logic/hat-layout'
 import type { HatRenderer } from '../world/hat-stack'
 
 describe('diffHatCounts (hats = power-ups, ADR 0028)', () => {
@@ -87,13 +86,10 @@ describe('flight poses', () => {
     expect(dropOnHeight(1)).toBe(0)
     expect(dropOnHeight(0.5)).toBeGreaterThan(dropOnHeight(0.8))
     expect(HAT_DROP_MS).toBe(300)
-    // 空塔落在头顶；n 顶的塔，落点 = 第 n+1 顶的底
-    expect(dropLandingOffset(0)).toBe(0)
-    for (const n of [1, 3, 7]) {
-      const h = hatStackLayout(n).totalHeight
-      expect(dropLandingOffset(h)).toBeCloseTo(hatStackLayout(n + 1).offsets[n])
-    }
-    expect(HAT.spacing).toBeLessThan(HAT.height)
+    // 空塔落在头顶；n 顶的塔落到第 min(n, 4) 层（满 4 顶时是虚拟第 4 层）
+    expect(dropLanding(0).offset).toBe(0)
+    for (const n of [1, 3]) expect(dropLanding(n).offset).toBeCloseTo(hatLevelOffset(n))
+    for (const n of [4, 7]) expect(dropLanding(n).offset).toBeCloseTo(hatLevelOffset(HAT_STACK.cap))
   })
 
   it('loss arc starts at the tower top, rises, and lands at candy height on the target cell', () => {
@@ -108,15 +104,23 @@ describe('flight poses', () => {
 })
 
 describe('HatFlyFx', () => {
-  const fakeHats = (): HatRenderer & { drawn: number } => {
-    const h = { drawn: 0, hat: () => void h.drawn++ }
-    return h as unknown as HatRenderer & { drawn: number }
+  const fakeHats = (): HatRenderer & { drawn: number; scales: number[] } => {
+    const h = {
+      drawn: 0,
+      scales: [] as number[],
+      hat: (_x: number, _y: number, _z: number, _rx: number, _ry: number, _rz: number, s: number) => {
+        h.drawn++
+        h.scales.push(s)
+      },
+    }
+    return h as unknown as HatRenderer & { drawn: number; scales: number[] }
   }
-  const at = { x: 1, y: 2, z: 3 }
-  const resolveOk = (_id: number, out: { x: number; y: number; z: number }): boolean => {
+  const at: DropTarget = { x: 1, y: 2, z: 3, s: hatLevelScale(2) }
+  const resolveOk = (_id: number, out: DropTarget): boolean => {
     out.x = at.x
     out.y = at.y
     out.z = at.z
+    out.s = at.s
     return true
   }
 
@@ -164,5 +168,29 @@ describe('HatFlyFx', () => {
       [1.5, 3.5],
     ])
     expect(fx.heldBack(4, 0)).toBe(0)
+  })
+
+  it('drop-on grows into the target level scale (0.85 → 1 × s_target)', () => {
+    const fx = new HatFlyFx()
+    const hats = fakeHats()
+    fx.dropOn(7, 0, 3)
+    fx.update(0, hats, resolveOk)
+    fx.update(0.25 * HAT_DROP_MS, hats, resolveOk)
+    fx.update(0.6 * HAT_DROP_MS, hats, resolveOk)
+    expect(hats.scales[0]).toBeCloseTo(0.85 * at.s)
+    expect(hats.scales[1]).toBeCloseTo((0.85 + 0.15 * 0.5) * at.s)
+    expect(hats.scales[2]).toBeCloseTo(at.s)
+  })
+
+  it('loss flies from its launch-level scale and shrinks linearly to 0.75', () => {
+    const fx = new HatFlyFx()
+    const hats = fakeHats()
+    const s = hatLevelScale(3)
+    fx.lose(4, 1, 2, 1, 3.5, 1.5, 0, 6, s)
+    fx.update(0, hats, resolveOk)
+    fx.update(0.5 * HAT_LOSS_MS, hats, resolveOk)
+    expect(hats.scales[0]).toBeCloseTo(s)
+    expect(hats.scales[1]).toBeCloseTo(lossScale(0.5, s))
+    expect(lossScale(1, s)).toBeCloseTo(0.75)
   })
 })

@@ -8,7 +8,7 @@ import { rankInputsOf, simMatchResults } from '../results'
 import { LocalSim } from '../local-sim'
 import { startMatch } from '../match-phase'
 import { gridProbe, makeBomb, makePickup, newId, type SimFireWall, type SimSkillSlot, type World } from '../world'
-import { addBomb, BOMB, cell, evs, giveLevels, makeWorld, mv, player, put, run, SKILL, specs, startCircle, step } from './helpers'
+import { addBomb, BOMB, cell, evs, giveLevels, makeWorld, mv, player, put, run, SKILL, specs, startCircle, step, tierOpts } from './helpers'
 
 /**
  * 第 4 轮数据模型（原型扩展 NON-CONTRACT，ADR 0030 / 0031）：新状态全部进哈希、角色分配、快照发布、step 分派。
@@ -117,18 +117,48 @@ describe('characters are opt-in; roster', () => {
     })
   })
 
-  it('1 fixed + 7 auto → 2 of each; same seed same roster; unique names; the human keeps its name', () => {
+  it('1 fixed + 7 auto → balanced over the five characters (1–2 each); same seed same roster; unique names; the human keeps its name', () => {
     const picks: ('cat' | 'auto')[] = ['cat', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto']
     const a = makeWorld({ players: 8, picks, seed: 5 })
     const b = makeWorld({ players: 8, picks, seed: 5 })
     const count = new Map<CharacterId, number>()
     for (const p of a.players) count.set(p.character!, (count.get(p.character!) ?? 0) + 1)
-    for (const c of CHARACTER_ORDER) expect(count.get(c)).toBe(2)
+    // 五个角色（飞腿袋鼠 = 用户 2026-09-28）：8 人 = 3 个角色各 2、2 个角色各 1，每个角色都有人。
+    expect(CHARACTER_ORDER).toHaveLength(5)
+    for (const c of CHARACTER_ORDER) expect(count.get(c) ?? 0, c).toBeGreaterThanOrEqual(1)
+    for (const c of CHARACTER_ORDER) expect(count.get(c) ?? 0, c).toBeLessThanOrEqual(2)
+    expect([...count.values()].reduce((x, y) => x + y, 0)).toBe(8)
     expect(a.players.map((p) => p.character)).toEqual(b.players.map((p) => p.character))
     expect(new Set(a.players.map((p) => p.name)).size).toBe(8)
     expect(player(a, 1).name).toBe('P0')
     expect(player(a, 1).animal).toBe('cat')
     for (const p of a.players) expect(p.animal).toBe(a.rules.characters[p.character!].animal)
+  })
+
+  it('12 players (1 fixed + 11 auto, the default 23 lineup) → every character 2–3 (用户 2026-09-28)', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const picks: ('rabbit' | 'auto')[] = ['rabbit', ...Array<'auto'>(11).fill('auto')]
+      const w = makeWorld({ ...tierOpts(23, 12), picks, seed })
+      const count = new Map<CharacterId, number>()
+      for (const p of w.players) count.set(p.character!, (count.get(p.character!) ?? 0) + 1)
+      for (const c of CHARACTER_ORDER) {
+        expect(count.get(c) ?? 0, `seed ${seed} ${c}`).toBeGreaterThanOrEqual(2)
+        expect(count.get(c) ?? 0, `seed ${seed} ${c}`).toBeLessThanOrEqual(3)
+      }
+      // 袋鼠 Bot 带着飞踢开局（Bot 用不用它归 Bot 分层）。
+      const roo = w.players.filter((p) => p.character === 'kangaroo')
+      for (const p of roo) {
+        expect(p.animal).toBe('kangaroo')
+        expect(p.slots.active).toEqual({ skill: 'flyKick', level: 1, bound: true, parts: null })
+      }
+      expect(new Set(w.players.map((p) => p.name)).size).toBe(12)
+    }
+  })
+
+  it('a lineup without the kangaroo keeps the round-4 character codes (only appended at the end)', () => {
+    const w = makeWorld({ players: 4, picks: ['rabbit', 'duck', 'cat', 'bear'] })
+    expect(w.players.map((p) => CHARACTER_ORDER.indexOf(p.character!) + 1)).toEqual([1, 2, 3, 4])
+    expect(CHARACTER_ORDER.indexOf('kangaroo') + 1).toBe(5)
   })
 
   it('bots are re-drawn each match for some seed in 1..20', () => {
@@ -347,13 +377,14 @@ describe('step dispatch', () => {
 
   it('tick table converts the skill levels', () => {
     const w = makeWorld()
-    expect(w.ticks.skills.blink[0].cd).toBe(240)
-    expect(w.ticks.skills.bubble[0]).toMatchObject({ duration: 60, cd: 360 })
-    expect(w.ticks.skills.fireAura[0]).toMatchObject({ duration: 80, cd: 400 })
-    expect(w.ticks.skills.regen[0].interval).toBe(200)
-    expect(w.ticks.skills.freezeBomb.map((r) => r.freeze)).toEqual([16, 20, 24])
+    // 第 4 轮平衡（D 验收，ADR 0034）：闪现 CD 10 s、泡泡 3.5 s / 14 s、光环 5.5 s / 16 s、回春 20 s（20 Hz）。
+    expect(w.ticks.skills.blink[0].cd).toBe(200)
+    expect(w.ticks.skills.bubble[0]).toMatchObject({ duration: 70, cd: 280 })
+    expect(w.ticks.skills.fireAura[0]).toMatchObject({ duration: 110, cd: 320 })
+    expect(w.ticks.skills.regen[0].interval).toBe(400)
+    expect(w.ticks.skills.freezeBomb.map((r) => r.freeze)).toEqual([30, 40, 50])
     expect(w.ticks.burnInterval).toBe(20)
-    expect(w.ticks.freezeCap).toBe(24)
+    expect(w.ticks.freezeCap).toBe(50)
     expect(w.ticks.kickMilliPerTick).toBe(400)
     expect(w.ticks.ringStages.map((s) => s.at)).toEqual([200, 700, 1100, 1500, 1900, 2200])
   })

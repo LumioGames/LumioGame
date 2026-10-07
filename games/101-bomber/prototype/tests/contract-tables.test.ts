@@ -9,25 +9,37 @@ import {
   CHARACTERS,
   COMBOS,
   DEFAULT_CONFIG,
+  DEFAULT_MAP_TIER,
   DEFAULT_RULES,
   DeathCause,
+  LINEUP_WEIGHTS,
+  MAP_TIERS,
   PickupKind,
   SKILL_IDS,
   SKILLS,
   bombCandyPool,
   candyPool,
+  centerDistance,
   characterCode,
   comboFor,
   describeSkill,
   isPowerupKind,
+  lineupFor,
+  maxHealthOfView,
   msToTicks,
   parseBotDifficulty,
   parseCharacterId,
+  parseMapTier,
   pickCode,
   poisonPointsAt,
   protoConfig,
+  ringZoneOf,
+  rulesForMap,
   skillCode,
   skillParams,
+  ZONE_BOX,
+  type BotDifficulty,
+  type MapTierId,
   type SkillId,
 } from '../src/contract'
 import { PIERCE_BOMB, PIERCE_CASES, parsePierceBoard, referenceCross } from './support/pierce-cases'
@@ -70,7 +82,7 @@ describe('skills table', () => {
     expect(SKILLS.shockBomb.bombKind).toBe(BombKind.Shock)
   })
 
-  it('stable codes: round-4 codes unchanged, toxin / shock appended at the end (ADR 0033)', () => {
+  it('stable codes: round-4 codes unchanged, toxin / shock appended at the end (ADR 0033), flyKick after them (用户 2026-09-28)', () => {
     expect(SKILL_IDS).toEqual([
       'regen',
       'bubble',
@@ -84,18 +96,27 @@ describe('skills table', () => {
       'glacierBomb',
       'toxinBomb',
       'shockBomb',
+      'flyKick',
     ])
     expect(skillCode('glacierBomb')).toBe(10)
     expect(skillCode('toxinBomb')).toBe(11)
     expect(skillCode('shockBomb')).toBe(12)
+    expect(skillCode('flyKick')).toBe(13)
     // BombKind：契约 0–4 不动，5 / 6 为原型扩值。
     expect(BombKind).toEqual({ Standard: 0, Freeze: 1, Fire: 2, Pierce: 3, Split: 4, Toxin: 5, Shock: 6 })
     expect(DeathCause).toEqual({ Bomb: 0, Drown: 1, Burn: 2, Poison: 3, Toxin: 4 })
   })
 
-  it('candy pool = the eight base skills; bomb-type weight 2, the rest 1 (ADR 0033, replaces RESOLUTIONS #2)', () => {
+  it('candy pool = the eight base skills; ADR 0033 weights × 3 except kick (用户 2026-09-28: bomb-type 6, bubble / blink / aura 3, kick 1)', () => {
     expect(candyPool(SKILLS)).toEqual(['bubble', 'blink', 'fireAura', 'kick', 'freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
-    expect(candyPool(SKILLS).map((id) => SKILLS[id].candyWeight)).toEqual([1, 1, 1, 1, 2, 2, 2, 2])
+    expect(candyPool(SKILLS).map((id) => SKILLS[id].candyWeight)).toEqual([3, 3, 3, 1, 6, 6, 6, 6])
+    // 踢弹 1 / 34 ≈ 2.9%（「约 3%」）。
+    const total = candyPool(SKILLS).reduce((a, id) => a + SKILLS[id].candyWeight, 0)
+    expect(total).toBe(34)
+    expect(SKILLS.kick.candyWeight / total).toBeCloseTo(0.03, 2)
+    // 飞踢只属于飞腿袋鼠（同回春）：不进池。
+    expect(SKILLS.flyKick.candyWeight).toBe(0)
+    expect(candyPool(SKILLS)).not.toContain('flyKick')
     expect(bombCandyPool(SKILLS)).toEqual(['freezeBomb', 'pierceBomb', 'toxinBomb', 'shockBomb'])
     for (const id of bombCandyPool(SKILLS)) expect(SKILLS[id].slot).toBe('bomb')
     expect(SKILLS.regen.candyWeight).toBe(0)
@@ -110,34 +131,35 @@ describe('skills table', () => {
     expect(col('toxinBomb', 'slowPermille')).toEqual([0, 0, 0])
     expect(col('freezeBomb', 'slowPermille')).toEqual([0, 0, 0])
     for (const id of ['toxinBomb', 'shockBomb'] as const) {
-      expect(SKILLS[id]).toMatchObject({ slot: 'bomb', combo: false, candyWeight: 2, endsProtection: false })
+      expect(SKILLS[id]).toMatchObject({ slot: 'bomb', combo: false, candyWeight: 6, endsProtection: false })
       expect(SKILLS[id].src).toMatch(/^推断待验证/)
     }
     expect(SKILLS.toxinBomb.name).toBe('中毒弹')
     expect(SKILLS.shockBomb.name).toBe('麻痹弹')
   })
 
-  it('L1 values match the user brief', () => {
-    expect(skillParams(SKILLS, 'bubble', 1)).toMatchObject({ durationMs: 3000, cdMs: 18000 })
-    expect(skillParams(SKILLS, 'blink', 1)).toMatchObject({ rangeCells: 3, cdMs: 12000 })
-    expect(skillParams(SKILLS, 'fireAura', 1)).toMatchObject({ durationMs: 4000, cdMs: 20000 })
-    expect(skillParams(SKILLS, 'regen', 1)).toMatchObject({ intervalMs: 10000, points: 2 })
+  it('L1 values = user brief, character skills as rebalanced for acceptance D (ADR 0034)', () => {
+    expect(skillParams(SKILLS, 'bubble', 1)).toMatchObject({ durationMs: 3500, cdMs: 14000 })
+    expect(skillParams(SKILLS, 'blink', 1)).toMatchObject({ rangeCells: 3, cdMs: 10000 })
+    expect(skillParams(SKILLS, 'fireAura', 1)).toMatchObject({ durationMs: 5500, cdMs: 16000 })
+    expect(skillParams(SKILLS, 'regen', 1)).toMatchObject({ intervalMs: 20000, points: 1 })
     expect(skillParams(SKILLS, 'fireDash', 1)).toMatchObject({ rangeCells: 3, cdMs: 12000, durationMs: 2000 })
     expect(skillParams(SKILLS, 'bounceBubble', 1)).toMatchObject({ durationMs: 3000, cdMs: 18000, rangeCells: 5 })
-    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 1000, pierceLayers: 1 })
+    expect(skillParams(SKILLS, 'glacierBomb', 1)).toMatchObject({ freezeMs: 2000, pierceLayers: 1 })
   })
 
   it('L1–L3 table is the contract table (RESOLUTIONS #8)', () => {
     const col = (id: SkillId, k: keyof ReturnType<typeof skillParams>): number[] => [1, 2, 3].map((l) => skillParams(SKILLS, id, l)[k])
-    expect(col('bubble', 'durationMs')).toEqual([3000, 3500, 4000])
-    expect(col('bubble', 'cdMs')).toEqual([18000, 15000, 12000])
+    expect(col('bubble', 'durationMs')).toEqual([3500, 4000, 4500])
+    expect(col('bubble', 'cdMs')).toEqual([14000, 12000, 10000])
     expect(col('blink', 'rangeCells')).toEqual([3, 3, 4])
-    expect(col('blink', 'cdMs')).toEqual([12000, 10000, 8000])
-    expect(col('fireAura', 'durationMs')).toEqual([4000, 4500, 5000])
-    expect(col('fireAura', 'cdMs')).toEqual([20000, 17000, 14000])
-    expect(col('regen', 'intervalMs')).toEqual([10000, 8000, 6000])
+    expect(col('blink', 'cdMs')).toEqual([10000, 8000, 6000])
+    expect(col('fireAura', 'durationMs')).toEqual([5500, 6000, 6500])
+    expect(col('fireAura', 'cdMs')).toEqual([16000, 14000, 12000])
+    expect(col('regen', 'intervalMs')).toEqual([20000, 16000, 12000])
+    expect(col('regen', 'points')).toEqual([1, 1, 1])
     expect(col('kick', 'rangeCells')).toEqual([3, 5, 99])
-    expect(col('freezeBomb', 'freezeMs')).toEqual([800, 1000, 1200])
+    expect(col('freezeBomb', 'freezeMs')).toEqual([1500, 2000, 2500])
     expect(col('pierceBomb', 'pierceLayers')).toEqual([1, 2, 99])
     // 等级夹到 [1, 表长]。
     expect(skillParams(SKILLS, 'bubble', 0)).toBe(skillParams(SKILLS, 'bubble', 1))
@@ -160,14 +182,13 @@ describe('skills table', () => {
   it('describeSkill fills in the numbers of the given level', () => {
     const r = { skills: SKILLS, burnPointsPerInterval: 2, burnIntervalMs: 1000 }
     const cfg = { healthPointsPerHeart: 2 }
-    const b2 = describeSkill(r, cfg, 'bubble', 2)
-    expect(b2).toContain('3.5')
-    expect(b2).toContain('15')
+    // 第 4 轮平衡（D 验收，ADR 0034）：泡泡 L2 = 4 秒 / CD 12 秒；回春 L1 = 20 秒回半心。
+    expect(describeSkill(r, cfg, 'bubble', 2)).toBe('吹个泡泡，4 秒内不受伤、不能放弹（冷却 12 秒）')
     expect(describeSkill(r, cfg, 'blink', 3)).toContain('4 格')
     expect(describeSkill(r, cfg, 'kick', 3)).toContain('直到被挡')
-    expect(describeSkill(r, cfg, 'regen', 1)).toContain('10')
+    expect(describeSkill(r, cfg, 'regen', 1)).toBe('受伤后 20 秒没再挨打回 0.5 心，之后每 20 秒再回，满血为止')
     expect(describeSkill(r, cfg, 'fireAura', 1)).toContain('−1 心')
-    expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('1')
+    expect(describeSkill(r, cfg, 'freezeBomb', 2)).toContain('2 秒')
     for (const id of SKILL_IDS) for (let l = 1; l <= 3; l++) expect(describeSkill(r, cfg, id, l)).not.toMatch(/\{\w+\}/)
     // ADR 0033：中毒节拍来自 rules（没给则退化为「持续掉血」）；麻痹写百分比。
     const rt = { ...r, toxinIntervalMs: 1000, toxinPointsPerInterval: 1 }
@@ -204,22 +225,24 @@ describe('combos', () => {
 })
 
 describe('characters', () => {
-  it('four characters with their exclusive skills; bot names are globally unique', () => {
-    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].name)).toEqual(['棉花兔', '泡泡鸭', '闪电猫', '火焰熊'])
-    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).toEqual(['regen', 'bubble', 'blink', 'fireAura'])
+  it('five characters with their exclusive skills; bot names are globally unique', () => {
+    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].name)).toEqual(['棉花兔', '泡泡鸭', '闪电猫', '火焰熊', '飞腿袋鼠'])
+    expect(CHARACTER_ORDER.map((c) => CHARACTERS[c].skill)).toEqual(['regen', 'bubble', 'blink', 'fireAura', 'flyKick'])
     expect(SKILLS[CHARACTERS.rabbit.skill].slot).toBe('passive')
-    for (const c of ['duck', 'cat', 'bear'] as const) expect(SKILLS[CHARACTERS[c].skill].slot).toBe('active')
+    for (const c of ['duck', 'cat', 'bear', 'kangaroo'] as const) expect(SKILLS[CHARACTERS[c].skill].slot).toBe('active')
     const names = CHARACTER_ORDER.flatMap((c) => CHARACTERS[c].botNames)
     expect(new Set(names).size).toBe(names.length)
     for (const c of CHARACTER_ORDER) expect(CHARACTERS[c].animal).toBe(c)
   })
 
   it('codes and parsing', () => {
-    expect(CHARACTER_ORDER.map(characterCode)).toEqual([1, 2, 3, 4])
+    expect(CHARACTER_ORDER.map(characterCode)).toEqual([1, 2, 3, 4, 5])
     expect(characterCode(null)).toBe(0)
     expect(pickCode(null)).toBe(0)
     expect(pickCode('auto')).toBe(9)
     expect(pickCode('bear')).toBe(4)
+    expect(pickCode('kangaroo')).toBe(5)
+    expect(parseCharacterId('Kangaroo')).toBe('kangaroo')
     expect(parseCharacterId('Cat')).toBe('cat')
     expect(parseCharacterId(' duck ')).toBe('duck')
     expect(parseCharacterId('frog')).toBeNull()
@@ -244,12 +267,12 @@ describe('final circle and match cap (ADR 0031)', () => {
     expect([-1, 2, 3, 5].map((i) => poisonPointsAt(DEFAULT_RULES, i))).toEqual([1, 1, 2, 2])
   })
 
-  it('protoConfig applies the 7-minute cap; the contract default stays 360 s', () => {
+  it('protoConfig applies the 4-minute cap (ADR 0035); the contract default stays 360 s', () => {
     expect(DEFAULT_CONFIG.matchDurationMs).toBe(360000)
     const cfg = protoConfig()
-    expect(cfg.matchDurationMs).toBe(420000)
+    expect(cfg.matchDurationMs).toBe(240000)
     expect(protoConfig(DEFAULT_RULES, { matchDurationMs: 120000 }).matchDurationMs).toBe(120000)
-    expect(msToTicks(cfg.matchDurationMs, hz) - msToTicks(DEFAULT_RULES.finalCircleMs, hz)).toBe(6100)
+    expect(msToTicks(cfg.matchDurationMs, hz) - msToTicks(DEFAULT_RULES.finalCircleMs, hz)).toBe(2500)
   })
 })
 
@@ -271,11 +294,11 @@ describe('skill rules data (ADR 0030)', () => {
     expect(DEFAULT_RULES.skillCandyLevel).toBe(1)
     expect(DEFAULT_RULES.burnIntervalMs).toBe(1000)
     expect(DEFAULT_RULES.burnPointsPerInterval).toBe(2)
-    expect(DEFAULT_RULES.freezeCapMs).toBe(1200)
+    expect(DEFAULT_RULES.freezeCapMs).toBe(2500)
     expect(DEFAULT_RULES.freezeBombDamages).toBe(true)
-    // ADR 0033：宝箱技能糖保底炸弹类；中毒每 1000 ms −1 点。
+    // ADR 0033：宝箱技能糖保底炸弹类；中毒每 2000 ms −1 点（用户 2026-09-28 两次削弱，原 1000 ms）。
     expect(DEFAULT_RULES.chestSkillCandyPool).toBe('bomb')
-    expect(DEFAULT_RULES.toxinIntervalMs).toBe(1000)
+    expect(DEFAULT_RULES.toxinIntervalMs).toBe(2000)
     expect(DEFAULT_RULES.toxinPointsPerInterval).toBe(1)
     expect(DEFAULT_RULES.skills).toBe(SKILLS)
     expect(DEFAULT_RULES.combos).toBe(COMBOS)
@@ -288,6 +311,10 @@ describe('skill rules data (ADR 0030)', () => {
     expect(isPowerupKind(PickupKind.SpeedPlus)).toBe(true)
     expect(isPowerupKind(PickupKind.HealthPack)).toBe(false)
     expect(isPowerupKind(PickupKind.SkillCandy)).toBe(false)
+    // ADR 0039 / 0040：金心与狂暴糖也不是帽子。
+    expect(isPowerupKind(PickupKind.GoldHeart)).toBe(false)
+    expect(isPowerupKind(PickupKind.Frenzy)).toBe(false)
+    expect([PickupKind.GoldHeart, PickupKind.Frenzy]).toEqual([5, 6])
   })
 })
 
@@ -323,6 +350,104 @@ describe('bot profiles (design §15 Bot 难度分档)', () => {
     expect(parseBotDifficulty('HARD')).toBe('hard')
     expect(parseBotDifficulty('player')).toBe('normal')
     expect(parseBotDifficulty(null)).toBe('normal')
+    expect(parseBotDifficulty(' Rookie ')).toBe('rookie')
+  })
+
+  it('M1 fields (ADR 0043): existing tiers keep today\'s behaviour (escape margin 2, no misperception, no greedy pickups); rookie is ranged', () => {
+    for (const k of ['easy', 'normal', 'hard', 'player'] as const)
+      expect(BOT_PROFILES[k]).toMatchObject({ escapeMarginTicks: 2, misperceivePermille: 0, greedyPickupPermille: 0 })
+    for (const p of Object.values(BOT_PROFILES)) {
+      expect(p.escapeMarginTicks).toBeGreaterThanOrEqual(0)
+      for (const k of ['misperceivePermille', 'greedyPickupPermille'] as const) {
+        expect(p[k]).toBeGreaterThanOrEqual(0)
+        expect(p[k]).toBeLessThanOrEqual(1000)
+      }
+    }
+    expect(TAG.test(BOT_PROFILES.rookie.src)).toBe(true)
+  })
+})
+
+describe('lineupFor (ADR 0043)', () => {
+  const count = (xs: readonly BotDifficulty[]) => {
+    const c: Record<string, number> = {}
+    for (const x of xs) c[x] = (c[x] ?? 0) + 1
+    return c
+  }
+
+  it('15 bots → rookie 7 / normal 6 / hard 2, rookies first; fewer bots are proportional (largest remainder)', () => {
+    expect(LINEUP_WEIGHTS).toEqual({ rookie: 7, normal: 6, hard: 2 })
+    const l15 = lineupFor(15)
+    expect(count(l15)).toEqual({ rookie: 7, normal: 6, hard: 2 })
+    expect(l15).toEqual([...Array(7).fill('rookie'), ...Array(6).fill('normal'), ...Array(2).fill('hard')])
+    expect(count(lineupFor(7))).toEqual({ rookie: 3, normal: 3, hard: 1 })
+    expect(count(lineupFor(1))).toEqual({ rookie: 1 })
+    expect(lineupFor(0)).toEqual([])
+    for (let n = 0; n <= 30; n++) expect(lineupFor(n)).toHaveLength(n)
+    expect(count(lineupFor(30))).toEqual({ rookie: 14, normal: 12, hard: 4 })
+  })
+})
+
+describe('map tiers (ADR 0040, design §4.2 / §5.0)', () => {
+  const ids: MapTierId[] = [19, 23, 27]
+
+  it('three tiers keyed by size; power chests = chest stages; last three stages clear and poison 2; supply only on 27', () => {
+    expect(Object.keys(MAP_TIERS).map(Number).sort((a, b) => a - b)).toEqual(ids)
+    for (const id of ids) {
+      const t = MAP_TIERS[id]
+      expect(t.id).toBe(id)
+      expect(t.size).toBe(id)
+      expect(t.powerChests).toBe(t.ringStages.filter((s) => s.chest).length)
+      expect(t.ringStages[t.ringStages.length - 1]).toMatchObject({ size: 1, chest: false, clearInside: true, poisonPoints: 2 })
+      expect(t.ringStages.slice(-3).map((s) => s.size)).toEqual([5, 3, 1])
+      expect(t.ringStages.every((s) => s.clearInside === s.size <= 5 && s.poisonPoints === (s.size <= 5 ? 2 : 1))).toBe(true)
+      expect(t.boxes.wood.hits).toBe(1)
+      expect(t.boxes.iron.hits).toBe(1)
+      expect(t.boxes.gold.hits).toBe(2)
+      for (const k of ['wood', 'iron', 'gold'] as const) expect(t.boxes[k].count % 4).toBe(0)
+      expect(t.zones.coreMaxD).toBeLessThan(t.zones.midMaxD)
+      expect(t.zones.midMaxD).toBeLessThan((id - 1) / 2)
+      // 23 档也开广场与补给（用户 2026-09-28 改页面默认 12 人 · 23×23）。
+      expect(t.centralSupply).toBe(id !== 19)
+      expect(t.plazaSide).toBe(id === 19 ? 0 : 3)
+      expect(TAG.test(t.src)).toBe(true)
+    }
+    expect(ZONE_BOX).toEqual({ outer: 'wood', mid: 'iron', core: 'gold' })
+  })
+
+  it('rulesForMap: 19 × 8 is DEFAULT_RULES itself (default tier unchanged); 27 swaps stages / regen / players / map', () => {
+    expect(DEFAULT_MAP_TIER).toBe(19)
+    expect(DEFAULT_RULES.map).toBe(MAP_TIERS[19])
+    expect(rulesForMap(DEFAULT_RULES, 19, 8)).toEqual(DEFAULT_RULES)
+    expect(rulesForMap(DEFAULT_RULES, 19)).toEqual(DEFAULT_RULES)
+    expect(DEFAULT_RULES.ringStages).toBe(MAP_TIERS[19].ringStages)
+    const r27 = rulesForMap(DEFAULT_RULES, 27)
+    expect(r27).toMatchObject({ playerCount: 16, regenOrbitsPerInterval: 4 })
+    expect(r27.map).toBe(MAP_TIERS[27])
+    expect(r27.ringStages).toBe(MAP_TIERS[27].ringStages)
+    expect(r27.matchCapMs).toBe(DEFAULT_RULES.matchCapMs)
+    expect(rulesForMap(DEFAULT_RULES, 23, 10).playerCount).toBe(10)
+    expect(protoConfig().mapSize).toBe(19)
+    expect(protoConfig(r27).mapSize).toBe(27)
+    expect(protoConfig(r27, { mapSize: 23 }).mapSize).toBe(23)
+    expect(protoConfig({ matchCapMs: 1000 }).mapSize).toBe(DEFAULT_CONFIG.mapSize)
+  })
+
+  it('ring zones by Chebyshev distance: 27 → core ≤ 4 / mid 5–8 / outer ≥ 9; 19 → ≤ 2 / 3–5 / ≥ 6', () => {
+    const zone = (id: MapTierId, x: number, y: number) => ringZoneOf(MAP_TIERS[id].zones, centerDistance(id, x, y))
+    expect(centerDistance(27, 13, 13)).toBe(0)
+    expect([zone(27, 17, 13), zone(27, 18, 13), zone(27, 21, 5), zone(27, 22, 13), zone(27, 1, 1)]).toEqual(['core', 'mid', 'mid', 'outer', 'outer'])
+    expect([zone(19, 11, 11), zone(19, 12, 9), zone(19, 14, 4), zone(19, 15, 9)]).toEqual(['core', 'mid', 'mid', 'outer'])
+  })
+
+  it('parseMapTier: 19 / 23 / 27, anything else → fallback', () => {
+    expect([parseMapTier('27'), parseMapTier(' 23 '), parseMapTier('19')]).toEqual([27, 23, 19])
+    expect([parseMapTier(null), parseMapTier('21'), parseMapTier('big')]).toEqual([19, 19, 19])
+    expect(parseMapTier('x', 27)).toBe(27)
+  })
+
+  it('maxHealthOfView falls back to the global cap when the field is absent', () => {
+    expect(maxHealthOfView({}, DEFAULT_CONFIG)).toBe(6)
+    expect(maxHealthOfView({ maxHealth: 12 }, DEFAULT_CONFIG)).toBe(12)
   })
 })
 
@@ -419,7 +544,43 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
       'chestSkillCandyPool',
       'toxinIntervalMs',
       'toxinPointsPerInterval',
+      // 方向 B · M1（ADR 0039 / 0040）
+      'heartsPerHats',
+      'maxHatHearts',
+      'maxGoldHearts',
+      'bossMinHearts',
+      'goldBoxGoldHeartPermille',
+      'powerChestGoldHeartPermille',
+      'boxLoot',
+      'supplyAnnounceMs',
+      'supplyOpenMs',
+      'supplyLoot',
+      'frenzyMs',
+      'frenzyFuseMs',
+      'frenzyExtraBombs',
+      'frenzyMinIntervalTicks',
+      'map',
     ].map((n): [string, string | null, string] => ['config.ts', 'ProtoRules', n]),
+    ...[
+      'BoxLoot',
+      'SupplyLoot',
+      'MapTierId',
+      'RingZone',
+      'ResourceBoxTier',
+      'ZONE_BOX',
+      'ZoneRadii',
+      'MapTierRules',
+      'MAP_TIERS',
+      'DEFAULT_MAP_TIER',
+      'rulesForMap',
+      'parseMapTier',
+      'centerDistance',
+      'ringZoneOf',
+      'maxHealthFor',
+      'maxHealthCeiling',
+      'isBoss',
+      'poisonPointsFor',
+    ].map((n): [string, string | null, string] => ['config.ts', null, n]),
     ['config.ts', null, 'RingStage'],
     ['config.ts', null, 'protoConfig'],
     ['config.ts', null, 'poisonPointsAt'],
@@ -449,6 +610,9 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
       (n): [string, string | null, string] => ['events.ts', null, n],
     ),
     ['events.ts', 'MatchEnded', 'proto'],
+    ['events.ts', null, 'SupplyAnnounced'],
+    ['events.ts', null, 'SupplyOpened'],
+    ['events.ts', 'PickupSpawned', 'Source'],
     ['events.ts', 'PickupSpawned', 'Skill'],
     ['events.ts', 'PickupSpawned', 'SkillLevel'],
     ['events.ts', 'PickupTaken', 'Skill'],
@@ -462,6 +626,24 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
     ['snapshot.ts', 'PickupView', 'skill'],
     ['snapshot.ts', 'WorldSnapshot', 'FireZones'],
     ['snapshot.ts', 'MatchMeta', 'results'],
+    // 方向 B · M1（ADR 0039 / 0040）
+    ['snapshot.ts', 'PlayerView', 'maxHealth'],
+    ['snapshot.ts', 'PlayerView', 'goldHearts'],
+    ['snapshot.ts', 'PlayerView', 'frenzyUntilTick'],
+    ['snapshot.ts', null, 'maxHealthOfView'],
+    ['snapshot.ts', 'BombView', 'uncounted'],
+    ['snapshot.ts', null, 'ResourceBoxView'],
+    ['snapshot.ts', null, 'MapView'],
+    ['snapshot.ts', null, 'SupplyView'],
+    ['snapshot.ts', 'MatchMeta', 'map'],
+    ['snapshot.ts', 'MatchMeta', 'supply'],
+    ['snapshot.ts', 'WorldSnapshot', 'ResourceBoxes'],
+    // ai.ts（整份 NON-CONTRACT，M1 新字段逐项也标）
+    ['ai.ts', 'BotProfile', 'escapeMarginTicks'],
+    ['ai.ts', 'BotProfile', 'misperceivePermille'],
+    ['ai.ts', 'BotProfile', 'greedyPickupPermille'],
+    ['ai.ts', null, 'LINEUP_WEIGHTS'],
+    ['ai.ts', null, 'lineupFor'],
     ...['SkillSlotView', 'PlayerSkillsView', 'BombKickView', 'FireZoneView', 'MatchRankRow', 'MatchResultsView'].map(
       (n): [string, string | null, string] => ['snapshot.ts', null, n],
     ),
@@ -474,6 +656,9 @@ describe('NON-CONTRACT markers on round-4 contract additions', () => {
 
   it('SkillCandy is named in the PickupKind doc; the 技能 activation is marked inline', () => {
     expect(docFor('components.ts', null, 'PickupKind')).toContain('SkillCandy')
+    // 方向 B · M1：金心 / 狂暴糖同样在 PickupKind 文档里点名；PlayerHealed 的 'boss' 来源写在事件文档里。
+    expect(docFor('components.ts', null, 'PickupKind')).toMatch(/GoldHeart[\s\S]*Frenzy/)
+    expect(docFor('events.ts', null, 'PlayerHealed')).toContain("Source 'boss'")
     const input = readFileSync(join(SRC, 'contract', 'input.ts'), 'utf8')
     const line = input.split('\n').find((l) => l.includes("ability: '技能'"))
     expect(line).toContain('NON-CONTRACT')

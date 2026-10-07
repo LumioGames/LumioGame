@@ -1,6 +1,8 @@
 import './hud.css'
 import {
   MatchPhase,
+  maxHealthCeiling,
+  maxHealthOfView,
   PickupKind,
   type BomberConfig,
   type BotDifficulty,
@@ -21,7 +23,7 @@ import { ElimOverlay, KillFeedView, PoisonWarn, ResourceMeter, RuleCard } from '
 import { el, iconEl, roundButton, setIcon, setStyle, setText } from './dom'
 import { edgeArrowPlacement, interpolatedPlayerPos } from './edge-arrow'
 import { circleHud, circleSubtitle } from './final-circle'
-import { formatClock, heartFills, heartsLabel, speedLevel, uiScale } from './format'
+import { formatClock, goldHeartMask, heartFills, heartsLabel, speedLevel, uiScale } from './format'
 import { BannerQueue, HintPill, HitHint, PickupFlash, PopupStack } from './fx-layers'
 import { HeartTrack } from './hit-stagger'
 import { HudBrain, type DeathRecap, type HudMoment, type SettlementResults } from './hud-brain'
@@ -179,13 +181,17 @@ export function createHud(opts: HudOptions): Hud {
   const bottom = el('div', 'hud-bottom', layer)
   const stats = el('div', 'hud-stats pill', bottom)
   const hearts = el('div', 'st-hearts', stats)
+  const heartSlots: HTMLSpanElement[] = []
   const heartEls: HTMLSpanElement[] = []
-  const heartCount = Math.ceil(config.maxHealthPoints / config.healthPointsPerHeart)
+  // 原型扩展（NON-CONTRACT，ADR 0039）：心数上限每人不同（3–8 心）——按封顶预建心格，超出本人上限的隐藏。
+  const heartCount = Math.ceil(maxHealthCeiling(config, rules) / config.healthPointsPerHeart)
   for (let i = 0; i < heartCount; i++) {
     const h = el('span', 'heart', hearts)
     iconEl('heart', 'heart-bg', h)
     const fill = el('span', 'heart-fill', h)
     iconEl('heart', '', fill)
+    if (i * config.healthPointsPerHeart >= config.maxHealthPoints) setStyle(h, 'display', 'none')
+    heartSlots.push(h)
     heartEls.push(fill)
   }
   // 原型扩展（NON-CONTRACT，ADR 0033）：中毒时心变绿（毒绿取技能色）；心旁「麻痹中」/「中毒中」小标签。
@@ -261,7 +267,14 @@ export function createHud(opts: HudOptions): Hud {
   onResize()
   globalThis.addEventListener?.('resize', onResize)
 
-  const brain = new HudBrain({ localId: me, pillarMinHats: rules.hatKingPillarMinHats, tickRateHz: rate, pointsPerHeart: config.healthPointsPerHeart, rules })
+  const brain = new HudBrain({
+    localId: me,
+    pillarMinHats: rules.hatKingPillarMinHats,
+    tickRateHz: rate,
+    pointsPerHeart: config.healthPointsPerHeart,
+    rules,
+    baseMaxHealth: config.maxHealthPoints,
+  })
   const timeline = new HudTimeline()
   const heartTrack = new HeartTrack()
   /** 按连锁节奏延后执行的表现（逐颗红晕、死亡回顾）。 */
@@ -369,7 +382,7 @@ export function createHud(opts: HudOptions): Hud {
     const live = sample.curr
     const phase = live.BomberMatchState.Phase
     const remaining = (live.match.phaseEndTick - sample.renderTick) / rate
-    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille, rules, config.healthPointsPerHeart)
+    const circle = circleHud(live, me, sample.renderTick, rules.finalCircleResourcePermille, rules, config.healthPointsPerHeart, config.maxHealthPoints)
     let t: string
     let s = '活到最后者赢'
     let mode = ''
@@ -430,9 +443,19 @@ export function createHud(opts: HudOptions): Hud {
     if (!p) return
     const a = p.玩家属性
     const hp = Math.max(0, heartTrack.displayed(now, a.血量当前))
-    const fills = heartFills(hp, config.maxHealthPoints, config.healthPointsPerHeart)
-    fills.forEach((f, i) => setStyle(heartEls[i], 'width', `${f * 100}%`))
-    const label = heartsLabel(hp, config.maxHealthPoints, config.healthPointsPerHeart)
+    const maxHp = maxHealthOfView(p, config)
+    const fills = heartFills(hp, maxHp, config.healthPointsPerHeart)
+    // 金心带来的心画成金色心格（ADR 0039，design §12 残血表现）。
+    const gold = goldHeartMask(maxHp, config.healthPointsPerHeart, p.goldHearts ?? 0)
+    heartSlots.forEach((h, i) => {
+      setStyle(h, 'display', i < fills.length ? '' : 'none')
+      const g = gold[i] === true
+      if (h.classList.contains('is-gold') !== g) h.classList.toggle('is-gold', g)
+    })
+    fills.forEach((f, i) => {
+      if (heartEls[i]) setStyle(heartEls[i], 'width', `${f * 100}%`)
+    })
+    const label = heartsLabel(hp, maxHp, config.healthPointsPerHeart)
     if (hearts.title !== label) hearts.title = label
     stats.classList.toggle('is-low', hp > 0 && hp <= config.healthPointsPerHeart)
     stats.classList.toggle('is-dead', hp <= 0)

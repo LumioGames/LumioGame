@@ -5,7 +5,7 @@ import { destructibleInside, finalCellBlocker, gridOfSnapshot } from '../../../t
 import { createWorld } from '../match-phase'
 import { stepWorld } from '../step'
 import { playerCell } from '../world'
-import { hatCountOf } from '../death-drops'
+import { hatCountOf, maxHealthOf } from '../death-drops'
 import { evs, specs, Walker } from './helpers'
 
 /**
@@ -174,7 +174,8 @@ describe('headless multi-match run', () => {
       const chestCells = new Set(w.chests.map((c) => c.cell))
       for (const p of w.players) {
         expect(p.health).toBeGreaterThanOrEqual(0)
-        expect(p.health).toBeLessThanOrEqual(w.cfg.maxHealthPoints)
+        // ADR 0039：上限是每人的（帽子 / 金心，3–8 心）。
+        expect(p.health).toBeLessThanOrEqual(maxHealthOf(w, p))
         expect((p.mx - 500) % 1000 === 0 || (p.my - 500) % 1000 === 0).toBe(true)
         if (p.eliminated) {
           expect(p.health).toBe(0)

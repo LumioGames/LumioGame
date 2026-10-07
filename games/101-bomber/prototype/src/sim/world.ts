@@ -9,6 +9,7 @@ import type {
   MatchPhase,
   PickupKind,
   ProtoRules,
+  ResourceBoxTier,
   SkillId,
   SkillSlot,
 } from '../contract'
@@ -103,6 +104,16 @@ export interface SimPlayer {
   shockUntilTick: number
   /** 麻痹期间的移速千分比（来自命中的麻痹弹）；没麻痹为 0。 */
   shockSlowPermille: number
+  // ---- 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：方向 B 成长与狂暴。开局清零（resetAttributes）；非缺省时进哈希。----
+  /** 身上的金心数（0–maxGoldHearts）：不算帽子，死亡 / 出局 / 退出时全掉（death-drops.ts dropPowerups）。 */
+  goldHearts: number
+  /**
+   * 狂暴到此 Tick（不含）；0 = 不在狂暴。吃狂暴糖时设（pickup.ts），死亡 / 重生 / 开局清零（{@link resetAbilityFields}：
+   * 死亡即结束狂暴）。狂暴期放弹规则见 place-bomb.ts。
+   */
+  frenzyUntilTick: number
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：狂暴期间最近一次放弹的 Tick（两次放弹间隔 ≥ frenzyMinIntervalTicks）；0 = 本次狂暴还没放过。 */
+  frenzyLastPlaceTick: number
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0030）：技能槽里的一个技能（或组合技的一半）。 */
@@ -178,6 +189,12 @@ export interface SimBomb {
   kickAcc: number
   /** 最近一次踢它的玩家；0 = 没被踢过。 */
   kickedBy: number
+  /**
+   * 原型扩展（NON-CONTRACT，ADR 0040 / 0041）：不计炸弹数与帽数的额外炸弹（狂暴炸弹、集束子弹）。
+   * pickup.ts liveBombsOf 跳过它（帽数 / 炸弹+ 上限都不算）；爆炸 / 踢进水熄灭时都不回手（explosion.ts / kick.ts）。
+   * M1 只有狂暴炸弹带它（place-bomb.ts），主人免疫自己的 uncounted 炸弹（explosion.ts dangerPass）。
+   */
+  uncounted: boolean
 }
 
 export interface SimPickup {
@@ -205,6 +222,26 @@ export interface SimChest {
   hitBy: number[]
   /** 打出最后一击的炸弹主人；未开启为 0。 */
   opener: number
+}
+
+/**
+ * 原型扩展（NON-CONTRACT，ADR 0040，design §5.0）：一个资源箱。砖层仍是 BlockType.木箱（挡路 / 挡火 / 资源计数不变），
+ * 等级与命中记在这里；hitBy = 已命中过的炸弹 id（同弹只算一次，同链多颗各算一次）。生成与开箱规则归 M1-2。
+ */
+export interface SimResourceBox {
+  readonly cell: number
+  readonly tier: ResourceBoxTier
+  readonly hitsRequired: number
+  hitsLeft: number
+  hitBy: number[]
+}
+
+/** 原型扩展（NON-CONTRACT，ADR 0040，design §8.6）：中央大补给（绝对 Tick）。流程规则归 M1-2。 */
+export interface SimSupply {
+  readonly cell: number
+  readonly announceTick: number
+  readonly openTick: number
+  state: 'pending' | 'announced' | 'opened'
 }
 
 export interface Rect {
@@ -301,6 +338,10 @@ export interface World {
   finalCircle: SimFinalCircle | null
   /** 本局决赛圈 / 结算期中途退出者（见 {@link SimDeparture}）；缺省 = 空，按需创建，只保留当前局的条目。 */
   departed?: SimDeparture[]
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：本局资源箱（见 {@link SimResourceBox}）；缺省 = 空，由地图生成按需创建（M1-2）。 */
+  resourceBoxes?: SimResourceBox[]
+  /** 原型扩展（NON-CONTRACT，ADR 0040）：本局中央大补给；缺省 / null = 本档没有（M1-2）。 */
+  supply?: SimSupply | null
   /** ChainId → (玩家 id → 本链已结算伤害)，链的最后一颗弹销毁时清掉。 */
   chainDmg: Map<number, Map<number, number>>
   pendingDeaths: PendingDeath[]
@@ -390,7 +431,7 @@ export function aliveCount(w: World): number {
 }
 
 /**
- * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时 / 中毒 / 麻痹（ADR 0033）随之结束；
+ * 重置移动 / 放弹技能的普通字段（重生、开局摆位、死亡时）。泡泡 / 光环 / 冻结 / 烧伤节拍 / 回春计时 / 中毒 / 麻痹（ADR 0033）/ 狂暴（ADR 0040）随之结束；
  * 冷却不清（CD 跨死亡保留，开局由 {@link resetSkillsForMatch} 清）。闪现不得调用它。
  */
 export function resetAbilityFields(p: SimPlayer): void {
@@ -414,6 +455,9 @@ export function resetAbilityFields(p: SimPlayer): void {
   clearToxin(p)
   p.shockUntilTick = 0
   p.shockSlowPermille = 0
+  // 原型扩展（NON-CONTRACT，ADR 0040）：死亡即结束狂暴（死人不挂狂暴、重生不续狂暴）。
+  p.frenzyUntilTick = 0
+  p.frenzyLastPlaceTick = 0
 }
 
 /** 原型扩展（NON-CONTRACT，ADR 0033）：解毒 / 到期——四个中毒字段归零。 */
@@ -424,11 +468,15 @@ export function clearToxin(p: SimPlayer): void {
   p.toxinNextTick = 0
 }
 
+/** 开局复位：属性回初始值；原型扩展（ADR 0039 / 0040）金心与狂暴清零（于是帽数 0、上限 = maxHealthPoints，满血）。 */
 export function resetAttributes(p: SimPlayer, cfg: BomberConfig): void {
   p.health = cfg.maxHealthPoints
   p.power = cfg.initialBombPower
   p.speed = cfg.speedTierToCellsPerSecond[0]
   p.capacity = cfg.initialBombCapacity
+  p.goldHearts = 0
+  p.frenzyUntilTick = 0
+  p.frenzyLastPlaceTick = 0
 }
 
 /** ADR 0029：死者掉出的强化在落地后 deathDropProtect 内免疫爆炸；其余掉落物为 0（随时可被炸毁）。 */
@@ -436,10 +484,10 @@ export function pickupProtectedUntil(w: World, it: SimPickup): number {
   return it.droppedBy !== 0 ? it.bornTick + w.ticks.deathDropProtect : 0
 }
 
-/** 炸弹构造（原型扩展字段缺省：标准弹、不穿透、不冻结、静止）。放弹与测试夹具都走它。 */
+/** 炸弹构造（原型扩展字段缺省：标准弹、不穿透、不冻结、静止、计入炸弹数与帽数）。放弹与测试夹具都走它。 */
 export function makeBomb(
   init: Pick<SimBomb, 'id' | 'owner' | 'cell' | 'bornTick' | 'fuseEndTick' | 'power'> &
-    Partial<Pick<SimBomb, 'kind' | 'pierceLayers' | 'freezeTicks' | 'toxinTicks' | 'shockTicks' | 'slowPermille'>>,
+    Partial<Pick<SimBomb, 'kind' | 'pierceLayers' | 'freezeTicks' | 'toxinTicks' | 'shockTicks' | 'slowPermille' | 'uncounted'>>,
 ): SimBomb {
   return {
     id: init.id,
@@ -469,6 +517,7 @@ export function makeBomb(
     kickCellsLeft: 0,
     kickAcc: 0,
     kickedBy: 0,
+    uncounted: init.uncounted ?? false,
   }
 }
 

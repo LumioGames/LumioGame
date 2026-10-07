@@ -1,13 +1,12 @@
-import { Mesh, MeshStandardMaterial, Quaternion, Vector3, type Object3D } from 'three'
+import { Mesh, Quaternion, Vector3, type Object3D } from 'three'
 import { Batch, M, tqs, trs } from '../batch'
-import { crownGeometry, hatGeometry, hatSegmentGeometry } from '../geo/hat'
+import { crownGeometry, hatGeometry } from '../geo/hat'
 import { createHatStackLayout, hatStackLayout, hatSwayLag, hatTilt } from '../logic/hat-layout'
 import type { SharedMaterials } from '../materials'
-import { stripeTexture } from '../textures'
 
 /**
- * 全场所有帽子共用一个 InstancedMesh（头顶帽塔 + 飞行中的表现帽：吃强化落帽、死亡飞帽）；
- * 压缩帽塔段与帽王皇冠各一个小池。
+ * 全场所有帽子共用一个 InstancedMesh（头顶帽塔 + 飞行中的表现帽：吃强化落帽、死亡飞帽）；帽王皇冠一个小池。
+ * 帽塔封顶 4 顶、越往上越小，超出的帽数由 DOM「×N」牌显示（labels.ts）。
  */
 const _q = new Quaternion()
 const _q2 = new Quaternion()
@@ -16,16 +15,12 @@ const _z = new Vector3(0, 0, 1)
 
 export class HatRenderer {
   readonly hats: Batch
-  private readonly segments: Mesh[] = []
-  private segUsed = 0
-  /** 皇冠池：领奖台上并列第 1 的人各戴一顶（ADR 0031：rank === 1 都戴冠）。 */
+  /** 皇冠池：场内帽王 + 领奖台上并列第 1 的人各戴一顶（ADR 0031：rank === 1 都戴冠）。 */
   private readonly crowns: Mesh[] = []
   private crownUsed = 0
   private readonly crownGeo = crownGeometry()
   private readonly goldMat: SharedMaterials['gold']
   private readonly layout = createHatStackLayout()
-  private readonly segMat: MeshStandardMaterial
-  private readonly segGeo = hatSegmentGeometry()
 
   constructor(
     private readonly scene: Object3D,
@@ -34,9 +29,6 @@ export class HatRenderer {
     // renderOrder 2：领奖台期间帽塔要画在棋盘压暗层之后（见 podium.ts PODIUM_ORDER）。
     this.hats = new Batch(hatGeometry(), mats.plastic, 512, { castShadow: true, renderOrder: 2 })
     scene.add(this.hats.mesh)
-    const stripes = stripeTexture()
-    stripes.repeat.set(1, 3)
-    this.segMat = new MeshStandardMaterial({ map: stripes, roughness: 0.7 })
     this.goldMat = mats.gold
     this.crownMesh()
     this.crownUsed = 0
@@ -44,13 +36,11 @@ export class HatRenderer {
 
   begin(): void {
     this.hats.begin()
-    this.segUsed = 0
     this.crownUsed = 0
   }
 
   end(): void {
     this.hats.end()
-    for (let i = this.segUsed; i < this.segments.length; i++) this.segments[i].visible = false
     for (let i = this.crownUsed; i < this.crowns.length; i++) this.crowns[i].visible = false
   }
 
@@ -60,17 +50,16 @@ export class HatRenderer {
   }
 
   /**
-   * 头顶帽塔。base = 头顶世界位置，headQuat = 头的世界朝向（歪头时整塔跟着歪），
-   * sway = 世界空间摇摆偏移（越往上滞后越大）。返回塔高。
+   * 头顶帽塔（最多 4 顶 + 可选皇冠）。base = 头顶世界位置，headQuat = 头的世界朝向（歪头时整塔跟着歪），
+   * sway = 世界空间摇摆偏移（越往上滞后越大），unit = 高度与缩放系数（场内 1；领奖台跟玩偶放大），
+   * lift = 只在竖直方向的加高（Boss，ADR 0039 / 0043：帽子跟着拉高，XZ 不变）。
+   * 返回塔高（世界单位，已含皇冠）。
    */
-  tower(n: number, base: Vector3, headQuat: Quaternion, swayX: number, swayZ: number, crowned: boolean): number {
-    const l = hatStackLayout(n, this.layout)
-    if (l.drawn === 0) {
-      if (crowned) this.placeCrown(base.x, base.y, base.z, headQuat)
-      return crowned ? 0.2 : 0
-    }
+  tower(n: number, base: Vector3, headQuat: Quaternion, swayX: number, swayZ: number, crowned: boolean, unit = 1, lift = 1): number {
+    const l = hatStackLayout(n, crowned, this.layout)
     for (let i = 0; i < l.drawn; i++) {
       const off = l.offsets[i]
+      const s = l.scales[i] * unit
       const lag = hatSwayLag(i, off)
       const x = base.x + swayX * lag
       const z = base.z + swayZ * lag
@@ -79,28 +68,18 @@ export class HatRenderer {
       _q.copy(headQuat).multiply(_q2)
       _q2.setFromAxisAngle(_up, i * 0.7)
       _q.multiply(_q2)
-      this.hats.push(tqs(M, x, base.y + off, z, _q, 1, 1, 1))
-    }
-    if (l.segmentHeight > 0) {
-      const seg = this.segment()
-      const lag = hatSwayLag(5, l.segmentBottom)
-      seg.position.set(base.x + swayX * lag, base.y + l.segmentBottom, base.z + swayZ * lag)
-      seg.quaternion.copy(headQuat)
-      seg.scale.set(1, l.segmentHeight, 1)
-      seg.visible = true
+      this.hats.push(tqs(M, x, base.y + off * unit * lift, z, _q, s, s * lift, s))
     }
     if (crowned) {
-      const lag = hatSwayLag(l.drawn, l.totalHeight)
-      this.placeCrown(base.x + swayX * lag, base.y + l.totalHeight - 0.02, base.z + swayZ * lag, headQuat)
+      const lag = hatSwayLag(l.drawn, l.crownY)
+      const crown = this.crownMesh()
+      crown.position.set(base.x + swayX * lag, base.y + l.crownY * unit * lift, base.z + swayZ * lag)
+      crown.quaternion.copy(headQuat)
+      const cs = l.crownScale * unit
+      crown.scale.set(cs, cs * lift, cs)
+      crown.visible = true
     }
-    return l.totalHeight + (crowned ? 0.2 : 0)
-  }
-
-  private placeCrown(x: number, y: number, z: number, q: Quaternion): void {
-    const crown = this.crownMesh()
-    crown.position.set(x, y, z)
-    crown.quaternion.copy(q)
-    crown.visible = true
+    return l.totalHeight * unit * lift
   }
 
   private crownMesh(): Mesh {
@@ -114,19 +93,6 @@ export class HatRenderer {
       this.crowns.push(m)
     }
     this.crownUsed++
-    return m
-  }
-
-  private segment(): Mesh {
-    let m = this.segments[this.segUsed]
-    if (!m) {
-      m = new Mesh(this.segGeo, this.segMat)
-      m.castShadow = true
-      m.renderOrder = 2
-      this.scene.add(m)
-      this.segments.push(m)
-    }
-    this.segUsed++
     return m
   }
 }

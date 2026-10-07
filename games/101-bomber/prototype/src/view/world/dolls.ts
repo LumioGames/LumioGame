@@ -1,21 +1,23 @@
-import { Color, Group, Mesh, MeshStandardMaterial, Object3D, Quaternion, Vector3 } from 'three'
+import { Group, Mesh, Object3D, Quaternion, Vector3, type BufferGeometry, type MeshToonMaterial } from 'three'
 import type { AnimalId } from '../../contract'
 import { DOLL, dollGeometries, patchGeometry, tuftGeometry } from '../geo/doll'
 import { DOLL_SCALE_MAX, PODIUM_DOLL_SCALE } from '../logic/doll-fit'
+import { FACE } from '../logic/doll-look'
 import { approachAngle, clamp01 } from '../logic/interp'
 import { hash01 } from '../logic/rand'
 import { STATUS_FX } from '../logic/status-fx'
-import type { SharedMaterials } from '../materials'
+import { createDollMaterial, type SharedMaterials } from '../materials'
 
 /**
- * 玩偶模型按 1.08 格高建；场内缩放由 logic/doll-fit 的 dollLayout(rules) 给（≈ 1.2，向前探出 ≤ 0.35 格，ADR 0032），
+ * 玩偶模型按大头 Q 版建（头顶 0.93 模型单位，geo/doll.ts）；卡通分阶光照 + 边缘补光（materials.createDollMaterial）
+ * + 每个部件一层背面外扩描边外壳（挂成部件网格的子节点：散架 / 挤压 / 隐藏自动跟随）。场内缩放由 logic/doll-fit 的 dollLayout(rules) 给（≈ 1.2，向前探出 ≤ 0.35 格，ADR 0032），
  * 领奖台固定 PODIUM_DOLL_SCALE（1.3，仪式取景不变）。
  */
 
 /**
  * 一只玩偶的表现状态机：走路（颠 + 挤压拉伸 + 摆臂迈脚）、转身、眨眼、受击闪白 + 晃、
  * 受伤三档（完好 / 缝补贴片 / 冒棉花 + 歪头）、保护期闪烁、死亡散架（零件四散、落地弹一次）、
- * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）。
+ * 重生「重新摆上桌」（从 2.5 格高落下 + 落地压扁）；Boss（心数上限 ≥ 6，ADR 0039）竖直加高。
  */
 
 const TAU = Math.PI * 2
@@ -30,6 +32,29 @@ const BLINK_IN_MS = 180
 /** 冻住时的冰蓝色调（乘在顶点色上；与 logic/status-fx 同一份）。 */
 const FROZEN_TINT = STATUS_FX.frozenTint
 const WHITE = 0xffffff
+/** 名牌 / ×N 牌离塔顶（或头顶）的高度（世界单位）。 */
+export const TAG_LIFT = 0.1
+/** 走路颠簸幅度（模型单位）。 */
+const WALK_BOB = 0.05
+
+/**
+ * 飞踢姿势（飞腿袋鼠，用户 2026-09-28；表现取值，推断待验证）：两只大脚一起向前上方蹬出、脚掌朝前，
+ * 双臂一摆、身子轻轻一蹦再落回。幅度（模型单位 / 弧度）全部收在 ADR 0032 的前伸与脚圈预算里（doll-fit.test 逐帧采样守护）。
+ * outFrac = 蹬出占整段动画的比例，之后慢慢收回。
+ */
+export const KICK_POSE = { reach: 0.1, lift: 0.15, toe: 0.9, hop: 0.035, arm: 0.9, outFrac: 0.28 } as const
+
+/** 飞踢曲线 0 → 1 → 0：前 outFrac 快速蹬出（缓出），余下缓入缓出收回；u 夹到 [0, 1]。 */
+export function kickCurve(u: number): number {
+  const t = Math.max(0, Math.min(1, u))
+  const o = KICK_POSE.outFrac
+  if (t < o) {
+    const k = t / o
+    return 1 - (1 - k) * (1 - k)
+  }
+  const k = (t - o) / (1 - o)
+  return 1 - k * k * (3 - 2 * k)
+}
 
 /** 技能状态给玩偶的外观（ADR 0030，NON-CONTRACT 字段缺席时不传）。 */
 export interface DollFx {
@@ -69,7 +94,8 @@ export type PodiumPoseKind = 'cheer' | 'wave' | 'clap' | 'droop'
 
 export class Doll {
   readonly root = new Group()
-  readonly mat: MeshStandardMaterial
+  /** 主材质（卡通光照；冻住 / 中毒读写 color，闪白 / 保护 / 组合技读写 emissive、emissiveIntensity）。 */
+  readonly mat: MeshToonMaterial
   private readonly bodyPivot = new Group()
   private readonly headPivot = new Group()
   private readonly body: Mesh
@@ -85,6 +111,7 @@ export class Doll {
   private readonly burstVel = new Float32Array(6 * 6)
   private readonly headTopLocal: number
   private readonly footZ: number
+  private readonly armRest: number
 
   // 位置 / 运动
   x = 0
@@ -114,6 +141,8 @@ export class Doll {
   hitBarUntil = -1e9
   hp = 6
   protectedPulse = 0
+  /** Boss 竖直加高（ADR 0039 / 0043，logic/doll-fit bossHeightScale）：只拉高身体 / 头 / 手，脚不动，XZ 不变。 */
+  private height = 1
 
   // 帽塔摇摆（世界空间弹簧）
   swayX = 0
@@ -134,15 +163,24 @@ export class Doll {
     readonly scale: number = DOLL_SCALE_MAX,
   ) {
     const g = dollGeometries(animal)
-    this.mat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0, emissive: new Color(0xffffff), emissiveIntensity: 0 })
-    this.body = new Mesh(g.body, this.mat)
+    this.mat = createDollMaterial()
+    // 描边外壳：共享材质（背面、外扩、纯色），不投影、不接收阴影。
+    const shell = (part: Mesh, geo: BufferGeometry): Mesh => {
+      const m = new Mesh(geo, mats.dollOutline)
+      m.castShadow = false
+      m.receiveShadow = false
+      part.add(m)
+      return part
+    }
+    this.body = shell(new Mesh(g.body, this.mat), g.bodyShell)
     this.body.position.y = g.bodyY
-    this.head = new Mesh(g.head, this.mat)
+    this.head = shell(new Mesh(g.head, this.mat), g.headShell)
     this.eyes = new Mesh(g.eyes, mats.eyes)
-    const armMeshL = new Mesh(g.arm, this.mat)
-    const armMeshR = new Mesh(g.arm, this.mat)
-    this.footL = new Mesh(g.foot, this.mat)
-    this.footR = new Mesh(g.foot, this.mat)
+    this.eyes.position.y = g.eyeY
+    const armMeshL = shell(new Mesh(g.arm, this.mat), g.armShell)
+    const armMeshR = shell(new Mesh(g.arm, this.mat), g.armShell)
+    this.footL = shell(new Mesh(g.foot, this.mat), g.footShell)
+    this.footR = shell(new Mesh(g.foot, this.mat), g.footShell)
     this.patch = new Mesh(shared.patch, this.mat)
     this.tufts = new Mesh(shared.tufts, mats.cotton)
     this.patch.visible = false
@@ -152,8 +190,9 @@ export class Doll {
     this.headPivot.add(this.head, this.eyes)
     this.armL.position.set(-DOLL.shoulderX, DOLL.shoulderY, 0)
     this.armR.position.set(DOLL.shoulderX, DOLL.shoulderY, 0)
-    this.armL.rotation.z = -DOLL.armRestZ
-    this.armR.rotation.z = DOLL.armRestZ
+    this.armRest = g.armRestZ
+    this.armL.rotation.z = -this.armRest
+    this.armR.rotation.z = this.armRest
     this.armL.add(armMeshL)
     this.armR.add(armMeshR)
     // 脚按脚几何的包围盒居中（ADR 0032：两脚中点 = 逻辑位置，脚圈与接触阴影都画在那里）。
@@ -169,10 +208,10 @@ export class Doll {
 
     const rest = (obj: Object3D, radius: number) =>
       this.parts.push({ obj, px: obj.position.x, py: obj.position.y, pz: obj.position.z, rx: obj.rotation.x, ry: obj.rotation.y, rz: obj.rotation.z, radius })
-    rest(this.body, 0.22)
-    rest(this.headPivot, 0.24)
-    rest(this.armL, 0.08)
-    rest(this.armR, 0.08)
+    rest(this.body, 0.2)
+    rest(this.headPivot, 0.27)
+    rest(this.armL, 0.07)
+    rest(this.armR, 0.07)
     rest(this.footL, 0.02)
     rest(this.footR, 0.02)
 
@@ -204,6 +243,15 @@ export class Doll {
     this.lastVZ = 0
     this.speed = 0
     this.swayX = this.swayZ = this.swayVX = this.swayVZ = 0
+  }
+
+  /** Boss 加高系数（1 = 普通）；每帧可调，下一次 update 生效。 */
+  setHeight(k: number): void {
+    this.height = Math.max(1, k)
+  }
+
+  get heightScale(): number {
+    return this.height
   }
 
   hit(now: number): void {
@@ -334,20 +382,23 @@ export class Doll {
     const phi = this.walkPhase
 
     // 身体：颠、挤压拉伸、呼吸
-    const bob = Math.abs(Math.sin(phi)) * 0.06 * w
+    const bob = Math.abs(Math.sin(phi)) * WALK_BOB * w
     const squash = 1 - 0.06 * Math.cos(2 * phi) * w
     const breathe = frozen ? 1 : 1 + 0.02 * Math.sin(TAU * 1.2 * t + this.id) * (1 - w)
     const sy = squash * breathe
     const sxz = 1 / Math.sqrt(sy)
     this.bodyPivot.position.y = bob
-    this.bodyPivot.scale.set(sxz, sy, sxz)
+    // Boss 只在竖直方向拉高（脚留在根节点上不动），XZ 脚印与向前探出不变（ADR 0032）。
+    this.bodyPivot.scale.set(sxz, sy * this.height, sxz)
 
-    // 手脚
+    // 手脚（脚与身体的俯仰只有飞踢姿势会改，每帧先归零，见 kickPose）
     const swing = Math.sin(phi) * w
     this.footL.position.z = this.footZ + swing * DOLL.footSwing
     this.footR.position.z = this.footZ - swing * DOLL.footSwing
     this.footL.position.y = Math.max(0, Math.cos(phi)) * 0.04 * w
     this.footR.position.y = Math.max(0, -Math.cos(phi)) * 0.04 * w
+    this.footL.rotation.x = 0
+    this.footR.rotation.x = 0
     const armSwing = (25 * Math.PI) / 180
     this.armL.rotation.x = -swing * armSwing
     this.armR.rotation.x = swing * armSwing
@@ -358,7 +409,7 @@ export class Doll {
       this.blinkAt = Math.max(this.blinkAt, now + 200)
     } else if (now >= this.blinkAt) {
       const k = now - this.blinkAt
-      if (k < 110) this.eyes.scale.y = 0.12
+      if (k < 110) this.eyes.scale.y = FACE.blinkScale
       else {
         this.eyes.scale.y = 1
         this.blinkAt = now + 2500 + hash01(this.id, Math.floor(now)) * 2500
@@ -416,6 +467,30 @@ export class Doll {
   }
 
   /**
+   * 飞踢姿势（飞腿袋鼠，用户 2026-09-28）：在本帧 {@link update} 之后调用，u = 动画进度 [0, 1)，yaw = 踢的方向。
+   * 玩偶立刻转向踢的方向（之后走路照常转身），两只大脚一起朝前上方蹬出、脚掌朝前，双臂一摆、身子轻轻一蹦。
+   * 只动脚 / 手 / 身体节点的局部变换，改完重算头顶锚点（帽塔、名牌跟着走）；非 alive 时不演（冻住由调用方 skill-fx 跳过）。
+   */
+  kickPose(u: number, yaw: number): void {
+    if (this.visual !== 'alive') return
+    const s = kickCurve(u)
+    this.yaw = yaw
+    this.root.rotation.y = yaw
+    for (const f of [this.footL, this.footR]) {
+      f.position.z = this.footZ + KICK_POSE.reach * s
+      f.position.y = KICK_POSE.lift * s
+      f.rotation.x = -KICK_POSE.toe * s
+    }
+    this.bodyPivot.position.y += KICK_POSE.hop * s
+    this.armL.rotation.x = -KICK_POSE.arm * s
+    this.armR.rotation.x = -KICK_POSE.arm * s
+    this.root.updateMatrixWorld(true)
+    this.headTop.set(0, this.headTopLocal, 0)
+    this.headPivot.localToWorld(this.headTop)
+    this.headPivot.getWorldQuaternion(this.headQuat)
+  }
+
+  /**
    * 领奖台姿势（design §13；不走对局状态机，给领奖台专用的玩偶实例用）：
    * cheer 原地跳跃欢呼（双手高举，每第 4 跳转一圈）、wave 右手挥动、clap 双手身前拍、droop 出局垂头。
    * dropAt 起从 2.5 格高落到 baseY，之前不露面。
@@ -434,9 +509,9 @@ export class Doll {
     let headX = 0
     let headZ = 0
     let armLx = 0
-    let armLz: number = -DOLL.armRestZ
+    let armLz = -this.armRest
     let armRx = 0
-    let armRz: number = DOLL.armRestZ
+    let armRz = this.armRest
     let bob = 0
     switch (kind) {
       case 'cheer': {
@@ -575,13 +650,13 @@ export class Doll {
 
   /** 世界空间里身体中心（棉花从这里喷）。 */
   bodyCenter(out: Vector3): Vector3 {
-    return out.set(this.x, this.groundY + 0.45, this.z)
+    return out.set(this.x, this.groundY + 0.36, this.z)
   }
 
-  /** 头顶世界位置的只读快照（名牌锚点用）。 */
-  labelAnchor(out: Vector3, towerHeight: number): Vector3 {
+  /** 名牌锚点：头顶（帽塔底）世界位置 + 塔高 + lift（缺省 {@link TAG_LIFT}，名牌与 ×N 牌贴近塔顶）。 */
+  labelAnchor(out: Vector3, towerHeight: number, lift: number = TAG_LIFT): Vector3 {
     _v.copy(this.headTop)
-    return out.set(_v.x, _v.y + towerHeight + 0.18, _v.z)
+    return out.set(_v.x, _v.y + towerHeight + lift, _v.z)
   }
 }
 

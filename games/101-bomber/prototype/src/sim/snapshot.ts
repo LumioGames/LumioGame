@@ -6,14 +6,17 @@ import {
   type ChestView,
   type FinalCircleView,
   type FireZoneView,
+  type MapView,
   type PickupView,
   type PlayerSkillsView,
   type PlayerView,
+  type ResourceBoxView,
   type SkillSlotView,
+  type SupplyView,
   type TickFrame,
   type WorldSnapshot,
 } from '../contract'
-import { hatCountOf } from './death-drops'
+import { hatCountOf, maxHealthOf } from './death-drops'
 import { rectView } from './final-circle'
 import { fireZones } from './fire-zones'
 import { phaseEndTick } from './match-phase'
@@ -77,6 +80,10 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
     eliminated: p.eliminated,
     skills: skillsView(p),
     eliminatedTick: p.eliminatedTick,
+    // 原型扩展（NON-CONTRACT，ADR 0039 / 0040）：每人心数上限、金心、狂暴。
+    maxHealth: maxHealthOf(w, p),
+    goldHearts: p.goldHearts,
+    frenzyUntilTick: p.frenzyUntilTick,
   }))
   const Bombs: BombView[] = w.bombs.map((b) => ({
     NetEntityIdRaw: b.id,
@@ -101,6 +108,7 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
       b.kickDir !== 方向.停
         ? { dir: b.kickDir, progressMilli: b.kickAcc, cellsLeft: b.kickCellsLeft, speedMilli: w.rules.kickSpeedMilli }
         : null,
+    ...(b.uncounted ? { uncounted: true as const } : {}),
   }))
   const Pickups: PickupView[] = w.pickups.map((it) => ({
     NetEntityIdRaw: it.id,
@@ -117,6 +125,16 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
     teleportTick: c.bornTick,
     chest: { HitsLeft: c.hitsLeft, HitsRequired: c.hitsRequired, StageIndex: c.stageIndex },
   }))
+  // 原型扩展（NON-CONTRACT，ADR 0040）：资源箱、地图档、中央补给。
+  const ResourceBoxes: ResourceBoxView[] = (w.resourceBoxes ?? []).map((b) => ({
+    Cell: cellOfIdx(w, b.cell),
+    tier: b.tier,
+    HitsLeft: b.hitsLeft,
+    HitsRequired: b.hitsRequired,
+  }))
+  const map: MapView = { tier: w.rules.map.id, size, zones: { coreMaxD: w.rules.map.zones.coreMaxD, midMaxD: w.rules.map.zones.midMaxD } }
+  const sp = w.supply ?? null
+  const supply: SupplyView | null = sp ? { Cell: cellOfIdx(w, sp.cell), announceTick: sp.announceTick, openTick: sp.openTick, state: sp.state } : null
   const fc = w.finalCircle
   const finalCircle: FinalCircleView | null = fc
     ? {
@@ -154,10 +172,13 @@ export function buildFrame(w: World, events: readonly BomberEvent[]): TickFrame 
       resourceRemaining: countResource(w),
       finalCircle,
       results: m.phase === MatchPhase.Settlement ? simMatchResults(w) : null,
+      map,
+      supply,
     },
     FireZones: fireZones(w).map(
       (z): FireZoneView => ({ owner: z.owner, source: z.source, cells: z.cells.map((c) => cellOfIdx(w, c)), untilTick: z.untilTick }),
     ),
+    ResourceBoxes,
   }
   return { snapshot, events }
 }

@@ -8,7 +8,25 @@ import type { GroundMarks } from './ground-marks'
 /**
  * 帽王聚光灯（design §9.3，玩具世界口径）：半透明开口锥体（顶 0.35 → 底 0.9、高 9）+ 纵向渐变叠加 +
  * 12 粒上浮光尘 + 地面旋转金色虚线圈。与大补给光柱靠轮廓 + 图标（皇冠）区分。终局更亮更粗。
+ * 同一个类也画中央补给光柱（ADR 0040，{@link SUPPLY_BEAM}）：青绿直筒 + 更高 + 礼盒名牌（labels.setBeacon），与帽王的金色开口锥体区分。
  */
+
+export interface BeamLook {
+  /** 光柱颜色。 */
+  color: number
+  /** 光尘颜色。 */
+  moteColor: number
+  /** 地面虚线圈颜色。 */
+  ringColor: number
+  radiusTop: number
+  radiusBottom: number
+  height: number
+}
+
+/** 帽王聚光灯：暖金、上窄下宽的开口锥体。 */
+export const KING_BEAM: BeamLook = { color: 0xfff4c2, moteColor: 0xfff4c2, ringColor: SUNSHINE, radiusTop: 0.35, radiusBottom: 0.9, height: 9 }
+/** 中央补给光柱：青绿、上下一样粗的直筒、更高。 */
+export const SUPPLY_BEAM: BeamLook = { color: 0x7ff5e0, moteColor: 0xc9fff4, ringColor: 0x2ec4b6, radiusTop: 0.7, radiusBottom: 0.7, height: 12 }
 export const SPOT_VERT = /* glsl */ `
 varying float vH;
 varying vec3 vN;
@@ -42,14 +60,19 @@ export class Spotlight {
   private readonly cone: Mesh
   private readonly mat: ShaderMaterial
   private readonly motes: Batch
-  private readonly moteColor = new Color(0xfff4c2)
+  private readonly moteColor: Color
   private visible = 0
 
-  constructor(scene: Object3D, radial: Texture) {
-    const geo = new CylinderGeometry(0.35, 0.9, 9, 32, 1, true)
-    geo.translate(0, 4.5, 0)
+  constructor(
+    scene: Object3D,
+    radial: Texture,
+    private readonly look: BeamLook = KING_BEAM,
+  ) {
+    const geo = new CylinderGeometry(look.radiusTop, look.radiusBottom, look.height, 32, 1, true)
+    geo.translate(0, look.height / 2, 0)
+    this.moteColor = new Color(look.moteColor)
     this.mat = new ShaderMaterial({
-      uniforms: { uColor: { value: new Color(0xfff4c2) }, uStrength: { value: 1 }, uTime: { value: 0 } },
+      uniforms: { uColor: { value: new Color(look.color) }, uStrength: { value: 1 }, uTime: { value: 0 } },
       vertexShader: SPOT_VERT,
       fragmentShader: SPOT_FRAG,
       transparent: true,
@@ -93,7 +116,7 @@ export class Spotlight {
       this.motes.tint(idx, this.moteColor.r, this.moteColor.g, this.moteColor.b, fade * 0.8)
     }
     this.motes.end()
-    marks.dashedRing(x, z, 1.7 * width, SUNSHINE, 0.9 * this.visible, t * 0.9)
+    marks.dashedRing(x, z, 1.7 * width, this.look.ringColor, 0.9 * this.visible, t * 0.9)
     marks.glowAt(x, z, 2.2 * width, 0.35 * strength, 0.3 * strength, 0.12 * strength, 1)
   }
 }

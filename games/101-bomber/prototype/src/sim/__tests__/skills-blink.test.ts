@@ -44,12 +44,13 @@ describe('blink', () => {
     cat.waterTicks = 4
     const f = blink(w)
     const T = w.t
+    const CD = w.ticks.skills.blink[0].cd
     expect([cat.mx, cat.my]).toEqual([8500, 5500])
     expect(cat.teleportTick).toBe(T)
     expect(cat.blinkTick).toBe(T)
     expect([cat.moveAcc, cat.lastDir, cat.turnBuf, cat.pendingDir]).toEqual([0, 方向.停, 0, 方向.停])
     expect(cat.waterTicks).toBe(5)
-    expect(evs(f, 'SkillActivated')).toMatchObject([{ Skill: 'blink', Level: 1, Cell: { X: 5, Y: 5 }, ToCell: { X: 8, Y: 5 }, UntilTick: 0, CdUntilTick: T + 240 }])
+    expect(evs(f, 'SkillActivated')).toMatchObject([{ Skill: 'blink', Level: 1, Cell: { X: 5, Y: 5 }, ToCell: { X: 8, Y: 5 }, UntilTick: 0, CdUntilTick: T + CD }])
     expect(f.snapshot.Players[0].skills?.blinkTick).toBe(T)
   })
 
@@ -108,7 +109,9 @@ describe('blink', () => {
     giveSkill(w, 1, 'blink', 3, true)
     blink(w)
     expect(cat.mx).toBe(9500)
-    expect(cat.cdUntilTick).toBe(w.t + 160)
+    // L3 CD 读配表（第 4 轮平衡后 6 s，ADR 0034），且短于 L1。
+    expect(w.ticks.skills.blink[2].cd).toBeLessThan(w.ticks.skills.blink[0].cd)
+    expect(cat.cdUntilTick).toBe(w.t + w.ticks.skills.blink[2].cd)
   })
 
   it('a candy on the landing cell is picked up the same tick', () => {

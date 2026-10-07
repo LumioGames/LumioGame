@@ -1,6 +1,7 @@
 import { Color, MeshBasicMaterial, MeshStandardMaterial, type Object3D } from 'three'
-import type { BomberCell, PlayerSkillsView, ProtoRules } from '../../contract'
-import { COMBO_FORM } from '../../present/skill-style'
+import { 方向, type BomberCell, type PlayerSkillsView, type ProtoRules } from '../../contract'
+import { COMBO_FORM, SKILL_COLOR } from '../../present/skill-style'
+import { DIR_VEC } from '../../shared/grid'
 import { Batch, M, trs } from '../batch'
 import { DOLL } from '../geo/doll'
 import { arcGeometry, bubbleGeometry, comboRingGeometry, iceBlockGeometry, orbGeometry, toxinBubbleGeometry } from '../geo/skill'
@@ -19,8 +20,52 @@ import type { GroundMarks } from './ground-marks'
  *   - 本机闪现落点预览：落点虚线圈 + 途经小光点（只给本人画）。
  * 原型扩展（NON-CONTRACT，ADR 0033）：中毒（skills.toxinUntilTick）身上冒绿泡；麻痹（skills.shockUntilTick）身上跳电黄电弧
  * （位置与节奏见 logic/status-fx；玩偶偏绿 / 步频放慢 / 打颤由 DollFx 驱动）。都收在 0.7 格脚印里。
+ * 原型扩展（NON-CONTRACT，用户 2026-09-28）：飞腿袋鼠的飞踢——只读快照（主动槽 = 飞踢、cdFromTick = 施放 Tick、facing），
+ * 不靠事件：玩偶转向踢的方向、两只大脚蹬出（Doll.kickPose），脚尖一团薄荷青冲击闪光，身前地面一圈冲击环 + 顺着踢出方向一道速度线
+ * （复用闪现拖尾）。踢弹的扬尘与「砰」由现有 BombKicked 事件照常演。
  * 立即模式：每帧 begin → player()… → end()。
  */
+
+/** 飞踢施放表现取值（用户 2026-09-28；推断待验证）。距离单位：格；高度：模型单位 × 玩偶缩放。 */
+export const FLY_KICK_FX = {
+  /** 蹬腿姿势时长（毫秒）。 */
+  poseMs: 380,
+  /** 脚尖冲击闪光：只在姿势动画的前这一段、在身前多远、多高、最大多大（orbGeometry 半径 0.07 × 该值）。 */
+  flashFrac: 0.45,
+  flashAhead: 0.42,
+  flashY: 0.16,
+  flashScale: 3.2,
+  /** 地面冲击环：时长（毫秒）、在身前多远、起止直径。 */
+  burstMs: 400,
+  burstAhead: 0.6,
+  burstFrom: 0.35,
+  burstTo: 1.15,
+  /** 顺着踢出方向的地面速度线长度。 */
+  streakCells: 2.2,
+} as const
+
+/**
+ * 飞踢动画进度：主动槽是飞踢、且施放（cdFromTick）后不到 poseMs → [0, 1)；否则 −1。纯函数，只读快照。
+ * cdFromTick 只在成功施放时写（失败不进冷却），所以只有真踢出去才会演。
+ */
+export function flyKickPhase(sk: PlayerSkillsView, renderTick: number, rate: number): number {
+  if (sk.slots.active?.skill !== 'flyKick' || sk.cdFromTick <= 0 || rate <= 0) return -1
+  const u = (renderTick - sk.cdFromTick) / rate / (FLY_KICK_FX.poseMs / 1000)
+  return u >= 0 && u < 1 ? u : -1
+}
+
+/** 方向 → 玩偶朝向角（与 Doll.yaw 同口径：yaw = atan2(dx, dz)，世界 z = 格 Y）；停 → null。 */
+export function facingYaw(d: 方向): number | null {
+  if (d === 方向.停) return null
+  const v = DIR_VEC[d]
+  return Math.atan2(v.dx, v.dy)
+}
+
+interface KickBurst {
+  x: number
+  z: number
+  start: number
+}
 
 interface Trail {
   fromX: number
@@ -41,6 +86,7 @@ const TOXIN_CAP = CAP * STATUS_FX.toxinBubbles
 const ARC_CAP = CAP * STATUS_FX.shockArcs
 const TOXIN_BUBBLE = [0x7ed957, 0xb8f07a] as const
 const SHOCK_ARC = 0xffe23c
+const BURST_CAP = 16
 
 export class SkillFxLayer {
   private readonly bubbles: Batch
@@ -50,7 +96,12 @@ export class SkillFxLayer {
   private readonly glowOrbs: Batch
   private readonly toxin: Batch
   private readonly arcs: Batch
+  /** 飞踢脚尖冲击闪光（每人至多一团）。 */
+  private readonly kickFlash: Batch
   private readonly trails: Trail[] = []
+  private readonly bursts: KickBurst[] = []
+  /** 每只玩偶已经演过冲击环 / 速度线的那次飞踢（cdFromTick），保证一次施放只起一次。 */
+  private readonly kickSeen = new Map<number, number>()
   private readonly c = new Color()
 
   constructor(
@@ -81,15 +132,18 @@ export class SkillFxLayer {
     )
     // 电弧用不受光的实色（不是叠加辉光）：叠加在白兔 / 米色地面上会糊成白色，看不出「电黄」。
     this.arcs = new Batch(arcGeometry(), new MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), ARC_CAP, { color: true, renderOrder: 5 })
-    parent.add(this.bubbles.mesh, this.ice.mesh, this.rings.mesh, this.flameOrbs.mesh, this.glowOrbs.mesh, this.toxin.mesh, this.arcs.mesh)
+    this.kickFlash = new Batch(orbGeometry(), mats.glowAdd, CAP, { color: true, renderOrder: 5 })
+    parent.add(this.bubbles.mesh, this.ice.mesh, this.rings.mesh, this.flameOrbs.mesh, this.glowOrbs.mesh, this.toxin.mesh, this.arcs.mesh, this.kickFlash.mesh)
   }
 
   clear(): void {
     this.trails.length = 0
+    this.bursts.length = 0
+    this.kickSeen.clear()
   }
 
   warmup(on: boolean): void {
-    for (const b of [this.bubbles, this.ice, this.rings, this.flameOrbs, this.glowOrbs, this.toxin, this.arcs]) {
+    for (const b of [this.bubbles, this.ice, this.rings, this.flameOrbs, this.glowOrbs, this.toxin, this.arcs, this.kickFlash]) {
       b.begin()
       if (on) b.push(trs(M, 0, -10, 0, 0, 0, 0, 0.01, 0.01, 0.01))
       b.end()
@@ -104,6 +158,7 @@ export class SkillFxLayer {
     this.glowOrbs.begin()
     this.toxin.begin()
     this.arcs.begin()
+    this.kickFlash.begin()
   }
 
   /** 一名玩家的技能外观（玩偶已按本帧位置更新过）。 */
@@ -124,6 +179,8 @@ export class SkillFxLayer {
       this.bubbles.color(i, this.c.setHex(0x7fe3ff).multiplyScalar(0.55 + 0.45 * k))
     }
     const st = dollStatus(sk, renderTick)
+    const kp = st.frozen ? -1 : flyKickPhase(sk, renderTick, rate)
+    if (kp >= 0) this.flyKick(doll, sk, kp, now)
     if (st.frozen) this.ice.push(trs(M, x, base, z, 0, doll.yaw, 0, s * 0.85, s * 0.85, s * 0.85))
     if (st.poisoned) {
       for (const b of toxinBubbles(t, doll.id)) {
@@ -157,6 +214,34 @@ export class SkillFxLayer {
         const oi = orbs.push(trs(M, x + Math.cos(ang) * rad, oy, z + Math.sin(ang) * rad, 0, 0, 0, os, os, os))
         orbs.color(oi, this.c.setHex(form.orb))
       }
+    }
+  }
+
+  /** 飞踢（用户 2026-09-28）：蹬腿姿势 + 脚尖闪光；每次施放第一次看到时起一圈地面冲击环和一道速度线。 */
+  private flyKick(doll: Doll, sk: PlayerSkillsView, u: number, now: number): void {
+    const yaw = facingYaw(sk.facing)
+    if (yaw === null) return
+    doll.kickPose(u, yaw)
+    const dx = Math.sin(yaw)
+    const dz = Math.cos(yaw)
+    const x = doll.x
+    const z = doll.z
+    const color = SKILL_COLOR.flyKick
+    if (this.kickSeen.get(doll.id) !== sk.cdFromTick) {
+      this.kickSeen.set(doll.id, sk.cdFromTick)
+      const k = FLY_KICK_FX.streakCells
+      this.trail(x, z, x + dx * k, z + dz * k, now, color)
+      if (this.bursts.length >= BURST_CAP) this.bursts.shift()
+      this.bursts.push({ x: x + dx * FLY_KICK_FX.burstAhead, z: z + dz * FLY_KICK_FX.burstAhead, start: now })
+    }
+    if (u < FLY_KICK_FX.flashFrac) {
+      const f = u / FLY_KICK_FX.flashFrac
+      const sc = doll.scale * FLY_KICK_FX.flashScale * Math.sin(Math.PI * Math.min(1, 0.15 + f))
+      if (sc <= 1e-3) return
+      const i = this.kickFlash.push(
+        trs(M, x + dx * FLY_KICK_FX.flashAhead, doll.root.position.y + FLY_KICK_FX.flashY * doll.scale, z + dz * FLY_KICK_FX.flashAhead, 0, yaw, 0, sc, sc * 0.8, sc),
+      )
+      this.kickFlash.color(i, this.c.setHex(color).multiplyScalar(1.1 - 0.6 * f))
     }
   }
 
@@ -195,6 +280,19 @@ export class SkillFxLayer {
       }
     }
     this.trails.length = keep
+    let kept = 0
+    for (const b of this.bursts) {
+      const u = (now - b.start) / FLY_KICK_FX.burstMs
+      if (u >= 1) continue
+      this.bursts[kept++] = b
+      if (u < 0) continue
+      const e = 1 - (1 - u) * (1 - u)
+      const d = FLY_KICK_FX.burstFrom + (FLY_KICK_FX.burstTo - FLY_KICK_FX.burstFrom) * e
+      this.c.setHex(SKILL_COLOR.flyKick)
+      marks.dashedRing(b.x, b.z, d, SKILL_COLOR.flyKick, 0.9 * (1 - u), u * 2.5)
+      marks.glowAt(b.x, b.z, d * 0.8, this.c.r * 1.4, this.c.g * 1.4, this.c.b * 1.4, 0.55 * (1 - u))
+    }
+    this.bursts.length = kept
     this.bubbles.end()
     this.ice.end()
     this.rings.end()
@@ -202,5 +300,6 @@ export class SkillFxLayer {
     this.glowOrbs.end()
     this.toxin.end()
     this.arcs.end()
+    this.kickFlash.end()
   }
 }

@@ -6,10 +6,12 @@ import {
   chainShakeAmplitude,
   clampFollow,
   followDistanceForAspect,
+  overviewDistanceFor,
+  visibleCellsAcross,
 } from '../logic/camera-math'
+import { CameraRig } from '../camera'
 import { CHAIN_CAP_MS, computeChainDelays, orderChain, type ChainBomb } from '../logic/chain-stagger'
 import { canPreviewBomb, computeFireCross, forEachCrossCell } from '../logic/fire-preview'
-import { HAT, hatStackLayout } from '../logic/hat-layout'
 import { approachAngle, heartStage, interpolateXZ, shortestAngleDelta, smoothDamp } from '../logic/interp'
 import { Timeline } from '../logic/timeline'
 
@@ -56,7 +58,28 @@ describe('angles and damping', () => {
 })
 
 describe('camera math', () => {
-  it('keeps 12.5 on 16:9 and pulls back on narrow screens up to 26', () => {
+  it('user feedback: the 16:9 follow camera sees about 13–15 cells across (local view, closer than before)', () => {
+    const w = visibleCellsAcross(followDistanceForAspect(16 / 9), 16 / 9)
+    expect(w).toBeGreaterThanOrEqual(13)
+    expect(w).toBeLessThanOrEqual(15)
+    // 窄屏自动拉远的逻辑保留：方屏也至少看到 minVisibleCellsX 格（竖屏另受 maxDistance 封顶）。
+    expect(followDistanceForAspect(1)).toBeGreaterThan(CAMERA.followDistance)
+    expect(visibleCellsAcross(followDistanceForAspect(1), 1)).toBeGreaterThanOrEqual(CAMERA.minVisibleCellsX - 1e-9)
+  })
+  it('user feedback: every match starts in the local follow view; V switches to the overview, which scales with the board', () => {
+    const rig = new CameraRig(27)
+    rig.setAspect(16 / 9)
+    rig.toggleOverview()
+    expect(rig.isOverview).toBe(true)
+    for (let i = 0; i < 60; i++) rig.update(1 / 60, 1 / 60, i / 60, 13.5, 13.5, 0, 0, 0)
+    const p = rig.camera.position
+    expect(Math.hypot(p.x - 13.5, p.y, p.z - 13.5)).toBeCloseTo(overviewDistanceFor(27), 3)
+    rig.resetView()
+    expect(rig.isOverview).toBe(false)
+    rig.update(1 / 60, 1 / 60, 1, 13.5, 13.5, 0, 0, 0)
+    expect(Math.hypot(rig.camera.position.x - 13.5, rig.camera.position.y, rig.camera.position.z - 13.5)).toBeCloseTo(CAMERA.followDistance, 3)
+  })
+  it('keeps the follow distance on 16:9 and pulls back on narrow screens up to 26', () => {
     expect(followDistanceForAspect(16 / 9)).toBe(CAMERA.followDistance)
     const portrait = followDistanceForAspect(9 / 19.5)
     expect(portrait).toBeGreaterThan(CAMERA.followDistance)
@@ -76,40 +99,6 @@ describe('camera math', () => {
     expect(chainHitstopMs(3)).toBe(50)
     expect(chainHitstopMs(4)).toBe(60)
     expect(chainHitstopMs(9)).toBe(80)
-  })
-})
-
-describe('hat stack layout', () => {
-  it('draws 5 hats one by one, 0.12 apart', () => {
-    const l = hatStackLayout(5)
-    expect(l.drawn).toBe(5)
-    expect(Array.from(l.offsets.slice(0, 5))).toEqual([0, 0.12, 0.24, 0.36, 0.48].map((v) => Math.fround(v)))
-    expect(l.segmentHeight).toBe(0)
-    expect(l.totalHeight).toBeCloseTo(4 * 0.12 + HAT.height)
-  })
-  it('draws 12 hats individually and stays within 1.6 cells', () => {
-    const l = hatStackLayout(12)
-    expect(l.drawn).toBe(12)
-    expect(l.segmentHeight).toBe(0)
-    expect(l.totalHeight).toBeLessThanOrEqual(HAT.maxTotal)
-  })
-  it('compresses 37 hats into 10 + a striped segment, total ≤ 1.6', () => {
-    const l = hatStackLayout(37)
-    expect(l.drawn).toBe(10)
-    expect(l.segmentHeight).toBeGreaterThan(0)
-    expect(l.totalHeight).toBeLessThanOrEqual(HAT.maxTotal + 1e-6)
-    for (let i = 1; i < l.drawn; i++) expect(l.offsets[i]).toBeGreaterThan(l.offsets[i - 1])
-    // 上半截从压缩段顶上开始。
-    expect(l.offsets[5]).toBeCloseTo(l.segmentBottom + l.segmentHeight, 5)
-  })
-  it('tower height never shrinks as hats grow', () => {
-    let last = 0
-    for (let n = 0; n <= 80; n++) {
-      const h = hatStackLayout(n).totalHeight
-      expect(h).toBeGreaterThanOrEqual(last - 1e-6)
-      expect(h).toBeLessThanOrEqual(HAT.maxTotal + 1e-6)
-      last = h
-    }
   })
 })
 

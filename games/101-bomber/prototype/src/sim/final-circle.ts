@@ -1,4 +1,6 @@
-import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, type RingRect } from '../contract'
+import { BlockType, DeathCause, MATERIALS, MatchPhase, poisonPointsAt, poisonPointsFor, type RingRect } from '../contract'
+import { removeResourceBox } from './chest'
+import { maxHealthOf } from './death-drops'
 import { promoteEliminations } from './hats'
 import {
   cellOfIdx,
@@ -15,7 +17,8 @@ import {
 
 /**
  * 决赛圈（design §4.2 / §12，ADR 0025 / 0031）：资源或时间先到先触发，固定时长、局终同步提前；
- * 安全圈以棋盘中心为心分 6 段收缩到 1×1，每段生效前预告、按段标志在下一圈内落一个强力宝箱；
+ * 安全圈以棋盘中心为心按本档段表收缩到 1×1（19 档 6 段；原型扩展 ADR 0040：27 档 7 段 19 → 13 → 9 → 7 → 5 → 3 → 1、
+ * 强力宝箱 6 个，段表由 rulesForMap 选档），每段生效前预告、按段标志在下一圈内落一个强力宝箱（战利品与 20% 金心见 chest.ts）；
  * 最后三段生效时清空圈内可破坏砖（宝箱不动，靠落箱避让保证 1×1 可进入）；圈外中毒按段取强度，走伤害单队列。
  */
 
@@ -110,7 +113,7 @@ export function advanceRing(w: World): void {
 }
 
 /**
- * 清场段生效（原型扩展 NON-CONTRACT，ADR 0031）：新圈内的可破坏砖（积木 / 木箱等）直接写成 Air——不走 w.batch，
+ * 清场段生效（原型扩展 NON-CONTRACT，ADR 0031）：新圈内的可破坏砖（积木 / 木箱等，含 ADR 0040 三级资源箱）直接写成 Air——不走 w.batch，
  * 否则掉落系统会把它当爆炸碎块掉糖；不掉糖、无归属（BrickDestroyed 的 ChainId / Owner = 0，同重生清场）。
  * 铁皮、宝箱、炸弹、糖果不动（宝箱只能 3 次独立炸弹命中开启，design §4.2；炸弹是暂时的）。
  * 阶段机在 Tick 末（地形提交之后）调用：本帧快照即可见，下一 Tick 的爆炸看到的是 Air。返回清掉的格数。
@@ -123,6 +126,8 @@ export function clearRing(w: World, r: Rect): number {
       const c = y * size + x
       const b = w.brick[c] as BlockType
       if (!MATERIALS[b].destructible) continue
+      // 原型扩展（NON-CONTRACT，ADR 0040）：清掉的资源箱（木箱格）从登记里一并删除，不开箱、不掉落。
+      if (b === BlockType.木箱) removeResourceBox(w, c)
       w.brick[c] = BlockType.Air
       cleared++
       emit(w, { type: 'BrickDestroyed', presentationOnly: true, Cell: cellOfIdx(w, c), Block: b, ChainId: 0, OwnerNetEntityIdRaw: 0, Tick: w.t })
@@ -133,11 +138,12 @@ export function clearRing(w: World, r: Rect): number {
 
 /**
  * 圈外中毒（design §12）：离开安全圈起每 poison 个 Tick 扣一次；重生保护不免疫；Killer = 受害者。
- * 每次扣的点数按当前已生效的段取（原型扩展 NON-CONTRACT，ADR 0031：5×5 生效起加重）。
+ * 每次扣的点数按当前已生效的段取（原型扩展 NON-CONTRACT，ADR 0031：5×5 生效起加重），再按受害者心数上限等比
+ * （原型扩展 NON-CONTRACT，ADR 0039：⌈段点数 × 当前上限 / maxHealthPoints⌉，任何上限下满血约 6 / 3 秒毒死）。
  */
 export function queuePoison(w: World): void {
   const fc = w.finalCircle
-  const points = fc ? poisonPointsAt(w.rules, fc.stageIndex) : 0
+  const stagePoints = fc ? poisonPointsAt(w.rules, fc.stageIndex) : 0
   for (const p of w.players) {
     if (!fc || !isAlive(p)) {
       p.poisonTicks = 0
@@ -152,7 +158,7 @@ export function queuePoison(w: World): void {
     if (p.poisonTicks % w.ticks.poison !== 0) continue
     w.effects.push({
       target: p.id,
-      points,
+      points: poisonPointsFor(w.cfg, stagePoints, maxHealthOf(w, p)),
       bomb: 0,
       owner: 0,
       chainId: 0,

@@ -1,4 +1,4 @@
-import { MatchPhase, poisonPointsAt, type BomberCell, type ProtoRules, type RingRect, type U64, type WorldSnapshot } from '../contract'
+import { MatchPhase, maxHealthOfView, poisonPointsAt, poisonPointsFor, type BomberCell, type ProtoRules, type RingRect, type U64, type WorldSnapshot } from '../contract'
 import { cellOf } from '../shared/grid'
 
 /**
@@ -48,7 +48,11 @@ export function outsideRing(cell: BomberCell, ring: RingRect): boolean {
   return cell.X < ring.Min || cell.X > ring.Max || cell.Y < ring.Min || cell.Y > ring.Max
 }
 
-/** @param rules 给了才算 `poisonText`（毒强度按段）。 */
+/**
+ * @param rules 给了才算 `poisonText`（毒强度按段）。
+ * @param baseMaxHealth 基础心数上限（半心点，= BomberConfig.maxHealthPoints）：毒速按本人上限等比（ADR 0039，
+ *   每跳 ⌈段点数 × 本人上限 / 基础上限⌉），快照缺 `maxHealth` 时本人上限按它算。
+ */
 export function circleHud(
   snap: WorldSnapshot,
   localId: U64,
@@ -56,6 +60,7 @@ export function circleHud(
   resourcePermille: number,
   rules?: CircleRules,
   pointsPerHeart = 2,
+  baseMaxHealth = 3 * pointsPerHeart,
 ): CircleHud {
   const phase = snap.BomberMatchState.Phase
   const fc = phase === MatchPhase.Endgame ? snap.match.finalCircle : null
@@ -69,6 +74,10 @@ export function circleHud(
   const running = phase === MatchPhase.Running || phase === MatchPhase.Warmup
   const init = snap.match.resourceInitial
   const resourcePct = running && init > 0 ? Math.max(0, Math.min(100, Math.round((snap.match.resourceRemaining / init) * 100))) : null
+  // 本人每跳扣几点：段点数按本人上限等比（ADR 0039）。
+  const cfg = { maxHealthPoints: baseMaxHealth }
+  const myMax = me ? maxHealthOfView(me, cfg) : baseMaxHealth
+  const points = (r: CircleRules, stage: number): number => poisonPointsFor(cfg, poisonPointsAt(r, stage), myMax)
   let outside = false
   if (fc && me && !localEliminated && me.玩家属性.血量当前 > 0) {
     const w = me.LogicTransform.WorldPosition
@@ -83,8 +92,8 @@ export function circleHud(
     thresholdPct: Math.round(resourcePermille / 10),
     outside,
     localEliminated,
-    poisonText: fc && rules ? poisonWarnText(poisonPointsAt(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
-    poisonPerSec: fc && rules ? poisonPerSecOf(poisonPointsAt(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
+    poisonText: fc && rules ? poisonWarnText(points(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
+    poisonPerSec: fc && rules ? poisonPerSecOf(points(rules, fc.stageIndex), rules.poisonIntervalMs, pointsPerHeart) : null,
   }
 }
 
