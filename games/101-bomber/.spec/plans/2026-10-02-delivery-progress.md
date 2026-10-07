@@ -1716,3 +1716,11 @@ Runtime隔离分支新增`214a08f132500c09e9f14b38e129a354a5f405df`，14个源�
 首次RED、前缀隔离、TP、实例失效、事件时间锚、等待输入与序号RED/GREEN全部分文件保全，零测试/编译失败尝试不计行为证据。最初及中间CSV保持原身份；新的delivery-traces由最终26项源码生成，见报告所列身份收据。root只读复核此前final-traces的60/120Hz公共时间点：普通运动28点显示误差0，非齐帧纠偏25点最大约1e-8米；这些是隔离Native证据，不能替代最终浏览器或用户验收。
 
 精确范围`ef2f5674..214a08f1`已交全新独审，尚无批准结论。22:07旧Scene31的18101/18331/18097仍监听，候选18102/18332/18401未占用；当前仍是旧complete29/Game31。Client、官方新整包、Game消费构建、新Scene及前台手感通过均待完成；旧断言例外问题仍待用户答复，ADR142、18085、生产schema门保持原状。
+
+### 移动手感排障：checkpoint93，Runtime Model独审通过；Client实际宿主接线开始，双窗口验收指令已记录（2026-10-07 22:2x +08）
+
+[Runtime Model独审](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-review.md)对`ef2f5674..214a08f1`给出spec compliant / quality approved，无P0/P1。跨任务项明确归入[Client任务](../../../../.run/20261007-runtime-movement-repair-01/task-2-client-brief.md)与[Game任务](../../../../.run/20261007-runtime-movement-repair-01/task-4-game-brief.md)：同一准入钟、发布pump前时间锚、每帧只读表现，以及客户端原实体Model声明和浏览器消费，不能算作本段已交付。P2记录两项供最终整条链审查：非单位四元数/多轴纠偏覆盖不足，以及既有formatter四工程加载诊断；未发现错误旋转实现。完整GAS旧断言失败仍保留。
+
+独审及root分别核对14源码和最终delivery CSV身份；[root只读复核](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-evidence/root-identity-and-trajectory-check.json)源码零不符，最终60/120Hz普通28公共点误差0、纠偏25公共点最大约1e-8米。只证明已保存Native轨迹，不代替新浏览器现场。Client从隔离`LumioClient17PredictionStep`/`c3611518`启动真实Session与两个adapter的RED/实现任务；截至本checkpoint未提交Client修复。
+
+八仓预检发现普通Platform工作区由他人推进到`9737faaa`，未reset或纳入候选。改用已有clean隔离`probe/bomber-pack-sources-06/LumioPlatform`，保持原审定`3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89`；其余七仓当前HEAD/clean符合各阶段预期，打包前仍需重新核验。用户追加要求完成后通知并打开两个玩家浏览器窗口验收，已列入最终动作；当前未打开旧场景冒充修复版，用户手感验收仍待修复后重验。Owner门不变。
