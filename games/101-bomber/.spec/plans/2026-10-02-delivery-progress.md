@@ -1778,3 +1778,13 @@ Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model�
 实际Client17的四条phase/jitter轨迹复测尚未完成；两次构建资源预检遇到其他线程的PeriodFacts构建，均未启动本次编译。正在核对可追溯的已有测试产物用于私有集成探针，不能冒充官方消费构建。complete31配方仅准备在`games/101-bomber/.run/20261008-runtime-phase-delivery-01/`，尚无打包产物或新消费者。当前18102/18332/18401复核仍服务complete30/Game32 restart01，不把未部署的Runtime31说成用户已看到。
 
 故障后60秒只读机器采样出现CPU最高99.93%、空闲内存最低约0.922GiB，现场仍继续产出检查点；采样发生在故障之后，不能证明15:38的超时原因。新现场恢复、Runtime修复及机器争用三条证据分别保留。Server超时根因、Client补充生命周期覆盖、实际浏览器轨迹、用户手感通过及既有Owner门均未关闭。
+
+### 移动手感排障：checkpoint99，实际Client错相复测区分提前到期与边界回退，complete31限范围预览整包完成（2026-10-08 00:3x +08）
+
+[Client复测报告](../../../../.run/20261007-runtime-movement-repair-01/task-5-client-phase-report.md)使用已编译Client693095a测试闭包与资格构建的Runtime31 Ecs/Gas组成私有集成探针：239文件逐项hash、PDB/作者源码匹配，生成/瞬时文件的核验限制明确保留；不冒充官方消费构建。四条未改诊断4/4、零跳过/raw0，1658源码前后零变化、三仓精确HEAD仍clean。但独立[行为判据](../../../../.run/20261007-runtime-movement-repair-01/task-5-client-phase-evidence/behavior-assessment.json)为FAIL：旧四条轨迹各7次后退；新phase60/120总后退1/4、jitter60/120为1/5，均包含最终停止回收一次。原提前半步到期消失；stable120仍有三次在相同Stopwatch tick先render后pump的期限回退，jitter120另有两次真实+7ms迟到。不能以诊断raw0包装成零卡顿。
+
+[独审](../../../../.run/20261007-runtime-movement-repair-01/task-5-phase-boundary-review.md)确认双精度事件键制造了本次边界排序，但实际宿主也可能先render后pump，故不能只修夹具宣称根治。Engine M8只限定一步位置推进，私有Task2/5及保护断言额外要求在h瞬间回目标，两者应区分。[候选撤回方案](../../../../.run/20261007-runtime-movement-repair-01/phase-expiry-policy-proposal.md)及[独立设计评估](../../../../.run/20261007-runtime-movement-repair-01/phase-expiry-design-assessment.md)尚未实施：空间仍不超一步、超期用另一个h收回会放宽既有时间期限，且必须禁止过期后才完成的输入获得新前探。已就这条明确规则/断言例外异步请用户裁定，未答复不改。无普遍单调/连续保证，不包括旧scratch或ADR142等门。
+
+官方八仓精确clean管线complete31于16:29:09 UTC退出0，官方verify退出0。[整包收据](../../.run/20261008-runtime-phase-delivery-01/full-pack-31-root-02/root-acceptance.json)逐项核对305 payload/306文件：manifest SHA256 `8cc8df282a920af72de5168b2a134a98e4605a5d26f8b4be80325b3747d16fd9`，SDK最终归档`d2b05204fbbfe33c698e388642c1325a99ac88c27ec3de1cea37dd77bfe41f03`，本次生产Native `26ff3a34d670276b2965bff69ef3347dbada481b81453c847ae6fa3551acfcc9`，Engine WASM `63e9a01ce987cfe6c2f036e9c03c3e5253619d0635446e26bb2f1bee8ad39d90`。Runtime精确5edf9b46、Client仍693095a、Server仍250ee41；相同产品版本不是相同包字节，后续必须新缓存。此收据只批准已披露限制的内部预览，不关闭失败行为门、旧GAS失败或用户验收。
+
+Game33从未改Game32源码b07f4512准备新的消费/AOT目录，Scene33仅准备18103/18333/18402启动脚本，尚未构建或启动。现有Scene32 restart01仍服务旧于该追加修复的complete30/Game32，持续产出检查点。Client18新工作树单独补真实生命周期覆盖，尚无生产修复或通过结论，不纳入complete31；编译串行避免本任务并发重构建。受保护端口、历史证据和Owner门保持。
