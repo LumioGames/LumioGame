@@ -1700,3 +1700,9 @@ Runtime最终增量`ef2f56740b5d80743b4f278a0ea3d46962746cb3`把经过步提交�
 [最终任务独审](../../../../.run/20261007-runtime-movement-repair-01/task-1-final-review.md)结合前两轮审查给出spec compliant / quality approved，无P0/P1；分类后的formatter workspace P2仍保留。这仅使Task1（Runtime ECS/GAS时钟与重放）完成，提交范围`36ea3ae3..ef2f5674`；旧scratch断言及完整GAS全绿仍未解决，不包装成整体验收成功。
 
 按既有设计进入[Runtime Model任务](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-brief.md)：完整预测结果按成功发布序号交给确认世界原实体Model，正常运动即时跟随，仅真实纠偏残差按实际渲染时间衰减，单步外推有界且输入停止后回到真目标。要求真实Native八步预测与60/120Hz表现轨迹，不以数学夹具代替整条链路。此段开始实施，尚未交付；Client、完整新包、Game消费者、新Scene和用户重验继续待办，原Owner门保持。
+
+### 移动手感排障：checkpoint91，Runtime原实体Model接线真实Native RED已保全（2026-10-07 21:26 +08）
+
+[Model行为RED](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-evidence/red-native-owner.log)为3项/3失败/0跳过、dotnet raw2，SHA256 `9e53c3e9711338a80c029afd678afbcbc46c061dcf52fdb5dc5bebf8be7dc52e`；测试构建raw0。正常目标即时响应、零误差ACK/clock/input循环及同Tick纠偏三个场景均在首个真实预测后暴露原Model位置仍0（应0.1），不是编译错误或手工数学轨迹。该RED证明尚未连接，不证明各后续场景已验证；生产最小实现与完整回归正在进行。
+
+21:26只读复核旧restart03的18101/18331/18097仍监听原进程，无实验注入。新完整包、消费者、新Scene及用户前台通过均不存在；旧断言数值例外尚待用户回应，历史文件保持；Owner门原状。
