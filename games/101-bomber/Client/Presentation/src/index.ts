@@ -50,7 +50,7 @@ export function createPresentation(options: PresentationOptions): Presentation {
   const config = options.config ?? DEFAULT_CONFIG
   const rules = options.rules ?? DEFAULT_RULES
   const settings = loadSettings()
-  const feed = new PresentationFeed(1000 / config.tickRateHz)
+  const feed = new PresentationFeed(1000 / config.tickRateHz, localPlayerId)
   stage.classList.add('bomber-stage')
   labels.classList.add('bomber-labels')
   hudRoot.classList.add('bomber-hud')

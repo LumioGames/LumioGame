@@ -81,6 +81,8 @@ export interface PlayerSkillsView {
 }
 
 export interface PlayerView extends EntityView {
+  /** 显示用完整生命与瞬移身份；变化时本机位置插值重置。 */
+  poseEpoch?: string
   /** A retained roster entry outside the current spatial subscription. */
   positionKnown?: boolean
   BomberPlayerState: BomberPlayerState

@@ -169,6 +169,7 @@ export class ReplicaPresentationAdapter {
         ? this.tick(cast.tick) : changedLife || !sameSkill ? 0 : prior?.player.skills?.activeCastTick ?? 0
       const player: PlayerView = {
         NetEntityIdRaw: this.handle('player', seat.id),
+        poseEpoch: `${row.id}:${row.lifeGeneration}:${row.skills.teleportSequence}`,
         LogicTransform: { WorldPosition: { x: row.x, y: row.y, z: row.z } }, teleportTick,
         BomberPlayerState: { HatCount: row.hatCount, RespawnAtTick: this.tick(row.respawnAtTick),
           ProtectedUntilTick: this.tick(row.protectedUntilTick) },
