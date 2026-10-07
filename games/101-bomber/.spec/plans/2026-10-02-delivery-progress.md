@@ -1754,3 +1754,15 @@ Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model�
 新独立平台`bomber-movement32-18401`种子exit0、平台/数据库healthy、health200；新分配/房间和全新八账号前缀见[prefix receipt](../../../../.run/browser-experience-scene32-runtime-movement-01/prefix-receipt.json)。密码只由launcher每次运行生成并留内存，未继承或保存凭据。以独立隐藏pwsh PID5672启动；新DS18332/PID25048、页面18102/PID31692，六Bot已起，新[现场证据](../../../../.run/live-preview-32movement01/verification.json)为SERVING，A页面HTTP200。既有受保护平台/端口未重部署或关闭。
 
 已向用户提供新版A/B入口`http://127.0.0.1:18102/play/?player=A`与`?player=B`。替用户打开两个Chrome新窗口的调用在创建进程前被自动审批拒绝，仅返回`blocked by policy`，见[收据](../../../../.run/browser-experience-scene32-runtime-movement-01/browser-open-receipt.json)；未换手段绕过、未声称已打开。用户前台重验仍PENDING，Runtime错相期限回退继续修复；旧scratch、补充生命周期/浏览器轨迹、较宽Game超时和全部Owner门继续保持未关闭。
+
+### 移动手感排障：checkpoint97，用户新版B进入8人对局后报错；两代DS同窗超时，证据保全后单次恢复新版（2026-10-07 23:4x +08）
+
+用户要求「你启动我默认浏览器给我看看」，默认URL handler打开新版A/B也被工具自动审批在创建进程前拒绝，仅`blocked by policy`，[收据](../../../../.run/browser-experience-scene32-runtime-movement-01/default-browser-open-receipt.json)保留。随后用户直接提供「Lumio Bomber | B / failed: Failed to fetch Reconnect / Running | 8/8 players / You | 11.72, 17.50 / 报错了」，逐字[前台观察](../../../../.run/live-preview-32movement01/foreground-observation-01.json)登记。不得写手感或稳定性通过。
+
+[故障收据](../../../../.run/20261007-scene32-failure01/receipt.json)与[独立分类](../../../../.run/20261007-runtime-movement-repair-01/scene32-firstfailure-classification.md)：新DS最后成功Tick10212@15:38:06.599064 UTC，15:38:06.929467首个`owner_result_deadline`；稍后watchdog/fault_close，DS退出2，launcher退出1并关闭18102，故浏览器重连fetch失败。Tick10213输入seq42实际Succeeded/Applied，后续`operation_internal_fault`由已sealed的Server合成，不能据此虚构Game异常。磁盘CP17存在但仅stdout确认到16，不认定已完整可恢复。
+
+旧Scene31 restart03独立在15:38:00.899276最后Tick305232后，于15:38:02.924259被同型进度watchdog终止，此前508代检查点。root未停止两边进程。两代Runtime/Game同时故障支持调查共享机器CPU/调度/IO争用；同期Runtime隔离RED的build/test耗时有记录，但相关性不等于原因。没有旧body死亡、binding_not_found或checkpoint_io错误证据，不能把这次归为已证实ADR142死亡链；ADR142继续Draft/Owner Pending，Server独立超时排查无需启用该方案或放宽2秒阈值。
+
+仅做一次恢复，使用新[restart01目录](../../../../.run/browser-experience-scene32-runtime-movement-restart01/prefix-receipt.json)、全新八账号和新证据目录。复核并复用仍健康的独立18401平台及原挂载同字节bundle，未重新部署任何旧平台；Runtime/Game/严格AOT均仍是已审complete30/Game32，所有输入/产物hash复核。隐藏独立pwsh PID17104派生新DS18332/PID28068、页面18102/PID31296；新[现场](../../../../.run/live-preview-32movement-restart01/verification.json)SERVING、6/6 Bot入场，用户已告知刷新两页。恢复不是修复，不循环重启。
+
+另在新Runtime31工作树从214a08f1继续原始输入tau期限修复：正式RED与初步focused GREEN已出现，尚未完成提交/独审/全套回归/新包。原逻辑输入在无表现时间样本时仍应成功，缺样本仅不得捏造外推；Client同pump重挂接与计时验证纳入后续覆盖。为用户先试玩暂缓较重回归，测试子进程降调度优先级，不改变生产频率/额度/玩家数量/Native。完整任务与用户验收仍未完成。
