@@ -33,7 +33,7 @@ metadata:
 | 文档 | 用途 |
 |------|------|
 | [bomber-gameplay.md](../../games/101-bomber/.spec/knowledge/features/bomber-gameplay.md) | 炸弹人玩法与世界模型——查实体、配表、原型取舍和 Sample 省略项时使用。 |
-| [bomber-tour.md](../../games/101-bomber/.spec/knowledge/features/bomber-tour.md) | 炸弹人启动与取证——查八 Bot 准入、整局十四步、回放和旁观证据时使用。 |
+| [bomber-tour.md](../../games/101-bomber/.spec/knowledge/features/bomber-tour.md) | 炸弹人启动与取证——查三档正常入口、整局十四步、回放和真实玩家证据时使用。 |
 
 ## lessons(经验教训 · 复发问题暂存区)
 

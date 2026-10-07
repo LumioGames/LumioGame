@@ -25,7 +25,7 @@ metadata:
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
 | [`features/bomber-gameplay.md`](features/bomber-gameplay.md) | 炸弹人玩法与世界模型——查实体、配表、原型取舍和 Sample 省略项时使用。 |
-| [`features/bomber-tour.md`](features/bomber-tour.md) | 炸弹人启动与取证——查八 Bot 准入、整局十四步、回放和旁观证据时使用。 |
+| [`features/bomber-tour.md`](features/bomber-tour.md) | 炸弹人启动与取证——查三档正常入口、整局十四步、回放和真实玩家证据时使用。 |
 
 ## lessons(经验教训 · 复发问题暂存区)
 
