@@ -1676,3 +1676,11 @@ checkpoint84提出的“本地按20Hz采样+新Owner时间语义审批”及此�
 真实Native/GAS的[三项行为RED](../../../../.run/20261007-runtime-movement-repair-01/task-1-evidence/red-tests-corrected-fixture-actual.log)为3失败/0成功/0跳过、raw2，SHA256 `769dc3582bd19aa804d1efd46b2ccc542d6578e640e34cc3f59aa84dfcd55e88`。新入口的未修复骨架仍调用旧Tick：8本地步把确认Tick从2推进到10；同一步维护调用使输入Tick从3变13；8次权威与本地步叠加得到18而非10。该RED针对时间隔离与同帧额度，不替代checkpoint83原始连续预测停步证据。早期夹具容量错误和零测试runner尝试另外保留，未计为有效RED。
 
 Runtime生产修复正在进行；Client驱动及原实体Model/渲染接线有独立任务边界，尚未实现或验收。无新complete/Game/Scene，不复用已撤销的游戏层追赶补丁资格。知识沉淀此段按排障过程豁免，仅追加唯一账本；ADR142、18085、生产schema与用户前台验收门不变。
+
+### 移动手感排障：checkpoint88，Runtime第一段提交及独审退回；Native测试支持环境单独恢复，旧计费断言不改（2026-10-07 20:56 +08）
+
+Runtime隔离分支已提交`fda0cfacc6ec47f5df40adb80ac449b40179a01c`，包含显式经过步时钟、输入不可变执行Tick与重放恢复，未含Client或Model接线。[报告及原始证据](../../../../.run/20261007-runtime-movement-repair-01/task-1-report.md)：时钟18/18、ECS624/624均零跳过；GAS968项为967通过、1失败、0跳过、raw2，不能宣称全绿。[独立审查](../../../../.run/20261007-runtime-movement-repair-01/task-1-review.md)判定不通过：可恢复的表现容量拒绝经新增Egress路径变成World fatal，以及绑定循环拒绝准入前已经消耗本地步序号；已派独立修复任务先RED后最小修复。P2为formatter工作区加载警告待归类。
+
+既有四项测试支持缺失由官方Engine `eng/dev-build.mjs --hfsm-test-support --voxel-prediction-test-support`单独构建恢复，raw0、三源码仓构建前后clean，见[构建收据](../../../../.run/20261007-runtime-movement-repair-01/test-native-build-01.json)。测试DLL SHA256 `7db3efad3c4509124994b9f91010fe2e71df48923102e14ce285881fbccbd239`，生产complete29 Native未替换。编译既有Rust警告原样保留。
+
+剩余旧StructuralScratch断言差636字节，独立隔离调查已指向既有Transform类型化单次捕获替代旧双次文本捕获后测试数值未更新；尚待完整证据审查。原断言、失败日志与生产额度不改，不为凑数制造无用保留内存，也不把该失败记作跳过。20:56复核原restart03的18101/18331与18097平台健康，仍为旧complete29/Game31。修复第一段未通过独审，后续Runtime Model、Client、官方整包、消费者、新现场与用户手感重验均未交付；Owner门不变。
