@@ -1766,3 +1766,15 @@ Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model�
 仅做一次恢复，使用新[restart01目录](../../../../.run/browser-experience-scene32-runtime-movement-restart01/prefix-receipt.json)、全新八账号和新证据目录。复核并复用仍健康的独立18401平台及原挂载同字节bundle，未重新部署任何旧平台；Runtime/Game/严格AOT均仍是已审complete30/Game32，所有输入/产物hash复核。隐藏独立pwsh PID17104派生新DS18332/PID28068、页面18102/PID31296；新[现场](../../../../.run/live-preview-32movement-restart01/verification.json)SERVING、6/6 Bot入场，用户已告知刷新两页。恢复不是修复，不循环重启。
 
 另在新Runtime31工作树从214a08f1继续原始输入tau期限修复：正式RED与初步focused GREEN已出现，尚未完成提交/独审/全套回归/新包。原逻辑输入在无表现时间样本时仍应成功，缺样本仅不得捏造外推；Client同pump重挂接与计时验证纳入后续覆盖。为用户先试玩暂缓较重回归，测试子进程降调度优先级，不改变生产频率/额度/玩家数量/Native。完整任务与用户验收仍未完成。
+
+### 移动手感排障：checkpoint98，Runtime输入错相期限修复及夹具增量独审通过，实际Client复测与下一包待交付（2026-10-08 00:2x +08）
+
+隔离Runtime31从214a08f1提交生产修复`56e4957e79f8d4df718fb951cd85c997cefc7cd6`：输入记录保留原始成功准入表现时刻tau，等待、重试、重放不重记时间；有界表现期限由S*h改为tau+h，位移速度仍按固定模拟步h求值。缺失可选表现时间不拒绝合法输入、不伪造外推，后续正常样本可恢复。每条输入计费比本轮前增加16字节，不调容量、频率或协议。正式真实Native RED为5项中4失败/1通过，最终phase8/8、既有owner26/26均raw0；clock23/23含一项需要明确的测试支持Native，不能统称全用生产Native。真正晚于tau+h的输入仍可能产生有界期限回退，未宣称任意抖动已解决。
+
+[源码独审](../../../../.run/20261007-runtime-movement-repair-01/task-5-runtime-phase-review.md)批准生产增量，无P0/P1。首次完整ECS为631/634，三个直接构造Model的旧夹具缺少新增时间样本；夹具提交`5edf9b461325e85b5082872b94693f28df4d947f`只在辅助构造传入已知零相位`AdmissionTime: step * .05`，原断言及生产代码不变。[夹具独审](../../../../.run/20261007-runtime-movement-repair-01/task-5-runtime-phase-fixture-review.md)批准该增量，无P0/P1/P2。
+
+[精确HEAD回归收据](../../../../.run/20261007-runtime-movement-repair-01/task-5-runtime-phase-evidence/qualification-summary.json)：ECS/GAS双TFM生产构建raw0、无警告错误；ECS634/634 raw0；GAS1007项中1006通过/1失败/0跳过，raw2，唯一失败仍是保护的scratch断言12706与12070。该文件Git blob保持`4cc79f9c29d653175380efdf537167e741db3569`，例外未批准，不宣称全绿。所有失败尝试原样保全。
+
+实际Client17的四条phase/jitter轨迹复测尚未完成；两次构建资源预检遇到其他线程的PeriodFacts构建，均未启动本次编译。正在核对可追溯的已有测试产物用于私有集成探针，不能冒充官方消费构建。complete31配方仅准备在`games/101-bomber/.run/20261008-runtime-phase-delivery-01/`，尚无打包产物或新消费者。当前18102/18332/18401复核仍服务complete30/Game32 restart01，不把未部署的Runtime31说成用户已看到。
+
+故障后60秒只读机器采样出现CPU最高99.93%、空闲内存最低约0.922GiB，现场仍继续产出检查点；采样发生在故障之后，不能证明15:38的超时原因。新现场恢复、Runtime修复及机器争用三条证据分别保留。Server超时根因、Client补充生命周期覆盖、实际浏览器轨迹、用户手感通过及既有Owner门均未关闭。
