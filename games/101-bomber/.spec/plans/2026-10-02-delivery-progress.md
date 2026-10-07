@@ -1800,3 +1800,15 @@ Game33从未改Game32源码b07f4512准备新的消费/AOT目录，Scene33仅准�
 旧restart02日志补充[只读核验](../../../../.run/20261007-runtime-movement-repair-01/original-log-end-audit-02.json)：最终DS文件18181228字节、六Bot文件约53万字节，七份均含11:03:30附近的结束记录。第一次审计仅识别Rust前缀未识别C#时间，保留后以新脚本补全。最终记录不能证明当时何时flush，但原目录LastWrite/size观察也不足以证明磁盘停写；不认定杀毒/磁盘为根因。
 
 Client18补充覆盖已取得真实RED：六生命周期执行中五通过、一失败，same-manager Retire+Attach后新准入应step0实际step40；前两次fixture启动失败不算RED并原样保存。最小Client身份修复待GREEN/full/独审，不在complete31或Scene33中。期限50ms→100ms及相应新断言例外仍等用户裁定，旧scratch、Server超时根因、实际浏览器节拍和用户手感验收均未关闭。
+
+### 移动手感排障：checkpoint101，Client18生命周期修复完整回归及独审通过；Scene33继续待前台验收（2026-10-08 01:0x +08）
+
+Client18从693095a新增覆盖提交`da6528f`与最小生产修复`df649e3fa2ff10e103f03419616949a8963f4ff8`，交付clean。[报告](../../../../.run/20261007-runtime-movement-repair-01/task-6-client-lifecycle-report.md)与[独审](../../../../.run/20261007-runtime-movement-repair-01/task-6-client-lifecycle-review.md)确认spec compliant / quality approved，无P0/P1/P2。仅四个Client生产文件改变：用现有实际driver实例的内部只读身份识别同manager重挂，Session仅借用引用且负责清空、不取得释放权；既有owner边界重新建立准入时钟，未新增代次计数、公开API、协议、频率或容量。disabled录制gate保持原路径。
+
+真实RED为外部Retire+Attach后step0应值却得到40；GREEN六Session生命周期和两SDK真实Enable拒绝后清理/再准入分别6/6、2/2，使用生产Native b812。完整Session290/290、SDK60/60均raw0/零跳过，使用明确的测试支持Native7db3，因为两项旧回归确实调用`lumio_engine_test_get_hfsm_api_v1`；不混写成全用生产Native。两次build零警告错误，完整套件各只跑一次。运行时序/重连/拆分FullSnapshot/认证successor/两种真实数值溢出均实测；FullSnapshot项是新准入的拆分闭合，不虚构Active自动Resync入口。
+
+最终源码等价收据核对六次成功命令的源码patch与最终提交一致，十个变化文件语义一致。Runtime18个生成文件逐字节核对，仅16份已证实CRLF漂移恢复为精确HEAD字节；空git diff不能代替字节审计。原失败/断言未改，三个源码仓最终clean。Client18尚未进入官方新包，当前complete31/Game33/Scene33仍为Client693095a，不能将该后续修复说成已部署。
+
+Scene33仍在18103/18333/18402服务，新[60秒只读节拍收据](../../../../.run/live-preview-33phase01/root-cadence-snapshot-01/receipt.json)覆盖17:04:32–17:05:32 UTC、1200间隔、frames=6：p50=47.123ms、p95=62.845ms、p99=64.567ms、max=78.226ms，未出现>100ms间隔。该段只有六Bot，不是用户原八玩家窗口同负载对照，不证明磁盘/杀毒原因或服务端超时已根治。
+
+当前可玩入口仍为新版`http://127.0.0.1:18103/play/?player=A`及B，用户手感反馈未到；原验收失败尚未被前台通过取代。下一完整候选还需合入已审Client18、处理受保护旧scratch例外、原始期限回退规则裁定后按实际结果推进所属仓修复/整包/消费/新Scene。50ms→100ms候选不是已批准方案，不启动依赖实现；ADR142、18085与生产schema门保持。未宣称整个移动任务完成。
