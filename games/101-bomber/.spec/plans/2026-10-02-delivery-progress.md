@@ -1666,3 +1666,13 @@ checkpoint84提出的“本地按20Hz采样+新Owner时间语义审批”及此�
 新[真实Native调度诊断](../../../../.run/20261007-movement-investigation-02/schedule-probe/report.json)在独立目录完成4个实验断言、4通过/0失败/0跳过、raw0；此数是诊断实验通过，不是原故障已修复。原native-probe全部8,590个文件前后逐字节哈希一致。仅owner pump对照仍8次输入停在X7.675；在合法空闲Owner边界、输入之间诊断性调用现有confirmed.Manager.Tick后，预测连续8步到8.900002，confirmed X7.5与authority receipt Tick2保持不变。同本地Tick的双输入仍每对一步，8条仅4步到8.200001；8条输入加8次真实authority回包最终两端8.900002，8次纠正位移均0。
 
 没有设置Tick字段、修改冷却或绕过准入。实验支持缺少既有客户端逻辑推进接线，但**不能把诊断调用直接插进生产**：回包处理本身也执行Manager.Tick，组合后本地Tick18而authority receipt Tick10，可能加快缓冲/计时。下一步需在既有框架中区分消息处理与逻辑时间推进，每时段仅推进一次，并接通本地Model独立显示更新；不执行已撤回的20Hz新时钟提案。本轮无生产修复，无新包、无用户验收通过；Owner既有门保持原状态。
+
+### 移动手感排障：checkpoint87，修复进入Runtime所属仓；真实Native三项时间回归RED已保全（2026-10-07 20:24 +08）
+
+用户明确要求继续完成并指出应修改Runtime。本轮从complete29精确Runtime36ea3ae3建立隔离工作树`LumioGameRuntime30LocalPrediction`/`fix/101-local-prediction-step`；Client与Game消费者各自隔离，未改旧包或用户现场。重新核实18101/18331/18097仍监听原restart03进程，不能算修复版。
+
+[Runtime实施任务](../../../../.run/20261007-runtime-movement-repair-01/task-1-brief.md)按已有GAS设计补显式本地固定步上下文：Host提供单调钟经过的步，Runtime计算游标，权威应用不再叠加一次时间；每条输入保留准入执行Tick，重放不领取新的时间。同一步额度、冷却、频率、Native、协议和预算保持，旧调用者由兼容路径承接。此为工程实现方案，尚未通过实现与审查；不另造Owner审批门。
+
+真实Native/GAS的[三项行为RED](../../../../.run/20261007-runtime-movement-repair-01/task-1-evidence/red-tests-corrected-fixture-actual.log)为3失败/0成功/0跳过、raw2，SHA256 `769dc3582bd19aa804d1efd46b2ccc542d6578e640e34cc3f59aa84dfcd55e88`。新入口的未修复骨架仍调用旧Tick：8本地步把确认Tick从2推进到10；同一步维护调用使输入Tick从3变13；8次权威与本地步叠加得到18而非10。该RED针对时间隔离与同帧额度，不替代checkpoint83原始连续预测停步证据。早期夹具容量错误和零测试runner尝试另外保留，未计为有效RED。
+
+Runtime生产修复正在进行；Client驱动及原实体Model/渲染接线有独立任务边界，尚未实现或验收。无新complete/Game/Scene，不复用已撤销的游戏层追赶补丁资格。知识沉淀此段按排障过程豁免，仅追加唯一账本；ADR142、18085、生产schema与用户前台验收门不变。
