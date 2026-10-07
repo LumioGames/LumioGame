@@ -1618,3 +1618,13 @@ restart-01以全新b系列账号（PlayScene31Oct06b*，a系列已入prior，[pr
 ### 交付接续：checkpoint81，会话暂停连带拆除restart-01（非游戏死亡）+WSL停机致平台容器exit255；平台恢复、restart-02以独立进程SERVING并打开本机浏览器双玩家窗口交付用户前台验收（2026-10-07 18:5x +08）
 
 夜间会话暂停时launcher进程树被终止（exit 0x40010004，控制台事件）——restart-01非游戏性死亡；随后WSL停机使18097平台两容器exit 255。用户回来要求验收：`docker start`恢复平台两容器healthy，门更新至c系列（[prefix收据](../../../../.run/browser-experience-scene31-source-preparation-01/restart-02-prefix-receipt.json)），launcher经`Start-Process`以独立最小化控制台派生（脱离本会话进程树，后续会话暂停不再连带拆除；Git Bash→cmd引号转义首试失败已如实记录）。restart-02 **SERVING**：6Bot入场PASS、DS=complete29@18331、玩家页@18101双URL 200、检查点gen1-4连续发布；已以Edge `--new-window`打开A/B两个本机浏览器窗口交用户执行[验收指引](../../../../.run/live-acceptance-31restart01/user-acceptance-guide.json)（双移动/放弹/十轮关闭重开/整浏览器退出）。死亡链第12次收件不变；ADR142/18085/生产schema门继续OPEN。
+
+### 移动手感排障：checkpoint82，用户验收失败保持；restart-02死亡链退出与重启后现场恢复分离取证（2026-10-07 19:26 +08）
+
+用户两条原话仍为前台失败证据，本轮不以启动成功替代移动验收。[接手只读哈希收据](../../../../.run/20261007-movement-investigation-01/takeover-evidence.json)确认restart-02已在11:03 UTC退出：tick16838的Death structure intent no longer identifies its live old body，经watchdog触发DS_FATAL；不是rename错误，也不能冒写为客户端队列满复发。最后检查点28，ADR142同族只登记不启用Draft。机器LastBootUpTime为11:11:57 UTC，接手18101/18331及受保护端口均无监听。
+
+DS结构化日志最终18,181,228字节、Bot1为533,606字节，末尾都到11:03:30 UTC，证明用户游玩后观察到的暂时停写后来恢复；磁盘/Defender因果尚未定案。未修改历史证据、断言或系统安全设置。
+
+仅恢复已命名18097平台及postgres容器（WSL Ubuntu Docker），healthz双ok。全新d系列账号更新freshAccounts并追加[restart03前缀收据](../../../../.run/browser-experience-scene31-source-preparation-01/restart-03-prefix-receipt.json)，旧gate另存原字节。第一次启动原守卫发现runtime-copy多一份崩溃生成hostentry_fault.log（307/306）而拒绝；将该新增日志移出包目录逐字节哈希保全，见[搬迁收据](../../../../.run/20261007-movement-investigation-01/crash-log-relocation.json)，未改305载荷或manifest。第二次经独立隐藏pwsh Start-Process启动restart-03，2玩家账号+6Bot准入PASS、18101双玩家URL恢复，仍为原complete29/Game31而非修复版。失败启动日志保留。
+
+源码追踪确认SpectatorDump.PublishedPosition已消费完成发布的预测World，不能定案为只画权威位置。待隔离判别：预测位置与authority Tick快照时间轴混用、server cadence及暂时文件停写。新[隔离测量计划](../../../../.run/20261007-movement-investigation-01/measurement-plan.md)仅测真实SDK/Native，不在用户现场注入实验。知识沉淀按纯取证豁免，唯一账本只追加；移动修复、独审、新整包、新消费者与用户重验均未完成，Owner门保持OPEN。
