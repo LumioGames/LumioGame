@@ -44,6 +44,8 @@ const GAME_VIEW = (PLAYER_MODE || new URLSearchParams(location.search).get('view
 let gameView;
 let gameViewLoading;
 let gameViewGeneration = 0;
+let gameViewOwnerGeneration = 0;
+let currentSessionGeneration = null;
 if (PLAYER_MODE) window.__lumioPlayer = player;
 
 // Dimensions come from the same activated Bomber config as the C# replica.
@@ -395,7 +397,10 @@ function closeVoxelWorld(keepGameView = false) {
   displayedWorldId = null;
   spectator.worldId = null;
   gameViewGeneration += 1;
-  if (keepGameView) gameView.suspend('world-rebinding');
+  if (keepGameView) {
+    gameViewOwnerGeneration = gameViewGeneration;
+    gameView.suspend('world-rebinding');
+  }
   else {
     gameView?.dispose();
     gameView = null;
@@ -443,7 +448,20 @@ function updateGamePresentation() {
     const generation = gameViewGeneration;
     gameViewLoading = import('./game-view.mjs').then(({ createGameView }) => {
       if (generation !== gameViewGeneration) return;
-      gameView = createGameView(PLAYER_MODE ? {
+      const attempt = csharp.ownerPresentation ? connectionAttempt : null;
+      if (csharp.ownerPresentation) gameViewOwnerGeneration = generation;
+      let ownerView;
+      const ownerPoseLifetime = csharp.ownerPresentation ? () =>
+        !terminal && active && attempt === connectionAttempt && gameView === ownerView &&
+        gameViewOwnerGeneration === gameViewGeneration && currentSessionGeneration !== null
+          ? `${attempt}:${currentSessionGeneration}` : null : undefined;
+      ownerView = createGameView(PLAYER_MODE ? {
+        ownerPoseLifetime,
+        readOwnerPose: csharp.ownerPresentation ? () => {
+          if (ownerPoseLifetime() === null) return null;
+          const pose = JSON.parse(csharp.ownerPresentation());
+          return pose && pose.sessionGeneration === currentSessionGeneration ? pose : null;
+        } : undefined,
         initialSelectionSubmitted: selectedCharacter !== null,
         inputReady: () => active && !initialSelectionPending && player.replica?.inputOpen === true,
         onMove: (primary, secondary) => {
@@ -456,6 +474,7 @@ function updateGamePresentation() {
         onUseSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
       } : {});
+      gameView = ownerView;
       gameViewLoading = null;
       updateGamePresentation();
     }).catch(error => {
@@ -495,6 +514,7 @@ function bindExports(api) {
   csharp.mapDimensions = () => api.MapDimensions();
   csharp.worldInstanceId = () => api.WorldInstanceId();
   csharp.presentationState = () => api.PresentationState();
+  csharp.ownerPresentation = typeof api.OwnerPresentation === 'function' ? () => api.OwnerPresentation() : undefined;
   if (PLAYER_MODE) {
       for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig'])
       if (typeof api[name] !== 'function') throw new Error('Player input export missing: ' + name);
@@ -711,6 +731,7 @@ function pumpSession(attempt) {
   try {
     csharp.tick();
     const state = JSON.parse(csharp.sessionState());
+    currentSessionGeneration = state.generation ?? null;
     spectator.notServingCloses = state.notServingCloses ?? 0;
     player.inputsSent = state.sentInputs ?? 0;
     active = state.state === 'active';

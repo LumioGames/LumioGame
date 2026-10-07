@@ -93,6 +93,7 @@ public static partial class SpectatorExports
     [JSExport] public static bool SelectCharacter(string id) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).SelectCharacter(id);
     [JSExport] public static string PlayerState() => s_client?.PlayerState() ?? SpectatorDump.DumpPlayerState(null, "closed", false, "0", "0");
     [JSExport] public static string PresentationState() => s_client?.PresentationState() ?? PresentationDump.Dump(null, "0");
+    [JSExport] public static string OwnerPresentation() => s_client?.OwnerPresentation() ?? "null";
     [JSExport] public static string SelectionConfig() => PresentationDump.SelectionConfig(
         (s_configuration ?? throw new InvalidOperationException("selected_client_config_required")).Display);
     [JSExport] public static string DumpPositions() => s_client?.World is { } world ? SpectatorDump.DumpPositions(world) : "[]";

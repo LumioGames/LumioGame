@@ -11,7 +11,7 @@ namespace Lumio.Bomber.Gameplay.EntityTypes;
 
 internal sealed class PlayerEntityTemplate
 {
-    internal static readonly int ComponentCount = 10;
+    internal static readonly int ComponentCount = 11;
     internal static readonly int ObserverIndex = 0;
     internal static Component[] CreateComponents() => new Component[]
     {
@@ -24,6 +24,7 @@ internal sealed class PlayerEntityTemplate
         new BomberPlayerState(),
         new BomberSkillState(),
         new BomberHealthFacts(),
-        new BomberSuccessorLife()
+        new BomberSuccessorLife(),
+        new ModelTransform()
     };
 }

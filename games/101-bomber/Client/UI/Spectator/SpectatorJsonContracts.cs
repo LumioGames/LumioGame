@@ -2,9 +2,62 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using Lumio.GameRuntime.Ecs;
 using Lumio.Config.Generated.Client;
 
 namespace Lumio.Bomber.Client.Spectator;
+
+internal sealed class OwnerPresentationDto
+{
+    public required string sessionGeneration { get; init; }
+    public required string entity { get; init; }
+    public required string connectionGeneration { get; init; }
+    public required string publicationSequence { get; init; }
+    public required string localStepOrdinal { get; init; }
+    public required string executionTick { get; init; }
+    public required string inputSequence { get; init; }
+    public required string cause { get; init; }
+    public required PresentationPoseDto target { get; init; }
+    public required PresentationPoseDto model { get; init; }
+
+    public static OwnerPresentationDto From(ulong generation, OwnerPresentationPose pose) => new()
+    {
+        sessionGeneration = generation.ToString(CultureInfo.InvariantCulture), entity = pose.Entity.ToHex(),
+        connectionGeneration = pose.ConnectionGeneration.ToString(CultureInfo.InvariantCulture),
+        publicationSequence = pose.PublicationSequence.ToString(CultureInfo.InvariantCulture),
+        localStepOrdinal = pose.LocalStepOrdinal.ToString(CultureInfo.InvariantCulture),
+        executionTick = pose.ExecutionTick.ToString(CultureInfo.InvariantCulture),
+        inputSequence = pose.InputSequence.ToString(CultureInfo.InvariantCulture), cause = pose.Cause.ToString(),
+        target = PresentationPoseDto.From(pose.Target), model = PresentationPoseDto.From(pose.Model),
+    };
+}
+
+internal sealed class PresentationPoseDto
+{
+    public required PresentationPositionDto position { get; init; }
+    public required PresentationRotationDto rotation { get; init; }
+    public static PresentationPoseDto From(Pose pose) => new()
+    {
+        position = new() { x = pose.Position.X, y = pose.Position.Y, z = pose.Position.Z },
+        rotation = new() { x = pose.Rotation.X, y = pose.Rotation.Y, z = pose.Rotation.Z, w = pose.Rotation.W },
+    };
+}
+
+internal sealed class PresentationPositionDto
+{
+    public required float x { get; init; }
+    public required float y { get; init; }
+    public required float z { get; init; }
+}
+
+internal sealed class PresentationRotationDto
+{
+    public required float x { get; init; }
+    public required float y { get; init; }
+    public required float z { get; init; }
+    public required float w { get; init; }
+}
 
 internal sealed class SelectionConfigDto
 {

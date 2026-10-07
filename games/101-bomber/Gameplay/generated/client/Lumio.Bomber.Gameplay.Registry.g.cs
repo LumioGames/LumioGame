@@ -828,6 +828,7 @@ public sealed class GeneratedRegistry : EcsRegistry
             if (componentType == typeof(BomberSkillState)) return 7;
             if (componentType == typeof(BomberHealthFacts)) return 8;
             if (componentType == typeof(BomberSuccessorLife)) return 9;
+            if (componentType == typeof(ModelTransform)) return 10;
             return -1;
         }
         if (entityType == typeof(WorldEntity))
@@ -914,6 +915,7 @@ public sealed class GeneratedRegistry : EcsRegistry
             if (string.Equals(componentName, "BomberSkillState", StringComparison.Ordinal)) return 7;
             if (string.Equals(componentName, "BomberHealthFacts", StringComparison.Ordinal)) return 8;
             if (string.Equals(componentName, "BomberSuccessorLife", StringComparison.Ordinal)) return 9;
+            if (string.Equals(componentName, "ModelTransform", StringComparison.Ordinal)) return 10;
             return -1;
         }
         if (entityType == typeof(WorldEntity))

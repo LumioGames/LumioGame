@@ -2,6 +2,17 @@ import type { BomberEvent } from '../contract/events'
 import type { TickFrame } from '../contract/source'
 import type { WorldSnapshot } from '../contract/snapshot'
 
+export interface LocalPresentationPose {
+  playerId: number
+  entity: string
+  connectionGeneration: string
+  publicationSequence: string
+  model: {
+    position: { x: number; y: number; z: number }
+    rotation: { x: number; y: number; z: number; w: number }
+  }
+}
+
 /**
  * 表现时钟：缓存最近两帧快照，渲染落后一帧做插值；事件排队到 `renderTick ≥ e.Tick` 才派发，
  * 保证特效与插值后的实体位置对齐。本地替身与将来的引擎 Replica 都调 `push()`，表现层只读 `sample()`。
@@ -9,6 +20,8 @@ import type { WorldSnapshot } from '../contract/snapshot'
  * renderTick、事件派发、规则层与输入照常按真实时间走。
  */
 export interface FeedSample {
+  /** Session-evaluated owner Model. Null means not initialized; absent keeps legacy rendering. */
+  localPose?: LocalPresentationPose | null
   /** 插值起点（上一帧）。 */
   prev: WorldSnapshot
   /** 插值终点（最新帧）。 */
