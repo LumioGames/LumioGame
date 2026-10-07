@@ -1684,3 +1684,11 @@ Runtime隔离分支已提交`fda0cfacc6ec47f5df40adb80ac449b40179a01c`，包含�
 既有四项测试支持缺失由官方Engine `eng/dev-build.mjs --hfsm-test-support --voxel-prediction-test-support`单独构建恢复，raw0、三源码仓构建前后clean，见[构建收据](../../../../.run/20261007-runtime-movement-repair-01/test-native-build-01.json)。测试DLL SHA256 `7db3efad3c4509124994b9f91010fe2e71df48923102e14ce285881fbccbd239`，生产complete29 Native未替换。编译既有Rust警告原样保留。
 
 剩余旧StructuralScratch断言差636字节，独立隔离调查已指向既有Transform类型化单次捕获替代旧双次文本捕获后测试数值未更新；尚待完整证据审查。原断言、失败日志与生产额度不改，不为凑数制造无用保留内存，也不把该失败记作跳过。20:56复核原restart03的18101/18331与18097平台健康，仍为旧complete29/Game31。修复第一段未通过独审，后续Runtime Model、Client、官方整包、消费者、新现场与用户手感重验均未交付；Owner门不变。
+
+### 移动手感排障：checkpoint89，Runtime边界修复首轮提交；复审继续拦截相内业务拒绝；旧断言差额根因完成证明（2026-10-07 21:10 +08）
+
+Runtime新增提交`95f5bab9f56892a50fdc996f4d06b10adc642c0a`，两个真实Native RED分别复现容量拒绝变fatal及disposed binding消耗序号，随后clock22/22、presentation8/8、十三相5/5全部raw0/零跳过（各组有重叠，不相加为独立总数）。[复审](../../../../.run/20261007-runtime-movement-repair-01/task-1-rereview.md)确认两项具体回归闭合，但拒绝合入：ApplyInputs已应用权威并完整发布预测后，业务system仍可返回BusinessReject；首轮把所有返回拒绝当作“未执行”回滚时钟，可能留下不一致cursor。后续修复改在实际初相准入才提交时间，正在先写该路径的Native RED；不回滚已完成的权威事务。formatter限制已分类为四个未改工程的设计时SourceRoot问题，生产构建通过，不冒称检查完全洁净。
+
+[旧scratch差额完整证明](../../../../.run/20261007-runtime-movement-repair-01/task-1b-scratch-report.md)结合历史`cc1f9094`消除重复捕获与`40f098c3`类型化捕获、两轮真实计费采样，得到旧双份文本1480减当前四字段844恰为636。结构pending恢复费用8384保持，当前总额12070；原12706断言来自优化之前，未发现需要凑数的生产漏计。[root独立核对收据](../../../../.run/20261007-runtime-movement-repair-01/task-1b-root-review.json)确认原断言文件SHA不变。临时等价诊断全部恢复/生命周期/父链接断言通过，源码已恢复clean，原全套950项仍949通过/1失败/0跳过。单行测试数值修订仅为未应用补丁；鉴于用户§七明确保护断言，已就该具体例外异步询问，未获回复前不修改，不因此停止其余移动修复。
+
+Client/Game后续任务已具体化：确认SendMove先排队、下一owner pump才进入GAS，输入重复与pump各有50ms定时器；隔离浏览器必须测错相/迟到和实际60/120Hz显示，不能用理想同步数学序列替代前台证据。尚无Runtime Model、Client接线、新完整包或新Scene；用户手感验收仍失败，ADR142/18085/正式schema采用保持原门状态。
