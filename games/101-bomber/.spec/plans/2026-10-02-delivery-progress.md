@@ -1788,3 +1788,15 @@ Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model�
 官方八仓精确clean管线complete31于16:29:09 UTC退出0，官方verify退出0。[整包收据](../../.run/20261008-runtime-phase-delivery-01/full-pack-31-root-02/root-acceptance.json)逐项核对305 payload/306文件：manifest SHA256 `8cc8df282a920af72de5168b2a134a98e4605a5d26f8b4be80325b3747d16fd9`，SDK最终归档`d2b05204fbbfe33c698e388642c1325a99ac88c27ec3de1cea37dd77bfe41f03`，本次生产Native `26ff3a34d670276b2965bff69ef3347dbada481b81453c847ae6fa3551acfcc9`，Engine WASM `63e9a01ce987cfe6c2f036e9c03c3e5253619d0635446e26bb2f1bee8ad39d90`。Runtime精确5edf9b46、Client仍693095a、Server仍250ee41；相同产品版本不是相同包字节，后续必须新缓存。此收据只批准已披露限制的内部预览，不关闭失败行为门、旧GAS失败或用户验收。
 
 Game33从未改Game32源码b07f4512准备新的消费/AOT目录，Scene33仅准备18103/18333/18402启动脚本，尚未构建或启动。现有Scene32 restart01仍服务旧于该追加修复的complete30/Game32，持续产出检查点。Client18新工作树单独补真实生命周期覆盖，尚无生产修复或通过结论，不纳入complete31；编译串行避免本任务并发重构建。受保护端口、历史证据和Owner门保持。
+
+### 移动手感排障：checkpoint100，Game33严格AOT与Scene33新预览交付，旧自建现场受控退役（2026-10-08 00:5x +08）
+
+[Game33封件](../../../../.run/game33-runtime-phase-consumer-01/scene-input.json)绑定未改Game b07f4512、complete31 manifest8cc8df28、4382原始tracked输入与2份新UI；普通server/client/browser/publish四步raw0。严格AOT于16:42:46 UTC raw0，九个严格标志完整；新私有NuGet缓存核对最终SDK归档，新AOT未裁剪输入DLL核对发布portable字节，实际网页376文件封存。输入零行尾漂移；没有改用普通未裁剪网页。适配脚本[独审](../../../../.run/20261007-runtime-movement-repair-01/task-7-phase-delivery-script-review.md)批准限范围预览，无P0/P1，已知行为FAIL与保护GAS失败继续传播。
+
+新平台`bomber-movement33-18402`三容器身份与新配方绑定，seed退出0、两容器healthy、health200；新八账号排除旧Scene31/32及restart01所有账号，密码每次launcher生成且仅内存。隐藏独立pwsh PID29656启动新DS18333/PID33396、页面18103/PID7620；六Bot全部入场，[前台入口收据](../../../../.run/live-preview-33phase01/root-readiness.json)为SERVING且A/B/平台HTTP200，实际`/play/main.js`与封件SHA一致。首次root探针误取`/main.js`返回404，原脚本与错误收据保留；更正路径后新探针通过，不归为产品报错。已向用户给出`http://127.0.0.1:18103/play/?player=A`和B的新链接；未冒称代理已打开浏览器或用户手感通过。
+
+新现场确认健康后受控退役本任务自建Scene32 restart01，非故障/自动重启。[退役独审及复审](../../../../.run/20261007-runtime-movement-repair-01/task-7-owned-retirement-rereview.md)要求绑定新场景六Bot与全部进程、旧进程创建时间/父子年代、持有进程句柄、Docker预检固定ID和中途失败收据。02首次执行在任何变更前因PowerShell自动JSON日期再Parse丢UTC导致假PID复用而停止，stopped为空；原尝试保留。独审03只改`DateKind String`与新尝试目录，精确SHA776759df后执行：[收据](../../../../.run/browser-experience-scene33-runtime-phase-01/retirement-attempt03/result.json)RETIRED/raw0，17个旧进程结束、两个旧自建容器按固定ID停止，旧18102/18332/18401关闭。旧文件/数据库卷保留、全部受保护平台未动，新Scene33继续到CP17。
+
+旧restart02日志补充[只读核验](../../../../.run/20261007-runtime-movement-repair-01/original-log-end-audit-02.json)：最终DS文件18181228字节、六Bot文件约53万字节，七份均含11:03:30附近的结束记录。第一次审计仅识别Rust前缀未识别C#时间，保留后以新脚本补全。最终记录不能证明当时何时flush，但原目录LastWrite/size观察也不足以证明磁盘停写；不认定杀毒/磁盘为根因。
+
+Client18补充覆盖已取得真实RED：六生命周期执行中五通过、一失败，same-manager Retire+Attach后新准入应step0实际step40；前两次fixture启动失败不算RED并原样保存。最小Client身份修复待GREEN/full/独审，不在complete31或Scene33中。期限50ms→100ms及相应新断言例外仍等用户裁定，旧scratch、Server超时根因、实际浏览器节拍和用户手感验收均未关闭。
