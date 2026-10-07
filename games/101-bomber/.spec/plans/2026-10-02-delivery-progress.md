@@ -1658,3 +1658,11 @@ checkpoint84提出的“本地按20Hz采样+新Owner时间语义审批”及此�
 重新对照movement M8发现b475473对每次正常owner位移都重开50ms整段追赶，未区分正常运动与纠偏误差；先前两轮审查只验证了错误的窄计划，722项通过不证明符合完整设计。该未部署补丁已由1eb7aaa显式revert，Presentation源码与修复前6427442的diff为空；旧提交、RED/GREEN日志与审查报告均保留，不改历史证据或用改断言伪造通过。
 
 真实Native的连续预测停在第一步、cooldown与静止预测Tick证据仍成立；被撤回的是修法和笼统审批结论，不是RED事实。接续按既有GAS/Model职责检查Runtime预测推进及Client/浏览器采样接线；不把到包插值当本地预测，不在TS再造逻辑或调低频率。完整修复、官方整包、Game/Scene新消费与用户验收尚未完成。
+
+### 移动手感排障：checkpoint86，既有Runtime Tick隔离注入解除连续预测停步，保持同帧额度；确认生产接线仍须消除重复计时（2026-10-07 20:0x +08）
+
+[设计复审](../../../../.run/20261007-movement-investigation-01/prediction-contract-audit/report-reassessment.md)正式撤回旧审计的笼统Owner门判断，确认决定性M3/M7/M8文字在complete29架构树已经存在；并确认ModelTransform采样/表现入口没有接入complete29 Client/101生产路径，不能拿TS插值替代Runtime本地正常运动/纠偏分工。
+
+新[真实Native调度诊断](../../../../.run/20261007-movement-investigation-02/schedule-probe/report.json)在独立目录完成4个实验断言、4通过/0失败/0跳过、raw0；此数是诊断实验通过，不是原故障已修复。原native-probe全部8,590个文件前后逐字节哈希一致。仅owner pump对照仍8次输入停在X7.675；在合法空闲Owner边界、输入之间诊断性调用现有confirmed.Manager.Tick后，预测连续8步到8.900002，confirmed X7.5与authority receipt Tick2保持不变。同本地Tick的双输入仍每对一步，8条仅4步到8.200001；8条输入加8次真实authority回包最终两端8.900002，8次纠正位移均0。
+
+没有设置Tick字段、修改冷却或绕过准入。实验支持缺少既有客户端逻辑推进接线，但**不能把诊断调用直接插进生产**：回包处理本身也执行Manager.Tick，组合后本地Tick18而authority receipt Tick10，可能加快缓冲/计时。下一步需在既有框架中区分消息处理与逻辑时间推进，每时段仅推进一次，并接通本地Model独立显示更新；不执行已撤回的20Hz新时钟提案。本轮无生产修复，无新包、无用户验收通过；Owner既有门保持原状态。
