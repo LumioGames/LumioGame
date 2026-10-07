@@ -1744,3 +1744,13 @@ Client构建引起Runtime16份生成物CRLF漂移；root逐文件仅规范CRLF�
 [实际包核验](../../.run/20261007-runtime-movement-delivery-01/full-pack-30-root-02/root-acceptance.json)：manifest SHA256 `f96e3c831ad9fc671dab942bb04ba1fab57a74fdde66c056bca48186ec2b7e73`，305 payload/306实际文件逐项hash及闭包校验通过，官方verify raw0；最终SDK归档SHA256 `b53f2fd212dff76e421f6cb6cf7ed77312f45e3a71422050164aa9d34aef3784`，production Native SHA256 `b812149ea283db678d110e8091cd2f8c93209a1d23bbf33226ce6e464250db0b`。SDK metadata的neutral-version payloadSha256不是最终nupkg归档hash，最终archive另以官方SHA512绑定；root核验两次脚本假设错误保全，纠正后新root-02核验通过，未改包或旧证据。
 
 Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model与客户端原实体声明；尚待干净提交、独审、消费构建和新Scene。共享根工作区同时有另一原型迁移，未把该迁移当成本次Game输入。18102/18332/18401预留新现场，旧18101/18331/18097只读保全。当前没有新版窗口已打开或用户手感通过的证据；Runtime错相回退、旧scratch断言、补充覆盖与既有Owner门全部保持未关闭。
+
+### 移动手感排障：checkpoint96，Game32与严格AOT通过，Scene32新版已服务，自动打开窗口被工具策略拒绝（2026-10-07 23:3x +08）
+
+隔离Game提交`b07f45125eb71bc60466ff78570a6eab6ef00610`，源码交付clean。[独审](../../../../.run/20261007-runtime-movement-repair-01/task-4-game-preview-review.md)批准本次有限新版预览，无P0/P1；JS95/95、TS11/11、layout3/3、真实Native bridge4/4、严格JSON1/1，历史assertion保留。较宽回归31/32中有一次入场超时（pump13.419s/11.093s），后续单独4/4不抵消该失败，列P2待查。Game将每帧Session原实体Model X/Z直接接入角色、相机和标签，远端继续插值；Y/四元数完整DTO保留，视觉仍用已有脚底/水面/动作坐标，完整三维表现组合未验收。
+
+[Game32消费封件](../../../../.run/game32-runtime-movement-consumer-01/scene-input.json)绑定4382原始tracked输入+2新UI产物、complete30、实际独审JSON verdict/head。普通server/client/browser/publish四步raw0；严格AOT于15:26:20 UTC完成raw0，九个严格标志完整，实际发布网页376文件逐项封存并作为新Scene实际服务目录。普通SDK缓存与最终nupkg一致；AOT宿主不引用SDK NuGet，直接引用已编译Gameplay与发布包portable DLL，核对实际未裁剪DLL字节一致。root两次封件脚本错误（假设AOT有SDK缓存、误取portable DLL目录）原稿/失败保全后纠正，不修改成功构建或包。全部4384运行输入、二进制闭包、网页、配置、包文件在启动前复核；脚本独审发现的校验缺口已修正。
+
+新独立平台`bomber-movement32-18401`种子exit0、平台/数据库healthy、health200；新分配/房间和全新八账号前缀见[prefix receipt](../../../../.run/browser-experience-scene32-runtime-movement-01/prefix-receipt.json)。密码只由launcher每次运行生成并留内存，未继承或保存凭据。以独立隐藏pwsh PID5672启动；新DS18332/PID25048、页面18102/PID31692，六Bot已起，新[现场证据](../../../../.run/live-preview-32movement01/verification.json)为SERVING，A页面HTTP200。既有受保护平台/端口未重部署或关闭。
+
+已向用户提供新版A/B入口`http://127.0.0.1:18102/play/?player=A`与`?player=B`。替用户打开两个Chrome新窗口的调用在创建进程前被自动审批拒绝，仅返回`blocked by policy`，见[收据](../../../../.run/browser-experience-scene32-runtime-movement-01/browser-open-receipt.json)；未换手段绕过、未声称已打开。用户前台重验仍PENDING，Runtime错相期限回退继续修复；旧scratch、补充生命周期/浏览器轨迹、较宽Game超时和全部Owner门继续保持未关闭。
