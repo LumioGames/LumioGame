@@ -1,6 +1,6 @@
 # 101 正式版交付执行账本（2026-10-02）
 
-状态：按用户要求暂停，未达到正式交付条件。最新恢复入口为本文件；旧账本完整保留。
+状态：按用户 2026-10-07 的完整迁移目标继续推进，未达到正式交付条件。最新恢复入口为本文件；旧账本完整保留。
 
 本次主计划：[恢复与交付计划](../../../../../docs/plans/2026-10-02-bomber-delivery-recovery.md)。本次用户完整交付要求覆盖旧计划的只读旁观和延期测试限制；所有架构与数据保护约束保留。
 
@@ -1724,3 +1724,15 @@ Runtime隔离分支新增`214a08f132500c09e9f14b38e129a354a5f405df`，14个源�
 独审及root分别核对14源码和最终delivery CSV身份；[root只读复核](../../../../.run/20261007-runtime-movement-repair-01/task-2-model-evidence/root-identity-and-trajectory-check.json)源码零不符，最终60/120Hz普通28公共点误差0、纠偏25公共点最大约1e-8米。只证明已保存Native轨迹，不代替新浏览器现场。Client从隔离`LumioClient17PredictionStep`/`c3611518`启动真实Session与两个adapter的RED/实现任务；截至本checkpoint未提交Client修复。
 
 八仓预检发现普通Platform工作区由他人推进到`9737faaa`，未reset或纳入候选。改用已有clean隔离`probe/bomber-pack-sources-06/LumioPlatform`，保持原审定`3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89`；其余七仓当前HEAD/clean符合各阶段预期，打包前仍需重新核验。用户追加要求完成后通知并打开两个玩家浏览器窗口验收，已列入最终动作；当前未打开旧场景冒充修复版，用户手感验收仍待修复后重验。Owner门不变。
+
+### 移动手感排障：checkpoint94，用户要求先看新版预览；Client真实接线与边界修复提交，错相回退已有真实Session证据（2026-10-07 22:5x +08）
+
+用户进一步明确「能不能先让我看效果，咱俩不冲突」「我肯定要看新版，旧版不看」。按[新版预览范围](../../../../.run/20261007-runtime-movement-repair-01/interactive-preview-scope.md)优先形成可玩候选，再继续收尾验证；不是手感通过、生产发布或Owner门批准。root此前误安排旧版对照，两个自动打开尝试均在创建进程前被环境策略拒绝，未成功打开；用户纠正后不再尝试旧版。本轮仍无新版可玩浏览器构建，不宣称已提供效果。
+
+[Client预览报告](../../../../.run/20261007-runtime-movement-repair-01/task-2-client-preview-report.md)保存初始checkpoint`526d22df16b6d4122f0b46a2992a18189ca5a373`及修复`693095a690f3268fb300289139262147d9266b23`。真实Native RED证明同一准入时间不推进、.05后第二次输入仍停.1及adapter未启用钟；接线后真实Session能到.2。最终新增`IClientSession.TryUpdateOwnerPresentation(out OwnerPresentationPose)`只更新/读取原实体Model，两个生产adapter启钟，Session固定步与表现共享准入时间，9个接口fake补不可用默认值。
+
+首个扩展候选20/21如实失败：倒退时间被拒绝后，旧RPC关闭清理再次使用坏钟而抛错。另有真实pending completion时间锚RED（差约.0131943375），不能用未Commit的假成功夹具通过。`693095a6`将仅表现更新与pending模拟禁令区分，清理只Cancel/Drain使用最后合法RPC时间；正常时钟不clamp、故障诊断保留。最终focused22/22（18行为、4记录已知缺陷的诊断）零跳过/raw0；同HEAD完整Session284/284、SDK58/58均零跳过/raw0，SDK构建0警告错误。专用生命周期/overflow覆盖仍有PENDING，独审及边界复审尚未交回，不能称完整任务完成。
+
+四条真实Session/Native的60/120Hz phase/jitter CSV各记录7次无权威纠偏的显示后退，见预览报告。静态[时间相位分析](../../../../.run/20261007-runtime-movement-repair-01/phase-timing-analysis.md)与实测一致：当前Runtime按S*h计算表现期限，固定25ms错相导致输入前提前到期。该工程映射缺陷尚未修复；预览明确暴露此限制，后续所属仓修原始输入时间映射，不以JS追赶或改Hz掩盖。既有Native整齐节拍通过不能覆盖此反例。
+
+Client构建引起Runtime16份生成物CRLF漂移；root逐文件仅规范CRLF后计算Git blob，全部与HEAD原blob一致才恢复，见[审计](../../../../.run/20261007-runtime-movement-repair-01/runtime-client-generated-eol-audit-01/receipt.json)。Runtime重新clean，未修改原断言、生产语义或历史封件。新官方包/Game/Scene尚待构建；旧scratch例外及既有Owner门均保持原状。
