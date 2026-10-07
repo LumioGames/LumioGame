@@ -1736,3 +1736,11 @@ Runtime隔离分支新增`214a08f132500c09e9f14b38e129a354a5f405df`，14个源�
 四条真实Session/Native的60/120Hz phase/jitter CSV各记录7次无权威纠偏的显示后退，见预览报告。静态[时间相位分析](../../../../.run/20261007-runtime-movement-repair-01/phase-timing-analysis.md)与实测一致：当前Runtime按S*h计算表现期限，固定25ms错相导致输入前提前到期。该工程映射缺陷尚未修复；预览明确暴露此限制，后续所属仓修原始输入时间映射，不以JS追赶或改Hz掩盖。既有Native整齐节拍通过不能覆盖此反例。
 
 Client构建引起Runtime16份生成物CRLF漂移；root逐文件仅规范CRLF后计算Git blob，全部与HEAD原blob一致才恢复，见[审计](../../../../.run/20261007-runtime-movement-repair-01/runtime-client-generated-eol-audit-01/receipt.json)。Runtime重新clean，未修改原断言、生产语义或历史封件。新官方包/Game/Scene尚待构建；旧scratch例外及既有Owner门均保持原状。
+
+### 移动手感排障：checkpoint95，complete30官方整包通过，按用户要求优先新版预览（2026-10-07）
+
+[Client复审](../../../../.run/20261007-runtime-movement-repair-01/task-2-client-preview-rereview.md)批准精确`693095a690f3268fb300289139262147d9266b23`用于明确限制的新版预览，无剩余P0/P1；不等于完整移动任务通过。官方`pack-reviewed-composition.mjs`对八仓精确clean HEAD执行raw0，产出complete30，Runtime为`214a08f132500c09e9f14b38e129a354a5f405df`，Server继续`250ee41c95786d3c069d3ba35e17ff62fccf33e0`，未启用ADR142。
+
+[实际包核验](../../.run/20261007-runtime-movement-delivery-01/full-pack-30-root-02/root-acceptance.json)：manifest SHA256 `f96e3c831ad9fc671dab942bb04ba1fab57a74fdde66c056bca48186ec2b7e73`，305 payload/306实际文件逐项hash及闭包校验通过，官方verify raw0；最终SDK归档SHA256 `b53f2fd212dff76e421f6cb6cf7ed77312f45e3a71422050164aa9d34aef3784`，production Native SHA256 `b812149ea283db678d110e8091cd2f8c93209a1d23bbf33226ce6e464250db0b`。SDK metadata的neutral-version payloadSha256不是最终nupkg归档hash，最终archive另以官方SHA512绑定；root核验两次脚本假设错误保全，纠正后新root-02核验通过，未改包或旧证据。
+
+Game在独立`LumioGame32RuntimeMovement`从`6e0aa355`接入逐帧Session Model与客户端原实体声明；尚待干净提交、独审、消费构建和新Scene。共享根工作区同时有另一原型迁移，未把该迁移当成本次Game输入。18102/18332/18401预留新现场，旧18101/18331/18097只读保全。当前没有新版窗口已打开或用户手感通过的证据；Runtime错相回退、旧scratch断言、补充覆盖与既有Owner门全部保持未关闭。
