@@ -1989,3 +1989,22 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 - 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
 
 下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。
+
+
+### 移动手感排障：checkpoint115，用户改为只Review并由本地验证；补七项问题与验证报告（2026-10-08）
+
+用户最新明确「你不调试 你就Review代码 找问题 然后给我一个报告 我本地来验证」。本段工作范围据此调整为只读源码Review、验证方案和报告，不再把接入Windows/complete31作为本轮报告交付前置条件，也不启动浏览器、游戏、热更、生产补丁或新的行为测试。checkpoint113中的后续Agent网页调试安排保留为历史，本次由用户本地执行验证。
+
+重新核实Game main984f30e16c901c4705fb7eb2e9a22d5dbe73a747、Runtime f69e2c9445fd5cf39b005c0857308cd96da1f04d、Client5b7ef6101bef5250a66fc4813e75d0038da990e8、Enginedc4044de7b224220aeeb7298b59ac09d59507130。Game所审生产文件仍同f14/b07；Engine相对4bf只增加Native警告/错误常量映射清理与对应测试，没有改本次参考的movement/GAS/ECS文档。以上是源码版本，不代表用户本地Game35包组成变更。
+
+[代码Review与本地验证报告](../archive/reviews/2026-10-08-movement-code-review-local-validation.md)归纳七项：Facing→Logic rotation→Model→Doll接线缺口；独立held/pump与真实GAS同Tick冷却；三角形前探反向收回；普通新目标的接续跳变；同ordinal迟到发布清尾；首次完成时间与pump起点混用；hitstop时本人位置/步态与镜头跟随时钟不一致。新增正常相邻等长步错相造成向前断点、短步/受阻可造成反向跳变的条件公式；不是浏览器测量值。
+
+深审已排除一个冷却误判可能：Selective重建的Project(0)不删除survivor layers，第二条同Tick输入仍能读到第一条T+1冷却。业务拒绝的正常返回也可标Executed并产生HasNormalInput、目标不变的publication。但F5不能直接用0/2输入推定：正常Client会按时钟推进ordinal，真正过期同槽结果需追旧准入的等待/重试与发布条件。已有Native same-slot用例的moving输入可能被冷却拒绝，不能假定它必然再前进.1m；报告要求补替换前后的可见连续性断言。
+
+Game额外核实同match同participant复活复用Doll时可能保留旧yaw；下一局重建view的边界保留。hitstop来自实际默认可达事件，问题为fresh ownerPose覆盖冻结sample，而不是浅拷贝持续篡改last对象。报告提供输入1/1/1/1与0/2/0/2的人工独立时序、现有Native fixture的BeforeInput时钟反例、各阶段原字段/逐帧指标及本地优先验证顺序。所有新增数值均明确为推导/待执行；沿用PR51已有3RED/1control和33Node通过收据，未冒充本轮重跑。
+
+归档前发现并读回Game PR52已正常合入main40556477683e46a9e248812119fb3e6bd76c07c1，新增移动埋点、可选pump输入驱动及另一路checkpoint114。本段顺延115，保留对方全部生产变更和账本字节；本报告主体仍固定984/f69/5b7/dc审查版本，末尾另记PR52对本地验证的影响。PR52的Mac计时/Runtime实验结果在此只作为其账本陈述，未取得或重跑对应原始实验，不计入本轮实测；其Runtime插值候选没有由本报告批准。
+
+PR52窄审补出：pump模式单个tapDirection可覆盖两泵之间的方向边沿，方向请求延后而技能/放弹仍立即发布，可能改变命令顺序；默认interval保留。v1 trace的movesPerHeldPump只是返回true请求的时间归组、executionTickAdvance只是rAF观测差、且未按身份/方向/可见性分段，不能直接当真实GAS执行或模拟跳步证据。Root与Game/Client独立读回，表述确认归档；没有运行新开关、分析器或任何新行为实验。
+
+本段只新增报告并追加账本，归档前main的原521169字节前缀保持；文档独审/校验随提交归档。Review交付不关闭移动手感FAIL，不批准ADR142、18085、生产schema或公共契约改动。后续验证和修复以用户本地结果继续，未宣称全部根因定案。知识同步豁免：过程审查与验证方案，没有新增产品/引擎契约。
