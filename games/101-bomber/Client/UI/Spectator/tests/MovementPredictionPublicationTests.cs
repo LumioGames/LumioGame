@@ -29,7 +29,7 @@ public sealed class MovementPredictionPublicationTests
 
     internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null,
         Action<BrowserSessionOwner, NetEntityId>? beforeMove = null, BomberPlayerStepOptions? stepOptions = null,
-        ulong wireGeneration = 1)
+        ulong wireGeneration = 1, bool seedIdleOutcome = false, bool seedPendingTurn = false)
     {
         using var owner = new BrowserSessionOwner(parts: true, stepOptions: stepOptions);
         using var server = owner.CreateServerProjectionWorld(new ProjectionRegistry(BrowserSessionOwner.LoadServerRegistry()), 7);
@@ -54,6 +54,12 @@ public sealed class MovementPredictionPublicationTests
         Set(player, nameof(BomberPlayerState.LifeGeneration), 3UL);
         Set(player, nameof(BomberPlayerState.LifePhase), (int)BomberLifePhase.Vulnerable);
         Set(player, nameof(BomberPlayerState.InputMemoryMatchId), 55UL);
+        if (seedIdleOutcome) Set(player, nameof(BomberPlayerState.Facing), (int)BomberDirection.Down);
+        if (seedPendingTurn)
+        {
+            Set(player, nameof(BomberPlayerState.PendingTurnDirection), (int)BomberDirection.Right);
+            Set(player, nameof(BomberPlayerState.PendingTurnUntilTick), checked(server.World.Tick + 30UL));
+        }
         server.World.Get<AttributeComponent>(life.AssignedId).SetCurrentValue(BomberAttributeNames.MovementSpeedMilli, 3500);
         Vector3 before = new(7.5f, 1.5f, 7.5f);
         var transform = server.World.Get<LogicTransform>(life.AssignedId);

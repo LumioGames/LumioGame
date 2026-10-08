@@ -23,6 +23,10 @@ public sealed class PlayerStepInputTests
             var host = owner.Host;
             var manager = host.World!.Manager;
             host.SetInputIntentEnabled(true);
+            var confirmedPosition = host.World.Get<LogicTransform>(self).LocalPosition;
+            int confirmedFacing = host.World.Get<BomberPlayerState>(self).Facing.Value;
+            Assert.Equal((int)BomberDirection.Down, confirmedFacing);
+            Assert.True(host.World.Get<BomberPlayerState>(self).PendingTurnUntilTick.Value <= host.World.Tick);
             ulong firstOrdinal = manager.ClientPredictionElapsedStep;
             int firstFrame = owner.ReceivedFrames.Length;
             host.Tick();
@@ -39,8 +43,35 @@ public sealed class PlayerStepInputTests
                 Assert.Equal(self, frame.Sender);
                 Assert.Equal(1UL, frame.ConnectionGeneration);
             });
+            var predicted = Assert.IsType<World>(manager.PredictedWorld);
+            Assert.Equal(confirmedPosition, predicted.Get<LogicTransform>(self).LocalPosition);
+            Assert.Equal(confirmedFacing, predicted.Get<BomberPlayerState>(self).Facing.Value);
+            Assert.Equal(confirmedPosition, host.World.Get<LogicTransform>(self).LocalPosition);
             Console.WriteLine($"actual_step_ordinal_first={firstOrdinal} actual_step_ordinal_last={lastOrdinal} idle_move_requests={frames.Length}");
-        }, stepOptions: new BomberPlayerStepOptions());
+        }, stepOptions: new BomberPlayerStepOptions(), seedIdleOutcome: true);
+    }
+
+    [Fact]
+    public void ActualIdleInputMayUseAValidAuthorityTurnBufferWithoutChangingFacing()
+    {
+        MovementPredictionPublicationTests.RunActualPrediction("clear", beforeMove: (owner, self) =>
+        {
+            var host = owner.Host;
+            var manager = host.World!.Manager;
+            var confirmedPosition = host.World.Get<LogicTransform>(self).LocalPosition;
+            int confirmedFacing = host.World.Get<BomberPlayerState>(self).Facing.Value;
+            Assert.Equal((int)BomberDirection.Down, confirmedFacing);
+            Assert.True(host.World.Get<BomberPlayerState>(self).PendingTurnUntilTick.Value > host.World.Tick);
+            host.SetInputIntentEnabled(true);
+            int before = owner.ReceivedFrames.Length;
+            owner.PumpUntil(() => owner.ReceivedFrames.Length > before);
+            var first = Decode(owner, self, owner.ReceivedFrames[before]);
+            Assert.Contains(nameof(MoveAbility), Encoding.UTF8.GetString(first.Payload.Span));
+            var predicted = Assert.IsType<World>(manager.PredictedWorld);
+            Assert.True(predicted.Get<LogicTransform>(self).LocalPosition.X > confirmedPosition.X);
+            Assert.Equal(confirmedFacing, predicted.Get<BomberPlayerState>(self).Facing.Value);
+            Assert.Equal(confirmedPosition, host.World.Get<LogicTransform>(self).LocalPosition);
+        }, stepOptions: new BomberPlayerStepOptions(), seedIdleOutcome: true, seedPendingTurn: true);
     }
 
     [Fact]
