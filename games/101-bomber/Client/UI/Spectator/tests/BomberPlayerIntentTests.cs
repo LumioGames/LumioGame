@@ -130,6 +130,48 @@ public sealed class BomberPlayerIntentTests
     }
 
     [Fact]
+    public void RefusedBeginMatchingCancelThenClearPreservesAcceptedPairingAndDiagnostics()
+    {
+        var intent = new BomberPlayerIntent();
+        for (int i = 0; i < 5; i++) {
+            Assert.Equal("accepted", intent.SetBombIntent(1));
+            Assert.Equal("accepted", intent.SetBombIntent(3));
+        }
+        Assert.Equal("player_bomb_intent_capacity", intent.SetBombIntent(1));
+        Assert.Equal("player_bomb_intent_capacity", intent.SetBombIntent(4));
+        Assert.Equal((1, 3), (intent.PeekSample(true).BombPressPhase, intent.PeekSample(true).BombReleasePhase));
+        intent.CommitBomb(1);
+        intent.CommitBomb(3);
+        Assert.Equal((1, 3), (intent.PeekSample(true).BombPressPhase, intent.PeekSample(true).BombReleasePhase));
+        intent.Clear();
+        Assert.Equal(default, intent.PeekSample(true));
+        Assert.Equal(1, intent.BombIntentRefusalCount);
+        Assert.Equal("player_bomb_intent_capacity", intent.BombIntentStatusCode);
+        Assert.Equal("accepted", intent.SetBombIntent(1));
+        Assert.Equal("accepted", intent.SetBombIntent(3));
+        Assert.Equal((1, 3), (intent.PeekSample(true).BombPressPhase, intent.PeekSample(true).BombReleasePhase));
+    }
+
+    [Fact]
+    public void InvalidateClearsActiveRefusalLatchButRetainsDiagnostics()
+    {
+        var intent = new BomberPlayerIntent();
+        for (int i = 0; i < 5; i++) { intent.SetBombIntent(1); intent.SetBombIntent(3); }
+        Assert.Equal("player_bomb_intent_capacity", intent.SetBombIntent(1));
+        intent.Invalidate();
+        Assert.Equal(default, intent.PeekSample(true));
+        Assert.Equal(1, intent.BombIntentRefusalCount);
+        Assert.Equal("player_bomb_intent_capacity", intent.BombIntentStatusCode);
+        Assert.Equal("accepted", intent.SetBombIntent(1));
+        Assert.Equal("accepted", intent.SetBombIntent(3));
+        Assert.Equal((1, 3), (intent.PeekSample(true).BombPressPhase, intent.PeekSample(true).BombReleasePhase));
+        intent.CommitBomb(1);
+        Assert.Equal(3, intent.PeekSample(true).BombReleasePhase);
+        intent.CommitBomb(3);
+        Assert.Equal(default, intent.PeekSample(true));
+    }
+
+    [Fact]
     public void FreeingSlotBeforeRefusedTerminalDoesNotTurnDroppedGestureIntoAcceptedOne()
     {
         var intent = new BomberPlayerIntent();
