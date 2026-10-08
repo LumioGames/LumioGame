@@ -21,8 +21,6 @@ public sealed class BomberBufferedInputSystem : EcsSystem
             }
             BomberInputMemory.Prepare(world, player);
             BomberBombButton.Expire(world, player);
-            if (player.PendingTurnUntilTick.Value > world.Tick && player.LastMoveTick.Value != world.Tick)
-                world.Get<AbilityComponent>(player.Entity).Activate<MoveAbility, MoveAbility.Input>(default);
             if (player.PendingTurnUntilTick.Value <= world.Tick)
             {
                 player.PendingTurnUntilTick.Value = 0;

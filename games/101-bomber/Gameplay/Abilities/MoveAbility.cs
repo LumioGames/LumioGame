@@ -13,6 +13,7 @@ namespace Lumio.Bomber.Gameplay;
 public sealed partial class MoveAbility : AbilityType<MoveAbility.Input>
 {
     public const uint TypeId = 1u;
+    public override AbilityInputScheduling InputScheduling => AbilityInputScheduling.DeferAfterSuccessInSameTick;
     public struct Input : IAbilityInput
     {
         public BomberDirection PrimaryDirection;
@@ -49,10 +50,6 @@ public sealed partial class MoveAbility : AbilityType<MoveAbility.Input>
         BomberPlayerState player = owner.World.Get<BomberPlayerState>(owner.Entity);
         if (!BomberInputMemory.IsCurrent(owner.World, player))
         { failureCode = "move_source_invalid"; return false; }
-        bool buffered = player.InputMemoryMatchId.Value == owner.World.Single<BomberMatchState>().MatchId.Value &&
-            player.PendingTurnUntilTick.Value > owner.World.Tick;
-        if (input.PrimaryDirection == BomberDirection.None && input.SecondaryDirection == BomberDirection.None && !buffered)
-        { failureCode = "move_direction_missing"; return false; }
         return true;
     }
     public override void Execute(in Input input, AbilityComponent owner)

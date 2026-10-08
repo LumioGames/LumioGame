@@ -37,6 +37,7 @@ public sealed class GeneratedRegistry : EcsRegistry
 
     public override IReadOnlyList<IWorldSubsystem> CreateWorldSubsystems() => new IWorldSubsystem[]
     {
+        new global::Lumio.Bomber.Gameplay.BomberInputSchedulingSubsystem(),
     };
 
     private GeneratedRegistry()
