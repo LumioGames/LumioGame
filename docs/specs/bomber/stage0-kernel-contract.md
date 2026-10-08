@@ -23,6 +23,7 @@
 | ADR [0037](../../../.spec/decisions/0037-bomber-hat-tower-capped-at-four-with-count-badge.md)、[0038](../../../.spec/decisions/0038-bomber-direction-b-growth-brawl-pillars.md)、[0039](../../../.spec/decisions/0039-bomber-hats-give-hearts-and-gold-hearts.md) | 成长爽局；最多画4顶帽+真实计数；帽子/金心升心、最高8心、Boss阈值6心、圈毒按上限等比 |
 | ADR [0040](../../../.spec/decisions/0040-bomber-27-map-16-players-tiered-rings-supply.md)、[0042](../../../.spec/decisions/0042-bomber-moat-and-explosive-barrels.md) | 三圈资源、分档圈表、一次中央补给、狂暴；取消溺水，护城河/陆桥/冰桥/爆炸桶 |
 | ADR [0041](../../../.spec/decisions/0041-bomber-one-special-bomb-slot-five-kinds-favorite-bomb.md)、[0047](../../../.spec/decisions/0047-bomber-m2-six-bombs-and-fixed-skill-values.md) | 一个特殊炸弹槽、六种等权、角色技不入池；冰冻2秒/鸭最爱1秒、中毒4秒两跳且不续期、袋鼠最爱穿透成功飞踢CD3秒 |
+| ADR [0050](../../../.spec/decisions/0050-bomber-movement-per-tick-intent-sampling.md) | 一条Move=一个逻辑Tick的意图采样、同Tick至多一步、短按至少一步、采样内移动先于放弹、服务器不单方面续走移动；补步上限与顺延深度不锁；依赖上游GAS同Tick顺延(R1)与Client逐步推进(R2) |
 
 三档模板与边界引用[ADR0048](../../../.spec/decisions/0048-bomber-m2-map-packages-and-interaction-boundaries.md)，源表/SDK实现尚未验收。组件、实体、事件与表源落 `games/101-bomber/Gameplay/`，系统按 Sample 放根下 `*System.Server.cs`；测试源码落 `Server/Tests/Gameplay/`，测试工程落 `Tools/`。引擎唯一来源是只读 `Engine/` 发布物；旧 `modules/server-gameplay/.../Bomber/` 随迁移删除，不保留转发、条件编译或第二套规则。
 
@@ -103,8 +104,8 @@ Periodic/Duration表中的设计数值可保留。按收敛计划2026-09-29检�
 
 | Ability | 输入 | 判据 |
 |---|---|---|
-| Move | PrimaryDirection、SecondaryDirection、TurnPressed | 四向+停；新方向优先、旧垂直方向候补，反向不能候补；规则层判滑行/避险；LogicPredict |
-| PlaceBomb | 空结构 | 最近合法格心；库存走消耗步，水/同格/死者/冻结/泡泡走正规准入；失败不扣；缓冲归Ability；LogicPredict |
+| Move | PrimaryDirection、SecondaryDirection、TurnPressed | 四向+停；新方向优先、旧垂直方向候补，反向不能候补；规则层判滑行/避险；LogicPredict。一条=一个逻辑Tick的意图采样：同实体同Tick至多执行一条，其余经GAS准入顺延到后续Tick、执行前不确认，顺延上限内不得以`BusinessReject`拒掉、超限才拒（上游R1）；TurnPressed=该采样带着尚未消费的按下沿。按住时每个预测步恰好一条，松键不发即停；转向缓冲未到期时客户端发「停」采样驱动续行，「停」且无缓冲为成功但不动；服务器不单方面激活Move（ADR0050） |
+| PlaceBomb | 空结构 | 最近合法格心；库存走消耗步，水/同格/死者/冻结/泡泡走正规准入；失败不扣；缓冲归Ability；LogicPredict。同一采样内次序为移动→放弹→技能，放弹读本步移动之后的Logic位置；顺延按连接内保序，不颠倒该次序（ADR0050） |
 | Pickup | Target:NetEntityId | 自动走过触发；服务器复核距离/上限/唯一特殊槽与一次占位、离格拾回限制；AuthorityOnly |
 | UseActiveSkill | 空结构 | 当前角色的绑定主动技与Facing决定行为；闪现无落点/飞踢无目标不进CD；不自造预测 |
 | 遥控引爆意图（游戏Ability，身份/编码待ledger冻结） | 正式输入表达放弹键长按≥300ms；点按仍为PlaceBomb | 只引爆本人存活遥控弹并入同链；用真实输入Tick判断，不采信浏览器墙钟、不新增公开Engine API或玩家按键 |
@@ -251,7 +252,7 @@ RNG使用 Runtime `DeterminismContext.OpenRngStream(streamId)`，正式入口已
 回放包采用破坏性新 `schemaVersion:3`，旧Raw身份输入不得静默读取：
 
 - `scenario.json`：GameRelease/Engine manifest、schema/registry hash、config/profile/hash、seed/mapSeed、底图快照与完整地形内容hash、动态初始化结果、world/instance身份、Bot表、durationTicks；回放不重新生成历史地图。
-- `commands.ndjson`：tick、完整participant/entity身份、sequence、AbilityId与正式输入(含主/副方向)，只录实际提交输入。
+- `commands.ndjson`：tick、完整participant/entity身份、sequence、AbilityId与正式输入(含主/副方向)，只录实际提交输入。tick记**执行Tick**：被GAS同Tick顺延的输入记实际执行的Tick，不记到达Tick（ADR0050）。
 - `statehash.ndjson`：逐Tick `SHA256(manager.CaptureSnapshot() || 初始地形内容hash || 各Section(key,revision)稳定排序编码)`；固定世界身份与编码，不让不同内容同revision假相等。
 
 两次独立真实运行逐行比；空/缺帧/截断/篡改或输入/配置/底图不符均FAIL。表现关闭不改hash。日志走引擎日志组件输出logfmt，工具可转报告/NDJSON；不再造公共网络包。

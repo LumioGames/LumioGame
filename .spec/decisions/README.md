@@ -77,3 +77,4 @@
 | [0047](0047-bomber-m2-six-bombs-and-fixed-skill-values.md) | 炸弹人 M2 中毒为第六形态、冰冻固定2秒、袋鼠最爱穿透弹缩短成功飞踢冷却 | 生效 |
 | [0048](0048-bomber-m2-map-packages-and-interaction-boundaries.md) | 炸弹人 M2 三档地图参数及金箱穿透、踢弹糖、冰桥和狂暴边界 | 生效 |
 | [0049](0049-bomber-container-capacity-candidate.md) | 炸弹人容器容量、本地候选 Schema 与兼容审计迁移 | 生效 |
+| [0050](0050-bomber-movement-per-tick-intent-sampling.md) | 炸弹人移动改为逐 Tick 意图采样:按住匀速、短按至少一步、同 Tick 至多一步 | 生效 |
