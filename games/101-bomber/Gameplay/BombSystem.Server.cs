@@ -412,6 +412,12 @@ public sealed class BombSystem : EcsSystem
         else if (phase == BomberMatchPhase.Results && world.Tick >= match.PhaseEndTick.Value)
         {
             if (!BomberRoundTransition.Prepare(world)) return;
+            foreach (BomberParticipantState participant in world.Each<BomberParticipantState>())
+            {
+                var life = participant.CurrentLife.Value;
+                if (!life.IsDefault && world.IsLive(life))
+                    world.Manager.RequestCancelPendingInputs(life);
+            }
             ulong nextIndex = checked(match.MatchIndex.Value + 1);
             var nextSeed = new DeterminismContext(match.Seed.Value, world.Tick, RuntimeSchema.SchemaEpoch)
                 .OpenRngStream(FormattableString.Invariant($"bomber.match.{nextIndex}"));
