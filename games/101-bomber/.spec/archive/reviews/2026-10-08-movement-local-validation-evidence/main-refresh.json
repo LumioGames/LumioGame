@@ -1,0 +1,12 @@
+{
+  "review_base": "984f30e16c901c4705fb7eb2e9a22d5dbe73a747",
+  "publication_base": "40556477683e46a9e248812119fb3e6bd76c07c1",
+  "reviewed_core_bytes": 23511,
+  "reviewed_core_sha256": "36ef36cfd29f64c49483c93973e5e3c4faa7b3518d99a6039dbabb5b8ed1fa12",
+  "old_ledger_bytes": 515579,
+  "publication_base_ledger_bytes": 521169,
+  "publication_base_ledger_sha256": "2760a91635628057b71e76d4bc606fd7336d8c7e9017236dfa8d3428f4572c85",
+  "earlier_prefix_unchanged": true,
+  "new_prefix_unchanged": true,
+  "checkpoint": 115
+}

@@ -1,0 +1,101 @@
+{
+  "date_utc": "2026-10-08T03:35:32.892432+00:00",
+  "scope": "source review and documentation only; user performs local behavioral validation",
+  "review_sources": {
+    "LumioGame": "984f30e16c901c4705fb7eb2e9a22d5dbe73a747",
+    "LumioGameRuntime": "f69e2c9445fd5cf39b005c0857308cd96da1f04d",
+    "LumioClient": "5b7ef6101bef5250a66fc4813e75d0038da990e8",
+    "LumioGameEngine": "dc4044de7b224220aeeb7298b59ac09d59507130"
+  },
+  "pr52_addendum_source": "40556477683e46a9e248812119fb3e6bd76c07c1",
+  "publication_parent": "40556477683e46a9e248812119fb3e6bd76c07c1",
+  "report_path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-code-review-local-validation.md",
+  "report_sha256": "9d1e1a63d475bb7262f7392369678ec39cbff74d0bc09837a9877c4184ff2a65",
+  "reviewed_core_bytes": 23511,
+  "reviewed_core_sha256": "36ef36cfd29f64c49483c93973e5e3c4faa7b3518d99a6039dbabb5b8ed1fa12",
+  "reviewed_core_is_unchanged_prefix": true,
+  "ledger_base_bytes": 521169,
+  "ledger_base_sha256": "2760a91635628057b71e76d4bc606fd7336d8c7e9017236dfa8d3428f4572c85",
+  "ledger_prefix_unchanged": true,
+  "checkpoint": 115,
+  "manual_behavioral_tests_run": false,
+  "browser_or_game_started": false,
+  "production_changes": false,
+  "movement_acceptance": "FAIL",
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        ".spec/tools/lint-extensions.mjs"
+      ],
+      "exit_code": 0,
+      "stdout": "lint-extensions: OK\n",
+      "stderr": ""
+    }
+  ],
+  "files_before_this_receipt": [
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-code-review-local-validation.md",
+      "sha256": "9d1e1a63d475bb7262f7392369678ec39cbff74d0bc09837a9877c4184ff2a65"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/README.md",
+      "sha256": "8b552233ce3c4ac34decd9b7521347279a7809ee52d27c699979c82d8a7d47e6"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/client-final-review.md",
+      "sha256": "4bbc2809901d708fae40a91bb20098ff03bd13088c8f9b9bd42d34a319a72745"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/client-review.md",
+      "sha256": "2e002941e5ce61d684cc37f8b6da7d7291fc04633abedd6ca00b0afd015917b9"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/game-review.md",
+      "sha256": "01e49e2aff7bd4b52066a4027b9239ad7d95e210a885e921a8c91943bb3fbc0d"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/main-refresh.json",
+      "sha256": "7310b747f8d3e345c30495d4e7f4a5034eecd4656c87dd2a068bc7f2dfee407a"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/pr52-input-confirmation.md",
+      "sha256": "82f07faa897a0c7a4022e19200c8432c6219c0f725ae0b8670b1654c56a0cb05"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/pr52-input-review.md",
+      "sha256": "d09d83e263e90050cbd8f23c240289467fcc11689b52821cc863bffd93798ba6"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/pr52-trace-confirmation.md",
+      "sha256": "77adda37bc92eb4e15be5d28a378b298a77b86eda925d0f85835bcd44dba4200"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/pr52-trace-review.md",
+      "sha256": "416cd620fccf2cad2d798673d781574c636123cdc36a0d79d013b51ca7dcda5d"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/runtime-final-review.md",
+      "sha256": "ec3493a31c7df73142bc0a7c29acfc57340f9f80831f558f2e9e46199ec4d951"
+    },
+    {
+      "path": "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-local-validation-evidence/runtime-review.md",
+      "sha256": "89614d9b80954a51fed93bc9d2528dc1f0947456642193f508558876cc2c754b"
+    },
+    {
+      "path": "games/101-bomber/.spec/plans/2026-10-02-delivery-progress.md",
+      "sha256": "df798595cdf7ca88e3a6d9703c43ce0f220f4fb95b02631d41e8f504f129b82e"
+    }
+  ]
+}
