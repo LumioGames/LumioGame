@@ -17,12 +17,18 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
   const visibility = () => doc?.visibilityState ?? 'unknown';
   const number = value => (typeof value === 'number' && Number.isFinite(value) ? value : null);
   const text = value => (value === undefined || value === null ? null : String(value));
+  const publication = pose => (pose ? {
+    seq: text(pose.publicationSequence), step: text(pose.localStepOrdinal), tick: text(pose.executionTick),
+    inputSeq: text(pose.inputSequence), cause: text(pose.cause),
+    tx: number(pose.target?.position?.x), tz: number(pose.target?.position?.z),
+  } : null);
   return {
     key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility() }); },
     input(kind, accepted, args = []) { push({ k: 'input', t: now(), kind, accepted, args }); },
-    // Inputs published before tickAt are admitted by this pump's Session Tick.
-    pump({ startedAt, tickAt, tickMs, totalMs, state }) {
-      push({ k: 'pump', t: startedAt, tickAt, tickMs, totalMs, state, vis: visibility() });
+    // Inputs published before tickAt are admitted by this pump's Session Tick; pose is the owner
+    // publication read right after that Tick.
+    pump({ startedAt, tickAt, tickMs, totalMs, state, pose = null }) {
+      push({ k: 'pump', t: startedAt, tickAt, tickMs, totalMs, state, vis: visibility(), pose: publication(pose) });
     },
     frame({ now: frameNow, dt, renderTick, localPose, local }) {
       const target = localPose?.target?.position;

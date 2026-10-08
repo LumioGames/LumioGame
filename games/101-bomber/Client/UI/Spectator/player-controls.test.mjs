@@ -369,3 +369,37 @@ test('interval driver ignores pump calls', () => {
   assert.deepEqual(moves, [[1, 0, true], [1, 0, false]]);
   controls.destroy();
 });
+
+test('pump driver keeps a tap on another direction while one is held, like the interval press', () => {
+  const target = new EventTarget();
+  const moves = [];
+  const controls = createPlayerInput({ target, ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, driver: 'pump' });
+  const key = (type, code) => {
+    const event = new Event(type, { cancelable: true });
+    Object.assign(event, { code, repeat: false }); target.dispatchEvent(event);
+  };
+  key('keydown', 'KeyW');
+  controls.pump();
+  key('keydown', 'KeyD'); key('keyup', 'KeyD');
+  controls.pump();
+  controls.pump();
+  assert.deepEqual(moves, [[1, 0, true], [2, 1, true], [1, 0, false]]);
+  controls.destroy();
+});
+
+test('pump driver publishes the held key as a turn after the touch direction is released', () => {
+  const target = new EventTarget();
+  const moves = [];
+  const controls = createPlayerInput({ target, ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, driver: 'pump' });
+  const event = new Event('keydown', { cancelable: true });
+  Object.assign(event, { code: 'KeyW', repeat: false }); target.dispatchEvent(event);
+  controls.setTouchDirection(3);
+  controls.pump();
+  controls.setTouchDirection(0);
+  controls.pump();
+  controls.pump();
+  assert.deepEqual(moves, [[3, 0, true], [1, 0, true], [1, 0, false]]);
+  controls.destroy();
+});

@@ -31,8 +31,10 @@ export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, r
   function move(turn = false) {
     if (disposed || !ready() || blocked()) { clear(); return; }
     const directions = touch[0] ? touch : [...new Set(held.values())].reverse();
-    if (directions.length) sendMove(directions[0], directions[1] ?? 0, turn);
-    else if (tapDirection) sendMove(tapDirection, 0, true);
+    // A press released before its pump still publishes once, ahead of what is still held.
+    if (tapDirection && directions[0] !== tapDirection)
+      sendMove(tapDirection, directions.find(direction => direction !== tapDirection) ?? 0, true);
+    else if (directions.length) sendMove(directions[0], directions[1] ?? 0, turn);
   }
   function latch(direction) {
     turnPending = true;
@@ -87,6 +89,7 @@ export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, r
     touch = primary ? [primary, secondary] : [0, 0];
     if (!pumped) move(true);
     else if (primary) latch(primary);
+    else turnPending = true;
     updateTimer();
   }
   function clear() {

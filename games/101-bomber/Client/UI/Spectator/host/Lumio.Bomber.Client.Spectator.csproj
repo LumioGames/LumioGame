@@ -64,6 +64,7 @@
     <Content Include="..\index.html" Link="wwwroot\index.html" />
     <Content Include="..\main.js" Link="wwwroot\main.js" />
     <Content Include="..\player-controls.mjs" Link="wwwroot\player-controls.mjs" />
+    <Content Include="..\movement-trace.mjs" Link="wwwroot\movement-trace.mjs" />
     <Content Include="..\game-view.mjs" Link="wwwroot\game-view.mjs" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.js" Link="wwwroot\presentation\presentation.js" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.css" Link="wwwroot\presentation\presentation.css" />
