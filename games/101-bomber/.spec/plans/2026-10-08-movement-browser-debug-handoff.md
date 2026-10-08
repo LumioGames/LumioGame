@@ -25,7 +25,7 @@
 | Runtime | `8752a69997292ebfce0ffca1ec77debb10a20f2c` | 真实权威纠偏时，把此前已经显示的有效前探一次性转入纠偏残差，避免直接丢掉导致回跳。 |
 | Runtime | `7fa253ce9f1d383c81129a4fd5188f2d83c77a78` | 有资格的前探在原 h 内增大，h 后连续收回，2h 清零；过期才完成的输入不复活前探。**这仍会真实向后收回，速度存在折角，不能默认就是正确最终方案。** |
 | Runtime | `f43dbe81e06a3dc839a6fa9541ee8261fee3724f` | 旧 scratch 断言12706→12070，历史 typed Transform 计费差636有证据；未改预算或生产计费。 |
-| Runtime | `de5a44e34be4d777b6c287d36d8bcedd53cb54e2`，PR [277](https://github.com/LumioGames/LumioGameRuntime/pull/277) | 整合到当时 main `9bc2fc2d`；scratch 冲突保留 main 已合入的更完整精确边界/Undo 测试，生产 Owner 代码保持上述修复。接手读回 PR 状态及最终 merge SHA，不把 OPEN 当 MERGED。 |
+| Runtime | `de5a44e34be4d777b6c287d36d8bcedd53cb54e2`，PR [277](https://github.com/LumioGames/LumioGameRuntime/pull/277)，merge `f69e2c9445fd5cf39b005c0857308cd96da1f04d` | 整合到当时 main `9bc2fc2d`；scratch 冲突保留 main 已合入的更完整精确边界/Undo 测试，生产 Owner 代码保持上述修复。Owner后续明确授权强制合并，现已读回MERGED；必需Build排队时合入，不代表CI通过。 |
 | Game | `b07f45125eb71bc60466ff78570a6eab6ef00610` | Session Owner Model 完整 pose 经浏览器桥接；自角色/镜头/标签用本地 Model XZ，远端仍插值。当前 Doll 朝向仍从显示位移差推导，未消费 Model quaternion 来表达玩法朝向。 |
 | Game | `474d557`、`5680905be791032a70d61ce20c16b4b827f7f128`；PR [48](https://github.com/LumioGames/LumioGame/pull/48)，merge `8aaab64a53a4682dfd6ae275604c9ac9fd8ce195` | 前者整合 main 文档/原型并处理六处冲突；后者合入 b07 消费接线。原型与 main af385a9 一致；c490d70 配置/身份原始字节保护保留。交接文档提交fc361b5同在已合入PR48内。 |
 | Game | `b475473`、`1eb7aaa` | 旧「按接收时间再插值自角色」方案已撤回，**不要重新合入**另一个旧工作树18868cc。 |
@@ -73,6 +73,6 @@ A/B旧入口18105，DS18333，平台18402。交接复查18105/18333已不监听�
 
 18085发布身份、生产schema等Owner门保持OPEN；受保护18081/18082/18084/18085/18092–18097不动。保留他人脏文件/未跟踪文件（特别是`.sdd`迁移草稿、`.zcodeignore`、`pelican-cycling.svg`）和旧封件。不要杀别人的构建/Runner任务以腾资源。
 
-Runtime PR277若仍OPEN：必需Build在self-hosted runner排队，普通merge被保护拒绝，auto-merge未启用，禁止`--admin`或伪造check。本地编译绿不自动替代GitHub门；读回实际状态处理，不能写已合并。仓库/工作树位于 `C:/Work/LumioGames/.101-restore-01/`，证据路径即使git忽略也保留，不清理。
+Runtime PR277已按Owner最新原话「你直接强制合并 全部合并进去」完成管理员合并，merge `f69e2c9445fd5cf39b005c0857308cd96da1f04d`。此前普通merge和直接`--admin`均被排队Build阻挡，因此本次仅临时解除main的管理员执行保护，指定精确HEAD合并后立即恢复；必需检查列表未改，管理员保护已读回enabled=true。证据`R/owner-forced-merge-01/receipt.json`及前后保护快照。本次授权不自动批准其他Owner门或未来绕保护操作；未伪造CI通过。仓库/工作树位于 `C:/Work/LumioGames/.101-restore-01/`，证据路径即使git忽略也保留，不清理。
 
 每段实质工作追加账本并提交，记录实际源码/包/页面字节身份。最终交付必须有浏览器可复现实验、根因因果证据、所属仓修复与回归、独审、官方complete包/消费构建/新现场，以及用户前台手感通过。现在不要把这个任务标完成。

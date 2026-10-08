@@ -1909,3 +1909,10 @@ PR48必需README policy成功。自动LumioBomber CI三个非必需作业build/t
 Runtime PR277此时仍OPEN，exact head de5a44e34be4d777b6c287d36d8bcedd53cb54e2，required Build queued；本地完整build和独审均PASS，但GitHub保护不接受本地收据替代其指定GitHub Actions检查，auto-merge未启用。仓库自身runner列表为空，组织runner查询403无管理权限；已知WSL runner服务active、另一Worker忙碌，未打断他人作业。没有绕过保护、伪造检查、改CI调度或宣称Runtime已合入。后续以GitHub读回为准。
 
 本段为用户指定的提交合并与交接收尾；移动手感仍FAIL、浏览器根因未定案、热更未实施、Game35现场停止。Owner门保持。接手从[提示词](2026-10-08-movement-browser-debug-handoff.md)及checkpoint110继续，不能重复把历史119项聚焦绿当成前台通过。
+### 移动手感排障：checkpoint112，Owner明确授权强制合并，Runtime PR277已MERGED且保护恢复（2026-10-08）
+
+用户最新原话「你直接强制合并 全部合并进去」明确覆盖本次GitHub合并等待限制。重读Game PR48/49和Client PR181均已MERGED，唯一剩余Runtime PR277仍为exact head de5a44e34be4d777b6c287d36d8bcedd53cb54e2、Build queued。直接--admin仍被enforce_admins阻挡；在本次明确授权下仅临时解除main对管理员的执行保护，用--merge --admin --match-head-commit合入指定HEAD，finally立即恢复管理员保护。没有删除必需检查、改变其列表或伪造Build成功。
+
+[强制合并收据及保护快照](../../../../.run/20261007-runtime-movement-repair-01/owner-forced-merge-01/receipt.json)读回[Runtime PR277](https://github.com/LumioGames/LumioGameRuntime/pull/277)为MERGED，merge f69e2c9445fd5cf39b005c0857308cd96da1f04d，raw0；enforce_admins恢复enabled=true，required_status_checks与事前逐值一致。源码仍是已独审、完整solution编译通过的de5；本次只完成已授权合并，没有重测或重部署。Game主交付8aaab64、交接d6bea35和Client5b7ef610均已合入；当前没有本轮源代码PR等待合并。
+
+接手提示词已更新Runtime最终merge号及本次授权事实，checkpoint110/111的当时OPEN记录原样保留。移动手感仍FAIL，Game35现场停止，默认SDK版本CI失败及真实网页调试/热更/正式交付仍待后续。ADR142、18085与生产schema门不受此次源码强制合并授权影响。
