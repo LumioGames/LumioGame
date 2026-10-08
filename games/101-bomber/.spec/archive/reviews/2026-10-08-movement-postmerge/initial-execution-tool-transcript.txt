@@ -1,0 +1,50 @@
+TRANSCRIPT COPY — NOT THE ORIGINAL RAW LOG FILE
+
+Source: functions.exec → tools.exec_command response observed in this conversation.
+Command: node review-work/game/consumer-probe.mjs
+Working directory: /workspace/scratch/d42e92848250
+Tool chunk_id: a4f711
+Tool-reported wall_time_seconds: 0.015013288
+Tool-reported exit_code: 1
+Tool-reported original_token_count: 222
+
+The text below is a verbatim copy of the tool's output field, transcribed from
+the visible conversation after the provisional local log was overwritten by
+the first portability rerun. This does not restore or authenticate that lost
+raw log file. The first probe used fixed local source paths; the later portable
+probe reads the fixed commit through git and has its own separate receipt.
+
+BEGIN VERBATIM TOOL OUTPUT
+(node:2) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "scope": "ISOLATED_ACTUAL_METHODS_SYNTHETIC_POSES_NOT_BROWSER_NOT_WASM_NOT_NATIVE",
+  "pass": 1,
+  "fail": 3,
+  "cases": [
+    {
+      "name": "synthetic Model correction 60 Hz",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 46.6527202772908
+    },
+    {
+      "name": "synthetic Model correction 120 Hz",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 25.072564243489605
+    },
+    {
+      "name": "stationary Model facing turns right",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 0
+    },
+    {
+      "name": "monotonic Model motion control",
+      "passed": true,
+      "maxYawErrorDegrees": 0
+    }
+  ]
+}
+END VERBATIM TOOL OUTPUT

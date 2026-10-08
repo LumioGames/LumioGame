@@ -1,0 +1,19 @@
+{
+  "kind": "actual-command-execution",
+  "scope": "ISOLATED_ACTUAL_METHODS_SYNTHETIC_POSES_NOT_BROWSER_NOT_WASM_NOT_NATIVE",
+  "command": [
+    "node",
+    "consumer-probe.mjs",
+    "<Game checkout>",
+    "<new output directory>"
+  ],
+  "node_version": "v24.19.0",
+  "exit_code": 1,
+  "pass": 1,
+  "fail": 3,
+  "script_sha256": "f03282aae9d7f332fcc595ec2bcaebac8e381f6a53b0e14651b7f1eec3c790aa",
+  "result_sha256": "c28919cab61c82ff1f19420182d62dbce934a1f0c51c8902f123f7c93d9c6e66",
+  "log_sha256": "42696f5f1cbd460c8ced7dddd911615db613faac55df4d0a97e67fb63addd2fa",
+  "compared_with_portability01_equal": true,
+  "archive_edit": "Only output file creation changed to exclusive wx to preserve existing receipts; production method extraction unchanged."
+}

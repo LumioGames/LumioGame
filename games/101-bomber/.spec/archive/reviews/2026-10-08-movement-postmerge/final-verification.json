@@ -1,0 +1,30 @@
+{
+  "scope": "Final review documentation/probe archive verification; not gameplay acceptance",
+  "checks": [
+    {
+      "command": "node .spec/tools/lint-extensions.mjs",
+      "exit_code": 0,
+      "stdout": "lint-extensions: OK\n",
+      "stderr": ""
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "ledger_original_bytes_preserved": 511397,
+  "ledger_final_bytes": 515579,
+  "final_sha256": {
+    "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-postmerge/README.md": "66bf92b0f8192638ef229015bd9d1e0ebb171cc34fb3c7390d72b01e98828988",
+    "games/101-bomber/.spec/plans/2026-10-02-delivery-progress.md": "425d56b3427559774b89ffcd8bed268a225d57d0f9b690bf29bd157cec5110ae",
+    "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-postmerge/consumer-probe.mjs": "f03282aae9d7f332fcc595ec2bcaebac8e381f6a53b0e14651b7f1eec3c790aa",
+    "games/101-bomber/.spec/archive/reviews/2026-10-08-movement-postmerge/root-01/consumer-probe.json": "c28919cab61c82ff1f19420182d62dbce934a1f0c51c8902f123f7c93d9c6e66"
+  },
+  "changes_since_root01_validation": "Removed one extra appended EOF LF; corrected README test attribution and reference; preserved prior validation receipt unchanged.",
+  "review_status": "Game and Runtime final hash addenda PASS; Client earlier-version PASS, subsequent mechanical deltas independently covered by Game and Runtime.",
+  "production_changed": false,
+  "real_browser_trace_obtained": false,
+  "movement_acceptance": "FAIL"
+}

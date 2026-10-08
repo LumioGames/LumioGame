@@ -1,0 +1,32 @@
+{
+  "scope": "ISOLATED_ACTUAL_METHODS_SYNTHETIC_POSES_NOT_BROWSER_NOT_WASM_NOT_NATIVE",
+  "pass": 1,
+  "fail": 3,
+  "cases": [
+    {
+      "name": "synthetic Model correction 60 Hz",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 46.6527202772908
+    },
+    {
+      "name": "synthetic Model correction 120 Hz",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 25.072564243489605
+    },
+    {
+      "name": "stationary Model facing turns right",
+      "passed": false,
+      "rotationReads": 0,
+      "maxYawErrorDegrees": 0
+    },
+    {
+      "name": "monotonic Model motion control",
+      "passed": true,
+      "maxYawErrorDegrees": 0
+    }
+  ]
+}
+(node:6) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

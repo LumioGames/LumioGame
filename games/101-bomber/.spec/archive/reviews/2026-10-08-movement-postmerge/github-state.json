@@ -1,0 +1,165 @@
+{
+  "kind": "github_readback_observations",
+  "observed_date_utc": "2026-10-08",
+  "baseline": {
+    "LumioGame": {
+      "sha": "f14bd502e9807d58890b4e9490d041bdab65ce05",
+      "tree": "b5fd68a8ab418cd5253758981c0aa1fb1082069f",
+      "protected": true,
+      "checks": [
+        "README policy"
+      ],
+      "commit_date": "2026-10-08T02:17:31Z"
+    },
+    "LumioGameRuntime": {
+      "sha": "f69e2c9445fd5cf39b005c0857308cd96da1f04d",
+      "tree": "2927aee1b93b5342689b353e9f1a79b9e23293fa",
+      "protected": true,
+      "checks": [
+        "Build"
+      ],
+      "commit_date": "2026-10-08T02:15:36Z"
+    },
+    "LumioClient": {
+      "sha": "5b7ef6101bef5250a66fc4813e75d0038da990e8",
+      "tree": "b8c37e56b97a27233ed4bc311243b4867ae8e24c",
+      "protected": true,
+      "checks": [],
+      "commit_date": "2026-10-08T01:06:06Z"
+    },
+    "LumioGameEngine": {
+      "sha": "4bf8d2835b07b51f71145b0e57d79f864cd6db58",
+      "tree": "008ec52f075525956144d7324c6887609a5a90f3",
+      "protected": true,
+      "checks": [],
+      "commit_date": "2026-10-08T01:52:34Z"
+    }
+  },
+  "checks": {
+    "LumioGameRuntime": {
+      "checks": [
+        {
+          "name": "Build and behavioral tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "de5a44e34be4d777b6c287d36d8bcedd53cb54e2",
+          "started_at": "2026-10-08T01:59:13Z",
+          "completed_at": "2026-10-08T01:59:12Z",
+          "details_url": "https://github.com/LumioGames/LumioGameRuntime/actions/runs/37715615529/job/113111278258"
+        },
+        {
+          "name": "Build",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "de5a44e34be4d777b6c287d36d8bcedd53cb54e2",
+          "started_at": "2026-10-08T02:15:26Z",
+          "completed_at": "2026-10-08T02:16:40Z",
+          "details_url": "https://github.com/LumioGames/LumioGameRuntime/actions/runs/37715615529/job/113111277058"
+        }
+      ]
+    },
+    "LumioGame": {
+      "checks": [
+        {
+          "name": "Engine admit/spawn cases on the Bomber registry (ADR-115 §3)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:15Z",
+          "completed_at": "2026-10-08T02:05:14Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133967/job/113112891298"
+        },
+        {
+          "name": "external-clone",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:17Z",
+          "completed_at": "2026-10-08T02:05:27Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133967/job/113112890074"
+        },
+        {
+          "name": "build",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:17Z",
+          "completed_at": "2026-10-08T02:05:30Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133967/job/113112889982"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:16Z",
+          "completed_at": "2026-10-08T02:05:40Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133967/job/113112889940"
+        },
+        {
+          "name": "Build and test",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:16Z",
+          "completed_at": "2026-10-08T02:06:24Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133733/job/113112889409"
+        },
+        {
+          "name": "README policy",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "fc361b5576486092812a25b4b6560ee159fe3fb3",
+          "started_at": "2026-10-08T02:05:16Z",
+          "completed_at": "2026-10-08T02:05:23Z",
+          "details_url": "https://github.com/LumioGames/LumioGame/actions/runs/37716133733/job/113112889100"
+        }
+      ]
+    },
+    "LumioClient": {
+      "checks": [
+        {
+          "name": "dotnet test (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "b829cc273e5bc05c194a01fbacbc8e41109a02c4",
+          "started_at": "2026-10-08T00:35:59Z",
+          "completed_at": "2026-10-08T00:35:59Z",
+          "details_url": "https://github.com/LumioGames/LumioClient/actions/runs/37708609793/job/113088878927"
+        },
+        {
+          "name": "dotnet test (Linux)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "b829cc273e5bc05c194a01fbacbc8e41109a02c4",
+          "started_at": "2026-10-08T00:35:59Z",
+          "completed_at": "2026-10-08T00:35:59Z",
+          "details_url": "https://github.com/LumioGames/LumioClient/actions/runs/37708609793/job/113088878872"
+        },
+        {
+          "name": "Build",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b829cc273e5bc05c194a01fbacbc8e41109a02c4",
+          "started_at": "2026-10-08T00:51:18Z",
+          "completed_at": "2026-10-08T00:55:08Z",
+          "details_url": "https://github.com/LumioGames/LumioClient/actions/runs/37708609793/job/113088877510"
+        }
+      ]
+    }
+  },
+  "release_pin": {
+    "sha": "702f9d903e4a6ee78e8d9c4cb06408599c6a19c8",
+    "manifest_blob": "e7a1ffada41ffe5dfe0315334c1e508243ac7430",
+    "version": "0.0.4-main.ecece8a",
+    "platforms": [
+      "win-x64"
+    ]
+  },
+  "release_refs": {
+    "main": "80ec8e9257d39856a90bbe430bcd511a3fd0bf06",
+    "latest_observed_tag": "v0.0.4",
+    "complete31_payload_obtained": false
+  },
+  "scope": "GitHub repository observations only; no Windows local state or real browser evidence; source PR checks are not rerun results."
+}

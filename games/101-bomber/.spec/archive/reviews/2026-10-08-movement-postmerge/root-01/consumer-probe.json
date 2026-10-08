@@ -1,0 +1,231 @@
+{
+  "scope": "ISOLATED_ACTUAL_METHODS_SYNTHETIC_POSES_NOT_BROWSER_NOT_WASM_NOT_NATIVE",
+  "commit": "f14bd502e9807d58890b4e9490d041bdab65ce05",
+  "sources": [
+    {
+      "file": "view/runtime.ts",
+      "sha256": "9aa51b0531c92dfc8c567494d26169acc71eee634812833fe0bf9f3015c37192"
+    },
+    {
+      "file": "view/world/dolls.ts",
+      "sha256": "e19f4fbc33af3ba9ee71b95420ad5228c35b7c824686c1c0e6a193663a4ca2aa"
+    },
+    {
+      "file": "view/camera.ts",
+      "sha256": "bb13b316d5dc6ad9508aa5591b9dc692e8e4dd0c4496f612f52af9144747f45b"
+    },
+    {
+      "file": "view/logic/interp.ts",
+      "sha256": "9d0b6737ba35bd79e37e4278c076e54e45df34fa1fa919eeb61378f21f8db4a5"
+    },
+    {
+      "file": "view/logic/camera-math.ts",
+      "sha256": "1be1835483631bbd48b0f4d8a90e223d0bddf4a868b1840218aa42eb157161db"
+    }
+  ],
+  "sceneBackend": "Object property stubs; entire unmodified ViewRuntime.updateDolls/Doll.update/CameraRig.update and source math execute; decoration/status helpers are neutral stubs; no Game/Runtime simulation",
+  "cases": [
+    {
+      "name": "synthetic Model correction 60 Hz",
+      "kind": "expected RED for orientation invariance",
+      "passed": false,
+      "rotationReads": 0,
+      "rows": [
+        {
+          "frame": 0,
+          "z": 9.975,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.975,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400105256218687,
+          "cameraTargetZ": 9.404999999999998,
+          "rotationReads": 0
+        },
+        {
+          "frame": 1,
+          "z": 9.95,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.95,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400345648835419,
+          "cameraTargetZ": 9.403999999999996,
+          "rotationReads": 0
+        },
+        {
+          "frame": 2,
+          "z": 9.96,
+          "deltaZ": 0.010000000000001563,
+          "dirZ": 1,
+          "yawRadians": -2.327349079739147,
+          "yawErrorDegrees": 46.6527202772908,
+          "rootZ": 9.96,
+          "rootYaw": -2.327349079739147,
+          "cameraLookZ": 9.422302165336193,
+          "cameraTargetZ": 10.432800000000007,
+          "rotationReads": 0
+        },
+        {
+          "frame": 3,
+          "z": 9.935,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": -2.538386178008235,
+          "yawErrorDegrees": 34.56118522578444,
+          "rootZ": 9.935,
+          "rootYaw": -2.538386178008235,
+          "cameraLookZ": 9.456085258601025,
+          "cameraTargetZ": 9.466759999999994,
+          "rotationReads": 0
+        }
+      ]
+    },
+    {
+      "name": "synthetic Model correction 120 Hz",
+      "kind": "expected RED for orientation invariance",
+      "passed": false,
+      "rotationReads": 0,
+      "rows": [
+        {
+          "frame": 0,
+          "z": 9.975,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.975,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.399860199740964,
+          "cameraTargetZ": 9.375,
+          "rotationReads": 0
+        },
+        {
+          "frame": 1,
+          "z": 9.95,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.95,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.399334169174923,
+          "cameraTargetZ": 9.35,
+          "rotationReads": 0
+        },
+        {
+          "frame": 2,
+          "z": 9.96,
+          "deltaZ": 0.010000000000001563,
+          "dirZ": 1,
+          "yawRadians": -2.7039938556230982,
+          "yawErrorDegrees": 25.072564243489605,
+          "rootZ": 9.96,
+          "rootYaw": -2.7039938556230982,
+          "cameraLookZ": 9.405134919792049,
+          "cameraTargetZ": 10.56,
+          "rotationReads": 0
+        },
+        {
+          "frame": 3,
+          "z": 9.935,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": -2.7649478777058416,
+          "yawErrorDegrees": 21.580156033801195,
+          "rootZ": 9.935,
+          "rootYaw": -2.7649478777058416,
+          "cameraLookZ": 9.415671258422776,
+          "cameraTargetZ": 9.335,
+          "rotationReads": 0
+        }
+      ]
+    },
+    {
+      "name": "stationary Model facing turns right",
+      "kind": "expected RED for quaternion consumption",
+      "passed": false,
+      "rotationReads": 0,
+      "rows": [
+        {
+          "frame": 0,
+          "z": 10,
+          "deltaZ": 0,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 10,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.402526149248484,
+          "cameraTargetZ": 9.52,
+          "rotationReads": 0
+        }
+      ]
+    },
+    {
+      "name": "monotonic Model motion control",
+      "kind": "control",
+      "passed": true,
+      "rows": [
+        {
+          "frame": 0,
+          "z": 9.975,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.975,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400105256218687,
+          "cameraTargetZ": 9.404999999999998,
+          "rotationReads": 0
+        },
+        {
+          "frame": 1,
+          "z": 9.95,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.95,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400345648835419,
+          "cameraTargetZ": 9.403999999999996,
+          "rotationReads": 0
+        },
+        {
+          "frame": 2,
+          "z": 9.925,
+          "deltaZ": -0.02499999999999858,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.925,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400522548565515,
+          "cameraTargetZ": 9.398200000000005,
+          "rotationReads": 0
+        },
+        {
+          "frame": 3,
+          "z": 9.9,
+          "deltaZ": -0.025000000000000355,
+          "dirZ": -1,
+          "yawRadians": 3.141592653589793,
+          "yawErrorDegrees": 0,
+          "rootZ": 9.9,
+          "rootYaw": 3.141592653589793,
+          "cameraLookZ": 9.400341087732395,
+          "cameraTargetZ": 9.388560000000002,
+          "rotationReads": 0
+        }
+      ]
+    }
+  ],
+  "pass": 1,
+  "fail": 3
+}
