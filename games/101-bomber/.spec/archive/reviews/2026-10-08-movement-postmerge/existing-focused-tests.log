@@ -1,0 +1,41 @@
+✔ selection follows local readiness and phases without rebuilding presentation (4.291899ms)
+✔ owner pose maps only the current raw life to its renderer handle and retains a valid pose without interpolation (3.468281ms)
+✔ same-tick publication replacement is accepted while old entity, sequence and generation are rejected (1.131163ms)
+✔ older consumers without an owner callback preserve their optional rendering contract (0.931958ms)
+✔ inactive or replaced Session lifetime clears a cached pose even before a new publication exists (0.994732ms)
+✔ a new GameView with missing match remains hidden and cannot act as a first screen (2.171171ms)
+✔ a new GameView with missing config remains hidden and cannot act as a first screen (0.841064ms)
+✔ an established GameView hides stale evidence while current match is missing, then resumes only a fresh projection (0.958548ms)
+✔ an established GameView hides stale evidence while current config is missing, then resumes only a fresh projection (0.975924ms)
+✔ a replacement terrain waiting window hides the whole root and clears old evidence without retiring its renderer (1.479599ms)
+✔ a null fresh projection cannot leave the previous active frame visible (1.201457ms)
+✔ input readiness follows the current Session and is also disabled during a hidden projection window (0.840233ms)
+✔ terrain faults remain the same thrown error and cannot preserve stale active presentation (2.200289ms)
+✔ a genuine changed local renderer ID still retires its former renderer (0.71644ms)
+✔ an unavailable zero authority frame waits without changing the same-match timeline, then resumes at 10 (0.83793ms)
+✔ an unavailable zero authority frame waits without changing the same-match timeline, then resumes at 12 (0.659256ms)
+✔ an initial zero authority frame cannot create terrain, an adapter, or a first screen (0.690612ms)
+✔ a zero frame from another match waits before retiring the old timeline, then a real new-match frame rebuilds it (1.454843ms)
+✔ a positive tick regression still reaches the adapter and propagates its original guard error (0.787305ms)
+✔ only the string zero waits; undefined still reaches the strict projection delegate (1.726044ms)
+✔ only the string zero waits; 0 still reaches the strict projection delegate (1.024185ms)
+✔ render callback uses only the small owner export and retires with its view or connection attempt (4.915732ms)
+✔ HUD and touch buttons retain separate held sources until both are released (2.607287ms)
+✔ bomb button reports edges and held pulses without deciding duration in the browser (0.746184ms)
+✔ a quick tap preserves begin and end while focus loss cancels without placing (0.60834ms)
+✔ touch and keyboard bomb sources share one gesture and cadence with movement (0.428413ms)
+✔ pointer cancellation reports cancel and never synthesizes a short-tap end (0.962033ms)
+✔ loss of input readiness cancels a held bomb on the next pulse (0.292313ms)
+✔ touch and keyboard share one cadence, touch wins, and release resumes held keys (0.422545ms)
+✔ movement is gated, repeats only while held, and clears on key release or focus loss (0.498407ms)
+✔ Shift and pointer skill send once without placing a bomb, then stop on close and disposal (0.598316ms)
+✔ focused UI, hidden page, and blur release held movement and reject skill keys (0.627319ms)
+✔ a focused pointer direction button keeps movement repeating until release (0.536164ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.792908

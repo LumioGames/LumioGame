@@ -1,0 +1,30 @@
+{
+  "scope": "Review archive and append-only ledger validation; no production build or acceptance",
+  "spec_lint": {
+    "command": "node .spec/tools/lint-extensions.mjs",
+    "exit_code": 0,
+    "output_sha256": "c8cb1568dc856e9cd4ae6dfce71facf0ac763433e94eff7234f34908e36cf0c1"
+  },
+  "ledger": {
+    "baseline": "f14bd502e9807d58890b4e9490d041bdab65ce05",
+    "original_byte_count": 511397,
+    "new_byte_count": 515580,
+    "original_prefix_equal": true
+  },
+  "game_focused_tests": {
+    "command": "node --test games/101-bomber/Client/UI/Spectator/game-view.test.mjs games/101-bomber/Client/UI/Spectator/owner-presentation.test.mjs games/101-bomber/Client/UI/Spectator/player-controls.test.mjs",
+    "exit_code": 0,
+    "tests": 33,
+    "pass": 33,
+    "fail": 0,
+    "skip": 0,
+    "raw_output_sha256": "4c2ba44ae1b3a84f2b9bda2cefbcbd8cae250c06c9fba3dc12a3f6fcbc8b2a5d",
+    "origin": "Game reviewer actual run; not rerun by this validation wrapper"
+  },
+  "not_run": [
+    "TypeScript/Vitest owner-pose suite",
+    "Native/ECS/GAS/Client behavior suites",
+    "actual A/B browser trace",
+    "official complete build"
+  ]
+}

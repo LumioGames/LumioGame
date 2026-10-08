@@ -1916,3 +1916,19 @@ Runtime PR277此时仍OPEN，exact head de5a44e34be4d777b6c287d36d8bcedd53cb54e2
 [强制合并收据及保护快照](../../../../.run/20261007-runtime-movement-repair-01/owner-forced-merge-01/receipt.json)读回[Runtime PR277](https://github.com/LumioGames/LumioGameRuntime/pull/277)为MERGED，merge f69e2c9445fd5cf39b005c0857308cd96da1f04d，raw0；enforce_admins恢复enabled=true，required_status_checks与事前逐值一致。源码仍是已独审、完整solution编译通过的de5；本次只完成已授权合并，没有重测或重部署。Game主交付8aaab64、交接d6bea35和Client5b7ef610均已合入；当前没有本轮源代码PR等待合并。
 
 接手提示词已更新Runtime最终merge号及本次授权事实，checkpoint110/111的当时OPEN记录原样保留。移动手感仍FAIL，Game35现场停止，默认SDK版本CI失败及真实网页调试/热更/正式交付仍待后续。ADR142、18085与生产schema门不受此次源码强制合并授权影响。
+
+### 移动手感排障：checkpoint113，GitHub重新核验、合入后源码Review与真实消费方法局部RED；浏览器现场仍缺（2026-10-08）
+
+用户已连接GitHub，本轮重新核实Game main f14bd502e9807d58890b4e9490d041bdab65ce05、Runtime main f69e2c9445fd5cf39b005c0857308cd96da1f04d、Client main 5b7ef6101bef5250a66fc4813e75d0038da990e8、Engine main 4bf8d2835b07b51f71145b0e57d79f864cd6db58。PR48/277/181均读回MERGED。Game新checkout初始clean、单工作树；当前环境是云端Linux，未取得Windows C:/Work工作树、.run原始封件或本机loopback服务，不能继承现场存活假设。Game PR48是累计玩法/配置/文档交付，本轮只审指定移动链；PR49/50之后所审生产源码与b07一致。
+
+[本轮汇总Review](../archive/reviews/2026-10-08-movement-postmerge/README.md)确认：Game完整Owner pose虽然已桥接，但Doll只消费Model XZ，朝向/镜头方向仍从显示位置差推导；现有Gameplay Facing未写入Logic rotation。真实生产ViewRuntime/Doll/Camera方法加合成pose与中性场景stub的[局部实验](../archive/reviews/2026-10-08-movement-postmerge/root-01/receipt.json)raw1，3项目标RED/1项单调对照PASS；0.01格回拉在60/120Hz合成采样下分别产生约46.65/25.07度身体偏角，rotation读取0次。[现有Node消费/输入测试](../archive/reviews/2026-10-08-movement-postmerge/existing-focused-tests.log)33/33、0skip、raw0。此处Hz为方法采样参数；不是浏览器、WASM、Native或Game35真实帧率/回拉次数。早期临时日志覆盖失误已披露，正式引用新目录root-01收据，未把转录副本冒充原始文件。
+
+Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有真实反向速度。新增两个精确候选：同ordinal较晚无位移publication可能清掉已有非零尾；同一次pump真实耗时跨h却仍用起点时间判断首次完成资格。两项只有源码推演，未执行C#/Native RED，不能记成已测失败或用户卡顿根因。正常Game公开读链同步且Update后Read，已排除Accept临时裸target被rAF读到；实际WorldChangeRuntimePort同步，也未把pending夹具当成Game普通异步空窗。
+
+独立held与pump两定时器仍需量化实际0/2批次。进一步读回生产GAS：同实体同类型在同一World.Tick成功激活后设cooldown=Tick+1，再次同Tick激活在Execute前被拒绝；这是Runtime生产机制，不是Game LastMoveTick或测试fixture预算。浏览器发生率、服务端执行差异及其手感贡献均未测。另登记hitstop新owner位置/冻结镜头时钟不一致候选，不归因持续W。
+
+实时CI更新：Runtime PR277 exact head de5的必需Build已于02:16:40 UTC成功，行为job仍skipped，故checkpoint112的queued是历史时点；Client PR181 Build成功、平台测试job skipped。Game PR48原Bomber SDK版本失败仍在，另读到独立root Build and test在ServerWorldBoot.cs因WorldManager.Create缺失、Bind缺hfsm参数失败；具体job链接见Review。未重跑集成全行为、未伪造CI全绿、未改守卫/保护。
+
+公开发布库refs止于v0.0.4；Game默认pin702f9d9 manifest为0.0.4-main.ecece8a，仅win-x64，与要求0.0.5-main.0e2fc74不符。complete31/Game35只取得既有账本路径与hash标识，没有对应payload或可控现场；检查的Engine最近完成构建未提供该整包。因此本轮没有发新补丁让用户试，也没有用旧SDK凑网页运行。下段需要能访问原运行资产的本地执行环境或可验证完整包/依赖环境，恢复新A/B后按同角色统一时间轴采输入、pump、准入/执行、Logic/Model、ACK、Doll/镜头与逐帧性能，再按证据RED/最小修复/独审。
+
+本段为源码Review和实验归档，未改生产源码/页面字节、未部署、未启用热更。移动手感验收继续FAIL；A/B真实浏览器证据、官方complete/消费/新现场和用户前台通过仍待完成。ADR142、18085、生产schema与其他Owner门保持OPEN。过程材料按根规则归archive，唯一账本只追加，旧checkpoint原始字节保留；知识同步豁免：未新增产品或公共契约。
