@@ -14,11 +14,20 @@ status: pending
 
 | 仓 | 分支 / 提交 | 内容 |
 |---|---|---|
-| Game | 已合入 main（见下方 PR） | `?trace=movement` 埋点、`?input=pump` A/B 开关、`Tools/movement-trace-analyze.mjs`、`Tools/movement-beat-probe.html` |
+| Game | PR #52 → main `4055647`；审查修复 PR #55 | `?trace=movement` 埋点、`?input=pump` A/B 开关、`Tools/movement-trace-analyze.mjs`、`Tools/movement-beat-probe.html` |
 | Runtime | `exp/101-owner-interpolation` / `d53c26b` | `OwnerHeldCadenceTests`：f69e2c9 上 RED 17/36 |
-| Runtime | 同上 / `98a9f69` | F3 候选：自角色一步内滑到完成目标，不外推、不收回；Ecs Owner 64/64，GAS 联合用例未执行 |
+| Runtime | 同上 / `98a9f69` → **`1955239`** | F3 候选：自角色一步内滑到完成目标，不外推、不收回；`1955239` 起纠偏也同样滑行、去掉独立残差。Ecs Owner 64/64，GAS 联合用例 Mac 未执行 |
 
 两个开关只在 loopback 页面或开发桥生效，默认行为不变。
+
+## 审查修复（PR #52 合入后的 reviewer，2026-10-08）
+
+- **P1 埋点页起不来**：`movement-trace.mjs` 不在宿主发布清单，`?trace=movement` 在发布页 404，`initializePage` 被拒。PR #55 补进清单，并加 `publish-manifest.test.mjs` 守住。**用 `4055647` 发布的网页不能做 trace 组**，必须用含 #55 的 main 重新发布，并核实服务出的 `movement-trace.mjs` 返回 200。
+- **P1 F3 纠偏回收**：`98a9f69` 纠偏时残差按 50ms 半衰减，而滑行在一步内走完，于是会先冲过纠偏目标、再无输入地往回收（.15→.191→.17）；整步被拒时会先前冲再回退。`1955239` 改为纠偏与普通新目标一样，从当前显示一步内滑到，单次变化单调（先 RED，`CorrectionWhileGlidingConvergesMonotonicallyWithoutOvershoot`）。**基于 `98a9f69` 的 native 结果与私有网页都已过时**，F3 组要换 `1955239`。
+- **分析口径**：持键窗口改为从准入首条输入的 pump 到准入末条输入的 pump，松键后的空 pump 不再计入。pump 事件记录 Tick 后的自角色发布，新增 `execution.tickAdvancePerHeldPump` / `targetStepPerHeldPumpM` / `heldPumpsWithUnchangedTarget`，判读漏步用它们。原来基于渲染帧的 `publications.executionTickAdvance` 已删除。倒退帧只算持键期；停步过冲按最后一步方向，观察窗截止到下次按住；转向后 250ms 内的朝向不计为错误。pump 模式下 `admission.movesPerHeldPump` 按构造恒为 1，不作证据。
+- **pump 模式**：按住时点按另一方向、两次 pump 之间松开不再丢；触屏松开后仍按住的键带转向标志。都与 interval 对齐。
+
+持续意图（F1）方向已拍板，见 [F1 方案](2026-10-08-movement-continuous-intent-design.md)；实现另走单据，不在本 A/B 里做。
 
 ## Windows 要做
 
