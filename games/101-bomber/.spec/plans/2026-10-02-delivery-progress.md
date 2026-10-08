@@ -2023,3 +2023,13 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 隐藏独立 pwsh 的 start-detached-preview-01.ps1、launch/guard、保留旧junction的变体切换与实际HTTP字节收据入口已备齐，脚本解析检查通过。因本轮浏览器安全守卫已停止控制，未启动DS/HTTP，不让新现场无人采样空跑；下轮无需新许可，重新guard后直接隐藏启动，同DS/Platform下关闭采样会话、切换变体、冷加载并核实服务字节。只读 [trace-review.md](../../../../.run/20261008-movement-windows-01/trace-review.md) 给出按键/生命周期分段和指标有效分母要求；既有分析器5/5局部通过，不是实际浏览器证据。
 
 Game [PR54](https://github.com/LumioGames/LumioGame/pull/54) 已建，账本只追加；本段未进行四组浏览器实验、未选最佳变体或取得用户原话，F3仍未定案。Runtime PR280保持draft，不得合并；移动手感验收FAIL，ADR142、18085、生产schema等Owner门OPEN。知识同步豁免：私有实验准备与证据身份，无新增公共规则。
+
+### 移动手感排障：checkpoint118，98a候选GAS修订真实Native全绿并独审；#280并发改变生产语义，隔离封存不覆盖（2026-10-08）
+
+针对用户指定的精确98a9f69候选，四份GAS Owner测试仅修订22个方法的「新后缀立即生效/前探租期」表现期望，61个Owner展开case全部保留；PredictionClock22项及额外PresentationBudget1项原样保留，最终 [f3-revised-full-02](../../../../.run/20261008-movement-windows-01/gas-native/f3-revised-full-02/receipt.json) 为84/84、零失败/跳过、raw0。最终日志SHA256为53d4b37820bfbcb587ad981b8cc6365d6e04c6fd1f1f5233fee77a3138363a28；原基线84/84、原98a48/84及共同环境缺路径失败的attempt01均保留，不改写原始结果。没有删除检查消红、改额度或修改生产代码。
+
+[最终四文件独审](../../../../.run/20261008-movement-windows-01/gas-native/independent-review-final-four-files-02.md) PASS；中间unpaired与same-slot把完整Pose精确Equal变成仅X范围的问题已恢复独立Logic比例计算的完整Pose Equal，分别重测8/8、19/19后再跑全84项。最终diff SHA256 b784f5ac2d56163dc64cbef8666831363a6180636164ab7bb970180cd5a39e6f。[源码/case收据](../../../../.run/20261008-movement-windows-01/gas-native/final-source-and-case-receipt.json)核实五目标文件58方法/83展开case不减少、Clock blob8140349997328fc1a8efab436f2522870c93f502不变、Owner生产blob仍8d62eed55b0d49d48a4b7aed60a61e73601cb5fa。两新工作树各87个仅EOL生成物及末次2项逐文件核对归一化SHA后还原；他人文件未动。Native与Engine身份沿用checkpoint116，不宣称本轮新建Native。
+
+测试提交c7c25a50d6cc7e61c2ceb79b57266798c4d92438；逐条理由归档提交b24d26f90d3d70f88133ba0ef6c5d700adb72e5c，范围澄清提交e1ad14be40ba628525a8fbfaa0ef80dc0f529b85。推送前exact-head守卫发现Runtime #280已被另一会话从98a推进到1955239325ba9651a89a9c8c26d3f798c068b378：该提交修改Owner生产及三份ECS测试，移除独立纠偏残差，纠偏也重新一步滑行。此为真实候选语义变化，不能把98a的84/84写成195的验证，也不能机械合入仍断言独立残差的GAS期望。因此未推原#280分支、未force或撤回并发工作；三个提交普通推至独立 [codex/101-owner-gas-98a-audit](https://github.com/LumioGames/LumioGameRuntime/tree/codex/101-owner-gas-98a-audit)，[22条理由](https://github.com/LumioGames/LumioGameRuntime/blob/e1ad14be40ba628525a8fbfaa0ef80dc0f529b85/.spec/archive/reviews/2026-10-08-owner-gas-f3-assertions.md)远端可审。Runtime #280读回仍OPEN/draft、头1955239，禁止合并或转正式。195在本机尚未Native实测，已向用户确认后续候选范围，回答到达前不改实验对象。
+
+两套浏览器私有预览继续封存精确Game405与原f69/98a DLL/PDB、IL/WebCIL身份，READY_NOT_STARTED；未用测试提交后的程序集或195悄悄替换。浏览器URL安全守卫仍使本轮控制停止，未导出完成的Windows计时探针、未执行四组真实对照、未取得用户试手感原话。下一现场须先恢复可控前台浏览器，再按确认的候选重新guard/隐藏启动及实际HTTP字节核验。Game本轮仅追加账本，PR54未合并；移动手感仍FAIL，F3未裁定，F1/F4未实现，ADR142、18085、生产schema等Owner门OPEN。知识同步豁免：候选测试与证据归档，不新增正式M8规则或替Owner批准。
