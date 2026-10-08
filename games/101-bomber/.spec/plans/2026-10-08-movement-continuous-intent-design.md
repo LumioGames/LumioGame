@@ -175,7 +175,7 @@ A = F2 升为默认 + 补步 + 锁存语义 + R1。F3 只管自角色的显示�
 
 以上是方向级结论。ADR 0050、design / 契约正文修订和 Workflow 拆单仍待后续执行，本稿状态保持 pending。
 
-**落档（2026-10-08）：** 已写成根 [ADR 0050](../../../../.spec/decisions/0050-bomber-movement-per-tick-intent-sampling.md)，并修订 design §6.1 第 9 条 / §15 与契约 §2.1 / §6（第 5 节写的「契约 §5」`commands.ndjson` 实际在 §6），见 PR #57。第 9 节 T1–T5 已形成本地 Workflow bundle `wf-20261008-bomber-f1-intent`：Room、原始需求、T1 待用户确认上传；T2–T5 待 T1 的 Engine ADR 合入后晋级。
+**落档（2026-10-08）：** 已写成根 [ADR 0050](../../../../.spec/decisions/0050-bomber-movement-per-tick-intent-sampling.md)，并修订 design §6.1 第 9 条 / §15 与契约 §2.1 / §6（第 5 节写的「契约 §5」`commands.ndjson` 实际在 §6），见 PR #57。第 9 节 T1–T5 已拆单：Room RM-00021，[原始需求] R-00822，T1 Engine ADR R-00823；T2–T5 留在本地 bundle `wf-20261008-bomber-f1-intent`，待 T1 的 Engine ADR 合入后晋级上传。
 
 ## 9. 定案后的拆单草案（未上传）
 
