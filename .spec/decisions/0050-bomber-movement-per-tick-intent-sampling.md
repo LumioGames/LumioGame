@@ -2,7 +2,7 @@
 
 - 日期:2026-10-08
 - 状态:生效
-- 决策依据:用户 2026-10-08 拍板 F1 方案第 8 节 Q1–Q3(方向 A、卡顿补步、短按必走一步)。方案稿 `games/101-bomber/.spec/plans/2026-10-08-movement-continuous-intent-design.md` 在 [PR #53](https://github.com/LumioGames/LumioGame/pull/53),机制均为源码推演,频率与手感贡献未测。
+- 决策依据:用户 2026-10-08 拍板 F1 方案第 8 节 Q1–Q3(方向 A、卡顿补步、短按必走一步)。方案稿见[F1 持续意图方案](../../games/101-bomber/.spec/plans/2026-10-08-movement-continuous-intent-design.md)(PR #53),机制均为源码推演,频率与手感贡献未测。
 
 ## 背景
 
