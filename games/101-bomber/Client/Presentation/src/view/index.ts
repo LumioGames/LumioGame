@@ -41,8 +41,20 @@ export interface PodiumAnchor {
   shown: boolean
 }
 
+/** 本机玩偶与镜头的只读现值；只给开发期移动埋点用。 */
+export interface LocalViewDebug {
+  x: number
+  z: number
+  yaw: number
+  speed: number
+  cameraX: number
+  cameraZ: number
+}
+
 export interface GameView {
   update(sample: FeedSample, dtMs: number): void
+  /** 本机玩偶当前显示位置 / 朝向与镜头位置；本机玩偶不存在时为 null。 */
+  debugLocal(): LocalViewDebug | null
   /** V 键：跟随 ↔ 全局俯瞰。 */
   toggleOverview(): void
   /** 世界坐标（米，引擎轴：x = 游戏 X，z = 游戏 Y，y 向上）→ 屏幕坐标。 */
@@ -57,6 +69,7 @@ export function createView(opts: ViewOptions): GameView {
   const rt = new ViewRuntime(opts)
   return {
     update: (sample, dtMs) => rt.update(sample, dtMs),
+    debugLocal: () => rt.debugLocal(),
     toggleOverview: () => rt.toggleOverview(),
     project: (x, y, z) => rt.project(x, y, z),
     podiumAnchors: () => rt.podiumAnchors(),

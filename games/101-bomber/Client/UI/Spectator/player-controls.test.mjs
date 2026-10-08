@@ -293,3 +293,79 @@ test('a focused pointer direction button keeps movement repeating until release'
   assert.equal(pulse, null);
   controls.destroy();
 });
+
+test('pump driver publishes exactly one held move per pump and latches the press turn', () => {
+  const target = new EventTarget();
+  const moves = [];
+  const controls = createPlayerInput({ target, ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, driver: 'pump', schedule() { assert.fail('pump driver must not start a timer'); } });
+  const key = (type, code) => {
+    const event = new Event(type, { cancelable: true });
+    Object.assign(event, { code, repeat: false }); target.dispatchEvent(event);
+  };
+  key('keydown', 'KeyW');
+  assert.deepEqual(moves, []);
+  controls.pump();
+  controls.pump();
+  controls.pump();
+  assert.deepEqual(moves, [[1, 0, true], [1, 0, false], [1, 0, false]]);
+  key('keydown', 'KeyD');
+  controls.pump();
+  assert.deepEqual(moves.at(-1), [2, 1, true]);
+  key('keyup', 'KeyD'); key('keyup', 'KeyW');
+  controls.pump();
+  assert.equal(moves.length, 4);
+  controls.destroy();
+});
+
+test('pump driver keeps a tap released between pumps as one move', () => {
+  const target = new EventTarget();
+  const moves = [];
+  const controls = createPlayerInput({ target, ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, driver: 'pump' });
+  const key = (type, code) => {
+    const event = new Event(type, { cancelable: true });
+    Object.assign(event, { code, repeat: false }); target.dispatchEvent(event);
+  };
+  key('keydown', 'KeyA'); key('keyup', 'KeyA');
+  controls.pump();
+  controls.pump();
+  assert.deepEqual(moves, [[4, 0, true]]);
+  controls.setTouchDirection(3);
+  controls.setTouchDirection(0);
+  controls.pump();
+  assert.deepEqual(moves.at(-1), [3, 0, true]);
+  key('keydown', 'KeyS'); target.dispatchEvent(new Event('blur'));
+  controls.pump();
+  assert.equal(moves.length, 2);
+  controls.destroy();
+});
+
+test('pump driver shares the pump cadence with held bomb pulses', () => {
+  const target = new EventTarget();
+  const phases = [];
+  const moves = [];
+  const controls = createPlayerInput({ target, ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, bombButton: phase => phases.push(phase), driver: 'pump' });
+  controls.setBombPressed(true);
+  controls.pump();
+  controls.pump();
+  controls.setBombPressed(false);
+  controls.pump();
+  assert.deepEqual(phases, ['begin', 'held', 'held', 'end']);
+  assert.deepEqual(moves, []);
+  controls.destroy();
+});
+
+test('interval driver ignores pump calls', () => {
+  const moves = [];
+  let pulse;
+  const controls = createPlayerInput({ target: new EventTarget(), ready: () => true, sendMove: (...args) => moves.push(args),
+    placeBomb() {}, schedule: callback => { pulse = callback; return 1; }, cancel: () => { pulse = null; } });
+  controls.setTouchDirection(1);
+  controls.pump();
+  assert.deepEqual(moves, [[1, 0, true]]);
+  pulse();
+  assert.deepEqual(moves, [[1, 0, true], [1, 0, false]]);
+  controls.destroy();
+});

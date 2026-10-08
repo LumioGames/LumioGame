@@ -6,10 +6,10 @@ import { PresentationFeed, type LocalPresentationPose } from './present/feed'
 import { loadSettings, saveSettings } from './present/settings'
 import { attachPresentationShortcuts } from './present/shortcuts'
 import { TouchControls } from './present/touch-controls'
-import { createView, renderDollPortraits } from './view'
+import { createView, renderDollPortraits, type LocalViewDebug } from './view'
 
 export * from './contract'
-export type { GameView, ScreenPoint, ViewOptions } from './view'
+export type { GameView, LocalViewDebug, ScreenPoint, ViewOptions } from './view'
 export { renderDollPortraits } from './view'
 export { PresentationFeed } from './present/feed'
 export type { FeedSample, LocalPresentationPose } from './present/feed'
@@ -24,6 +24,8 @@ export interface PresentationOptions {
   hud: HTMLElement
   localPlayerId: U64
   readLocalPose?(): LocalPresentationPose | null
+  /** 开发期移动埋点：每个渲染帧在 view 更新后回调一次；不传则不取任何调试值。 */
+  onFrame?(frame: PresentationFrameTrace): void
   config?: BomberConfig
   rules?: ProtoRules
   callbacks?: {
@@ -34,6 +36,14 @@ export interface PresentationOptions {
     onMove?(primary: 方向, secondary: 方向): void
     inputReady?(): boolean
   }
+}
+
+export interface PresentationFrameTrace {
+  now: number
+  dt: number
+  renderTick: number
+  localPose: LocalPresentationPose | null | undefined
+  local: LocalViewDebug | null
 }
 
 export interface Presentation {
@@ -108,6 +118,7 @@ export function createPresentation(options: PresentationOptions): Presentation {
     if (sample) {
       if (options.readLocalPose) sample.localPose = options.readLocalPose()
       view.update(sample, dt)
+      options.onFrame?.({ now, dt, renderTick: sample.renderTick, localPose: sample.localPose, local: view.debugLocal() })
       hud.update(sample, dt)
       touch?.setSkill(hud.skillButton())
       audio.update(sample, localPlayerId)

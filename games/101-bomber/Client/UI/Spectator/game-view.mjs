@@ -111,6 +111,7 @@ export function createGameView(callbacks) {
           const generation = ++presentationGeneration;
           view = createPresentation({ stage, labels, hud, localPlayerId: localId,
             readLocalPose: callbacks?.readOwnerPose ? () => readLocalPose(generation) : undefined,
+            onFrame: callbacks?.onFrame,
             config: settings.config, rules: settings.rules,
             callbacks: { ...callbacks, inputReady: () => !suspended && (callbacks?.inputReady?.() ?? false), onChangeCharacter: settings.catalog.characters.size > 0 && callbacks.onChangeCharacter
               ? id => {
