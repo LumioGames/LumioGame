@@ -745,6 +745,8 @@ function pumpSession(attempt) {
     const tickStartedAt = performance.now();
     csharp.tick();
     const tickMs = performance.now() - tickStartedAt;
+    // Trace only: the owner publication this Tick left behind (executed step, not render sampling).
+    const tracedPose = movementTrace && csharp.ownerPresentation ? JSON.parse(csharp.ownerPresentation()) : null;
     const state = JSON.parse(csharp.sessionState());
     currentSessionGeneration = state.generation ?? null;
     spectator.notServingCloses = state.notServingCloses ?? 0;
@@ -765,7 +767,7 @@ function pumpSession(attempt) {
     spectator.voxel.sections = voxelGrid.sections().length;
     if (displayed) setStatus(state.state);
     movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
-      totalMs: performance.now() - pumpStartedAt, state: state.state });
+      totalMs: performance.now() - pumpStartedAt, state: state.state, pose: tracedPose });
     const period = 1000 / csharp.tickRateHz();
     const now = performance.now();
     nextPumpAt += period;
