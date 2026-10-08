@@ -2012,3 +2012,15 @@ Windows安装的Chrome154.0.8037.98通过用户要求的Playwright在可见、�
 以数据修正推断：本机轻载也存在floor步号0/2交替，不仅重载晚泵才出现2；两个机器的帧/泵间隔及中招比例不能继承。探针nonOneInputPumpRatio按两位小数舍入会把4/1004记0，判读使用完整histogram，不能由舍入0宣称无空拍。真实Game是否同型仍待新网页采样。
 
 [本轮只读工具复核](../../../../.run/20261008-movement-review-02/trace-review-origin-main-342c170.md)复现三个统计问题：多hold首泵累加历史请求、超过150ms请求gap误拆hold并漏0泵、未keyup却被计停步；TDD修复正在新分支，尚不宣称交付。PR55仍未解决所有多短按/技能命令顺序，核心直线与副场景须分列。上轮preview审计只核主文件hook而漏动态模块闭包，Game405发布页缺movement-trace.mjs；旧READY_NOT_STARTED仅构建封存，不能称可测，旧字节保留。本轮新副本/prefix/隐藏启动脚本只完成轻准备，等待最终GameSHA、现编Presentation与新195 DLL的发布/HTTP完整闭包验证，未启动DS或注册账号。四组真实网页对照、最佳变体用户原话及前台通过仍未完成；持续意图与朝向未实施，所有Owner门保持OPEN。知识同步豁免：排障与候选证据，不新增正式公共表现规则。
+
+### 移动手感排障：checkpoint120，修复追踪统计、独立复审通过；真实网页仍待启动（2026-10-08）
+
+接checkpoint119。Game新代码提交56a8d0ea660c84601b610e69cb947964722bd42b与7cbd631676c5cac7e1c4bde3de2e335266c601f5，仅修改analyzer/recorder及各自测试四文件，没有改输入排队、Gameplay、Runtime或Owner规则。真实方向keydown/keyup保存连续长hold及其0请求泵，未release不再造stop；请求按实际pump区间归属一次，后hold不累计旧请求。recorder原样保留DTO三份身份字符串与焦点观测，身份/空姿态/非finite/hidden/失焦/异常cause打断位移比较。
+
+独立最终review在56a阶段追加发现P1：两个有物理pump的相邻hold共享110ms pump时，85ms末请求被next边界过滤，使实际[1,1,2,1,1]误报为全1。7cbd追加行为RED（25通过/1失败）与最小修订：请求资格取有效物理hold，实际pump计资格并集，tail可以共享下一hold的pump，pump全局去重，stop仍从keyup开始；无物理pump的tap排除行为保留。[RED](../../../../.run/20261008-movement-review-02/trace-adjacent-hold-red.log)与[GREEN](../../../../.run/20261008-movement-review-02/trace-adjacent-hold-green.log)完整保留；最终targeted31/31、0skip，独立[最终复审](../../../../.run/20261008-movement-review-02/trace-final-review.md)PASS、无未解决finding，仅限工具统计。
+
+56a阶段直接相关69/69；扩展488项462通过/26失败/0skip，不把这些旧计数冒充7cbd全量结果。24项为未初始化Engine/config/历史夹具环境；另外两项静态断言由独立review确认在精确main342c170同样成立：玩家声明实际2而断言1，Presentation schema15与product schema16不一致。它们未被消红或称作环境失败。父仓lint OK；101 spec-lint只报告12处既有文档/导航问题，exit0不代表全绿。
+
+指标边界已同步活交接：display/facing仅正常InputPublication/ClockAdvance同身份样本，AuthorityCorrection/Initial/未知cause断段但原始事件保留；正常范围0不能证明全部活动期0。转向250ms排除及有效分母公开，stop需300ms同段完整且终点target稳定，否则n=0/null。DTO不暴露TP标识，正常cause内TP不能自动识别；JS accepted请求不是GAS成功，最终postTick publication不是完整时钟或执行收据。当前候选7cbd与44e仅Tools analyzer/test不同，实际网页构建字节身份须以新封件收据为准，不能伪称已构建或已前台测得。
+
+本段无DS启动/账号注册/服务页面测量，无官方complete交付或用户裁定。F1持续意图与F4朝向未实施，Runtime PR280仍draft且不得合并，移动手感仍FAIL_PENDING_USER，所有Owner门保持OPEN。知识同步豁免：既有取证工具bug修复，无正式公共表现规则变更；旧账本只追加保留。
