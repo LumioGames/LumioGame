@@ -2059,3 +2059,15 @@ Windows安装的Chrome154.0.8037.98通过用户要求的Playwright在可见、�
 发现另一统计缺陷：raw顺序pump(t277582.4,tickMs3632.1,seq934)后实际frame记录t277567.9/seq934，因onFrame传rAF预定时间而非callback实际捕获时间，analyzer排序会颠倒观察与keyup边界。旧raw全部保留，显示/停步结果降级为暂定，不能凭其0采纳F3；已安排RED和最小诊断修复（实际观察时间与原rAF时间分存），不改游戏时钟或表现规则。修订后的四组可比采样尚未完成，F2/F3正式对照及用户F3裁定仍待。
 
 05:21:41 UTC[只读现场审计](../../../../.run/20261008-movement-review-02/preview-candidate-02/health-audit-since-0510-01.json)SHAec91be705e213299fc56b3dd6466aecc145545463654e423f627e90547ea15f3：同DS唯一boot/Ready/start，tick28449持续，无ERROR/FATAL/Room重启证据；05:10后3WARN（cadence_lag dropped3及两runtime_query_pending），A/B05:11:08重连、Bot新增7次admitted。Bot本地world build74–96次/个，单次最大92ms；重建/重复准入不冒称Room重启，也未排除关联卡顿。旧fault哈希保持，新现场fault无。移动手感仍FAIL_PENDING_USER；F1/F4未实施，ADR142/18085/生产schema等Owner门OPEN。知识同步豁免：排障、统计修复与私有证据，不采纳正式M8语义。
+
+### 移动手感排障：checkpoint123，修正真实观察时钟并保全死亡链现场退出（2026-10-08）
+
+Game诊断修订c46c4aa8ff96dd48f202a7274d1882d86a30bb13已推PR58，只改recorder/analyzer及两测试。frame.t使用trace调用时的实际单调时钟，保留rafAt；pump保留准入起点t/tickAt和tickMs/totalMs，另记尾工后observedAt用于观察边界，不伪称精确Tick结束。旧trace真实观察时刻不可恢复，missing/inferred字段及局限披露；不补造旧数据。RED30/34→GREEN34/34、无skip，root与独立复审PASS，父仓lintOK；101非strict spec-lint仍有12项既有报告，未称全绿。[报告与收据](../../../../.run/20261008-movement-review-02/trace-observation-clock-report.md)保留Git LF blob/工作树EOL差异。仅trace.mjs及压缩副本需新静态服务字节，不改主时钟、Presentation或输入行为。
+
+[独立CPU汇总](../../../../.run/20261008-movement-review-02/browser/baseline-cpu-profile-01-audit.json)显示17.316s窗口内csharp.tick子树94.66%、pumpSession96.21%、Presentation JS self0.47%。最高热叶wasm-function[100]无符号，不能称为某具体解释器/managed GC/memcpy。实际视频277.8/279.5s画面中自角色、Player4、Player8、特效及HUD均未推进，281.2s推进；[观察收据](../../../../.run/20261008-movement-review-02/browser/baseline-video-freeze-01.json)保留实际截图与原视频，未校准视频/页面时钟偏移，不能据此称B窗口同步冻结。视频canvas因origin taint未获得像素哈希，没有放宽浏览器安全。
+
+校正内部诊断：publication executionTickAdvance73不是执行73次world Tick。精确消费Client源码693095a及Session.dll身份已核，AdvancePredictionClock只调用一次WorldManager.Tick；Runtime的bound phase loop允许ordinal跳跃。一次Session.Tick还可能处理多个authoritygroup及selective rebuild，必须新增真实阶段计数/耗时区分，不能由最终步号推断补跑次数。已有GAS SelectiveRebuild EventSource及SessionSnapshot计数可作后续独立私有诊断，尚未改变生产调用行为。
+
+Scene02在05:29:03.871 UTC退出：verification由历史SERVING转FAIL，Process4436 raw2；DS/网页/6Bot及launcher自有清理后均不存活。新hostentry_fault.log 1647bytes SHA7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7，与旧死亡链错误相同：ProcessorPlan / Death structure intent no longer identifies its live old body，BomberEffectBusiness.Server.cs133。Defender无相关事件。新clock字节集03的同Scene守卫因此拒绝（raw1），部分payload/准备失败日志保留，不伪称READY、不绕过SERVING guard。Scene02所有原日志/fault/prefix/raw/video及旧封件保留。
+
+下一次新现场只用于修正clock后的四组取证，复用已验证生产主体、使用新运行副本/新prefix/严格地图和身份guard/隐藏独立pwsh，不把重建称为死亡链修复。Owner ADR142死亡语义未自行批准，RuntimePR280仍OPEN/draft、未合并，M8/F3裁定与正式complete未到达。持续意图F1及F4未实施；移动手感仍FAIL_PENDING_USER，受保护端口与生产schema等Owner门OPEN。知识同步豁免：工具bug修复与排障证据，无正式公共规则变更。
