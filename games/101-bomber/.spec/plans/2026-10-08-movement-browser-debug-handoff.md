@@ -27,7 +27,7 @@
 | Runtime | `f43dbe81e06a3dc839a6fa9541ee8261fee3724f` | 旧 scratch 断言12706→12070，历史 typed Transform 计费差636有证据；未改预算或生产计费。 |
 | Runtime | `de5a44e34be4d777b6c287d36d8bcedd53cb54e2`，PR [277](https://github.com/LumioGames/LumioGameRuntime/pull/277) | 整合到当时 main `9bc2fc2d`；scratch 冲突保留 main 已合入的更完整精确边界/Undo 测试，生产 Owner 代码保持上述修复。接手读回 PR 状态及最终 merge SHA，不把 OPEN 当 MERGED。 |
 | Game | `b07f45125eb71bc60466ff78570a6eab6ef00610` | Session Owner Model 完整 pose 经浏览器桥接；自角色/镜头/标签用本地 Model XZ，远端仍插值。当前 Doll 朝向仍从显示位移差推导，未消费 Model quaternion 来表达玩法朝向。 |
-| Game | `474d557`、`5680905be791032a70d61ce20c16b4b827f7f128` | 前者整合 main 文档/原型并处理六处冲突；后者合入 b07 消费接线。原型与 main af385a9 一致；c490d70 配置/身份原始字节保护保留。最终 PR/merge SHA 查后续账本与 GitHub。 |
+| Game | `474d557`、`5680905be791032a70d61ce20c16b4b827f7f128`；PR [48](https://github.com/LumioGames/LumioGame/pull/48)，merge `8aaab64a53a4682dfd6ae275604c9ac9fd8ce195` | 前者整合 main 文档/原型并处理六处冲突；后者合入 b07 消费接线。原型与 main af385a9 一致；c490d70 配置/身份原始字节保护保留。交接文档提交fc361b5同在已合入PR48内。 |
 | Game | `b475473`、`1eb7aaa` | 旧「按接收时间再插值自角色」方案已撤回，**不要重新合入**另一个旧工作树18868cc。 |
 | Client | `693095a690f3268fb300289139262147d9266b23`、`df649e3fa2ff10e103f03419616949a8963f4ff8` | 本地预测时钟/表现接线和生命周期补全；后者处理 same-manager 驱动换代、successor/reconnect、失败清理。已在 PR [181](https://github.com/LumioGames/LumioClient/pull/181) 合入，merge `5b7ef6101bef5250a66fc4813e75d0038da990e8`。**Game35 仍消费 Client17，未部署 Client18。** |
 
@@ -40,6 +40,7 @@
 - f43历史完整 ECS660/660；GAS1033/1034，一项栈文本断言失败。集成 main 已修改这项测试，因此旧失败既不能写成集成版仍失败，也不能凭静态变化声称已通过。de5 完整 solution Release 全生产TFM编译通过，零警告错误；未重跑集成后的完整行为套件。
 - de5 编译证据 `R/closeout-runtime-build-02/`，使用 Engine main 冻结快照4bf8d283。attempt01 使用旧523冻结依赖，因缺 PeriodFact 契约编译失败，证据保留。编译生成物147项仅换行差异已逐项核对并还原。
 - Game 最终合并复用了已审 b07 源码，98项消费轻量测试及48项仓库轻量测试通过，root lint通过；Game spec-lint12项历史/隔离路径问题保留。旧完整消费桥接回归31/32失败、单独4/4通过的差异尚不能冒充全绿。默认旧 SDK pin 未重新资格验证；开发预览使用显式官方 complete31。
+- PR48 必需README policy通过并正常合并；自动LumioBomber CI的build/test/external-clone失败：`LUMIO_SDK_VERSION_MISMATCH`，检出的Engine为`0.0.4-main.ecece8a`，要求`0.0.5-main.0e2fc74`。见`R/closeout-game-ci-failed.log`。这是已登记的默认发布物对齐问题，不能把源码合并称为CI全绿，也不得放宽版本守卫或自行批准正式发布来消除它。
 - **没有本轮真实浏览器逐帧性能/输入链路 trace。** Native/Client 探针不是浏览器结果。优先补这个缺口，别继续只靠离线数字推测。
 
 ## 网页调试要求

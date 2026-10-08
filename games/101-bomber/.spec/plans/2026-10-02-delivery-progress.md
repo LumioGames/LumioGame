@@ -1900,3 +1900,12 @@ Runtime [PR277](https://github.com/LumioGames/LumioGameRuntime/pull/277)已推�
 Game新隔离工作树Game35Closeout先以474d557合入main，保留正式玩法/证据及main原型，六处冲突无新增产品裁定；然后5680905be791032a70d61ce20c16b4b827f7f128合入此前只在预览工作树的b07f451 Owner Model消费者。未复活已撤销18868cc/接收时间插值方案，保留c490d70字节属性修复。rootlint、48仓库轻量测试、98消费测试通过，Game spec-lint12历史/隔离路径报告保留；未新做整套构建或正式SDK pin资格验证。[合并报告](../../../../.run/20261007-runtime-movement-repair-01/closeout-game-merge-report.md)及[独审](../../../../.run/20261007-runtime-movement-repair-01/closeout-game-final-review.md)PASS限授权源码整合，完整前台/发行验收仍FAIL/OPEN。合入main需要正常PR merge，状态以后续checkpoint为准。
 
 现场只读复查18105/18333已退出，18402平台存活。Game35最后CP13/Game tick7949同型Death structure intent fatal后退出；[保全收据](../../../../.run/game35-owner-expiry-dev-preview-01/prior-failure-01/failure-receipt.json)保存现有日志副本/hash，launcherexit1，未重启充当修复。移动卡顿与死亡链分别登记。热更仍未接通；朝向/双定时器/实际浏览器采样仍待接手。ADR142、18085/schema与他人脏文件保持。知识同步豁免：本段为已审修复整合、机械链接修复、事实交接；未新增公共契约或宣布完整交付。
+### 移动手感排障：checkpoint111，Game PR48正常合入main；Runtime PR277受必需Build排队阻挡（2026-10-08）
+
+Game [PR48](https://github.com/LumioGames/LumioGame/pull/48)普通merge成功并读回MERGED，合并提交8aaab64a53a4682dfd6ae275604c9ac9fd8ce195，PR头fc361b5576486092812a25b4b6560ee159fe3fb3；含474d557/main整合、5680905/b07 Owner消费者和fc361b5/最新FAIL交接。独审补充确认5680905..fc361b5两个文档无P0/P1，root工作分支快进到8aaab64，他人原脏文件保持。接手提示词已补PR号与精确merge SHA，明确要求先Review。
+
+PR48必需README policy成功。自动LumioBomber CI三个非必需作业build/test/external-clone实际失败，错误均为LUMIO_SDK_VERSION_MISMATCH：检出Engine0.0.4-main.ecece8a与要求0.0.5-main.0e2fc74不符；[原始失败输出](../../../../.run/20261007-runtime-movement-repair-01/closeout-game-ci-failed.log)保留。这是先前已披露的默认正式SDK pin未资格验证，不能因源码合入隐去、改绿或削弱版本检查；用户试玩使用的是显式选择complete31的派生预览，两者不能混写。
+
+Runtime PR277此时仍OPEN，exact head de5a44e34be4d777b6c287d36d8bcedd53cb54e2，required Build queued；本地完整build和独审均PASS，但GitHub保护不接受本地收据替代其指定GitHub Actions检查，auto-merge未启用。仓库自身runner列表为空，组织runner查询403无管理权限；已知WSL runner服务active、另一Worker忙碌，未打断他人作业。没有绕过保护、伪造检查、改CI调度或宣称Runtime已合入。后续以GitHub读回为准。
+
+本段为用户指定的提交合并与交接收尾；移动手感仍FAIL、浏览器根因未定案、热更未实施、Game35现场停止。Owner门保持。接手从[提示词](2026-10-08-movement-browser-debug-handoff.md)及checkpoint110继续，不能重复把历史119项聚焦绿当成前台通过。
