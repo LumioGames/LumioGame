@@ -35,16 +35,16 @@ status: pending
 2. **四组浏览器对照**，同一现场、同机负载、前台可见：
    - 基线：`/play/?player=A&trace=movement`
    - F2：再加 `&input=pump`
-   - F3：网页 Runtime 换成 `98a9f69` 构建的 Ecs DLL，沿用以往私有预览替换与身份收据流程
+   - F3：当前新增私有候选为 `1955239`，网页 Runtime 换成该精确提交构建的 Ecs DLL，沿用私有预览替换与身份收据流程；`98a9f69` 原始日志、DLL 与旧网页封件保留为历史对照，不能给新候选继承结果
    - F2+F3
    
    每组：持续 W 10s × 5、起停 10 次、四向转向、贴墙、A/B 双窗口对照。导出用 `copy(JSON.stringify(__lumioMovementTrace.export()))`，或 Playwright 的 `page.evaluate`；分析用 `node games/101-bomber/Tools/movement-trace-analyze.mjs <trace.json>`。
 3. **判读**：
-   - `admission.movesPerHeldPump` 的 0/2 占比、`publications.executionTickAdvance` 的 0/2，看节拍乱不乱。
-   - `display.backwardFrames` / `reversalEvents` / `maxBackwardM`、`stopOvershootM`、`facing.over90deg`，看用户看到的倒退、过冲和转身。
+   - `admission.movesPerHeldPump` 只统计返回 true 的 JS Move 请求；`execution.tickAdvancePerHeldPump` / `targetStepPerHeldPumpM` / `heldPumpsWithUnchangedTarget` 只描述 Tick 后最终 Owner publication 的节拍，不等同 GAS 执行或 Session 时钟步进。旧 `publications.executionTickAdvance` 已删除，不再使用。按真实按键边沿、可见性、焦点和实体身份分段，不能用请求间隔断言松键或丢步。
+   - `display.backwardFrames` / `reversalEvents` / `maxBackwardM`、`stopOvershootM`、`facing.over90deg`，看用户看到的倒退、过冲和转身。Windows统计修订仅比较正常InputPublication/ClockAdvance同身份样本，Initial/AuthorityCorrection/未知cause断段并保留原始分类；正常范围的0不能证明全部活动期零回退。停步需keyup后的完整300ms同段尾窗，n=0为不可用；转向后250ms排除数需同时披露。DTO没有TP标识，正常cause内的TP必须另凭现场证据分类。
    - `timing.tickMs` / `frameIntervalMs` / `longTasks`，看主线程成本。
    - 预期：基线有倒退和过冲；F2 降低 0/2 但卡顿帧下仍有倒退；F3 活动期倒退与停步过冲为 0。不符合就以数据为准，回头修正判断。
-4. **GAS 联合用例**：在带 native 的机器上对 `98a9f69` 跑 `GasJointOwner*` 和 `GasJointPredictionClockTests`。断言「新后缀立即生效 / 租期」的用例按 F3 语义逐例修订，并保留原失败输出；不能删检查来消红。
+4. **GAS 联合用例**：在带 native 的机器上对当前候选 `1955239` 原版跑 `GasJointOwner*` 和 `GasJointPredictionClockTests`。保留 `98a9f69` 已完成的原版/修订验证及独立分支收据，不能称为当前 PR280 HEAD 验证。断言「新后缀立即生效 / 租期」的用例与新增的独立残差语义失败分开登记；逐条列出修订理由，完整精度和非表现检查保留，不能删检查来消红。F3 采纳及正式 M8 规则仍由用户裁定。
 5. **交用户前台试**指标最好的一组，由用户定 F3。定了再：在 LumioGameEngine 补 movement M8 自角色表现规则 ADR → Runtime 正式 PR → 官方整包 → 前台验收。
 
 ## 之后的正解

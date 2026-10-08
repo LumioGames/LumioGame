@@ -34,10 +34,11 @@ public sealed class SpectatorReplicaHost : IDisposable
     private readonly SentObserver _sent = new();
     private bool _closing;
     private string _lastError = string.Empty;
+    private RuntimePerfDiagnostics? _runtimePerf;
 
     public SpectatorReplicaHost(LumioEngine engine, IClientConnectionFactory connections, byte[] catalog,
         string launchJson, Func<CancellationToken, Task<string>> renewEndpoint, Action<string> log,
-        Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null)
+        Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null, bool runtimePerf = false)
     {
         var launch = ReadLaunch(launchJson);
         var config = configuration ?? SpectatorDump.LoadEmbeddedClientConfig();
@@ -62,6 +63,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: _joint);
         if (!new ClientSessionFactory().Create(in dependencies, out _session).Succeeded)
             throw new InvalidOperationException("client_session_creation_failed");
+        if (runtimePerf) ConfigureRuntimePerf(true);
     }
     public void Connect(string launchJson)
     {
@@ -104,6 +106,9 @@ public sealed class SpectatorReplicaHost : IDisposable
     public static ulong TickRateHz => GeneratedRegistry.Instance.DeclaredTickRateHz;
     public void Tick()
     {
+        var perf = _runtimePerf;
+        perf?.BeginPump(_session);
+        Exception? primary = null;
         try
         {
             var before = _session.GetSnapshot();
@@ -112,8 +117,17 @@ public sealed class SpectatorReplicaHost : IDisposable
                 throw new InvalidOperationException("client_cleanup_failed_resources_retained");
             if (_session.GetSnapshot().IsDisposed) _joint.Dispose();
         }
-        catch (Exception error) { _lastError = FormatApplyError(error); throw; }
+        catch (Exception error) { primary = error; _lastError = FormatApplyError(error); throw; }
+        finally { perf?.EndPump(_session, primary); }
     }
+    public void ConfigureRuntimePerf(bool enabled)
+    {
+        if (enabled) _runtimePerf ??= new RuntimePerfDiagnostics(512);
+        else { _runtimePerf?.Dispose(); _runtimePerf = null; }
+    }
+    public string DrainRuntimePerf() => _runtimePerf is { } perf
+        ? JsonSerializer.Serialize(perf.Drain(), SpectatorJsonContext.Default.RuntimePerfObservationDto)
+        : "{\"diagnosticEnabled\":false,\"available\":false,\"availabilityReason\":\"disabled\"}";
     public string SessionState() => JsonSerializer.Serialize(new SessionStateDto
     {
         state = ConnectionState, inputEnabled = InputEnabled, closed = Closed,
@@ -206,7 +220,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         // ClientSession drains, stamps, encodes and sends the published request on its next owner Tick.
         return true;
     }
-    public void Dispose() { _closing = true; _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
+    public void Dispose() { _closing = true; ConfigureRuntimePerf(false); _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
     internal static string FormatApplyError(Exception error)
     {
         var text = new StringBuilder();

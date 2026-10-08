@@ -378,7 +378,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
   };
   const context = vm.createContext(sandbox);
   vm.runInContext(`
-    const PLAYER_MODE = true;
+    const PLAYER_MODE = true, runtimePerfEnabled = false;
     const csharp = {};
     let developmentSession;
     let gameView, gameViewLoading, gameViewGeneration = 0; let selectedCharacter=null,initialSelectionPending=false;
@@ -463,7 +463,7 @@ test('first character choice finishes before Platform launch or Session boot', a
     pumpSession() { calls.push('pump'); }, async releaseReplica() {},
     failLaunch(error) { throw error; },
   });
-  vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
+  vm.runInContext(`const PLAYER_MODE=true,runtimePerfEnabled=false; let selectedCharacter=null; let initialSelectionPending=false;
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
   const running = context.start(); await drain();
@@ -480,7 +480,7 @@ test('a closed pre-admission selection cannot launch after a late confirmation',
     async loadWasmExports(){return true;},async loadSelectedConfig(){},async chooseFirstCharacter(){return context.selection;},
     async obtainLaunch(){calls.push('launch');return LAUNCH;},async loadCatalog(){return'{}';},pageAllowsLoopback(){return true;},
     csharp:{async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
-  vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
+  vm.runInContext(`const PLAYER_MODE=true,runtimePerfEnabled=false; let selectedCharacter=null; let initialSelectionPending=false;
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
   const running=context.start();await drain();vm.runInContext('terminal=true;connectionAttempt++;',context);

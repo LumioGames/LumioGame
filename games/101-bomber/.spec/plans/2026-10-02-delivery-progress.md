@@ -1989,3 +1989,121 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 - 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
 
 下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。
+
+### 移动手感排障：checkpoint119，接收固定版本Review、验证195原版Native并完成Windows前台计时探针（2026-10-08）
+
+用户提供 [008eb62固定报告](https://github.com/LumioGames/LumioGame/blob/008eb62e75005e572759acb5d2db021d88e18626/games/101-bomber/.spec/archive/reviews/2026-10-08-movement-code-review-local-validation.md)并要求继续优化。报告主体固定f69基线，其F1–F7不等同交接里的F1–F4。重新fetch确认Game main342c170已含PR55（发布trace模块、部分短按及统计修订），Runtime main仍f69、PR280仍OPEN/draft/head1955239325ba9651a89a9c8c26d3f798c068b378。此前Windows checkpoint115–118仍在未合入的[PR54](https://github.com/LumioGames/LumioGame/pull/54)，不删改；本段新证据根为 [movement-review-02](../../../../.run/20261008-movement-review-02/)，复用managed Game工作树的新隔离分支codex/101-movement-review，原根他人脏文件保留。
+
+195原版在新独立Runtime工作树、Engine4bf编译依赖与既有真实Native7db3ef...bd239下构建0警告/错误，GAS聚焦84项为40通过/44失败/0跳过，raw2；[原始输出](../../../../.run/20261008-movement-review-02/gas-native/195-original-01/test-gas-owner-clock.log) SHA256 d7c1d2afe5ba949c4597ecf768d232b5297dca00391edda60e113a00ab281248。[逐项分类](../../../../.run/20261008-movement-review-02/gas-native/195-original-analysis.md)确认旧98a的36个失败全部重合，新增8个发生在旧指数残差期望；22个PredictionClock与额外预算case通过。没有改期望消红，首失败后的检查不能冒称通过。195已移除报告的三角前探/租期路径及98a独立纠偏残差；仍使用缓存pump起点作为滑行起点，慢完成成本需实际Client时间轴验证。195不是Native全绿或已裁定语义，PR280未推送、转正式或合并。精确原195 portable DLL/PDB已另封，DLL SHA256 543dd42abadba01a2d17842ca5cf3b79ff8aca83006808a63253591832dd3d46、MVID479c603a-47aa-4ec4-a776-a7b78a302371；不替换旧98a封件。
+
+Windows安装的Chrome154.0.8037.98通过用户要求的Playwright在可见、有焦点的独立前台页完成原计时探针；04:13:22.964–04:17:17.877 UTC，原Native构建/测试已于04:11:32结束，后续portable构建等探针结束才执行。页面18110、源Game405 probe SHA25699d6b07792dd40d40bd15aeaa13a3d0cf0934468e41ff0a54ff58c92c17bf11b；[window.__probe原始结果](../../../../.run/20261008-movement-review-02/probe/window-probe-01.json) SHA256604207763130907b0f391c969d24671ea9dd013676ac3d1a96ab47aa9f38e6d0，[浏览器收据](../../../../.run/20261008-movement-review-02/probe/probe-receipt-01.json)记录初/中/末visible/focused观测，各档hiddenPumps=0。以下是合成计时器探针，不是WASM/DS表现结果：
+
+| 机器/负载pump/帧ms | 每pump输入0/1/2 | 中招按住 | 步号前进0/1/2 | pump间隔p50/p95ms | 帧间隔p50/p95ms |
+|---|---|---|---|---|---|
+| Mac 0/0（checkpoint114） | 1/1000/0 | 1/25 | 未列/1001/0 | 50/51.4 | 16.7/17.6 |
+| Windows 0/0 | 4/1000/0 | 4/25 | 218/568/218 | 49/61.8 | 31.2/31.6 |
+| Mac 10/6 | 10/982/9 | 2/25 | 未列/1001/0 | 50/51.1 | 16.7/17.6 |
+| Windows 10/6 | 69/878/60 | 15/25 | 170/667/170 | 49.4/62.4 | 31.3/31.6 |
+| Mac 25/10 | 18/996/0 | 14/25 | 未列/1014/0 | 45.1/59.9 | 16.7/33.4 |
+| Windows 25/10 | 160/861/0 | 21/25 | 0/1021/0 | 48.3/62.8 | 31.3/31.6 |
+| Mac 40/14 | 134/801/0 | 25/25 | 未列/849/86 | 54/54.3 | 50/66.7 |
+| Windows 40/14 | 194/703/0 | 25/25 | 0/772/125 | 54.3/68.7 | 62.2/62.8 |
+
+以数据修正推断：本机轻载也存在floor步号0/2交替，不仅重载晚泵才出现2；两个机器的帧/泵间隔及中招比例不能继承。探针nonOneInputPumpRatio按两位小数舍入会把4/1004记0，判读使用完整histogram，不能由舍入0宣称无空拍。真实Game是否同型仍待新网页采样。
+
+[本轮只读工具复核](../../../../.run/20261008-movement-review-02/trace-review-origin-main-342c170.md)复现三个统计问题：多hold首泵累加历史请求、超过150ms请求gap误拆hold并漏0泵、未keyup却被计停步；TDD修复正在新分支，尚不宣称交付。PR55仍未解决所有多短按/技能命令顺序，核心直线与副场景须分列。上轮preview审计只核主文件hook而漏动态模块闭包，Game405发布页缺movement-trace.mjs；旧READY_NOT_STARTED仅构建封存，不能称可测，旧字节保留。本轮新副本/prefix/隐藏启动脚本只完成轻准备，等待最终GameSHA、现编Presentation与新195 DLL的发布/HTTP完整闭包验证，未启动DS或注册账号。四组真实网页对照、最佳变体用户原话及前台通过仍未完成；持续意图与朝向未实施，所有Owner门保持OPEN。知识同步豁免：排障与候选证据，不新增正式公共表现规则。
+
+### 移动手感排障：checkpoint120，修复追踪统计、独立复审通过；真实网页仍待启动（2026-10-08）
+
+接checkpoint119。Game新代码提交56a8d0ea660c84601b610e69cb947964722bd42b与7cbd631676c5cac7e1c4bde3de2e335266c601f5，仅修改analyzer/recorder及各自测试四文件，没有改输入排队、Gameplay、Runtime或Owner规则。真实方向keydown/keyup保存连续长hold及其0请求泵，未release不再造stop；请求按实际pump区间归属一次，后hold不累计旧请求。recorder原样保留DTO三份身份字符串与焦点观测，身份/空姿态/非finite/hidden/失焦/异常cause打断位移比较。
+
+独立最终review在56a阶段追加发现P1：两个有物理pump的相邻hold共享110ms pump时，85ms末请求被next边界过滤，使实际[1,1,2,1,1]误报为全1。7cbd追加行为RED（25通过/1失败）与最小修订：请求资格取有效物理hold，实际pump计资格并集，tail可以共享下一hold的pump，pump全局去重，stop仍从keyup开始；无物理pump的tap排除行为保留。[RED](../../../../.run/20261008-movement-review-02/trace-adjacent-hold-red.log)与[GREEN](../../../../.run/20261008-movement-review-02/trace-adjacent-hold-green.log)完整保留；最终targeted31/31、0skip，独立[最终复审](../../../../.run/20261008-movement-review-02/trace-final-review.md)PASS、无未解决finding，仅限工具统计。
+
+56a阶段直接相关69/69；扩展488项462通过/26失败/0skip，不把这些旧计数冒充7cbd全量结果。24项为未初始化Engine/config/历史夹具环境；另外两项静态断言由独立review确认在精确main342c170同样成立：玩家声明实际2而断言1，Presentation schema15与product schema16不一致。它们未被消红或称作环境失败。父仓lint OK；101 spec-lint只报告12处既有文档/导航问题，exit0不代表全绿。
+
+指标边界已同步活交接：display/facing仅正常InputPublication/ClockAdvance同身份样本，AuthorityCorrection/Initial/未知cause断段但原始事件保留；正常范围0不能证明全部活动期0。转向250ms排除及有效分母公开，stop需300ms同段完整且终点target稳定，否则n=0/null。DTO不暴露TP标识，正常cause内TP不能自动识别；JS accepted请求不是GAS成功，最终postTick publication不是完整时钟或执行收据。当前候选7cbd与44e仅Tools analyzer/test不同，实际网页构建字节身份须以新封件收据为准，不能伪称已构建或已前台测得。
+
+本段无DS启动/账号注册/服务页面测量，无官方complete交付或用户裁定。F1持续意图与F4朝向未实施，Runtime PR280仍draft且不得合并，移动手感仍FAIL_PENDING_USER，所有Owner门保持OPEN。知识同步豁免：既有取证工具bug修复，无正式公共表现规则变更；旧账本只追加保留。
+
+### 移动手感排障：checkpoint121，新候选字节封存、GAS授权修订仍红；首次启动被地图路径守卫拦截（2026-10-08）
+
+[Game PR58](https://github.com/LumioGames/LumioGame/pull/58)已创建，head e9295959ee845ba91bdb938742b1fb885212dd75，未合入。四项CI失败均经[实际main基线日志对照](../../../../.run/20261008-movement-review-02/game-pr58-ci-analysis.md)核实既有：三项SDK版本错位、一项ServerWorldBoot的Create/hfsm编译接缝；未把被跳过的测试记为通过，未改pin/schema或绕过保护。
+
+[新私有封件](../../../../.run/20261008-movement-review-02/preview-candidate-02/launch-preparation.json)封存诊断源7cbd631、实际网页构建源44e921f。4449个源文件逐项对比，4447相同，仅Tools analyzer/test两项不同；[等价收据](../../../../.run/20261008-movement-review-02/preview-candidate-02/source-equivalence.json)明确复用44e的成功构建及现编Presentation，未伪称7cbd重新构建。Runtime官方31新副本305payload+manifest，manifest SHA8cc8df282a920af72de5168b2a134a98e4605a5d26f8b4be80325b3747d16fd9；旧fault/封件保留。两网页模块闭包各32资源/36引用，8个计算式import仍待浏览器实际验证。
+
+| 封件 | Ecs DLL SHA256 | MVID | WebCIL SHA256 |
+|---|---|---|---|
+| f69基线 | 3ddd4278a32e66c5fbb1222c1b51982adeb9da1a72888cd1304dfeb1ba06368d | e36b921c-28f4-4d77-8529-a49524bd7484 | cc290c2ec235073474e9324a9c187c380aaebcf139b181df48f23375f692a683 |
+| exact195 F3 | 543dd42abadba01a2d17842ca5cf3b79ff8aca83006808a63253591832dd3d46 | 479c603a-47aa-4ec4-a776-a7b78a302371 | e257b3dd3dfb4ae5b12a27bd63d2e3eee0c644e925f3baffb9287e96bf12084d |
+
+两边main.js SHA7ff2bd4162a337aa809f839ef397260a55aae84900d96767d20c8fd8590f1e86，Presentation SHA c395c77b1638acae9b840e3bc556a5d4a9f5d7087204cbc71177825ff72f235f；DLL/PDB、四方法IL、WebCIL MVID/IL、压缩副本与Boot引用均逐项通过。以上为发布目录的字节，尚不是实际服务HTTP或前台Game采样证据。
+
+新隔离Runtime测试提交0f07d11e6072e5ace99dabad0de9761de586ae7b、理由提交a5e8d9706c0f9665f4124655aff22fce63bcdbbd原样移植旧已审c7的22方法，仅授权新后缀/租期显示期望，完整Pose精度与非表现检查保持。Native重编0警告/错误，完整84项为66通过/18失败/0skip，raw2；[原始测试输出](../../../../.run/20261008-movement-review-02/gas-native/195-lease-scope-01/test-gas-owner-clock.log) SHA11fe856a1165c7df097fe81d23d513903e4e3eb0bff7e0d75b9aa864d5d2d664。[逐项理由与分类](../../../../.run/20261008-movement-review-02/gas-native/195-lease-scope-01/revision-reasons.md)明确18=原195新增8项原检查+22方法里新到达的10个保留残差检查，不能声称仅8项或全绿。Clock22及额外额度1通过；18首失败均为显示位置，首次失败之后未知。87生成文件只有EOL变化，已审计并恢复。root范围独审通过，远端推送前复审尚在进行；本时点未推PR280。
+
+首次隐藏独立pwsh启动PID39752于04:48:50 UTC进入launcher，WinReview/WinHuman20261008044244dddc43前缀及非秘密收据已先写。生产地图守卫在step02返回AUTHOR_ONLY_MAP_SNAPSHOT，[verification](../../../../.run/20261008-movement-review-02/preview-candidate-02/scene-01/verification.json)为FAIL而进程raw0，不能以raw0称启动成功。根因是新game-input作launcher root，却传旧Scene33配置，其base_map_path仍指旧目录；真实guard同时要求内容hash和selectedPath等于新root的冻结bomber.voxel。内存密码已生成但未落盘，注册/loginAndLaunch、DS与Bot启动均未到达；39752已退出，18108/18333仍空，18402/受保护18097仍10680。原失败日志/config/scene01全部保留，下一尝试只在新私有配置修正等内容地图路径、换新prefix与scene收据，不能放宽守卫。
+
+原Native工作已结束；两个Chrome154真实窗口已并排准备，但均为空白，没有冒称Game frames或完成四组。实际HTTP完整闭包、每组持续W/起停/转向/贴墙/A-B、Bot/远端观察与用户前台原话仍待。移动手感FAIL_PENDING_USER，Runtime PR280仍draft不得合并，F1/F4未实施，Owner门全OPEN。知识同步豁免：证据、既有工具与私有现场路径修正，无正式公共规则采纳。
+
+### 移动手感排障：checkpoint122，真实现场启动、用户仍判超级卡；同步Tick长任务与记录时钟缺陷（2026-10-08）
+
+接checkpoint121。Runtime授权测试/理由a5e8d9706c0f9665f4124655aff22fce63bcdbbd已普通fast-forward推至[PR280](https://github.com/LumioGames/LumioGameRuntime/pull/280)，远端读回OPEN/draft/head一致；独立最终[范围复审](../../../../.run/20261008-movement-review-02/gas-native/195-lease-scope-01/final-scope-review.md)PASS，不代表66/84结果已全绿，不转正式、不合并。真实网页F3 DLL仍是精确195生产字节，测试/文档提交不改变该字节。
+
+首次失败封件保留后，第二次新地图配置只改base_map_path为新冻结根，地图内容SHAffc6b13ac8f7a24469a3348b38f720cb128f54c3284e13fe0fd8652fd7b8e019不变；严格守卫的旧根/旧配置PASS、新根/旧配置RED、新根/新配置PASS均保留。[新封件](../../../../.run/20261008-movement-review-02/preview-candidate-02/launch-preparation-02.json)SHA2840088eeba4303d9c51c8ee478ee9df7d58f19607c7ecee20e265f55da052a2，prefix WinReview20261008045301c761d5 / WinHuman20261008045301c761d5先写非秘密收据。隐藏独立pwsh PID17108启动Scene02，verification=SERVING；DS18333 PID4436、网页18108 PID35556、6个Bot原PID存活，18402平台及受保护18097原PID10680未改。密码仅launcher内存。没有删旧fault或重启Room消错。
+
+基线实际HTTP32资源均200且哈希与封件相同，main含readMovementFlags/__lumioMovementTrace、Presentation含onFrame/debugLocal；各动态导入已真实进入游戏并产生frame。沿用checkpoint121的实际构建44e、诊断源7cbd与Ecs/IL/WebCIL身份，非新官方complete。Chrome154.0.8037.98、NVIDIA RTX3060Ti D3D11硬件加速、A/B均visible/focused、视口约719×740；原始Game导出hiddenFrames=0，frame dx/tx已非空。新实际浏览器上下文及时钟收据见browser/baseline-auto-02-browser-context.json。浏览器控制仅独立受控Chrome，未触碰他人窗口。
+
+用户前台原话逐字保存为 **「我刚玩了一下 超级卡」**，对应f69基线；[原话收据](../../../../.run/20261008-movement-review-02/browser/user-foreground-baseline-feedback-01.json)明确formalF3Verdict=null。用户随后答「暂停手动操作，继续自动对照」。原手动页面被关闭导致完整raw导出丢失，已保存可得状态及实际视频，不伪称恢复。自动第一批W03/W04组合驱动超过30秒导致NodeREPL重置，完成状态未知及raw丢失见driver-timeout-01.json，未算作五次完成。之后改为单次长按立即持久化，独立新Chrome PID25884/CDP18112；baseline-auto-02五次W、十次起停、四向、贴墙和A/B均保存raw及sidecar；其中W04在Podium/Results、W05无accepted请求，属于无效移动样本，不能写为手感零倒退通过。生命周期、phase和空姿态完整保留。
+
+原始数据推翻“目前只有外推引发卡感”的充分性：[只读耗时审计](../../../../.run/20261008-movement-review-02/browser/perf-trace-audit-index-01.json)显示有效W01/W02/W03每pump Tick占总耗时约98.40%/98.79%/95.99%，Tick p50约945/1888/514ms、最大2511/3632/914ms。W02最长3632ms与同起点3656ms longtask对应，publication代理可一次推进73；accepted请求不是GAS成功，代理不是Session完整时钟。浏览器卡顿主要落在同步csharp.tick，尚未定位内部耗时，不归因GPU、网络或外推。单独CPU profile保存在baseline-cpu-profile-01.cpuprofile并标注profilingOverhead=true、matrixSample=false，不混进四组统计。
+
+发现另一统计缺陷：raw顺序pump(t277582.4,tickMs3632.1,seq934)后实际frame记录t277567.9/seq934，因onFrame传rAF预定时间而非callback实际捕获时间，analyzer排序会颠倒观察与keyup边界。旧raw全部保留，显示/停步结果降级为暂定，不能凭其0采纳F3；已安排RED和最小诊断修复（实际观察时间与原rAF时间分存），不改游戏时钟或表现规则。修订后的四组可比采样尚未完成，F2/F3正式对照及用户F3裁定仍待。
+
+05:21:41 UTC[只读现场审计](../../../../.run/20261008-movement-review-02/preview-candidate-02/health-audit-since-0510-01.json)SHAec91be705e213299fc56b3dd6466aecc145545463654e423f627e90547ea15f3：同DS唯一boot/Ready/start，tick28449持续，无ERROR/FATAL/Room重启证据；05:10后3WARN（cadence_lag dropped3及两runtime_query_pending），A/B05:11:08重连、Bot新增7次admitted。Bot本地world build74–96次/个，单次最大92ms；重建/重复准入不冒称Room重启，也未排除关联卡顿。旧fault哈希保持，新现场fault无。移动手感仍FAIL_PENDING_USER；F1/F4未实施，ADR142/18085/生产schema等Owner门OPEN。知识同步豁免：排障、统计修复与私有证据，不采纳正式M8语义。
+
+### 移动手感排障：checkpoint123，修正真实观察时钟并保全死亡链现场退出（2026-10-08）
+
+Game诊断修订c46c4aa8ff96dd48f202a7274d1882d86a30bb13已推PR58，只改recorder/analyzer及两测试。frame.t使用trace调用时的实际单调时钟，保留rafAt；pump保留准入起点t/tickAt和tickMs/totalMs，另记尾工后observedAt用于观察边界，不伪称精确Tick结束。旧trace真实观察时刻不可恢复，missing/inferred字段及局限披露；不补造旧数据。RED30/34→GREEN34/34、无skip，root与独立复审PASS，父仓lintOK；101非strict spec-lint仍有12项既有报告，未称全绿。[报告与收据](../../../../.run/20261008-movement-review-02/trace-observation-clock-report.md)保留Git LF blob/工作树EOL差异。仅trace.mjs及压缩副本需新静态服务字节，不改主时钟、Presentation或输入行为。
+
+[独立CPU汇总](../../../../.run/20261008-movement-review-02/browser/baseline-cpu-profile-01-audit.json)显示17.316s窗口内csharp.tick子树94.66%、pumpSession96.21%、Presentation JS self0.47%。最高热叶wasm-function[100]无符号，不能称为某具体解释器/managed GC/memcpy。实际视频277.8/279.5s画面中自角色、Player4、Player8、特效及HUD均未推进，281.2s推进；[观察收据](../../../../.run/20261008-movement-review-02/browser/baseline-video-freeze-01.json)保留实际截图与原视频，未校准视频/页面时钟偏移，不能据此称B窗口同步冻结。视频canvas因origin taint未获得像素哈希，没有放宽浏览器安全。
+
+校正内部诊断：publication executionTickAdvance73不是执行73次world Tick。精确消费Client源码693095a及Session.dll身份已核，AdvancePredictionClock只调用一次WorldManager.Tick；Runtime的bound phase loop允许ordinal跳跃。一次Session.Tick还可能处理多个authoritygroup及selective rebuild，必须新增真实阶段计数/耗时区分，不能由最终步号推断补跑次数。已有GAS SelectiveRebuild EventSource及SessionSnapshot计数可作后续独立私有诊断，尚未改变生产调用行为。
+
+Scene02在05:29:03.871 UTC退出：verification由历史SERVING转FAIL，Process4436 raw2；DS/网页/6Bot及launcher自有清理后均不存活。新hostentry_fault.log 1647bytes SHA7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7，与旧死亡链错误相同：ProcessorPlan / Death structure intent no longer identifies its live old body，BomberEffectBusiness.Server.cs133。Defender无相关事件。新clock字节集03的同Scene守卫因此拒绝（raw1），部分payload/准备失败日志保留，不伪称READY、不绕过SERVING guard。Scene02所有原日志/fault/prefix/raw/video及旧封件保留。
+
+下一次新现场只用于修正clock后的四组取证，复用已验证生产主体、使用新运行副本/新prefix/严格地图和身份guard/隐藏独立pwsh，不把重建称为死亡链修复。Owner ADR142死亡语义未自行批准，RuntimePR280仍OPEN/draft、未合并，M8/F3裁定与正式complete未到达。持续意图F1及F4未实施；移动手感仍FAIL_PENDING_USER，受保护端口与生产schema等Owner门OPEN。知识同步豁免：工具bug修复与排障证据，无正式公共规则变更。
+
+### 移动手感排障：checkpoint124，新时钟现场部分对照与切换误标撤销；再次死亡退出后转内部耗时定位（2026-10-08）
+
+现场先重新核实：Game main 342c170f4394c536bc352e2cd26f4c2bbb3aaf28 包含4055647；PR58 OPEN/head d643126，Runtime PR280 OPEN/draft/head a5e8d9706c0f9665f4124655aff22fce63bcdbbd，不转正式、不合并。固定008eb62 Review已通过Git对象读取，其源码推导与待执行反例不当作本次浏览器结果，F1/F4及Owner规则保持原边界。
+
+Scene03使用全新4449文件源副本、官方31的306文件运行副本和冻结地图；c46仅新增静态trace时钟字节，实际网页主体仍为44e构建、Presentation c395c77b。第一次prefix WinClockHuman超账号32字符限制，在注册/启动前被独审阻断；旧封件保留。第二封件launch-preparation-scene03-02.json SHA6ffd26dafb6ea0fb5c559d94eee309f32fa543d3875e34c22ae3a6f8d8836b88，8脚本/17输入hash全部通过；WinClock2026100805414973eb26 / WinHuman2026100805414973eb26的八账号各29字符，非秘密prefix收据先写，密码仅launcher内存。05:46:03.495 UTC隐藏独立pwsh37696启动，DS9732/18333、网页21804/18108、六Bot实际SERVING。实际HTTP32资源200与f69 WebCIL cc290c2e匹配；Git LF trace SHA3da17e59与archive CRLF经过归一化对比，不冒称字面字节相同。
+
+[逐操作部分对照表](../../../../.run/20261008-movement-review-02/browser/scene03-partial-comparison-per-physical-01.md) SHA19f4e5f73ea36ed86ec8d9b34fe2706b851d1768ba1c9a8b843c28f41c58d4b7，包含baseline/F2各五次W10s、十次起停、四方向、贴墙和A/B原始导出/边沿。baseline A raw SHA2e7ef1a19ece5353ac38d8f5900a2372bd771bc2b281781356b1dd71aae2d129，F2 A raw SHAf325390eafd3e2b2146277f615d2bd7be7a77218ada468709624d976ffac4e8a。生命周期缺self、无accepted请求或静态墙段逐行标无效/部分，不以其零指标判通过。CDP keyDown/up没有OS按键重复，生命周期清键后不会自动补按，保留这项驱动限制。A/B均headful可见，但OS前台查询返回0，无法证明OS前台状态；document可见/焦点另记。历史两组没有单独保存浏览器ResourceEntries，仅实际HTTP与未成功切换的连续字节链证明基线，身份缺口明确披露，下一场必须先保存浏览器实际WebCIL basename再按键。
+
+有效baseline W1/2/3/5 held Tick p50约344.5/190.2/150.9/169.2ms，p95约618.8/372.9/226.7/241.5ms；有效F2 W2/4为189.9/237.3ms，F2 W3部分生命窗口不能用55.1ms的混合中位数判改善，其正常正请求pump p50为181.6ms。请求准入只代表JS返回true，publication步号只是最终发布代理。固定物理W方向的补充原始投影在baseline W2/W5发现3/4次倒退、最大0.329/0.334m；F2 W2/W3为6/4次、最大0.325/0.341m，同时目标反向。c46分析器的正常cause与250ms目标转向排除会遮住这些片段，其scoped backward=0不代表玩家未见倒退，也不能把此处归因为外推。官方统计与ALLcause/normal物理投影分别保留，stop n=0不可用，朝向分母同时披露。
+
+移动A同段Tick通常150–345ms且占pump约95–97%，B自身Tick p50约12–15ms/p95约32–43ms。session_drain原日志A每约2秒仅4–6次Tick、drained41–43/max9–13，B约40–41次Tick、max1–2；drained不是GAS执行计数，trace没有Bot/远端逐帧字段，不能由B自身时钟宣称所有远端流畅。当前修正诊断为同步Tick耗时边界主导严重卡顿，内部阶段仍待测；原话「我刚玩了一下 超级卡」仍对应基线、正式F3裁定为空。
+
+第一次F3切换脚本02将Where-Object LocalPort -eq18108拼成无空格参数，实际raw1且在junction改变前失败。root未先核对退出码就继续浏览器驱动，误把仍为f69的一次W标为F3；已明确纠正。[标签纠正](../../../../.run/20261008-movement-review-02/browser/scene03-F3-label-correction-01.json)及独立audit纠正保留，浏览器实际资源8hqr/cc290c2e证明其为额外baseline，禁止引用其零指标判F3。旧脚本/封件未覆盖，新03只修一处空格，SHA6efad8a4874dc68a267d3d94e5ef32042e03a06cf5861abd4bcf3b0dd391adce；addendum SHAe9d002630fb20bfc398b99b2b05223a557a67258c881522a3530dddb1b7d79f9，37hashrefs及真实语义RED/GREEN独审通过。03切换raw0后，独立实际HTTP32资源确认F3 WebCIL e257b3dd；但真正F3 cold-02随后ERR_CONNECTION_REFUSED，[失败收据](../../../../.run/20261008-movement-review-02/browser/scene03-F3-cold-02-start-failure.json)明确f3BrowserSamples=0。没有F3/F2+F3有效组，尚不能判最佳变体。
+
+Scene03于06:05:58.576 UTC/tick23696/CP39再次Death structure intent no longer identifies its live old body，DS raw2、同BomberEffectBusiness.Server.cs133错误族；DS/网页/六Bot由自有launcher清理，18108/18333已不监听，旧fault完整保留。两个自有浏览器context已关闭，矩阵暂停后才授权隔离托管诊断测试/构建，避免混入负载。不是循环重启消错，不启动ADR142死亡链候选。下一场必须有具体内部耗时诊断或修复新字节及新封件，不能继承本场存活/四组合格假设。
+
+Game-only perf诊断计划game-runtime-perf-diagnostic-plan-01.md已记录现有GAS SelectiveRebuild EventSource四阶段与公开Session/GAS计数；独立codex/101-movement-perf从c46隔离开展，JS87/87，C#生产当时尚未修改、行为RED待执行。诊断opt-in、bounded/drop显式、64位保真、生命周期跨换代delta不可用，禁止把无事件当零耗时。新perf页面不会混作四组原始指标。移动手感仍FAIL_PENDING_USER；Runtime280/正式M8/complete/消费/前台门未到达，F1/F4未实施，ADR142/18085/生产schema及受保护端口保持OPEN。知识同步豁免：既有排障工具与私有证据，不采纳产品/公共规则。
+
+时间精确化补充：detached-launch-scene03-02-receipt记录独立pwsh37696的启动为05:45:54.6615396 UTC；上文05:46:03.495 UTC是launcher的runStartedUtc窗口起点，不是pwsh创建时间。两原始收据均保留。
+
+### 移动手感排障：checkpoint125，真实耗时诊断RED/GREEN及独审交回；保持浏览器/Owner资格待验证（2026-10-08）
+
+Game-only独立诊断提交c7f3377fa283a196b50416a1da3a9e0fbbebccfb（parent c46），13个Spectator宿主/JS/测试文件，工作树clean。[完整交回](../../../../.run/20261008-movement-review-02/browser/runtime-perf-c46-01/report.md) SHA909823fcec1d585880906ff9454397d21caed24d89a7f15512135d655cec5d3c，[receipt](../../../../.run/20261008-movement-review-02/browser/runtime-perf-c46-01/receipt.json) SHA6f149df813889a48d2edf5445a51286358f7880a289744f350c4c37ba5153b0d含逐文件Git blob/工作树hash和所有原始输出。普通cherry-pick到PR58分支生成45d33989304d59616ab1a2d50a62594fc81cf09b；整个Spectator目录两提交tree同dda8fc24123c0a4625b466361fa2a2591163c267，diff为空。后续真实发布冻结exactc7，不宣称45重编。
+
+诊断只在loopback或明确true开发桥并同时trace=movement&perf=runtime开启：已有GAS SelectiveRebuild provider四阶段raw时钟/returned、Session两端原值、现有GAS metrics、manager/driver/session/world/clock身份及delta不可用原因；另包装Game同步bomber-engine import聚合每operation调用/耗时/request-reply字节及原抛错次数，分当前Tick内外，outside不绑定hook。未改变Client/Runtime/Bridge/Gameplay、clock/tick、输入/admission/协议/额度/F1/F4。关闭时原invoke函数不包装、不计时/分配map，宿主不创建listener或额外snapshot；原Tick异常同对象重抛，cleanup coded error和close/dispose原调用保持。
+
+真实TDD：首次SDK/运行器参数失败保全且不计RED；正确编译0 warning/error后8/8能力缺失Assert RED，后续端点保留/宿主接入反例独立RED；最终managed-green-final-06.trx实际16/16、0错误/skip/notrun。JS聚合桥6项真实缺能力RED后Node93/93、0skip；隔离Host构建0 warning/error，实际官方31 Session.dll SHAed0d58ffe731aebcadb417c59b03025d2eec0834d6b393ed29dee6981477be29。三个生成器副作用文件的原diff保全并恢复，最终Gameplay diff零；Host引用旧已封browser-gameplay，不编Gameplay。独审[实现报告](../../../../.run/20261008-movement-review-02/browser/game-runtime-perf-implementation-independent-review-01.md)及final06/commit/EOL addenda PASS，13/13与已审内容一致，其中8仅CRLF/LF差异。Native-free真实BCL与Host外壳测试不证实际bound Gas生命周期/Browser EventSource或移动体验。
+
+[实际消费源码/PE只读审计](../../../../.run/20261008-movement-review-02/browser/actual-consumed-runtime-phase-source-audit-01.md) SHAb4d145cc619a032ae98ed62a374f76eba285309a9739f2a5d3b0d10daf3a537a：official31的Runtime5ed/Client693与实际ns2.1 Gas.dll匹配；provider名、event1签名void(int,long,long,long,bool)及72-byte IL实读存在。一次Host Tick含逐closed authority group、一次elapsed clock tick及逐InputCommand三种rebuild来源，phase quartet不是authority group计数，步号跳跃不是调用次数。四phase不覆盖Begin/Project/covered release/CorrectNative/RemoveAffected/Client decode等；phase4可含重执行。现有源码支持慢泵→多权威组→更多重建的候选正反馈，但尚未区分journal/replay放大。浏览器实际selected cell read走Client热字节包→Game import→served engine-wasm.mjs的七buffer复制/分配/释放；此前常规NativeLoader四Marshal缓冲候选已撤回，不在此浏览器链，不据其改代码。
+
+可用性严格分开：providerSeen/enabled与真实事件仍待实际Browser证明，available只是本批有可读进程事件，可与unbound/truncated并存，不是当前Tick完整；错误/drop/无事件不能当零。phase buffer512、raw perf batch256（20Hz约12.8s）、桥32op/128char有显式累计drop/error；warmup先保存raw，再clear仅清trace事件/额度，不重置managed/bridge累计标记或Session/GAS计数。OutstandingBytes未采，避免遍历账本；RetainedBytes包含固定预留，不能叫journal字节密度。诊断所有样本profilingOverhead=true/matrixSample=false，不混四组主对照。知识[开发移动诊断](../knowledge/features/bomber-tour.md)已同步，描述/导航口径保持；[知识独审](../../../../.run/20261008-movement-review-02/browser/game-runtime-perf-knowledge-review-01.md)PASS，root lint通过。
+
+新preview-perf-04离线准备[阶段收据](../../../../.run/20261008-movement-review-02/preview-perf-04/preparation-stage-summary-04.json)SHAd2a55e1d33d485e2daac1648beeeb2abe5159eb3bd154e0e0b1c4d402410f690：全新官方31副本306文件逐项hash相同，f69/195 Ecs/PDB/IL原身份保持，可用deps是baseline/input-02与f3/input-02；首轮错误以为official web含PDB的raw1/partial保留。新Presentation须真实现编，新host PE/PDB/WebCIL/MVID/Boot/closure须新审计，不能静态copy替代；此checkpoint时fresh publish尚未合格，未创建新账号或启动。浏览器证据助手新增两独立context/Window/A-B唯一性、expected query、actual loaded Ecs及new host basename/HTTP/完整closure守卫，待实际场内执行。旧fault/scene/错误样本全部保留，原工作树他人.sdd/.zcodeignore/pelican文件未动。
+
+尚无四组完整可比结果、真正F3 Browser样本或最佳变体；移动手感FAIL_PENDING_USER，用户原话“我刚玩了一下 超级卡”不能解释为F3裁定。Runtime280仍OPEN/draft且不合并，不批准M8/ADR142/18085/生产schema。下一步只在新诊断字节/新prefix/新运行副本/隐藏独立pwsh与原strict guard成立后跑独立短段定位，再据真实数据修所属仓热点；不以连续重启称死亡链修复。

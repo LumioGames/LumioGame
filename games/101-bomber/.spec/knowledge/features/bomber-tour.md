@@ -65,6 +65,14 @@ node games/101-bomber/Tools/launcher.mjs --bots 8 --seed 101
 
 自然资源、成长、金心/Boss、死亡转移、中央补给/狂暴、六形态/五角色、圈伤害和结果/下一局，每项同时有规则与玩家可见证据。稀有行为用固定种子和独立规则测试补证，注入箱子/糖果的演示不能替代正常生产。按现行设计采多种子D/E及原型差异，不能用原型TS统计作为正式C#整局结果。
 
+## 开发移动诊断
+
+loopback或明确的开发桥页面可用`?trace=movement`保存物理按键、请求、pump、真实frame观察时间、焦点与身份。发布必须包含`movement-trace.mjs`；先确认`counts.frames>0`、`hiddenFrames=0`、frame的显示/目标坐标有限，再导出`JSON.stringify(window.__lumioMovementTrace.export())`并用`Tools/movement-trace-analyze.mjs`分析。JS请求返回true、最终publication步号都只是代理，不能当GAS执行或World Tick调用收据。分析器的正常cause和转向排除范围需披露，另按固定物理方向保留全部有效显示位移；stop样本n=0不可用。
+
+含Game开发诊断宿主的页面可再加`&perf=runtime`。它记录已有GAS四阶段事件、Session/GAS原始计数端点与引擎调用聚合，不改模拟路径；未开启时保持原Tick与Invoke路径。诊断含额外成本，`profilingOverhead=true`、`matrixSample=false`，不得混入四组主对照。四阶段并未覆盖整个Tick；调用聚合也不拆分托管编包与原生函数内部成本。
+
+64位计数和身份用字符串保存；跨session/manager/driver/clock换代不计算delta。provider未见或未启用、无阶段事件、错误、截断和drop都须明确报告，不能当零耗时。OutstandingBytes未采集，避免每次端点扫描整个账本。原始perf批次有有限容量；warmup也会占用容量，先保存warmup原始导出，再显式clear开启独立短测窗口，不覆盖旧证据。clear只清trace事件/额度，不重置托管或桥的累计drop/error、Session/GAS计数，短测仍须披露。每组按键前同时保存冷浏览器实际Ecs/托管宿主资源名与当前HTTP哈希，匹配该组封件。
+
 ## 证据落点
 
 每次运行使用新的integration或.run子目录，保留release来源、配表/profile/hash、底图hash、种子、DS日志、各Bot结果、输入流、逐Tick哈希、结算与指标。清理本次进程和临时凭据，证据不含密钥。
