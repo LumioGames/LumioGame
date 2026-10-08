@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Lumio.Bomber.Gameplay.Config;
 using Lumio.Bomber.Gameplay.Contracts.Components;
@@ -259,6 +261,339 @@ public sealed class BomberFrenzyProductionTests
         Assert.Equal(originalChain.ToString(CultureInfo.InvariantCulture), placed.GetProperty("data").GetProperty("chainId").GetString());
         scene.Manager.Tick();
         Assert.Equal(6L, world.Get<AttributeComponent>(participant.CurrentLife.Value).GetBaseValue(BomberAttributeNames.HealthPoints));
+    }
+
+    [Fact]
+    public void DiagnosticTwoActualFrenzyPlacementsCapturesOriginalProvenanceFault()
+    {
+        string? outputPath = Environment.GetEnvironmentVariable("LUMIO_FRENZY_VALUE_PROBE_OUTPUT");
+        if (outputPath is null)
+        {
+            TwoActualFrenzyPlacementsNaturallyChainWithoutChangingTheirOriginalPublicationOrSource();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(outputPath) || !Path.IsPathFullyQualified(outputPath) ||
+            !Directory.Exists(Path.GetDirectoryName(outputPath)) || File.Exists(outputPath) || Directory.Exists(outputPath))
+            throw new ArgumentException("The configured Frenzy probe output must be a new absolute file in an existing directory.", nameof(outputPath));
+
+        using var scene = new BomberTerrainProductionTests.Scene(0);
+        var participant = TakeFrenzy(scene);
+        World world = scene.World;
+        var config = BomberConfigBinding.For(world);
+        scene.Write(9, 1, 5, 0);
+        scene.Manager.Tick();
+        ActivatePlace(scene, 7, 5);
+        scene.Manager.Tick();
+        var first = Assert.Single(world.Each<BomberBombState>());
+        ulong firstDue = first.FuseEndTick.Value;
+        ulong firstChain = first.ChainId.Value;
+        var firstMachine = world.Get<BomberHfsmState>(first.Entity);
+        var firstPublication = new FrenzyProbeRow();
+        bool firstPublicationComplete = CopyFrenzyProbeRow(firstPublication, first, firstMachine);
+        JsonElement[] firstPlaced = BomberEffectIntegrationTests.Events(world, "bomb_placed");
+        while (world.Tick < first.PlacedAtTick.Value + config.Game.FrenzyMinPlacementTicks) scene.Manager.Tick();
+        ActivatePlace(scene, 9, 5);
+        scene.Manager.Tick();
+        var second = world.Each<BomberBombState>().Single(b => b.Entity != first.Entity);
+        NetEntityId secondId = second.Entity;
+        string originalToken = second.PromiseToken.Value;
+        ulong originalChain = second.ChainId.Value;
+        ulong originalDue = second.FuseEndTick.Value;
+        NetEntityId sourceLife = second.SourceLife.Value;
+        ulong sourceGeneration = second.SourceLifeGeneration.Value;
+        Assert.Equal(second.PlacedAtTick.Value + Ticks.FromMilliseconds(config.Game.FrenzyFuseMs, config.Game.TickRateHz), originalDue);
+        Assert.NotEqual(firstChain, originalChain);
+        var secondMachine = world.Get<BomberHfsmState>(secondId);
+        JsonElement[] bothPlaced = BomberEffectIntegrationTests.Events(world, "bomb_placed");
+        var probe = new FrenzyProbe(world, first, firstMachine, second, secondMachine,
+            firstPublication, firstPublicationComplete, firstPlaced, bothPlaced,
+            Ticks.FromMilliseconds(config.Game.FrenzyFuseMs, config.Game.TickRateHz));
+        probe.CheckBaseline();
+        probe.ReadPair(probe.Baseline, world.Tick);
+        if (!probe.Baseline.Complete || !firstPublicationComplete || !firstPublication.HfsmSnapshotPresent ||
+            firstPublication.Entity != first.Entity || firstPlaced.Length != 1 || bothPlaced.Length != 2 ||
+            !firstMachine.SnapshotPresent.Value || !secondMachine.SnapshotPresent.Value)
+            throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: ordinary publication did not yield two complete initialized machines.");
+
+        EventHandler<FirstChanceExceptionEventArgs> handler = (_, args) => probe.OnFirstChance(args.Exception);
+        Exception? outerTickException = null;
+        AppDomain.CurrentDomain.FirstChanceException += handler;
+        probe.Active = true;
+        try
+        {
+            while (world.Tick <= firstDue)
+            {
+                try
+                {
+                    probe.CheckBaseline();
+                    probe.ReadPair(probe.LastPreTick, world.Tick);
+                    if (!probe.LastPreTick.Complete)
+                        throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: incomplete pre-Tick pair.");
+                }
+                catch
+                {
+                    probe.BaselineFailure = true;
+                    throw;
+                }
+                probe.ArmedPreTick = world.Tick;
+                probe.InsideOwnedTick = true;
+                try { scene.Manager.Tick(); }
+                catch (Exception error)
+                {
+                    outerTickException = error;
+                    throw;
+                }
+                finally { probe.InsideOwnedTick = false; }
+            }
+        }
+        finally
+        {
+            probe.Active = false;
+            AppDomain.CurrentDomain.FirstChanceException -= handler;
+            try { WriteFrenzyProbeReport(outputPath, probe, outerTickException); }
+            catch { /* Evidence failure cannot replace the gameplay exception. */ }
+        }
+
+        second = world.Get<BomberBombState>(secondId);
+        Assert.Equal((int)BomberBombPhase.Danger, second.Phase.Value);
+        Assert.Equal(firstDue, second.ExplodedAtTick.Value);
+        Assert.Equal(firstDue, second.FuseEndTick.Value);
+        Assert.True(second.FuseEndTick.Value < originalDue);
+        Assert.Equal(firstChain, second.ChainId.Value);
+        Assert.Equal(originalToken, second.PromiseToken.Value);
+        Assert.Equal(sourceLife, second.SourceLife.Value);
+        Assert.Equal(sourceGeneration, second.SourceLifeGeneration.Value);
+        Assert.True(second.Frenzy.Value);
+        Assert.Equal((int)BomberBombKind.Standard, second.BombKind.Value);
+        Assert.Equal(0, second.FutureChildren.Value);
+        BomberFrenzy.Validate(world);
+        var placed = Assert.Single(BomberEffectIntegrationTests.Events(world, "bomb_placed"),
+            e => e.GetProperty("entityId").GetString() == secondId.ToHex());
+        Assert.Equal(originalDue.ToString(CultureInfo.InvariantCulture), placed.GetProperty("data").GetProperty("fuseEndTick").GetString());
+        Assert.Equal(originalChain.ToString(CultureInfo.InvariantCulture), placed.GetProperty("data").GetProperty("chainId").GetString());
+        scene.Manager.Tick();
+        Assert.Equal(6L, world.Get<AttributeComponent>(participant.CurrentLife.Value).GetBaseValue(BomberAttributeNames.HealthPoints));
+    }
+
+    private sealed class FrenzyProbe
+    {
+        private const string Fault = "Frenzy chain change has no published explosion provenance.";
+        private readonly World world;
+        private readonly BomberBombState first;
+        private readonly BomberBombState second;
+        private readonly BomberHfsmState firstMachine;
+        private readonly BomberHfsmState secondMachine;
+        private readonly NetEntityId firstId;
+        private readonly NetEntityId secondId;
+        private readonly ulong worldInstanceId;
+        private readonly int threadId;
+        public readonly Guid RunId = Guid.NewGuid();
+        public readonly FrenzyProbeRow FirstPublication;
+        public readonly bool FirstPublicationComplete;
+        public readonly JsonElement[] FirstPlaced;
+        public readonly JsonElement[] BothPlaced;
+        public readonly ulong DerivedNominalFuseTicks;
+        public readonly FrenzyProbePair Baseline = new();
+        public readonly FrenzyProbePair LastPreTick = new();
+        public readonly FrenzyProbePair FirstChance = new();
+        public bool Active;
+        public bool InsideOwnedTick;
+        public bool ObserverBusy;
+        public bool Attempted;
+        public bool ObserverFailure;
+        public bool BaselineFailure;
+        public Exception? ObserverException;
+        public Exception? FirstChanceException;
+        public ulong ArmedPreTick;
+
+        public FrenzyProbe(World world, BomberBombState first, BomberHfsmState firstMachine,
+            BomberBombState second, BomberHfsmState secondMachine, FrenzyProbeRow firstPublication,
+            bool firstPublicationComplete, JsonElement[] firstPlaced, JsonElement[] bothPlaced, ulong derivedNominalFuseTicks)
+        {
+            this.world = world;
+            this.first = first;
+            this.firstMachine = firstMachine;
+            this.second = second;
+            this.secondMachine = secondMachine;
+            firstId = first.Entity;
+            secondId = second.Entity;
+            worldInstanceId = world.InstanceId;
+            threadId = Environment.CurrentManagedThreadId;
+            FirstPublication = firstPublication;
+            FirstPublicationComplete = firstPublicationComplete;
+            FirstPlaced = firstPlaced;
+            BothPlaced = bothPlaced;
+            DerivedNominalFuseTicks = derivedNominalFuseTicks;
+        }
+
+        public void CheckBaseline()
+        {
+            if (Environment.CurrentManagedThreadId != threadId || !world.IsLive(firstId) || !world.IsLive(secondId) ||
+                first.Entity != firstId || second.Entity != secondId ||
+                !ReferenceEquals(world.Get<BomberBombState>(firstId), first) ||
+                !ReferenceEquals(world.Get<BomberBombState>(secondId), second) ||
+                !ReferenceEquals(world.Get<BomberHfsmState>(firstId), firstMachine) ||
+                !ReferenceEquals(world.Get<BomberHfsmState>(secondId), secondMachine) ||
+                world.Each<BomberBombState>().Count() != 2)
+                throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: retained world or bomb identities changed.");
+        }
+
+        public void ReadPair(FrenzyProbePair pair, ulong armedPreTick)
+        {
+            pair.Complete = false;
+            pair.WorldInstanceId = world.InstanceId;
+            pair.WorldTick = world.Tick;
+            pair.ManagedThreadId = Environment.CurrentManagedThreadId;
+            pair.ArmedPreTick = armedPreTick;
+            bool firstComplete = CopyFrenzyProbeRow(pair.First, first, firstMachine);
+            bool secondComplete = CopyFrenzyProbeRow(pair.Second, second, secondMachine);
+            pair.Complete = firstComplete && secondComplete && pair.WorldInstanceId == worldInstanceId &&
+                pair.ManagedThreadId == threadId && pair.First.Entity == firstId && pair.Second.Entity == secondId &&
+                pair.First.HfsmEntity == firstId && pair.Second.HfsmEntity == secondId;
+        }
+
+        public void OnFirstChance(Exception error)
+        {
+            if (!Active || !InsideOwnedTick || Environment.CurrentManagedThreadId != threadId || ObserverBusy || Attempted ||
+                error.GetType() != typeof(InvalidOperationException) || !string.Equals(error.Message, Fault, StringComparison.Ordinal))
+                return;
+            ObserverBusy = true;
+            Attempted = true;
+            FirstChanceException = error;
+            try { ReadPair(FirstChance, ArmedPreTick); }
+            catch (Exception observerError)
+            {
+                ObserverFailure = true;
+                ObserverException = observerError;
+                FirstChance.Complete = false;
+            }
+            finally { ObserverBusy = false; }
+        }
+    }
+
+    private sealed class FrenzyProbePair
+    {
+        public ulong WorldInstanceId;
+        public ulong WorldTick;
+        public ulong ArmedPreTick;
+        public int ManagedThreadId;
+        public bool Complete;
+        public readonly FrenzyProbeRow First = new();
+        public readonly FrenzyProbeRow Second = new();
+    }
+
+    private sealed class FrenzyProbeRow
+    {
+        public NetEntityId Entity, Owner, SourceLife, HfsmEntity, HfsmOwnerEntity;
+        public ulong SourceLifeGeneration, FuseEndTick, ChainId, ExplodedAtTick, DangerUntilTick, PlacedAtTick;
+        public ulong HfsmFingerprint, HfsmMachineKey, HfsmEpoch, HfsmStepSeq, HfsmNextActivationSeq;
+        public int Phase, BombKind, Power, FutureChildren, SkillLevel, PierceLayers, ChildDirection;
+        public int KickDirection, KickRange, HfsmSchemaVersion, HfsmMachineKind, HfsmLifecycle;
+        public bool Frenzy, PlacementRecorded, CapacityReturned, HfsmSnapshotPresent, PathCountsValid;
+        public string? PromiseToken;
+        public int ActiveStatesCount, ActiveActivationsCount;
+        public readonly uint[] ActiveStates = new uint[7];
+        public readonly ulong[] ActiveActivations = new ulong[7];
+    }
+
+    private static bool CopyFrenzyProbeRow(FrenzyProbeRow row, BomberBombState bomb, BomberHfsmState machine)
+    {
+        row.Entity = bomb.Entity;
+        row.Owner = bomb.Owner.Value;
+        row.SourceLife = bomb.SourceLife.Value;
+        row.SourceLifeGeneration = bomb.SourceLifeGeneration.Value;
+        row.PromiseToken = bomb.PromiseToken.Value;
+        row.PlacedAtTick = bomb.PlacedAtTick.Value;
+        row.FuseEndTick = bomb.FuseEndTick.Value;
+        row.ChainId = bomb.ChainId.Value;
+        row.Phase = bomb.Phase.Value;
+        row.PlacementRecorded = bomb.PlacementRecorded.Value;
+        row.ExplodedAtTick = bomb.ExplodedAtTick.Value;
+        row.Frenzy = bomb.Frenzy.Value;
+        row.BombKind = bomb.BombKind.Value;
+        row.Power = bomb.Power.Value;
+        row.FutureChildren = bomb.FutureChildren.Value;
+        row.SkillLevel = bomb.SkillLevel.Value;
+        row.PierceLayers = bomb.PierceLayers.Value;
+        row.ChildDirection = bomb.ChildDirection.Value;
+        row.CapacityReturned = bomb.CapacityReturned.Value;
+        row.DangerUntilTick = bomb.DangerUntilTick.Value;
+        row.KickDirection = bomb.KickDirection.Value;
+        row.KickRange = bomb.KickRange.Value;
+        row.HfsmEntity = machine.Entity;
+        row.HfsmSnapshotPresent = machine.SnapshotPresent.Value;
+        row.HfsmSchemaVersion = machine.SnapshotSchemaVersion.Value;
+        row.HfsmOwnerEntity = machine.OwnerEntity.Value;
+        row.HfsmMachineKind = machine.MachineKind.Value;
+        row.HfsmFingerprint = machine.Fingerprint.Value;
+        row.HfsmMachineKey = machine.MachineKey.Value;
+        row.HfsmEpoch = machine.Epoch.Value;
+        row.HfsmStepSeq = machine.StepSeq.Value;
+        row.HfsmNextActivationSeq = machine.NextActivationSeq.Value;
+        row.HfsmLifecycle = machine.Lifecycle.Value;
+        row.ActiveStatesCount = machine.ActiveStates.Count;
+        row.ActiveActivationsCount = machine.ActiveActivations.Count;
+        row.PathCountsValid = row.ActiveStatesCount is >= 0 and <= 7 && row.ActiveActivationsCount is >= 0 and <= 7 &&
+            row.ActiveStatesCount == row.ActiveActivationsCount;
+        if (!row.PathCountsValid) return false;
+        for (int i = 0; i < row.ActiveStatesCount; i++) row.ActiveStates[i] = machine.ActiveStates[i];
+        for (int i = 0; i < row.ActiveActivationsCount; i++) row.ActiveActivations[i] = machine.ActiveActivations[i];
+        for (int i = row.ActiveStatesCount; i < 7; i++) row.ActiveStates[i] = 0;
+        for (int i = row.ActiveActivationsCount; i < 7; i++) row.ActiveActivations[i] = 0;
+        return true;
+    }
+
+    private static class FrenzyProbeJson
+    {
+        internal static readonly JsonSerializerOptions Options = new() { IncludeFields = true };
+    }
+
+    private static void WriteFrenzyProbeReport(string outputPath, FrenzyProbe probe, Exception? outerTickException)
+    {
+        bool sameExceptionInChain = false;
+        for (Exception? candidate = outerTickException; candidate is not null; candidate = candidate.InnerException)
+            if (ReferenceEquals(candidate, probe.FirstChanceException)) sameExceptionInChain = true;
+        string status = probe.ObserverFailure || probe.BaselineFailure || !probe.FirstPublicationComplete || !probe.Baseline.Complete ||
+            !probe.LastPreTick.Complete || !probe.FirstChance.Complete || !sameExceptionInChain
+            ? "UNKNOWN" : "COMPLETE_MATCHING_FIRST_CHANCE";
+        if (!probe.Attempted && !probe.BaselineFailure && outerTickException is null) status = "UNEXPECTED_NO_MATCH";
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            schema = "f1-frenzy-value-probe-v1",
+            status,
+            test = nameof(DiagnosticTwoActualFrenzyPlacementsCapturesOriginalProvenanceFault),
+            runId = probe.RunId,
+            processId = Environment.ProcessId,
+            firstPublicationComplete = probe.FirstPublicationComplete,
+            firstPublication = probe.FirstPublication,
+            firstPlaced = probe.FirstPlaced,
+            bothPlaced = probe.BothPlaced,
+            derivedNominalFuseTicks = probe.DerivedNominalFuseTicks,
+            derivedNominalFirstDeadlineMatchesObservedOriginal =
+                ulong.MaxValue - probe.FirstPublication.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
+                probe.FirstPublication.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.FirstPublication.FuseEndTick,
+            derivedNominalSecondDeadlineMatchesObservedOriginal =
+                ulong.MaxValue - probe.Baseline.Second.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
+                probe.Baseline.Second.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.Baseline.Second.FuseEndTick,
+            initializedByOrdinaryPublication = probe.Baseline.Complete,
+            baseline = probe.Baseline,
+            lastPreTick = probe.LastPreTick,
+            firstChance = probe.FirstChance,
+            matchingAttempts = probe.Attempted ? 1 : 0,
+            observerFailure = probe.ObserverFailure,
+            baselineFailure = probe.BaselineFailure,
+            observerError = probe.ObserverException?.ToString(),
+            sameExceptionInPropagatedChain = sameExceptionInChain,
+            outerException = outerTickException?.ToString(),
+            firstChanceException = probe.FirstChanceException?.ToString(),
+            localQueueMembership = "UNKNOWN",
+            nativeOutcome = "UNKNOWN",
+        }, FrenzyProbeJson.Options);
+        if (json.Length > 64 * 1024) return;
+        using var file = new FileStream(outputPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        file.Write(json);
+        file.Flush(true);
     }
 
     [Fact]
