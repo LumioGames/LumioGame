@@ -1876,3 +1876,15 @@ Release portable编译raw0，Game35私有预览工具已准备；[库身份](../
 Game34 attempt05于01:14:25 UTC再次同型死亡意图fatal，最后CP15/Game tick9224/Host tick9225；[保全收据](../../../../.run/game34-runtime-correction-dev-preview-01/prior-failure-05/failure-receipt.json)记录9份文件原始前后hash，DS35484 exit2、launcherexit1，不重启充当修复。旧runtime副本新增fault日志至307文件，后续必须使用新副本而非删日志或绕过count守卫。其此前最新一分钟只读tick样本1200间隔p50=48/p95=64/p99=67/max72ms、无cadence_lag；不同于用户操作窗口，不能证明全程无抖动。
 
 长期scratch唯一失败已由[只读历史分解](../../../../.run/20261007-runtime-movement-repair-01/task-17-scratch-failure-readonly.md)解释：旧Transform重复文本捕获1480字节变为单次typed844字节，差636正好对应12706→12070。Root按用户「不一定要保护」「没意义的东西就干掉」允许独立Task17修订这一已证实过期oracle；保留8192预算在8384结构预留处预拒、used0、无突变及完整undo，生产计费/额度不改。旧保护源于笼统assertion freeze，并非独立架构Owner裁定门；ADR142/18085/schema仍Pending。Task17及最终combined full尚未完成。真实热更最小四文件接线计划Task15已成文未实施。知识同步豁免：进度和证据追加，完整技术知识随实际最终交付沉淀。
+
+### 移动手感排障：checkpoint109，过期scratch断言修订完成；Game35新Runtime到期修复预览实际SERVING（2026-10-08）
+
+[Task17报告](../../../../.run/20261007-runtime-movement-repair-01/task-17-scratch-oracle-report.md)与[独审](../../../../.run/20261007-runtime-movement-repair-01/task-17-scratch-oracle-review.md)确认clean提交f43dbe81e06a3dc839a6fa9541ee8261fee3724f仅修订GasJointStructuralScratchTests的过期12706期望为12070并补充来源注释，生产代码/预算不变。当前RED1/1失败raw2，GREEN1/1及已有typed Transform预算/拒绝10/10通过；8384结构预留、8192提前拒绝used0、完整undo与两轮恢复断言保留。原断言快照、636差值历史因果及失败证据均保留。
+
+最终组合全套ECS660/660、零跳过、raw0；GAS1034项中1033通过、1失败、零跳过、raw2。剩余RealNativeEffectScratchRefusalUndoesStageAndResumes(settlement:true)失败于调用栈必须包含EffectSettlement.SettleOne的方法名断言，与已修12706期望不同；其后恢复检查未执行。尚未取得完整异常定位，不推定是Release内联、不删除该断言冒充全绿。119项移动聚焦回归及实际Client四例通过事实保持，整体全套仍未通过。
+
+[P35工具独审](../../../../.run/20261007-runtime-movement-repair-01/task-14-preview-tools-review.md)PASS后，Game35 Release优化解释执行publish raw0，非AOT/非裁剪/hotReload=false；浏览器Ecs生产字节来自7fa253ce，后续f43dbe81仅测试变更。[实际发布审计](../../../../.run/game35-owner-expiry-dev-preview-01/published-runtime-audit.json)确认宿主精确DLL引用、新MVID、三个方法IL、boot引用及压缩资源一致。Root重新核实旧P34进程退出、18105/18333空闲、18402仍监听，核对最终四份启动脚本hash后于01:46:03 UTC以隐藏独立pwsh PID17104启动；交互服务Normal优先级，构建仍BelowNormal，未改其他进程。
+
+[新现场收据](../../../../.run/game35-owner-expiry-dev-preview-01/root-readiness.json)实际SERVING，requiredBots/admittedBots/botHostsStarted均6，另两个真人槽位；A/B和平台health HTTP200，服务出的新Runtime WebCIL SHA为f90727188c5bb56eacbfeda04a7bc154924c8a578abb82f2cfa2d6eac24a0dfe，main.js亦匹配本次publish。全新官方31运行副本306文件，旧fault日志未删除；新八账号Move3520261008014616/Human3520261008014616及独立DS store，[prefix收据](../../../../.run/game35-owner-expiry-dev-preview-01/prefix-receipt.json)无密码。页面18105、DS18333、原平台18402，受保护平台未动。
+
+已给用户新版http://127.0.0.1:18105/play/?player=A及B进行手感测试，停止本任务重构建/重测试避免干扰。未声称打开默认浏览器，未声称实际热更或正式complete包，前台验收PENDING，旧Scene33/Game34的FAIL保持。真实迟到连续回退、Game朝向、初选/输入定时及Server已知死亡链仍待处理；Task15热更接线尚未实施。ADR142、18085与生产schema门不变。知识同步豁免：本段为既有模式部署与证据追加，无新增规范，最终技术知识随交付沉淀。
