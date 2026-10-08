@@ -1888,3 +1888,15 @@ Game34 attempt05于01:14:25 UTC再次同型死亡意图fatal，最后CP15/Game t
 [新现场收据](../../../../.run/game35-owner-expiry-dev-preview-01/root-readiness.json)实际SERVING，requiredBots/admittedBots/botHostsStarted均6，另两个真人槽位；A/B和平台health HTTP200，服务出的新Runtime WebCIL SHA为f90727188c5bb56eacbfeda04a7bc154924c8a578abb82f2cfa2d6eac24a0dfe，main.js亦匹配本次publish。全新官方31运行副本306文件，旧fault日志未删除；新八账号Move3520261008014616/Human3520261008014616及独立DS store，[prefix收据](../../../../.run/game35-owner-expiry-dev-preview-01/prefix-receipt.json)无密码。页面18105、DS18333、原平台18402，受保护平台未动。
 
 已给用户新版http://127.0.0.1:18105/play/?player=A及B进行手感测试，停止本任务重构建/重测试避免干扰。未声称打开默认浏览器，未声称实际热更或正式complete包，前台验收PENDING，旧Scene33/Game34的FAIL保持。真实迟到连续回退、Game朝向、初选/输入定时及Server已知死亡链仍待处理；Task15热更接线尚未实施。ADR142、18085与生产schema门不变。知识同步豁免：本段为既有模式部署与证据追加，无新增规范，最终技术知识随交付沉淀。
+
+### 移动手感排障：checkpoint110，Game35前台再次FAIL；按Owner要求Review、提交合并并交接网页调试（2026-10-08）
+
+用户最新逐字反馈「你先提交合并 收尾，然后给我一个提示词，说明你做了哪些，现在的问题还是一卡一卡的 手感非常差，让接下来的Agent自己网页调试优化并找到问题原因」，随后「你可以都提交合并，你的提示词你带上你的提交记录，先Review一下你的改动」。[Game35原话收据](../../../../.run/game35-owner-expiry-dev-preview-01/foreground-observation-01.json)明确前台FAIL，取代checkpoint109当时PENDING，不改历史。用户授权源码收口不等于手感、正式发布或Owner门通过。[完整接手提示词](2026-10-08-movement-browser-debug-handoff.md)要求先Review列出的提交，再自己接通Playwright/CDP进行真实网页输入/模拟/表现/帧耗时采样，不让离线探针代替浏览器证据。
+
+Runtime在新隔离Runtime34工作树整合f43与当时main9bc2fc2d，提交de5a44e34be4d777b6c287d36d8bcedd53cb54e2；唯一scratch冲突保留main已合入的更完整12070精确边界/Undo测试。相对main只剩8个Owner相关文件，生产代码与7fa相同。[最终聚合独审](../../../../.run/20261007-runtime-movement-repair-01/closeout-runtime-final-review.md)PASS。完整solution/all production TFM编译raw0、零警告错误，证据closeout-runtime-build-02，Engine依赖冻结main4bf8d283；attempt01旧523依赖缺PeriodFact契约的33编译错误原样保留。147项生成物仅换行变化逐项核对后还原，工作树clean。f43历史ECS660/660与GAS1033/1034仍保留；main另有GAS失败测试修订，未重跑de5完整行为，不能把旧失败或已修通过当作当前实测。
+
+Runtime [PR277](https://github.com/LumioGames/LumioGameRuntime/pull/277)已推送创建；此checkpoint时普通merge被GitHub必需Build门拒绝、作业queued，auto-merge也被仓库禁用，尚未MERGED，不用--admin、不改保护、不伪造check。本地WSL Runner服务active且已有别的Worker忙碌，未终止或重启。Client [PR181](https://github.com/LumioGames/LumioClient/pull/181)已由远端读回MERGED，merge5b7ef6101bef5250a66fc4813e75d0038da990e8，含df649生命周期修复；Game35未消费Client18。Server250ee41、Engine523c3d3及既有Native/Voxel组成提交均已是已知origin/main祖先。
+
+Game新隔离工作树Game35Closeout先以474d557合入main，保留正式玩法/证据及main原型，六处冲突无新增产品裁定；然后5680905be791032a70d61ce20c16b4b827f7f128合入此前只在预览工作树的b07f451 Owner Model消费者。未复活已撤销18868cc/接收时间插值方案，保留c490d70字节属性修复。rootlint、48仓库轻量测试、98消费测试通过，Game spec-lint12历史/隔离路径报告保留；未新做整套构建或正式SDK pin资格验证。[合并报告](../../../../.run/20261007-runtime-movement-repair-01/closeout-game-merge-report.md)及[独审](../../../../.run/20261007-runtime-movement-repair-01/closeout-game-final-review.md)PASS限授权源码整合，完整前台/发行验收仍FAIL/OPEN。合入main需要正常PR merge，状态以后续checkpoint为准。
+
+现场只读复查18105/18333已退出，18402平台存活。Game35最后CP13/Game tick7949同型Death structure intent fatal后退出；[保全收据](../../../../.run/game35-owner-expiry-dev-preview-01/prior-failure-01/failure-receipt.json)保存现有日志副本/hash，launcherexit1，未重启充当修复。移动卡顿与死亡链分别登记。热更仍未接通；朝向/双定时器/实际浏览器采样仍待接手。ADR142、18085/schema与他人脏文件保持。知识同步豁免：本段为已审修复整合、机械链接修复、事实交接；未新增公共契约或宣布完整交付。
