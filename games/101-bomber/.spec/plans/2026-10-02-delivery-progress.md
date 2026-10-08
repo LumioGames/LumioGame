@@ -1820,3 +1820,11 @@ Scene33仍在18103/18333/18402服务，新[60秒只读节拍收据](../../../../
 只读追踪确认Game入口main.js的完整错误字面量为initial_character_admission_window_closed，须检查选角/重连状态；不能将截断用户文字直接归为Server断连。Game渲染runtime.ts向Doll.update传本机Runtime Model XZ；dolls.ts从相邻显示坐标差计算速度/朝向，回拉会产生反向朝向并影响步态与跟随，位置回拉的上游根因仍待动态隔离证据。
 
 本次起始复查Scene33仍存活并到CP906，随后再次复查18103/18333消失，平台18402仍监听；[新故障保全](../../../../.run/20261008-scene33-failure01/receipt.json)包含只读复制与SHA，最终CP913、tick548036出现Death structure intent no longer identifies its live old body，随后watchdog fatal。这是已知死亡意图错误族新事件，与本次移动回拉分开登记；不自动启用ADR142、不以重复重启充当修复。历史封件/证据和受保护平台未改；继续所属仓根因调查与隔离复现。
+
+### 移动手感排障：checkpoint103，两类Runtime回拉证据分离；角色反转已由真实表现代码隔离复现，校正连续性修复开工（2026-10-08）
+
+[独立根因分析](../../../../.run/20261007-runtime-movement-repair-01/task-8-runtime-pullback-diagnosis.md)确认两条不同路径：其一，tau+h到期把正向表现前探直接置零，无权威校正也会产生回拉；其二，真实非零权威纠偏清除有效前探，却只累计旧Target与纠正前缀之差，遗漏已显示的前探。既有真实Native轨迹在t=.110处显示前Target≈.2、前显示≈.22，纠正Target≈.17后显示≈.2，丢掉约.02；同类Client18完整回归轨迹也保留此缺陷，不能以生命周期修复代替手感修复。此前用例只比渲染频率共同时间点，并未断言纠偏事件连续性。
+
+另已确认Game持键setInterval(50)与Session截止时间setTimeout是独立调度；输入先排队、Session后续Tick才准入，因此旧的一输入一pump探针没有覆盖可能的空pump/双输入分批。该放大因素的现场发生频次尚未量化，未认定是全部卡顿的根因。Game隔离探针消费未改Runtime轨迹并执行真实ViewRuntime.updateDolls、Doll、CameraRig，120Hz稳定相位出现3次活动期回拉，方向逆转且朝向偏离约25–36度；抖动场景4次、最大约38度。它支持用户持续W角色反转症状；镜头实际位置没有活动期倒退，不混写为镜头反转。
+
+新Runtime工作树Runtime32CorrectionContinuity从5edf9b46创建，分支fix/101-owner-correction-continuity；[Task9明确范围](../../../../.run/20261007-runtime-movement-repair-01/task-9-correction-continuity-brief.md)只修真实纠偏丢失有效前探，先新测试RED再最小实现，不改旧断言、不改到期期限/频率/容量/协议、不重启现场。尚未RED/GREEN/提交或独审。整体到期回退与本轮私有表现断言相冲突，另向Owner提交是否改为已完成本地预测插帧及其一逻辑步显示延迟取舍；未获回复前不实现依赖该选择的变更。ADR142、发布/schema门和保护旧scratch均保持。
