@@ -27,6 +27,7 @@
     <Compile Include="../SpectatorJsonContracts.cs" Link="Spectator/SpectatorJsonContracts.cs" />
     <Compile Include="../SpectatorJsonContext.cs" Link="Spectator/SpectatorJsonContext.cs" />
     <Compile Include="../BomberPlayerIntent.cs" Link="Spectator/BomberPlayerIntent.cs" />
+    <Compile Include="../BomberPlayerStepOptions.cs" Link="Spectator/BomberPlayerStepOptions.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="3.2.2" />

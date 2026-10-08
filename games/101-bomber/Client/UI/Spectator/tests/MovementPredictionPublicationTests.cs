@@ -27,9 +27,11 @@ public sealed class MovementPredictionPublicationTests
     public void UnconfirmedInputPublishesMovedOwnerWithoutChangingConfirmedLogic(string boundary)
         => RunActualPrediction(boundary);
 
-    internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null)
+    internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null,
+        Action<BrowserSessionOwner, NetEntityId>? beforeMove = null, BomberPlayerStepOptions? stepOptions = null,
+        ulong wireGeneration = 1)
     {
-        using var owner = new BrowserSessionOwner(parts: true);
+        using var owner = new BrowserSessionOwner(parts: true, stepOptions: stepOptions);
         using var server = owner.CreateServerProjectionWorld(new ProjectionRegistry(BrowserSessionOwner.LoadServerRegistry()), 7);
         server.AttachControlAdapter(new ProjectionProfile());
         server.Tick(); server.DrainOutbox();
@@ -77,7 +79,7 @@ public sealed class MovementPredictionPublicationTests
             using (bombTransform.BeginWrite(server.World.RegisterTransformController(bombId, nameof(MoveAbility))))
                 bombTransform.SetLocalPosition(before);
         }
-        observer.Connected = true; observer.ConnectionGeneration = 1;
+        observer.Connected = true; observer.ConnectionGeneration = wireGeneration;
         IBomberConfig config = SpectatorDump.LoadDisplayConfig();
         var exported = ExportActualGround(server, config, boundary == "wall");
         server.Tick();
@@ -97,6 +99,12 @@ public sealed class MovementPredictionPublicationTests
         Assert.Equal("active", owner.Host.ConnectionState);
         Assert.True(owner.Host.InputEnabled, string.Join(" | ", owner.Logs));
         var confirmed = owner.Host.World!;
+        if (beforeMove is not null)
+        {
+            Assert.True(confirmed.Manager.ClientPredictionClockEnabled);
+            beforeMove(owner, life.AssignedId);
+            return;
+        }
         var driver = Assert.IsType<Lumio.Client.Spectator.RuntimeJointPrediction>(typeof(SpectatorReplicaHost)
             .GetField("_joint", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner.Host));
         Assert.True(driver.IsAttached(confirmed.Manager));

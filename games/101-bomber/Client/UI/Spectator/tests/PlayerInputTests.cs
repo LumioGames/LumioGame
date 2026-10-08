@@ -181,12 +181,21 @@ public sealed class PlayerInputTests
     [InlineData(-1, 0)]
     [InlineData(5, 0)]
     [InlineData(1, 5)]
-    [InlineData(0, 0)]
     public void InvalidDirectionDoesNotConsumeInputSequence(int primary, int secondary)
     {
         using var host = ReadyHost();
         Assert.Throws<ArgumentException>(() => host.SendMove(primary, secondary, false));
         Assert.Equal(1UL, Decode(host.PlaceBomb()).Sequence);
+    }
+
+    [Fact]
+    public void SharedIdleMoveConsumesOneSequenceBeforeBomb()
+    {
+        using var host = ReadyHost();
+        var idle = Decode(host.SendMove(0, 0, false));
+        Assert.Single(idle.Commands);
+        Assert.Equal(1UL, idle.Sequence);
+        Assert.Equal(2UL, Decode(host.PlaceBomb()).Sequence);
     }
 
     [Fact]

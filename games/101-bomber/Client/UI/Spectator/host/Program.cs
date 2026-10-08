@@ -20,6 +20,17 @@ public static partial class SpectatorExports
     private static SpectatorReplicaHost? s_client;
     private static LumioEngine? s_engine;
     private static BomberClientConfig? s_configuration;
+    private static string s_inputMode = "interval";
+    private static bool s_inputTrace;
+
+    [JSExport]
+    public static void ConfigureInputMode(string mode, bool trace)
+    {
+        if (s_client is not null || s_engine is not null) throw new InvalidOperationException("client_input_mode_live");
+        if (mode is not ("interval" or "pump" or "step")) throw new ArgumentException("client_input_mode_invalid", nameof(mode));
+        s_inputMode = mode;
+        s_inputTrace = trace;
+    }
 
     [JSExport]
     public static void ConfigureConfig(string bundle)
@@ -47,7 +58,8 @@ public static partial class SpectatorExports
             s_client = new SpectatorReplicaHost(s_engine,
                 new BrowserWebSocketClientConnectionFactory(platform.Hfsm, SpectatorReplicaHost.TransportOptions(launch.Profile), allowLoopback),
                 catalog, launchJson, async cancellation => { cancellation.ThrowIfCancellationRequested(); string value = await RenewLaunch(); cancellation.ThrowIfCancellationRequested(); return value; },
-                Console.WriteLine, configuration: configuration);
+                Console.WriteLine, configuration: configuration,
+                stepOptions: s_inputMode == "step" ? new BomberPlayerStepOptions(s_inputTrace) : null);
             s_client.Connect(launchJson);
         }
         catch (Exception primary)
@@ -90,6 +102,19 @@ public static partial class SpectatorExports
     [JSExport] public static bool PlaceBomb() => (s_client ?? throw new InvalidOperationException("spectator_not_started")).PlaceBomb();
     [JSExport] public static bool BombButton(int phase) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).BombButton(phase);
     [JSExport] public static bool UseActiveSkill() => (s_client ?? throw new InvalidOperationException("spectator_not_started")).UseActiveSkill();
+    [JSExport] public static void SetMoveIntent(int primary, int secondary, bool turnPressed) =>
+        (s_client ?? throw new InvalidOperationException("spectator_not_started")).SetMoveIntent(primary, secondary, turnPressed);
+    [JSExport] public static string SetBombIntent(int phase) =>
+        (s_client ?? throw new InvalidOperationException("spectator_not_started")).SetBombIntent(phase);
+    [JSExport] public static void LatchSkillIntent() =>
+        (s_client ?? throw new InvalidOperationException("spectator_not_started")).LatchSkillIntent();
+    [JSExport] public static void SetInputIntentEnabled(bool enabled) =>
+        (s_client ?? throw new InvalidOperationException("spectator_not_started")).SetInputIntentEnabled(enabled);
+    [JSExport] public static void ClearPlayerIntent() =>
+        (s_client ?? throw new InvalidOperationException("spectator_not_started")).ClearPlayerIntent();
+    [JSExport] public static int GetBombIntentRefusalCount() => s_client?.GetBombIntentRefusalCount() ?? 0;
+    [JSExport] public static string GetBombIntentStatusCode() => s_client?.GetBombIntentStatusCode() ?? "accepted";
+    [JSExport] public static string GetInputIntentResetToken() => s_client?.GetInputIntentResetToken() ?? "unbooted";
     [JSExport] public static bool SelectCharacter(string id) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).SelectCharacter(id);
     [JSExport] public static string PlayerState() => s_client?.PlayerState() ?? SpectatorDump.DumpPlayerState(null, "closed", false, "0", "0");
     [JSExport] public static string PresentationState() => s_client?.PresentationState() ?? PresentationDump.Dump(null, "0");

@@ -33,8 +33,12 @@ const spectator = {
 };
 window.__lumioSpectator = spectator;
 const PLAYER_MODE = Boolean(window.__lumioPlayerConfig);
-const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0, lastInput: null, replica: null };
+const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0,
+  bombIntentRefusalCount: 0, bombIntentStatusCode: 'accepted', lastInput: null, replica: null };
 let playerInput;
+let stepInputToken = null;
+let stepInputReady = false;
+let stepInputObserving = false;
 // Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
 let inputDriver = 'interval';
 let movementTrace = null;
@@ -472,9 +476,13 @@ function updateGamePresentation() {
           const directions = [0, 1, 3, 4, 2];
           playerInput?.setTouchDirection(directions[primary], directions[secondary]);
         },
-        onPlaceBomb: () => sendPlayerCommand('bomb', () => csharp.placeBomb()),
+        onPlaceBomb: () => inputDriver === 'step'
+          ? (playerInput?.setBombPressed(true, false, 'place'), playerInput?.setBombPressed(false, false, 'place'))
+          : sendPlayerCommand('bomb', () => csharp.placeBomb()),
         onBombButton: (pressed, cancelled, surface) => playerInput?.setBombPressed(pressed, cancelled, surface),
-        onUseSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
+        onUseSkill: () => inputDriver === 'step'
+          ? (refreshStepInput() && csharp.latchSkillIntent())
+          : sendPlayerCommand('skill', () => csharp.useActiveSkill()),
         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
         onFrame: globalThis.__lumioMovementTrace ? frame => globalThis.__lumioMovementTrace.frame(frame) : undefined,
       } : {});
@@ -502,10 +510,11 @@ function utf8ByteLength(text) {
 }
 
 function bindExports(api) {
-  for (const name of ['ConfigureConfig', 'Boot', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions'])
+  for (const name of ['ConfigureConfig', 'ConfigureInputMode', 'Boot', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions'])
     if (typeof api[name] !== 'function') throw new Error('SpectatorExports.' + name + ' missing');
   csharp.boot = (launch, catalog, loopback) => api.Boot(JSON.stringify(launch), catalog, loopback);
   csharp.configureConfig = value => api.ConfigureConfig(value);
+  csharp.configureInputMode = (mode, trace) => api.ConfigureInputMode(mode, trace);
   csharp.close = () => api.Close();
   csharp.tick = () => developmentSession ? developmentSession.run(() => api.Tick(), 0) : api.Tick();
   csharp.tickRateHz = () => api.TickRateHz();
@@ -529,6 +538,19 @@ function bindExports(api) {
     csharp.selectCharacter = id => api.SelectCharacter(id);
     csharp.selectionConfig = () => api.SelectionConfig();
     csharp.playerState = () => api.PlayerState();
+    if (inputDriver === 'step') {
+      for (const name of ['SetMoveIntent', 'SetBombIntent', 'LatchSkillIntent', 'SetInputIntentEnabled',
+        'ClearPlayerIntent', 'GetBombIntentRefusalCount', 'GetBombIntentStatusCode', 'GetInputIntentResetToken'])
+        if (typeof api[name] !== 'function') throw new Error('Player step export missing: ' + name);
+      csharp.setMoveIntent = (primary, secondary, turn) => api.SetMoveIntent(primary, secondary, turn);
+      csharp.setBombIntent = phase => api.SetBombIntent(phase);
+      csharp.latchSkillIntent = () => api.LatchSkillIntent();
+      csharp.setInputIntentEnabled = enabled => api.SetInputIntentEnabled(enabled);
+      csharp.clearPlayerIntent = () => api.ClearPlayerIntent();
+      csharp.bombIntentRefusalCount = () => api.GetBombIntentRefusalCount();
+      csharp.bombIntentStatusCode = () => api.GetBombIntentStatusCode();
+      csharp.inputIntentResetToken = () => api.GetInputIntentResetToken();
+    }
   }
 }
 
@@ -634,7 +656,8 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 function readMovementFlags() {
   if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false };
   const params = new URLSearchParams(location.search);
-  return { inputDriver: params.get('input') === 'pump' ? 'pump' : 'interval', trace: params.get('trace') === 'movement' };
+  const requested = params.get('input');
+  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace: params.get('trace') === 'movement' };
 }
 
 function pageAllowsLoopback() {
@@ -702,6 +725,8 @@ let launchAbort = null;
 
 function releaseReplica() {
   playerInput?.clear();
+  stepInputToken = null;
+  stepInputReady = false;
   player.replica = null;
   closeVoxelWorld();
   active = false;
@@ -737,11 +762,34 @@ function failLaunch(error) {
   console.error('[lumio-session]', spectator.lastError);
 }
 
+function refreshStepInput() {
+  if (inputDriver !== 'step' || !PLAYER_MODE || !managedLoaded || runtimeClosed) return false;
+  if (stepInputObserving) return stepInputReady;
+  stepInputObserving = true;
+  try {
+    const token = csharp.inputIntentResetToken();
+    const panel = document.getElementById('player-controls');
+    const focusedElement = document.activeElement;
+    const focusBlocked = focusedElement?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]')
+      && !panel?.contains?.(focusedElement);
+    const ready = active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
+      !gameView?.inputBlocked() && !document.hidden && document.hasFocus?.() !== false && !focusBlocked;
+    const changed = stepInputToken !== null && token !== stepInputToken;
+    const disabled = stepInputReady && !ready;
+    stepInputToken = token;
+    stepInputReady = Boolean(ready);
+    if (changed || disabled) playerInput?.clear();
+    csharp.setInputIntentEnabled(stepInputReady);
+    return stepInputReady;
+  } finally { stepInputObserving = false; }
+}
+
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
   try {
     const pumpStartedAt = performance.now();
     if (inputDriver === 'pump') playerInput?.pump();
+    if (inputDriver === 'step') refreshStepInput();
     const tickStartedAt = performance.now();
     csharp.tick();
     const tickMs = performance.now() - tickStartedAt;
@@ -751,6 +799,10 @@ function pumpSession(attempt) {
     currentSessionGeneration = state.generation ?? null;
     spectator.notServingCloses = state.notServingCloses ?? 0;
     player.inputsSent = state.sentInputs ?? 0;
+    if (inputDriver === 'step') {
+      player.bombIntentRefusalCount = csharp.bombIntentRefusalCount();
+      player.bombIntentStatusCode = csharp.bombIntentStatusCode();
+    }
     active = state.state === 'active';
     if (['faulted', 'closed', 'superseded'].includes(state.state)) {
       spectator.lastError = state.lastError || '';
@@ -765,6 +817,7 @@ function pumpSession(attempt) {
     } else paint([]);
     spectator.selfId = spectator.positions.find(position => position.self)?.id ?? null;
     spectator.voxel.sections = voxelGrid.sections().length;
+    if (inputDriver === 'step') refreshStepInput();
     if (displayed) setStatus(state.state);
     movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
       totalMs: performance.now() - pumpStartedAt, state: state.state, pose: tracedPose });
@@ -822,6 +875,7 @@ async function start() {
     setStatus('starting');
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
+    if (PLAYER_MODE) csharp.configureInputMode(inputDriver, Boolean(movementTrace));
     const abort = new AbortController();
     launchAbort = abort;
     await loadSelectedConfig(abort.signal);
@@ -924,8 +978,22 @@ async function initializePage() {
       for (const type of ['keydown', 'keyup'])
         window.addEventListener(type, event => movementTrace.key(type, event.code, event.repeat), { capture: true });
     }
-    const { createPlayerInput } = await import('./player-controls.mjs');
-    playerInput = createPlayerInput({
+    const { createPlayerInput } = inputDriver === 'step'
+      ? await import('./player-intent-controls.mjs').then(({ createPlayerIntentControls }) => ({ createPlayerInput: createPlayerIntentControls }))
+      : await import('./player-controls.mjs');
+    playerInput = createPlayerInput(inputDriver === 'step' ? {
+      panel: document.getElementById('player-controls'),
+      ready: () => refreshStepInput(),
+      setMoveIntent: (primary, secondary, turn) => csharp.setMoveIntent(primary, secondary, turn),
+      setBombIntent: phase => {
+        if (!managedLoaded || runtimeClosed) return 'accepted';
+        const code = csharp.setBombIntent(({ begin: 1, end: 3, cancel: 4 })[phase]);
+        if (code === 'player_bomb_intent_capacity') setStatus('error', '放弹操作太快，请松开后重试。');
+        return code;
+      },
+      latchSkillIntent: () => csharp.latchSkillIntent(),
+      clearIntent: () => { if (managedLoaded && !runtimeClosed) csharp.clearPlayerIntent(); },
+    } : {
       driver: inputDriver,
       panel: document.getElementById('player-controls'),
       ready: () => active && !initialSelectionPending && player.replica?.inputOpen === true && !gameView?.inputBlocked(),

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createPlayerIntentControls } from './player-intent-controls.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const WEB = path.join(process.env.LUMIO_ENGINE_CANDIDATE_ROOT || path.join(ROOT, 'Engine'), 'web');
 const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
@@ -26,6 +27,7 @@ async function runPage(options = {}) {
   const status = { textContent: '' }, legend = { innerHTML: '' }, enter = { hidden: false, addEventListener() {} };
   const exports = {
     ConfigureConfig(value) { runtime.configurations ??= []; runtime.configurations.push(value); if (options.configError) throw new Error(options.configError); },
+    ConfigureInputMode(mode, trace) { runtime.inputModes ??= []; runtime.inputModes.push({ mode, trace }); },
     async Boot(...args) { admissions.push(args); await options.bootWait; if (options.bootError) throw new Error(options.bootError); },
     async Close() { runtime.closes++; await options.closeWait; },
     Tick() { runtime.ticks++; if (runtime.tickError) throw new Error(runtime.tickError); },
@@ -352,6 +354,49 @@ test('Game page contains neither authority parsing, transport retry nor a second
   assert.doesNotMatch(code,/connectDs|new WebSocket|\.onFrame|\.onBytes|\.deliver\(|world_create|retryNotServing|\.localPosition|messageType/);
   assert.doesNotMatch(code,/params\.get\(["']allowLoopback/);assert.doesNotMatch(code,/\/api\/games\/[A-Za-z0-9]/);
 });
+
+test('step input observes opaque identity and clears retained sources before a fresh physical edge', () => {
+  const listeners = new Map();
+  const surface = { addEventListener(name, callback) { const rows = listeners.get(name) ?? []; rows.push(callback); listeners.set(name, rows); },
+    removeEventListener() {}, emit(name, code, repeat = false) {
+      const event = { code, repeat, target: surface, defaultPrevented: false, preventDefault() {} };
+      for (const callback of listeners.get(name) ?? []) callback(event);
+    } };
+  surface.document = { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {}, hasFocus: () => true };
+  const panel = { contains: () => false, querySelectorAll: () => [], querySelector: () => null };
+  let token = 'lifetime-a:1', clears = 0;
+  const moves = [], enabled = [];
+  const sandbox = { document: { ...surface.document, getElementById: () => panel },
+    createPlayerIntentControls, surface, panel,
+    csharp: { inputIntentResetToken: () => token, setInputIntentEnabled: value => enabled.push(value),
+      setMoveIntent: (...value) => moves.push(value), setBombIntent: () => 'accepted',
+      latchSkillIntent() {}, clearPlayerIntent() { clears++; } } };
+  const context = vm.createContext(sandbox);
+  vm.runInContext(`const PLAYER_MODE=true,inputDriver='step',gameView=null;let playerInput;
+    let stepInputToken=null,stepInputReady=false,stepInputObserving=false;
+    let managedLoaded=true,runtimeClosed=false,active=true,terminal=false,initialSelectionPending=false;
+    const player={replica:{inputOpen:true}};`, context);
+  const source = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function refreshStepInput()'), MAIN_SOURCE.indexOf('function pumpSession(attempt)'));
+  vm.runInContext(source, context);
+  vm.runInContext(`playerInput=createPlayerIntentControls({target:surface,panel,ready:()=>refreshStepInput(),
+    setMoveIntent:(...args)=>csharp.setMoveIntent(...args),setBombIntent:phase=>csharp.setBombIntent(phase),
+    latchSkillIntent:()=>csharp.latchSkillIntent(),clearIntent:()=>csharp.clearPlayerIntent()});`, context);
+  surface.emit('keydown', 'KeyA');
+  token = 'lifetime-a:2';
+  surface.emit('keydown', 'KeyD');
+  assert.deepEqual(moves.map(row => Array.from(row)), [[4, 0, true], [2, 0, true]]);
+  assert.equal(clears, 1);
+  vm.runInContext('player.replica.inputOpen=false;refreshStepInput()', context);
+  assert.equal(clears, 2);
+  vm.runInContext('refreshStepInput()', context);
+  assert.equal(clears, 2, 'stable disabled pumps must not repeat Clear');
+  vm.runInContext('player.replica.inputOpen=true;refreshStepInput()', context);
+  surface.emit('keydown', 'KeyA', true);
+  assert.equal(moves.length, 2, 'repeat cannot resurrect a retired source');
+  surface.emit('keydown', 'KeyA');
+  assert.deepEqual(moves.at(-1), [4, 0, true]);
+  assert.equal(enabled.at(-1), true);
+});
 test("player startup requires both new GAS exports and presentation callbacks send their commands", async () => {
   const section = (start, end) => MAIN_SOURCE.slice(MAIN_SOURCE.indexOf(start), MAIN_SOURCE.indexOf(end));
   const bind = section('function bindExports(api)', 'async function loadWasmExports');
@@ -364,7 +409,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
     JSON, Date,
     blocked: false, touch: [], bombEdges: [],
     api: {
-      ConfigureConfig() {}, Boot() {}, Close() {}, Tick() {}, TickRateHz() { return 30; }, SessionState() {}, WorldHandleBytes() {}, ReadBox() {}, WorldInstanceId() {}, LastApplyError() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},
+      ConfigureConfig() {}, ConfigureInputMode() {}, Boot() {}, Close() {}, Tick() {}, TickRateHz() { return 30; }, SessionState() {}, WorldHandleBytes() {}, ReadBox() {}, WorldInstanceId() {}, LastApplyError() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},
       DumpPositions() { return '[]'; }, MapDimensions() { return '{}'; }, PlayerState() { return '{}'; },
       SendMove() { sent.push('move'); return true; }, PlaceBomb() { sent.push('bomb'); return true; },
       BombButton(phase) { sent.push(`bomb-edge:${phase}`); return true; },
@@ -379,6 +424,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
   const context = vm.createContext(sandbox);
   vm.runInContext(`
     const PLAYER_MODE = true;
+    let inputDriver = 'interval';
     const csharp = {};
     let developmentSession;
     let gameView, gameViewLoading, gameViewGeneration = 0; let selectedCharacter=null,initialSelectionPending=false;
@@ -459,17 +505,17 @@ test('first character choice finishes before Platform launch or Session boot', a
     async chooseFirstCharacter() { calls.push('choose'); return selection; },
     async obtainLaunch() { calls.push('launch'); return LAUNCH; },
     async loadCatalog() { return '{}'; }, pageAllowsLoopback() { return true; },
-    csharp: { async boot() { calls.push('boot'); } },
+    csharp: { configureInputMode(mode, trace) { calls.push(`input:${mode}:${trace}`); }, async boot() { calls.push('boot'); } },
     pumpSession() { calls.push('pump'); }, async releaseReplica() {},
     failLaunch(error) { throw error; },
   });
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
-    let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
+    let initialSelectionSent=false; let inputDriver='interval',movementTrace=null; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
   const running = context.start(); await drain();
-  assert.deepEqual(calls, ['wasm', 'config', 'choose']);
+  assert.deepEqual(calls, ['wasm', 'input:interval:false', 'config', 'choose']);
   choose('duck'); await running;
-  assert.deepEqual(calls, ['wasm', 'config', 'choose', 'launch', 'boot', 'pump']);
+  assert.deepEqual(calls, ['wasm', 'input:interval:false', 'config', 'choose', 'launch', 'boot', 'pump']);
   assert.equal(vm.runInContext('selectedCharacter', context), 'duck');
 });
 
@@ -479,9 +525,9 @@ test('a closed pre-admission selection cannot launch after a late confirmation',
     async finish(){},setStatus(){},paint(){},readQuery(){return{};},
     async loadWasmExports(){return true;},async loadSelectedConfig(){},async chooseFirstCharacter(){return context.selection;},
     async obtainLaunch(){calls.push('launch');return LAUNCH;},async loadCatalog(){return'{}';},pageAllowsLoopback(){return true;},
-    csharp:{async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
+    csharp:{configureInputMode(){},async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
-    let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
+    let initialSelectionSent=false; let inputDriver='interval',movementTrace=null; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
   const running=context.start();await drain();vm.runInContext('terminal=true;connectionAttempt++;',context);
   choose('cat');await running;assert.deepEqual(calls,[]);
