@@ -1846,3 +1846,13 @@ Game34开发派生预览从Game33字节冻结，私有复制官方31 portable/we
 [新预览收据](../../../../.run/game34-runtime-correction-dev-preview-01/root-readiness.json)实际为NEW_DEVELOPMENT_PREVIEW_SERVING，原launcher验证SERVING，requiredBots/admittedBots/botHostsStarted均6，另留A/B两个人类槽位。页面18104、DS18333、原独立平台18402；全新八账号前缀Move3420261008005648/Human3420261008005648及新DS store，密码仅launcher内存。[prefix收据](../../../../.run/game34-runtime-correction-dev-preview-01/prefix-receipt.json)记录新身份且不含密码。A/B页面及平台health均HTTP200，实际服务的main.js与新publish匹配，新Runtime WebCIL SHA精确为2952cb2b2f1af9e5a988968052b4f0fe7c89ede939bdbb35a502eab0976d85b8；不是旧版链接或仅源代码已改。
 
 已给用户新版入口http://127.0.0.1:18104/play/?player=A及B，按用户要求先试玩，不在试玩窗口启动重构建/全套测试。当前是已审Runtime8752纠偏修复的Release优化解释执行开发预览，不是原正式AOT原位热更或新complete正式包；83项聚焦回归通过不代替完整回归或前台通过。到期回拉、Game朝向、初选错误、双定时器量化及已知Server死亡链仍未关闭，原Scene33前台FAIL保持，新版前台验收PENDING。未宣称代理已打开默认浏览器。知识同步豁免：本段是既有启动模式修复与进度证据追加，没有新增规范/产品规则；Owner门及他人文件保持。
+
+### 移动手感排障：checkpoint106，Game34前台A不能移动；watchdog事件保全后恢复同新版供复测（2026-10-08）
+
+用户新反馈[逐字收据](../../../../.run/game34-runtime-correction-dev-preview-01/foreground-observation-03.json)：「这次都不能移动了。你是不是可以关闭AOT走热更 敏捷开发」，随后澄清「好像B可以 A不行」，再要求「你再让我测一下」。Game34 attempt03前台验收FAIL；A/B具体控制状态未实测，不以B可能可动替代A通过。只读日志显示A于00:58:04入场、00:58:17 peer close1001离开，B于00:58:51入场，不能当作同时八人在场的A/B对照。main输入门无A专属移动分支，[只读诊断](../../../../.run/20261007-runtime-movement-repair-01/task-13-ab-input-diagnosis.md)保留选角、控制实体与焦点等待证假设。
+
+attempt03在00:58:59 UTC发生DS watchdog owner failed or stopped progressing，cleanup含unfinished checkpoint task，最终CP3/tick2182，随后owner_result_deadline；不是上一轮死亡意图断言事件。[失败保全](../../../../.run/game34-runtime-correction-dev-preview-01/prior-failure-03/failure-receipt.json)复制DS/managed/Bot/launcher证据并记录hash。恢复04复用原副本前核实305 payload与manifest共306文件完整，全部原守卫保留；但WSL/Service/0x8007274c瞬时错误使其在Docker只读预检失败，未创建账号/DS/scene04。原04日志保全，后续直接查询两容器仍healthy且health200，不重启WSL或受保护平台。
+
+[05独审](../../../../.run/20261007-runtime-movement-repair-01/task-11-preview-startup-rereview-05.md)确认04→05仅编号/证据路径变化；隐藏独立pwsh PID35192于01:06:19 UTC启动，同Runtime8752网页、原Game/Server、六Bot两人、新八账号排除02/03身份、新DS store。实际验证SERVING，六Bot均入场，[新就绪收据](../../../../.run/game34-runtime-correction-dev-preview-01/root-readiness-05.json)确认A/B/health200、网页Runtime SHA仍2952cb2b2f1af9e5a988968052b4f0fe7c89ede939bdbb35a502eab0976d85b8，账号[prefix收据](../../../../.run/game34-runtime-correction-dev-preview-01/prefix-receipt-05.json)无密码。已交用户18104 A/B入口并提示关闭旧标签后重开。此次是应用户要求恢复复测，不是移动/Server根因修复；前台通过仍PENDING，暂停重构建避免干扰试玩。
+
+用户要求的真实热更继续待实现。[架构与实际接线核查](../../../../.run/20261007-runtime-movement-repair-01/task-13-hot-reload-feasibility.md)确认非AOT不等于启用热更：需要一次Debug/非优化/portable PDB精确工作集基线及浏览器开发agent、玩家路由、安全点协调；现P34仍是非AOT且hotReload=false，未声称已接通。正式整包、全套回归、原到期/朝向/初选缺陷与Owner门保持。知识同步豁免：本段仅既有模式恢复与证据追加，未修改规范或玩法源码。
