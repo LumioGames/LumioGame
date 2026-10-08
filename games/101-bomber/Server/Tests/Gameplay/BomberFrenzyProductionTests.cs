@@ -312,8 +312,11 @@ public sealed class BomberFrenzyProductionTests
         bool subscribed = false;
         try
         {
+            probe.Operation = "initial_baseline_check";
             probe.CheckBaseline();
+            probe.Operation = "immediate_pair_read";
             probe.ReadPair(probe.ImmediateAfterPlacement, world.Tick);
+            probe.Operation = "initial_publication_read";
             probe.CapturePublications();
             while (world.Tick <= firstDue)
             {
@@ -325,7 +328,9 @@ public sealed class BomberFrenzyProductionTests
                         subscribed = true;
                         probe.Active = true;
                     }
+                    probe.Operation = "pre_tick_baseline_check";
                     probe.CheckBaseline();
+                    probe.Operation = "pre_tick_pair_read";
                     probe.ReadPair(probe.LastPreTick, world.Tick);
                     if (!probe.LastPreTick.Complete || !probe.LastPreTick.BothReady)
                         throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: incomplete pre-Tick pair.");
@@ -344,11 +349,15 @@ public sealed class BomberFrenzyProductionTests
                 finally { probe.InsideOwnedTick = false; }
                 if (!probe.BaselineReady)
                 {
+                    probe.Operation = "pending_baseline_check";
                     probe.CheckBaseline();
+                    probe.Operation = "pending_pair_read";
                     probe.ReadPair(probe.LastPending, world.Tick);
+                    probe.Operation = "pending_publication_read";
                     probe.CapturePublications();
                     if (probe.LastPending.BothReady && probe.PublicationsReady)
                     {
+                        probe.Operation = "initialized_baseline_read";
                         probe.ReadPair(probe.Baseline, world.Tick);
                         probe.BaselineReady = probe.Baseline.Complete && probe.Baseline.BothReady;
                         if (probe.BaselineReady) probe.ReadinessTick = world.Tick;
@@ -361,7 +370,9 @@ public sealed class BomberFrenzyProductionTests
             if (outerTickException is null)
             {
                 probe.BaselineFailure = true;
-                outerTickException = error;
+                probe.ProbeFailure = true;
+                probe.ProbeFailureOperation = probe.Operation;
+                probe.ProbeException = error;
             }
             throw;
         }
@@ -426,6 +437,10 @@ public sealed class BomberFrenzyProductionTests
         public bool Attempted;
         public bool ObserverFailure;
         public bool BaselineFailure;
+        public bool ProbeFailure;
+        public string? Operation;
+        public string? ProbeFailureOperation;
+        public Exception? ProbeException;
         public bool BaselineReady;
         public ulong ReadinessTick;
         public Exception? ObserverException;
@@ -499,17 +514,22 @@ public sealed class BomberFrenzyProductionTests
         public void ReadPair(FrenzyProbePair pair, ulong armedPreTick)
         {
             pair.Complete = false;
+            pair.FirstComplete = false;
+            pair.SecondComplete = false;
+            pair.FirstReady = null;
+            pair.SecondReady = null;
             pair.WorldInstanceId = world.InstanceId;
             pair.WorldTick = world.Tick;
             pair.ManagedThreadId = Environment.CurrentManagedThreadId;
             pair.ArmedPreTick = armedPreTick;
             bool firstComplete = CopyFrenzyProbeRow(pair.First, first, firstMachine);
+            bool sameContext = pair.WorldInstanceId == worldInstanceId && pair.ManagedThreadId == threadId;
+            pair.FirstComplete = firstComplete && sameContext && pair.First.Entity == firstId && pair.First.HfsmEntity == firstId;
+            if (pair.FirstComplete) pair.FirstReady = IsInitializedPath(pair.First);
             bool secondComplete = CopyFrenzyProbeRow(pair.Second, second, secondMachine);
-            pair.Complete = firstComplete && secondComplete && pair.WorldInstanceId == worldInstanceId &&
-                pair.ManagedThreadId == threadId && pair.First.Entity == firstId && pair.Second.Entity == secondId &&
-                pair.First.HfsmEntity == firstId && pair.Second.HfsmEntity == secondId;
-            pair.FirstReady = pair.Complete && IsInitializedPath(pair.First);
-            pair.SecondReady = pair.Complete && IsInitializedPath(pair.Second);
+            pair.SecondComplete = secondComplete && sameContext && pair.Second.Entity == secondId && pair.Second.HfsmEntity == secondId;
+            if (pair.SecondComplete) pair.SecondReady = IsInitializedPath(pair.Second);
+            pair.Complete = pair.FirstComplete && pair.SecondComplete;
         }
 
         private static bool IsInitializedPath(FrenzyProbeRow row) => row.HfsmSnapshotPresent && row.PathCountsValid &&
@@ -541,9 +561,11 @@ public sealed class BomberFrenzyProductionTests
         public ulong ArmedPreTick;
         public int ManagedThreadId;
         public bool Complete;
-        public bool FirstReady;
-        public bool SecondReady;
-        public bool BothReady => FirstReady && SecondReady;
+        public bool FirstComplete;
+        public bool SecondComplete;
+        public bool? FirstReady;
+        public bool? SecondReady;
+        public bool BothReady => Complete && FirstReady == true && SecondReady == true;
         public readonly FrenzyProbeRow First = new();
         public readonly FrenzyProbeRow Second = new();
     }
@@ -619,7 +641,8 @@ public sealed class BomberFrenzyProductionTests
         bool sameExceptionInChain = false;
         for (Exception? candidate = outerTickException; candidate is not null; candidate = candidate.InnerException)
             if (ReferenceEquals(candidate, probe.FirstChanceException)) sameExceptionInChain = true;
-        string status = !probe.BaselineReady
+        string status = probe.ProbeFailure ? "PROBE_FAILURE"
+            : !probe.BaselineReady
             ? outerTickException is null ? "BASELINE_UNKNOWN" : "EARLY_FAULT_BASELINE_UNKNOWN"
             : probe.ObserverFailure || probe.BaselineFailure || !probe.FirstPublicationComplete ||
               !probe.PublicationsReady || !probe.Baseline.Complete || !probe.LastPreTick.Complete ||
@@ -642,11 +665,13 @@ public sealed class BomberFrenzyProductionTests
             publicationsReady = probe.PublicationsReady,
             derivedNominalFuseTicks = probe.DerivedNominalFuseTicks,
             derivedNominalFirstDeadlineMatchesObservedOriginal =
-                ulong.MaxValue - probe.FirstPublication.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
-                probe.FirstPublication.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.FirstPublication.FuseEndTick,
+                probe.FirstPublicationComplete ?
+                    (bool?)(ulong.MaxValue - probe.FirstPublication.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
+                    probe.FirstPublication.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.FirstPublication.FuseEndTick) : null,
             derivedNominalSecondDeadlineMatchesObservedOriginal =
-                ulong.MaxValue - probe.ImmediateAfterPlacement.Second.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
-                probe.ImmediateAfterPlacement.Second.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.ImmediateAfterPlacement.Second.FuseEndTick,
+                probe.ImmediateAfterPlacement.SecondComplete ?
+                    (bool?)(ulong.MaxValue - probe.ImmediateAfterPlacement.Second.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
+                    probe.ImmediateAfterPlacement.Second.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.ImmediateAfterPlacement.Second.FuseEndTick) : null,
             baselineReady = probe.BaselineReady,
             initializationSource = probe.BaselineReady ? "ordinary_successful_tick" : "PENDING",
             readinessTick = probe.BaselineReady ? probe.ReadinessTick : (ulong?)null,
@@ -658,6 +683,9 @@ public sealed class BomberFrenzyProductionTests
             matchingAttempts = probe.Attempted ? 1 : 0,
             observerFailure = probe.ObserverFailure,
             baselineFailure = probe.BaselineFailure,
+            probeFailure = probe.ProbeFailure,
+            probeFailureOperation = probe.ProbeFailureOperation,
+            probeError = probe.ProbeException?.ToString(),
             observerError = probe.ObserverException?.ToString(),
             sameExceptionInPropagatedChain = sameExceptionInChain,
             outerException = outerTickException?.ToString(),
