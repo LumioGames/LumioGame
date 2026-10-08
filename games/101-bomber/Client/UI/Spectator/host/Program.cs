@@ -20,6 +20,18 @@ public static partial class SpectatorExports
     private static SpectatorReplicaHost? s_client;
     private static LumioEngine? s_engine;
     private static BomberClientConfig? s_configuration;
+    private static bool s_runtimePerfRequested;
+
+    [JSExport]
+    public static void ConfigureRuntimePerf(bool enabled, bool developmentAllowed)
+    {
+        if (enabled && !developmentAllowed) throw new InvalidOperationException("runtime_perf_development_opt_in_required");
+        s_runtimePerfRequested = enabled;
+        s_client?.ConfigureRuntimePerf(enabled);
+    }
+
+    [JSExport] public static string DrainRuntimePerf() => s_client?.DrainRuntimePerf()
+        ?? "{\"diagnosticEnabled\":false,\"available\":false,\"availabilityReason\":\"hostUnavailable\"}";
 
     [JSExport]
     public static void ConfigureConfig(string bundle)
@@ -47,7 +59,7 @@ public static partial class SpectatorExports
             s_client = new SpectatorReplicaHost(s_engine,
                 new BrowserWebSocketClientConnectionFactory(platform.Hfsm, SpectatorReplicaHost.TransportOptions(launch.Profile), allowLoopback),
                 catalog, launchJson, async cancellation => { cancellation.ThrowIfCancellationRequested(); string value = await RenewLaunch(); cancellation.ThrowIfCancellationRequested(); return value; },
-                Console.WriteLine, configuration: configuration);
+                Console.WriteLine, configuration: configuration, runtimePerf: s_runtimePerfRequested);
             s_client.Connect(launchJson);
         }
         catch (Exception primary)

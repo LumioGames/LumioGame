@@ -24,6 +24,8 @@
     <Compile Include="../BomberClientConfig.cs" Link="Spectator/BomberClientConfig.cs" />
     <Compile Include="../PresentationDump.cs" Link="Spectator/PresentationDump.cs" />
     <Compile Include="../SpectatorReplicaHost.cs" Link="Spectator/SpectatorReplicaHost.cs" />
+    <Compile Include="../HostEventListener.cs" Link="Spectator/HostEventListener.cs" />
+    <Compile Include="../RuntimePerfDiagnostics.cs" Link="Spectator/RuntimePerfDiagnostics.cs" />
     <Compile Include="../SpectatorJsonContracts.cs" Link="Spectator/SpectatorJsonContracts.cs" />
     <Compile Include="../SpectatorJsonContext.cs" Link="Spectator/SpectatorJsonContext.cs" />
   </ItemGroup>

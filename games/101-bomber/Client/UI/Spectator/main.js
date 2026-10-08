@@ -38,6 +38,8 @@ let playerInput;
 // Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
 let inputDriver = 'interval';
 let movementTrace = null;
+let runtimePerfEnabled = false;
+let runtimeBridgePerf = null;
 let selectedCharacter = null;
 let initialSelectionPending = false;
 let initialSelectionSent = false;
@@ -519,6 +521,12 @@ function bindExports(api) {
   csharp.worldInstanceId = () => api.WorldInstanceId();
   csharp.presentationState = () => api.PresentationState();
   csharp.ownerPresentation = typeof api.OwnerPresentation === 'function' ? () => api.OwnerPresentation() : undefined;
+  if (runtimePerfEnabled) {
+    for (const name of ['ConfigureRuntimePerf', 'DrainRuntimePerf'])
+      if (typeof api[name] !== 'function') throw new Error('RuntimePerf export missing: ' + name);
+    csharp.configureRuntimePerf = (enabled, developmentAllowed) => api.ConfigureRuntimePerf(enabled, developmentAllowed);
+    csharp.drainRuntimePerf = () => api.DrainRuntimePerf();
+  }
   if (PLAYER_MODE) {
       for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig'])
       if (typeof api[name] !== 'function') throw new Error('Player input export missing: ' + name);
@@ -533,6 +541,9 @@ function bindExports(api) {
 }
 
 let managedLoaded = false;
+function tracedEngineInvoke(invoke) {
+  return runtimeBridgePerf ? runtimeBridgePerf.wrap(invoke) : invoke;
+}
 async function loadWasmExports() {
   if (managedLoaded) return true;
   const injected = window.__lumioExports;
@@ -549,7 +560,7 @@ async function loadWasmExports() {
     const { loadEngineWasm } = await import('./engine-wasm.mjs');
     engineInvoke = await loadEngineWasm(new URL('.', location.href));
     const { getAssemblyExports, getConfig, runMain, setModuleImports } = await dotnet.create();
-    setModuleImports('bomber-engine', { invoke: engineInvoke });
+    setModuleImports('bomber-engine', { invoke: tracedEngineInvoke(engineInvoke) });
     setModuleImports('bomber-platform', { renewLaunch: async () => JSON.stringify(await launchFromPlatform()) });
     const config = getConfig();
     const exports = await getAssemblyExports(config.mainAssemblyName);
@@ -632,9 +643,11 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
 // Movement experiments and traces stay on loopback pages and the development bridge.
 function readMovementFlags() {
-  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false };
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, runtimePerf: false };
   const params = new URLSearchParams(location.search);
-  return { inputDriver: params.get('input') === 'pump' ? 'pump' : 'interval', trace: params.get('trace') === 'movement' };
+  const trace = params.get('trace') === 'movement';
+  return { inputDriver: params.get('input') === 'pump' ? 'pump' : 'interval', trace,
+    runtimePerf: trace && params.get('perf') === 'runtime' && (pageAllowsLoopback() || globalThis.__lumioDevelopment === true) };
 }
 
 function pageAllowsLoopback() {
@@ -739,12 +752,18 @@ function failLaunch(error) {
 
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
+  let runtimePerfPending = false;
   try {
     const pumpStartedAt = performance.now();
     if (inputDriver === 'pump') playerInput?.pump();
     const tickStartedAt = performance.now();
-    csharp.tick();
+    runtimePerfPending = runtimePerfEnabled;
+    if (runtimeBridgePerf) {
+      runtimeBridgePerf.beginTick();
+      try { csharp.tick(); } finally { runtimeBridgePerf.endTick(); }
+    } else csharp.tick();
     const tickMs = performance.now() - tickStartedAt;
+    if (runtimePerfPending) { recordRuntimePerfObservation(); runtimePerfPending = false; }
     // Trace only: the owner publication this Tick left behind (executed step, not render sampling).
     const tracedPose = movementTrace && csharp.ownerPresentation ? JSON.parse(csharp.ownerPresentation()) : null;
     const state = JSON.parse(csharp.sessionState());
@@ -774,8 +793,23 @@ function pumpSession(attempt) {
     if (nextPumpAt <= now) nextPumpAt = now;
     pumpTimer = setTimeout(() => pumpSession(attempt), nextPumpAt - now);
   } catch (error) {
+    if (runtimePerfPending) recordRuntimePerfObservation();
     noteApplyFault(error);
     failLaunch(error);
+  }
+}
+
+function recordRuntimePerfObservation() {
+  try {
+    const data = JSON.parse(csharp.drainRuntimePerf());
+    if (!data || data.diagnosticEnabled !== true) throw new Error('runtime_perf_observation_unavailable');
+    if (runtimeBridgePerf) data.bridge = runtimeBridgePerf.drain(data.pump?.hookPumpId ?? null);
+    movementTrace.runtimePerf(data);
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    movementTrace.runtimePerf({ diagnosticEnabled: true, profilingOverhead: true, matrixSample: false,
+      available: false, error: message.slice(0, 4096), errorTruncated: message.length > 4096,
+      ...(runtimeBridgePerf ? { bridge: runtimeBridgePerf.drain(null) } : {}) });
   }
 }
 
@@ -839,7 +873,10 @@ async function start() {
     if (terminal || attempt !== connectionAttempt) return;
     launchAbort = null;
     runtimeClosed = false;
-    booting = Promise.resolve().then(() => csharp.boot(launch, catalog, pageAllowsLoopback()));
+    booting = Promise.resolve().then(() => {
+      if (runtimePerfEnabled) csharp.configureRuntimePerf(true, pageAllowsLoopback() || globalThis.__lumioDevelopment === true);
+      return csharp.boot(launch, catalog, pageAllowsLoopback());
+    });
     await booting;
     if (terminal || attempt !== connectionAttempt) return;
     nextPumpAt = performance.now();
@@ -915,10 +952,15 @@ async function initializePage() {
     canvas.width = canvas.height = 760;
     const flags = readMovementFlags();
     inputDriver = flags.inputDriver;
+    runtimePerfEnabled = flags.runtimePerf;
     if (flags.trace) {
-      const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
+      const { createMovementTrace, observeLongTasks, createRuntimeBridgePerf } = await import('./movement-trace.mjs');
       movementTrace = createMovementTrace();
       movementTrace.note(`input=${inputDriver}`);
+      if (runtimePerfEnabled) {
+        runtimeBridgePerf = createRuntimeBridgePerf();
+        movementTrace.note('runtimePerf=enabled;profilingOverhead=true;matrixSample=false');
+      }
       window.__lumioMovementTrace = movementTrace;
       observeLongTasks(movementTrace);
       for (const type of ['keydown', 'keyup'])

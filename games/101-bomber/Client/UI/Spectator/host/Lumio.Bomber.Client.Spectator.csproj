@@ -44,6 +44,8 @@
     <Compile Include="..\SpectatorJsonContracts.cs" Link="SpectatorJsonContracts.cs" />
     <Compile Include="..\SpectatorJsonContext.cs" Link="SpectatorJsonContext.cs" />
     <Compile Include="..\SpectatorReplicaHost.cs" Link="SpectatorReplicaHost.cs" />
+    <Compile Include="..\HostEventListener.cs" Link="HostEventListener.cs" />
+    <Compile Include="..\RuntimePerfDiagnostics.cs" Link="RuntimePerfDiagnostics.cs" />
   </ItemGroup>
   <!--
     The page is the deliverable, so it has to be in the publish output. It lives
