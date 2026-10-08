@@ -1812,3 +1812,11 @@ Client18从693095a新增覆盖提交`da6528f`与最小生产修复`df649e3fa2ff1
 Scene33仍在18103/18333/18402服务，新[60秒只读节拍收据](../../../../.run/live-preview-33phase01/root-cadence-snapshot-01/receipt.json)覆盖17:04:32–17:05:32 UTC、1200间隔、frames=6：p50=47.123ms、p95=62.845ms、p99=64.567ms、max=78.226ms，未出现>100ms间隔。该段只有六Bot，不是用户原八玩家窗口同负载对照，不证明磁盘/杀毒原因或服务端超时已根治。
 
 当前可玩入口仍为新版`http://127.0.0.1:18103/play/?player=A`及B，用户手感反馈未到；原验收失败尚未被前台通过取代。下一完整候选还需合入已审Client18、处理受保护旧scratch例外、原始期限回退规则裁定后按实际结果推进所属仓修复/整包/消费/新Scene。50ms→100ms候选不是已批准方案，不启动依赖实现；ADR142、18085与生产schema门保持。未宣称整个移动任务完成。
+
+### 移动手感排障：checkpoint102，Scene33前台复验失败，持续W伴随位置回拉与角色反向；独立死亡链复发保全（2026-10-08）
+
+用户本次逐字反馈已保存在[原话收据](../../../../.run/live-preview-33phase01/foreground-observation-01.json)：`failed: initial_character_admission_window_clos  现在移动手感有大问题，会明显感觉到移动往回拽 旋转也是`；进一步明确「角色朝向转过去又回转」「本地角色一顿一顿的 移动的时候」「即使只按W往前走  角色朝向也会向后是不是的旋转」。因此complete31/Game33/Scene33手感前台验收明确FAIL，不是待反馈或已通过；未批准50→100ms候选或旧断言例外。
+
+只读追踪确认Game入口main.js的完整错误字面量为initial_character_admission_window_closed，须检查选角/重连状态；不能将截断用户文字直接归为Server断连。Game渲染runtime.ts向Doll.update传本机Runtime Model XZ；dolls.ts从相邻显示坐标差计算速度/朝向，回拉会产生反向朝向并影响步态与跟随，位置回拉的上游根因仍待动态隔离证据。
+
+本次起始复查Scene33仍存活并到CP906，随后再次复查18103/18333消失，平台18402仍监听；[新故障保全](../../../../.run/20261008-scene33-failure01/receipt.json)包含只读复制与SHA，最终CP913、tick548036出现Death structure intent no longer identifies its live old body，随后watchdog fatal。这是已知死亡意图错误族新事件，与本次移动回拉分开登记；不自动启用ADR142、不以重复重启充当修复。历史封件/证据和受保护平台未改；继续所属仓根因调查与隔离复现。
