@@ -1,0 +1,91 @@
+{
+  "table": "skill_combos",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "left_skill_id",
+      "ordinal": 2,
+      "type": "ref",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "refTarget": "skills",
+      "description": "left skill id"
+    },
+    {
+      "name": "right_skill_id",
+      "ordinal": 3,
+      "type": "ref",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "refTarget": "skills",
+      "description": "right skill id"
+    },
+    {
+      "name": "result_skill_id",
+      "ordinal": 4,
+      "type": "ref",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "refTarget": "skills",
+      "description": "result skill id"
+    },
+    {
+      "name": "preserve_source_levels",
+      "ordinal": 5,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "preserve source levels"
+    },
+    {
+      "name": "bound_if_either_bound",
+      "ordinal": 6,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "bound if either bound"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

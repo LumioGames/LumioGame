@@ -1,0 +1,121 @@
+{
+  "table": "life",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "points_per_heart",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "points per heart"
+    },
+    {
+      "name": "respawn_ms",
+      "ordinal": 3,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "respawn ms"
+    },
+    {
+      "name": "protection_ms",
+      "ordinal": 4,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "protection ms"
+    },
+    {
+      "name": "health_pack_points",
+      "ordinal": 5,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "health pack points"
+    },
+    {
+      "name": "drown_interval_ms",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "drown interval ms"
+    },
+    {
+      "name": "drown_points",
+      "ordinal": 7,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "drown points"
+    },
+    {
+      "name": "protection_blocks_ring",
+      "ordinal": 8,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "protection blocks ring"
+    },
+    {
+      "name": "first_spawn_protected",
+      "ordinal": 9,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "first spawn protected"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    }
+  ]
+}

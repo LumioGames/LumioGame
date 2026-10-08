@@ -1,0 +1,13 @@
+table: speed_tiers
+schema: schemas/speed_tiers.json
+
+| name | speed_milli |
+| --- | --- |
+| tier0 | 3800 |
+| tier1 | 4150 |
+| tier2 | 4500 |
+| tier3 | 4850 |
+| tier4 | 5200 |
+| tier5 | 5550 |
+| tier6 | 5900 |
+| tier7 | 6000 |

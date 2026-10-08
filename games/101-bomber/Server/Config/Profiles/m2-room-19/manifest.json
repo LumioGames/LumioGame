@@ -1,0 +1,263 @@
+{
+  "baselineId": "UNSPECIFIED",
+  "compilerHash": "96fb8aaf2a33a79cad4496962081162b245ecd2442db419fc31ffff83f728301",
+  "contentFingerprint": "5461e2444fa9392474cc9b3d017195ccf99a2e2f633a32859b308090015969fa",
+  "endpoint": "server",
+  "formatVersion": 1,
+  "inputHash": "8d7ea33c02e4ecf977c01aeed81432643b7f84891bd32a2530d7abde183431e2",
+  "origins": "origins.json",
+  "outputHash": "aa091e5847c382bf2f34536e4f2e3308238479fed30a52a79e1264878637504e",
+  "packageFingerprint": "2f308396fe493afa3c612939f09e2dcfca66239dab11cda69f10e73d7f534741",
+  "projectionRoots": {
+    "S": "server/manifest.json",
+    "V": "voxel/manifest.json"
+  },
+  "publicRoot": "2f308396fe493afa3c612939f09e2dcfca66239dab11cda69f10e73d7f534741",
+  "releaseFingerprint": "656c75dd95160855e818d8e28df5ef19d8208e545a9fb87fceff0be599faf9c3",
+  "revisionId": "5461e2444fa9392474cc9b3d017195ccf99a2e2f633a32859b308090015969fa",
+  "sharedPrediction": {
+    "columns": [
+      "attributes.id",
+      "attributes.initial",
+      "attributes.maximum",
+      "attributes.minimum",
+      "attributes.name",
+      "attributes.source_ref",
+      "attributes.source_status",
+      "attributes.upgrade_step",
+      "blocks.blast_stop",
+      "blocks.block_type",
+      "blocks.cover_before_stop",
+      "blocks.destructible",
+      "blocks.drop_pool",
+      "blocks.enabled",
+      "blocks.ground_effect",
+      "blocks.id",
+      "blocks.name",
+      "blocks.place_bomb",
+      "blocks.residue",
+      "blocks.source_ref",
+      "blocks.source_status",
+      "blocks.sparse_binding",
+      "blocks.walkable",
+      "bomb.capacity_return_phase",
+      "bomb.chain_damage_cap_attribute",
+      "bomb.damage_points",
+      "bomb.danger_ms",
+      "bomb.fuse_ms",
+      "bomb.id",
+      "bomb.kick_speed_milli",
+      "bomb.max_kicks_per_player_tick",
+      "bomb.moving_bomb_chain_reaction",
+      "bomb.name",
+      "bomb.source_ref",
+      "bomb.source_status",
+      "game.default_bot_profile",
+      "game.id",
+      "game.map_size",
+      "game.match_duration_ms",
+      "game.name",
+      "game.player_count",
+      "game.podium_ms",
+      "game.results_ms",
+      "game.skills_enabled",
+      "game.source_ref",
+      "game.source_status",
+      "game.tick_rate_hz",
+      "game.warmup_ms",
+      "life.drown_interval_ms",
+      "life.drown_points",
+      "life.first_spawn_protected",
+      "life.health_pack_points",
+      "life.id",
+      "life.name",
+      "life.points_per_heart",
+      "life.protection_blocks_ring",
+      "life.protection_ms",
+      "life.respawn_ms",
+      "life.source_ref",
+      "life.source_status",
+      "movement.corner_assist_milli",
+      "movement.id",
+      "movement.name",
+      "movement.place_buffer_ms",
+      "movement.player_collision",
+      "movement.repeat_assist_milli",
+      "movement.repeat_window_ticks",
+      "movement.secondary_axis_permille",
+      "movement.source_ref",
+      "movement.source_status",
+      "movement.spawn_facing",
+      "movement.turn_buffer_ticks",
+      "movement.water_speed_permille",
+      "object_budgets.id",
+      "object_budgets.initial_mint_generations",
+      "object_budgets.max_bomb_entities",
+      "object_budgets.max_bomb_placements_per_participant_tick",
+      "object_budgets.max_chest_issuances_per_stage",
+      "object_budgets.max_distinct_match_participants",
+      "object_budgets.max_firezone_entities",
+      "object_budgets.max_pickup_entities",
+      "object_budgets.max_wall_casts_per_participant_tick",
+      "object_budgets.name",
+      "object_budgets.reservation_retirement_slack_ticks",
+      "object_budgets.source_ref",
+      "object_budgets.source_status",
+      "speed_tiers.id",
+      "speed_tiers.name",
+      "speed_tiers.source_ref",
+      "speed_tiers.source_status",
+      "speed_tiers.speed_milli",
+      "speed_tiers.tier"
+    ],
+    "fingerprint": "8f7e0e7eb646b626ef3df5befc28dca7069dbdb0bb701e57411f233d9f38c81c",
+    "specVersion": "split-export/1"
+  },
+  "sourceFingerprint": "b9a63749c70a3c6f8e559425e275fc423331d45702bacd234d8715778f4d0201",
+  "specVersion": "split-export/1",
+  "tables": [
+    {
+      "contentFingerprint": "117b659844a62e8728a024a680604b4bb3916243ba674be5e8690083fc872f34",
+      "sourceFingerprint": "ba82a6dd719c2756a446ad4c7c374957d4a5745d18f60a11781cc072124e03d5",
+      "table": "attributes"
+    },
+    {
+      "contentFingerprint": "0300bdd5f5019548638165b2fcf19f73e3474a262f5636930395ab06afc4b924",
+      "sourceFingerprint": "7afc0904300f3cb3cbf4e26157751b1a818bc886dd15f865929d480f7356dbf2",
+      "table": "blocks"
+    },
+    {
+      "contentFingerprint": "5e169227bdef661cc75ae62a556e2b9ec3cc002cb77b831c9dbee46924a3e5dc",
+      "sourceFingerprint": "b4274e7c63d56bf1185ff39ee8cadb8fe9beb2fafb450d95c84496e564d922b2",
+      "table": "bomb"
+    },
+    {
+      "contentFingerprint": "3b01041f6f9173f692035ab2787f014e0e60d2fd373e3e5e3b2d6c5deecc54f7",
+      "sourceFingerprint": "34e642972de496ee6e51f4ac70877fc893ffeacd26b437b39082ff6a4bd0bf8c",
+      "table": "bomb_kinds"
+    },
+    {
+      "contentFingerprint": "fe0879a954c7b9ae5a7067f3dcbad6f808913d3bc728491a21a1b8069c87a2eb",
+      "sourceFingerprint": "b130e4946d6aea7269e957b1791853654a0c8b88896aa0bddc2dffa4c4544458",
+      "table": "bot_profiles"
+    },
+    {
+      "contentFingerprint": "b5570c6ee6cedcde53c5474d0372547a75db037c5b512d3f16d4f952c8505ce7",
+      "sourceFingerprint": "393776ba4a5bc1a01aa9722a7a4912bb7f88f5b97e64a0dce32d2dbc9d8b39ab",
+      "table": "bot_tactics"
+    },
+    {
+      "contentFingerprint": "e075fa4a7ecfb6ff43f1c6ae008090590d741caedce13c794e26eb8b535d347c",
+      "sourceFingerprint": "eaf668d0008bf51a581274e87b1b57e793d2f4ffebebdbfe904c2417851d93e7",
+      "table": "characters"
+    },
+    {
+      "contentFingerprint": "62903d0d883df4319996f597260f220be3ac156340c730aa26cae2d1d70def00",
+      "sourceFingerprint": "0b37eb2b0db44d907323480a5e51e5b487199432982780468acfbd24e58ebada",
+      "table": "chest"
+    },
+    {
+      "contentFingerprint": "24f85973f067b7a8e4f88633e77a1d9829226c9f08836f6e4f934ab4a67a5879",
+      "sourceFingerprint": "1f2d9f855a725c891f6246288d190946bead1e938c74bebe4b2b2d1475933683",
+      "table": "circle_stages"
+    },
+    {
+      "contentFingerprint": "2b4accda44a8d778242524e37d5d4cfcb5c290835c94d5642ee706812b329c0a",
+      "sourceFingerprint": "8c8db108eac8c4e20656a0ce4861c5e68a2a96610c9624931566f35ca28b7157",
+      "table": "damage_causes"
+    },
+    {
+      "contentFingerprint": "656db9a303fc226db1d798590c7eb1252d202f3573d14ed13980f5cda09f1706",
+      "sourceFingerprint": "0f0abffa454ea8b5d5757bf1914aeef6fb0b3ccc3f77be0ba674832e1a349041",
+      "table": "drops"
+    },
+    {
+      "contentFingerprint": "778c7d32e206011c2db0a66d02f4ae5e64b68a165e87edc4e663494618643d39",
+      "sourceFingerprint": "66cef58884346e9c7fb6385b0903fae1cd1baf9070ae6a3e3724c145a655df49",
+      "table": "effects"
+    },
+    {
+      "contentFingerprint": "3a0d89934ce6679e5c33519cfd1d7a73b79f8e779fd1e48b52502e4ec945d156",
+      "sourceFingerprint": "d3dd1a16ca28053252165e47e3c9a709d45cf89fe9e6d85ed60d033c83398401",
+      "table": "final_circle"
+    },
+    {
+      "contentFingerprint": "7674097e055d07b16b077d987ec82067eeb9fefaa58ba982eff4bfe36a9d07e0",
+      "sourceFingerprint": "6687e3204d95753045c13e18505061ccf4b0251bce0068bf1d4652f2fa09d311",
+      "table": "game"
+    },
+    {
+      "contentFingerprint": "8fa9142b7e5e07a4db4af495594ef492423c776340f1972eb95f77f438566517",
+      "sourceFingerprint": "5630e1b29467eb436f8165ef3fdaf5915e5e2a6ec545e7b3fc787448f62e7621",
+      "table": "life"
+    },
+    {
+      "contentFingerprint": "438b2e0f7e44b5eff9402d18a7d50adf12d8ec5379bd4bf8fe32dec17ebfc925",
+      "sourceFingerprint": "0c2623a45beaa19bb83ab5df25043f11e6c745e413e6048ed48470355e051713",
+      "table": "map"
+    },
+    {
+      "contentFingerprint": "f82dbd281c573fca5d5a678c2da18196c332247fa79bfbd91c4d310bfc0e87e4",
+      "sourceFingerprint": "9294b7a86af843292793c0012862621bee07d0f77c15e66b8717457920c0d24c",
+      "table": "movement"
+    },
+    {
+      "contentFingerprint": "1c63fa925a3209e6d8940cf7cec6b0f6b7a9be9c13774f2820f0e5b1751a216b",
+      "sourceFingerprint": "07152d55a93a2a12cd73f548f3eb65bb53383dfefb450c6a9353cc15068b8642",
+      "table": "object_budgets"
+    },
+    {
+      "contentFingerprint": "38753d872df7431672a3ab44ba8a83e846e47e5a291316a3640776ac4b2def16",
+      "sourceFingerprint": "e3479acdaa8c82f35e3fb07b8a043f0d416e10c3ebf561a374f3b45d49b18d24",
+      "table": "pickup_kinds"
+    },
+    {
+      "contentFingerprint": "530b2420d0419496d8684e58b91902e8ded4d2c79c35c835b2d4f99d54735734",
+      "sourceFingerprint": "ae0f688a0bf323009799e511eb7e64a89bd0cec51833b247bd1546e06deb73a4",
+      "table": "presentation"
+    },
+    {
+      "contentFingerprint": "189d55f3a0399f2be2c3956ee9d166045a9b9c5b3c4efb069c579267c5f2f23a",
+      "sourceFingerprint": "1bcea01177a0025d3a2e952f962f82ef1b01ba2628d7333f241b88f4207eb004",
+      "table": "regeneration"
+    },
+    {
+      "contentFingerprint": "e277fc941395bb7e91ea43c50919ab0382a26824268ec0fd227a90edd3df5e37",
+      "sourceFingerprint": "d9446353393d1e98519e78e56f534bf0aa191091b42ce9fd1973e38c71133750",
+      "table": "regression_seeds"
+    },
+    {
+      "contentFingerprint": "e5063ddb9aa59be922befb84c2b10c66c18fa0f935aed714930810b6ff82bdc1",
+      "sourceFingerprint": "2468dd13dc2c64f0d3cf8bd6c2d8b039fd29f1ae3624ee78ef3381874bfe4abe",
+      "table": "skill_combos"
+    },
+    {
+      "contentFingerprint": "e3ea8092ec3dbdb02cbfc904e62c658657918264b74728c672265d760835afa5",
+      "sourceFingerprint": "4bd421d81ea9a25960bf40564cd194f1824ce55890d34a35921b4784952aa848",
+      "table": "skill_levels"
+    },
+    {
+      "contentFingerprint": "a11336da46815d25d87883206e703bf2ac0d67d8bc3f77b615eabd081665ee8c",
+      "sourceFingerprint": "952a6af39730ab403f24668184adcb96e647f42977be3d8f0a8b21946c057410",
+      "table": "skill_rules"
+    },
+    {
+      "contentFingerprint": "07e833d5a51d3c5bb76b26b13ccf5ed98dcb5e3d5af87006c506203de54653e3",
+      "sourceFingerprint": "728b5ac4576ab8f0c2df41b81f89cd187cbed7a455ee4f29b578465a4a2300e2",
+      "table": "skills"
+    },
+    {
+      "contentFingerprint": "c9befc33ba095519167893dc243996afa086f326cd99fd33b98d5bd74052ad93",
+      "sourceFingerprint": "920b3100a410f478b4222a0b334d622321e17384c2c93b5b8752a8e0a02315ea",
+      "table": "speed_tiers"
+    }
+  ],
+  "targetManifests": {
+    "S": "server/manifest.json",
+    "V": "voxel/manifest.json"
+  },
+  "targets": [
+    "S",
+    "V"
+  ]
+}

@@ -1,0 +1,18 @@
+table: chest
+schema: schemas/chest.json
+
+| id     | name       | independent_bomb_hits | fire_count | bomb_count | speed_count | health_count | skill_count | bomb_only | exclude_center | exclude_early_center_cross | source_status                                     | source_ref                                                             | random_slots | include_health | special_permille | gold_heart_permille | drop_permille | kick_permille |
+| ------ | ---------- | --------------------- | ---------- | ---------- | ----------- | ------------ | ----------- | --------- | -------------- | -------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- | ------------ | -------------- | ---------------- | ------------------- | ------------- | ------------- |
+| 113001 | default    | 3                     | 1          | 1          | 1           | 1            | 1           | true      | true           | true                       | design                                            | docs/specs/bomber/stage0-kernel-contract.md section4; ADR0046; ADR0047 | 0            | false          | 0                | 200                 | 0             | 0             |
+
+| 113002 | SoftOuter  | 1                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 1            | true           | 0                | 0                   | 250           | 30            |
+
+| 113003 | SoftMiddle | 1                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 1            | true           | 0                | 0                   | 350           | 30            |
+
+| 113004 | SoftCore   | 1                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 1            | true           | 0                | 0                   | 450           | 30            |
+
+| 113005 | Wood       | 1                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 1            | true           | 0                | 0                   | 1000          | 30            |
+
+| 113006 | Iron       | 1                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 1            | false          | 500              | 0                   | 1000          | 30            |
+
+| 113007 | Gold       | 2                     | 0          | 0          | 0           | 0            | 0           | true      | true           | true                       | ADR0048 candidate; M2 runtime gate remains closed | design section5.0; ADR0047; ADR0048                                    | 2            | false          | 1000             | 200                 | 1000          | 30            |

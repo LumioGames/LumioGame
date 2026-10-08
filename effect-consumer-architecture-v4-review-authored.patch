@@ -1,0 +1,383 @@
+diff --git a/eng/generate-effect-lifecycle.mjs b/eng/generate-effect-lifecycle.mjs
+index 4e1c456..1c8b58c 100644
+--- a/eng/generate-effect-lifecycle.mjs
++++ b/eng/generate-effect-lifecycle.mjs
+@@ -40,6 +40,8 @@ ${Object.entries(p.reducer.operationPlan.revisions).map(([k,v]) => '        publ
+ ${Object.entries(p.reducer.operationPlan.caps).map(([k,v]) => '        public const int PlanMax'+pascal(k)+' = '+v+';').join('\n')}
+ ${Object.entries(p.reducer.operationPlan.scratchLayout).map(([k,v]) => '        public const int PlanScratch'+pascal(k)+' = '+v+';').join('\n')}
+ ${Object.entries(p.reducer.registryBinding.caps).map(([k,v]) => '        public const int RegistryMax'+pascal(k)+' = '+v+';').join('\n')}
++        public const int FactAssociationHeaderBytes = ${p.settlementFacts.associationScratch.associationHeaderBytes};
++        public const int FactAssociationBindingReferenceBytes = ${p.settlementFacts.associationScratch.associationBindingReferenceBytes};
+         public const int FactCertificateFixedBytes = ${p.settlementFacts.associationScratch.fixedBytes};
+         public const int FactCertificateColumnHeaderBytes = ${p.settlementFacts.associationScratch.columnHeaderBytes};
+         public const string FinitePolicy = ${literal(p.descriptor.finitePolicy)};
+diff --git a/eng/verify-effect-consumer-schemas.mjs b/eng/verify-effect-consumer-schemas.mjs
+index f064d51..e15bdc3 100644
+--- a/eng/verify-effect-consumer-schemas.mjs
++++ b/eng/verify-effect-consumer-schemas.mjs
+@@ -1,4 +1,7 @@
+ import { createHash } from 'node:crypto';
++import { readFileSync } from 'node:fs';
++const associationLayout=JSON.parse(readFileSync(new URL('../engine/wire/effect-lifecycle-v1.json',import.meta.url))).production.settlementFacts.associationScratch;
++const checkedBytes=n=>{need(n>=0n&&n<=(1n<<64n)-1n&&n<=BigInt(Number.MAX_SAFE_INTEGER),'invalid_capacity_configuration');return Number(n);};
+ 
+ const fail=input=>{throw Object.assign(new Error(input),{input});};
+ const need=(condition,input='invalid_fact_plan')=>{if(!condition)fail(input);};
+@@ -100,8 +103,10 @@ export function validateEffectFact(plan,registry){
+   row.columns.forEach((c,i)=>{if(c.role==='captured'||c.role==='output')need(used.has(i));});
+   const writes=bindings.length+outputs.length+1,indexed=row.indexed?writes:0,bytes=[...used,row.readyColumn].reduce((n,i)=>n+(row.indexed?32:28)+widths[row.columns[i].codec],0);
+   tuple(maxima,3);need(maxima[0]===writes&&maxima[1]===indexed&&maxima[2]===bytes);
+-  const certificateBytes=84+[...used,row.readyColumn].reduce((n,i)=>n+8+widths[row.columns[i].codec],0);
+-  return {row,typeId,fingerprint,payload,owner,index,bindings,outputs,maxWrites:writes,maxIndexedWrites:indexed,maxBytes:bytes,certificateBytes,fields:[...used,row.readyColumn].map(i=>row.columns[i].field),maxValueBytes:Math.max(...[...used,row.readyColumn].map(i=>widths[row.columns[i].codec]))};
++  const certificateBytes=checkedBytes(BigInt(associationLayout.fixedBytes)+[...used,row.readyColumn].reduce((n,i)=>n+BigInt(associationLayout.columnHeaderBytes+widths[row.columns[i].codec]),0n));
++  const associationBindingBytes=checkedBytes(BigInt(associationLayout.associationBindingReferenceBytes)*BigInt(row.columns.length));
++  const scratchBytes=checkedBytes(BigInt(certificateBytes)+BigInt(associationLayout.associationHeaderBytes)+BigInt(associationBindingBytes));
++  return {row,typeId,fingerprint,payload,owner,index,bindings,outputs,maxWrites:writes,maxIndexedWrites:indexed,maxBytes:bytes,certificateBytes,associationBindingBytes,scratchBytes,fields:[...used,row.readyColumn].map(i=>row.columns[i].field),maxValueBytes:Math.max(...[...used,row.readyColumn].map(i=>widths[row.columns[i].codec]))};
+ }
+ function selected(s,request){
+   const [tag,arg]=s;const values={1:request.handle[0],2:request.handle[1],3:request.handle[2],4:request.typeId,5:request.target,6:request.source,7:request.appliedTick,8:request.tick};
+@@ -118,13 +123,14 @@ function revalidateStorage(identity,row,input){
+ }
+ // Admission precedes eligibility/preflight. No completed fact is needed for a
+ // rejection; its payload association comes from this Engine-owned copied slice.
+-export function captureAdmittedEffectRequest(plan,registry,storage,request){
++export function captureAdmittedEffectRequest(plan,registry,storage,request,budget){
+   validateEffectRegistryRecords(registry);
+   const f=validateEffectFact(plan,registry),input='fact_reservation_invariant';
+   need(request.typeId===f.typeId&&request.fingerprint===f.fingerprint&&request.authority,input);
+   const owner=selected(f.owner,request),index=selected(f.index,request);scalar('entity',owner,input);
+   need(JSON.stringify(owner)===JSON.stringify(storage.owner)&&integer(index)&&index<storage.count&&storage.count<=f.row.capacity,input);
+-  const token=Object.freeze({});admissions.set(token,{fact:f,request:structuredClone(request),index,identity:captureStorage(storage,f.row,registry,input)});return token;
++  need(budget&&Number.isSafeInteger(budget.scratch)&&budget.scratch>=f.scratchBytes,input);
++  const token=Object.freeze({});admissions.set(token,{fact:f,retainedScratchBytes:f.scratchBytes,request:structuredClone(request),index,identity:captureStorage(storage,f.row,registry,input)});return token;
+ }
+ export function preflightTypedEffectFact(plan,registry,storage,request,budget){
+   const f=validateEffectFact(plan,registry),input='fact_reservation_invariant',row=f.row;need(request.authority,'fact_unavailable_context');
+@@ -134,10 +140,10 @@ export function preflightTypedEffectFact(plan,registry,storage,request,budget){
+   for(let i=0;i<row.columns.length;i++){need(storage.bindings[i]===row.columns[i].field&&storage.columns[i].length===storage.count,input);scalar(row.columns[i].codec,storage.columns[i][index],input);}
+   need(storage.columns[row.readyColumn][index]===false&&JSON.stringify(storage.columns[row.stateColumn][index])===JSON.stringify(row.pendingValue),input);
+   for(const [i,s] of row.keys)need(JSON.stringify(storage.columns[i][index])===JSON.stringify(selected(s,request)),input);
+-  need(budget.writes>=f.maxWrites&&budget.indexed>=f.maxIndexedWrites&&budget.bytes>=f.maxBytes&&budget.scratch>=f.certificateBytes,input);
++  need(budget.writes>=f.maxWrites&&budget.indexed>=f.maxIndexedWrites&&budget.bytes>=f.maxBytes&&budget.scratch>=f.scratchBytes,input);
+   // Scratch capture only. The operation does not mutate Base, storage or credit ledgers.
+   const capability=Object.freeze({index});
+-  const admitted=captureAdmittedEffectRequest(plan,registry,storage,request),association=admissions.get(admitted);admissions.set(capability,association);
++  const admitted=captureAdmittedEffectRequest(plan,registry,storage,request,budget),association=admissions.get(admitted);admissions.set(capability,association);
+   factCapabilities.set(capability,{fact:f,storage,budget,request:structuredClone(request),owner:structuredClone(owner),index,identity:association.identity,started:false,keys:row.keys.map(([i])=>[i,structuredClone(storage.columns[i][index])]),captured:f.bindings.map(([i,s])=>[i,structuredClone(selected(s,request))])});
+   return capability;
+ }
+@@ -149,8 +155,8 @@ export function completeTypedEffectFact(capability,outputs){
+   need(storage.columns.every(c=>c.length===storage.count)&&storage.count<=f.row.capacity&&index<storage.count,input);
+   for(const [i,key]of state.keys)need(JSON.stringify(storage.columns[i][index])===JSON.stringify(key),input);
+   need(storage.columns[f.row.readyColumn][index]===false&&storage.columns[f.row.stateColumn][index]===f.row.pendingValue,input);
+-  need(budget.writes>=f.maxWrites&&budget.indexed>=f.maxIndexedWrites&&budget.bytes>=f.maxBytes&&budget.scratch>=f.certificateBytes,'fact_reservation_invariant');
+-  state.started=true;budget.writes-=f.maxWrites;budget.indexed-=f.maxIndexedWrites;budget.bytes-=f.maxBytes;budget.scratch-=f.certificateBytes;
++  need(budget.writes>=f.maxWrites&&budget.indexed>=f.maxIndexedWrites&&budget.bytes>=f.maxBytes&&budget.scratch>=f.scratchBytes,'fact_reservation_invariant');
++  state.started=true;budget.writes-=f.maxWrites;budget.indexed-=f.maxIndexedWrites;budget.bytes-=f.maxBytes; // Retained per-request scratch is not transient write credit.
+   const write=(i,value)=>{revalidateStorage(state.identity,f.row,input);storage.columns[i][index]=structuredClone(value);};
+   for(const [i,value]of state.captured)write(i,value);
+   f.outputs.forEach(([i],j)=>write(i,outputs[j]));write(f.row.readyColumn,true);
+diff --git a/eng/verify-effect-consumer.mjs b/eng/verify-effect-consumer.mjs
+index 9ec6e80..f044ea7 100644
+--- a/eng/verify-effect-consumer.mjs
++++ b/eng/verify-effect-consumer.mjs
+@@ -21,7 +21,7 @@ export function checkEffectConsumerDefinition(c) {
+   assert.deepEqual(p.reducer.writeAccounting.widths, { bool:1,i32:4,u32:4,i64:8,u64:8,entity:16 });
+   assert.equal(p.capacity.resultFixedBytes, 90);
+   assert.equal(p.settlementFacts.version, 1);
+-  assert.deepEqual(r.scratchLayout,{localBytes:128,claimBytes:256,frameBytes:32});
++  assert.deepEqual(r.scratchLayout,{localBytes:128,claimBytes:256,frameBytes:32,claimColumnBytes:32,fieldCounterBytes:8});
+   assert.deepEqual(p.reducer.registryBinding.fieldShape.slice(12),['access','maxWrites']);
+   assert.deepEqual(r.hookSchema.inputs,{owner:'entity',old:'valueCodec',new:'valueCodec',reason:'i32'});
+   assert.equal(r.hookSchema.version,1);assert.equal(r.rowSchema.version,1);assert.equal(p.settlementFacts.schemaRevision,1);
+@@ -34,7 +34,7 @@ export function checkEffectConsumerDefinition(c) {
+     'settlementFactIndexedWrites<=settlementFactWrites','settlementFactFields>=count(distinct expanded fact field identities)',
+     'maxSettlementFactValueBytes>=max(fact.fieldEncodedBounds)',
+     'settlementFactWriteBytes>=settlementFactWrites*(reducerWriteFixedBytes+maxSettlementFactValueBytes)+4*settlementFactIndexedWrites',
+-    'settlementFactScratchBytes>=pendingRequests*max(fact.certificateBytes)',
++    'settlementFactScratchBytes>=pendingRequests*max(fact.scratchBytes)',
+   ]);
+ }
+ 
+@@ -82,7 +82,7 @@ export function validateEffectConsumerCapacity(c, plans = [], facts = []) {
+   requireInput(n.settlementFactWrites >= checked(n.pendingRequests * BigInt(max('maxWrites'))) && n.settlementFactIndexedWrites >= checked(n.pendingRequests * BigInt(max('maxIndexedWrites'))) && n.settlementFactIndexedWrites <= n.settlementFactWrites, input);
+   requireInput(c.settlementFactFields >= new Set(facts.flatMap(f => f.fields)).size && c.maxSettlementFactValueBytes >= max('maxValueBytes'), input);
+   requireInput(n.settlementFactWriteBytes >= checked(checked(n.settlementFactWrites * (28n + n.maxSettlementFactValueBytes)) + 4n * n.settlementFactIndexedWrites), input);
+-  requireInput(n.settlementFactScratchBytes >= checked(n.pendingRequests * BigInt(max('certificateBytes'))),input);
++  requireInput(n.settlementFactScratchBytes >= checked(n.pendingRequests * BigInt(max('scratchBytes'))),input);
+   return true;
+ }
+ 
+@@ -133,6 +133,7 @@ function validatePlan(input, registry, resultLimit, internalHook = null) {
+   const type = c.types, numeric = [type.i32,type.u32,type.i64,type.u64];
+   const field = index => { requireInput(integer(index) && index < fields.length); return Object.fromEntries(fieldShapes.map((k,i) => [k,fields[index][i]])); };
+   let nodes = 0, maxDepth = 0, hookScratch = 0;
++  const claimColumns = new Array(locals.length).fill(0); // Startup-only derivation; not caller metadata.
+   const visit = depth => { requireInput(++nodes <= cap.nodes && depth <= cap.depth); maxDepth = Math.max(maxDepth,depth); };
+   const same = (a,b) => requireInput(a === b);
+   const constant = (t,v) => {
+@@ -224,7 +225,7 @@ function validatePlan(input, registry, resultLimit, internalHook = null) {
+             requireInput(hookResult.fields.every(key=>resolved.includes(key)),'invalid_hook_fragment');
+           }break;
+         }
+-        case 'claim':requireInput(!internalHook,'invalid_hook_fragment');local(n[1],type.rowClaim);requireInput(!state.assigned.has(n[1])&&integer(n[3])&&n[3]<rows.length);same(e(n[2]),type.result);same(e(n[4]),type.entity);same(e(n[5]),type.i32);work+=rowDefinitions[n[3]].preflightWork;state.assigned.add(n[1]);state.claims.set(n[1],n[3]);break;
++        case 'claim':requireInput(!internalHook,'invalid_hook_fragment');local(n[1],type.rowClaim);requireInput(!state.assigned.has(n[1])&&integer(n[3])&&n[3]<rows.length);same(e(n[2]),type.result);same(e(n[4]),type.entity);same(e(n[5]),type.i32);work+=rowDefinitions[n[3]].preflightWork;state.assigned.add(n[1]);state.claims.set(n[1],n[3]);claimColumns[n[1]]=Math.max(claimColumns[n[1]],rowDefinitions[n[3]].columns.length);break;
+       }
+       checked(work);checked(writes);checked(indexed);checked(writeBytes);
+     }
+@@ -245,7 +246,10 @@ function validatePlan(input, registry, resultLimit, internalHook = null) {
+   requireInput(stats.writes<=BigInt(maxima[0])&&stats.indexed<=BigInt(maxima[1])&&stats.writeBytes<=BigInt(maxima[2])&&stats.work<=BigInt(maxima[3]));
+   for(const [key,count] of stats.fieldWrites){const i=resolved.indexOf(key);requireInput(i>=0&&fields[i][12]===1&&count<=BigInt(fields[i][13]));}
+   for(const row of rowDefinitions)for(const column of row.columns.filter(c=>c.role==='status'))requireInput((stats.fieldWrites.get(`${registry.schema}:${column.layout}:${column.slot}:${column.ordinal}`)||0n)<=BigInt(column.maxWrites));
+-  const layout=c.scratchLayout,scratch=layout.localBytes*locals.length+layout.claimBytes*locals.filter(t=>t===type.rowClaim).length+layout.frameBytes*maxDepth+hookScratch;requireInput(scratch<=maxima[4]);
++  const layout=c.scratchLayout;
++  const charge=(width,count)=>checked(BigInt(width)*BigInt(count));
++  const scratch64=[charge(layout.localBytes,locals.length),charge(layout.claimBytes,locals.filter(t=>t===type.rowClaim).length),charge(layout.claimColumnBytes,claimColumns.reduce((a,b)=>a+b,0)),charge(layout.fieldCounterBytes,fields.length),charge(layout.frameBytes,maxDepth),BigInt(hookScratch)].reduce((a,b)=>checked(a+b),0n);
++  requireInput(scratch64<=BigInt(cap.scratchBytes)&&scratch64<=BigInt(maxima[4]));const scratch=Number(scratch64);
+   return { id:p[2], fields:resolved, ...stats, scratch, nodes, captured:bytes };
+ }
+ 
+diff --git a/eng/verify-effect-consumer.test.mjs b/eng/verify-effect-consumer.test.mjs
+index 3b7b6de..4cb1745 100644
+--- a/eng/verify-effect-consumer.test.mjs
++++ b/eng/verify-effect-consumer.test.mjs
+@@ -29,8 +29,8 @@ for(const [codec,value,width] of [['bool',true,1],['i32',-2,4],['u32',0xffffffff
+ test('eight indexed long writes cost 320 bytes and same schema counts once',()=>{
+   assert.equal(Array.from({length:8},(_,i)=>encodeEffectWrite('i64',1n,i).length).reduce((a,b)=>a+b),320);
+   const p={maxWrites:8,maxIndexedWrites:8,maxWorkUnits:100,maxScratchBytes:256,fields:['a'],maxValueBytes:8};
+-  const f={maxWrites:3,maxIndexedWrites:3,fields:['b','c','d'],maxValueBytes:16,certificateBytes:156};
+-  const cap={pendingRequests:2,reducerWrites:8,reducerFields:1,maxReducerValueBytes:8,reducerWriteBytes:320,reducerIndexedWrites:8,reducerWorkUnits:100,reducerScratchBytes:256,settlementFactWrites:6,settlementFactIndexedWrites:6,settlementFactFields:3,maxSettlementFactValueBytes:16,settlementFactWriteBytes:288,settlementFactScratchBytes:312};
++  const f={maxWrites:3,maxIndexedWrites:3,fields:['b','c','d'],maxValueBytes:16,certificateBytes:156,associationBindingBytes:24,scratchBytes:244};
++  const cap={pendingRequests:2,reducerWrites:8,reducerFields:1,maxReducerValueBytes:8,reducerWriteBytes:320,reducerIndexedWrites:8,reducerWorkUnits:100,reducerScratchBytes:256,settlementFactWrites:6,settlementFactIndexedWrites:6,settlementFactFields:3,maxSettlementFactValueBytes:16,settlementFactWriteBytes:288,settlementFactScratchBytes:488};
+   assert.equal(validateEffectConsumerCapacity(cap,[p],[f]),true);
+   for(const key of Object.keys(cap).filter(k=>k!=='pendingRequests'))fails(()=>validateEffectConsumerCapacity({...cap,[key]:cap[key]-1},[p],[f]),'invalid_capacity_configuration');
+   fails(()=>validateEffectConsumerCapacity(cap,[p,p],[f]),'invalid_capacity_configuration');
+@@ -72,7 +72,7 @@ const factFixture=()=>{
+   const request={authority:true,typeId:21,fingerprint,handle:['3','4',5],target:['8','9'],source:['7','8'],appliedTick:'10',tick:'10',payload:{1:['7','8'],2:0,3:['20','21'],4:7}};
+   const values=['3','4',5,21,['8','9'],['7','8'],'0',['20','21'],7,'0','0','0',false,0];
+   const storage={recordToken:{},storageToken:{},schema,owner:['7','8'],count:8,bindings:codecs.map((_,i)=>start+i),columns:values.map(v=>Array.from({length:8},()=>structuredClone(v)))};
+-  return {reg,fact,request,storage,budget:{writes:13,indexed:13,bytes:525,scratch:297},start};
++  return {reg,fact,request,storage,budget:{writes:13,indexed:13,bytes:525,scratch:473},start};
+ };
+ test('typed instant whole-row preflight uses separate scalar handle columns and rejects replacements before mutation',()=>{
+   const {reg,fact,request,storage,budget}=factFixture();assert.equal(validateEffectFact(fact,reg).maxBytes,525);assert.equal(preflightEffectFact(fact,reg,storage,request,budget).index,0);
+@@ -98,7 +98,7 @@ test('forged certificate and altered immutable output reject before status mutat
+   for(const mutate of [s=>s.columns[8][0]=9,s=>s.columns[9][0]='99',s=>s.columns[2][0]++,s=>s.columns[6][0]='11']){
+     const {reg,fact,request,storage,budget}=factFixture(),lease={active:true};const certificate=completeTypedEffectFact(preflightEffectFact(fact,reg,storage,request,budget),['4','2','2']);mutate(storage);const before=structuredClone(storage);fails(()=>claimTypedEffectRow(0,reg,storage,0,{...request,kind:'Initial',outcome:'Applied'},certificate,lease),'illegal_row_claim');assert.deepEqual(storage,before);
+   }
+-  const {reg,fact,request,storage,start}=factFixture(),lease={active:true},admitted=captureAdmittedEffectRequest(fact,reg,storage,request);fails(()=>claimTypedEffectRow(0,reg,storage,0,{...request,kind:'Initial',outcome:'Applied'},{},lease),'illegal_row_claim');
++  const {reg,fact,request,storage,start,budget}=factFixture(),lease={active:true},admitted=captureAdmittedEffectRequest(fact,reg,storage,request,budget);fails(()=>claimTypedEffectRow(0,reg,storage,0,{...request,kind:'Initial',outcome:'Applied'},{},lease),'illegal_row_claim');
+   const claim=claimTypedEffectRow(0,reg,storage,0,{...request,kind:'Initial',outcome:'Rejected'},null,lease,admitted);setClaimedEffectStatus(claim,start+13,2,lease,{writes:1,indexed:1,bytes:36});assert.equal(storage.columns[12][0],false);
+ });
+ test('Current presence is invalidated by inner branches and loop-carried reassignment',()=>{
+@@ -155,13 +155,13 @@ test('R2 identity components each reject independently at completion claim and s
+   }
+ });
+ test('R2 rejection uses admission capture without preflight and forbids forged or mutated attribution',()=>{
+-  for(const mutate of [f=>f.storage.columns[7][0]=['900','901'],f=>f.storage.columns[8][0]=99,f=>f.request.tick='11']){const f=factFixture(),admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request);mutate(f);fails(()=>claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,{active:true},admitted),'illegal_row_claim');}
+-  const f=factFixture(),admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request),result={...f.request,kind:'Initial',outcome:'Rejected'},lease={active:true};f.request.payload[4]=99;fails(()=>claimTypedEffectRow(0,f.reg,f.storage,0,result,null,lease,{}),'illegal_row_claim');const claim=claimTypedEffectRow(0,f.reg,f.storage,0,result,null,lease,admitted);setClaimedEffectStatus(claim,f.start+13,2,lease,{writes:1,indexed:1,bytes:36});assert.equal(f.storage.columns[12][0],false);
++  for(const mutate of [f=>f.storage.columns[7][0]=['900','901'],f=>f.storage.columns[8][0]=99,f=>f.request.tick='11']){const f=factFixture(),admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,f.budget);mutate(f);fails(()=>claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,{active:true},admitted),'illegal_row_claim');}
++  const f=factFixture(),admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,f.budget),result={...f.request,kind:'Initial',outcome:'Rejected'},lease={active:true};f.request.payload[4]=99;fails(()=>claimTypedEffectRow(0,f.reg,f.storage,0,result,null,lease,{}),'illegal_row_claim');const claim=claimTypedEffectRow(0,f.reg,f.storage,0,result,null,lease,admitted);setClaimedEffectStatus(claim,f.start+13,2,lease,{writes:1,indexed:1,bytes:36});assert.equal(f.storage.columns[12][0],false);
+ });
+ test('R3 row cap and field cap and program quotas are independent exact and one-short',()=>{
+   const {reg,start}=factFixture(),p=plan();reg.rows[0][5][13][2]=1;p[4]=[13];p[5]=reg.fields.map(encodeField);p[7]=[0];p[8]=[1,1,36,10000,4096];p[9]=[[9,0,[6,[1,2,0]],0,[4],[1,2,0]],[8,[2,0],start+13,[1,2,0]]];assert.equal(validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8).writes,1n);p[8]=[2,2,72,10000,4096];p[9].push(structuredClone(p[9][1]));fails(()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8),'invalid_operation_plan');
+-  for(const key of ['writes','indexed','bytes']){const f=factFixture(),lease={active:true},admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request),claim=claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,lease,admitted),budget={writes:1,indexed:1,bytes:36};budget[key]--;const before={...budget};fails(()=>setClaimedEffectStatus(claim,f.start+13,0,lease,budget),'reservation_invariant');assert.deepEqual(budget,before);assert.equal(f.storage.columns[13][0],0);}
+-  const f=factFixture();f.reg.fields[f.start+13].maxWrites=1;const lease={active:true},admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request),claim=claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,lease,admitted),budget={writes:8,indexed:8,bytes:288};setClaimedEffectStatus(claim,f.start+13,0,lease,budget);fails(()=>setClaimedEffectStatus(claim,f.start+13,0,lease,budget),'illegal_row_claim');
++  for(const key of ['writes','indexed','bytes']){const f=factFixture(),lease={active:true},admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,f.budget),claim=claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,lease,admitted),budget={writes:1,indexed:1,bytes:36};budget[key]--;const before={...budget};fails(()=>setClaimedEffectStatus(claim,f.start+13,0,lease,budget),'reservation_invariant');assert.deepEqual(budget,before);assert.equal(f.storage.columns[13][0],0);}
++  const f=factFixture();f.reg.fields[f.start+13].maxWrites=1;const lease={active:true},admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,f.budget),claim=claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,lease,admitted),budget={writes:8,indexed:8,bytes:288};setClaimedEffectStatus(claim,f.start+13,0,lease,budget);fails(()=>setClaimedEffectStatus(claim,f.start+13,0,lease,budget),'illegal_row_claim');
+ });
+ test('claim scratch ignores unused schemas and covers branch alternatives and reused loop slots',()=>{
+   const {reg}=factFixture(),p=plan();p[4]=[];p[5]=[];p[9]=[];p[7]=[];const noSchema=validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8);p[7]=[0];assert.equal(validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8).scratch,noSchema.scratch);
+@@ -174,3 +174,60 @@ test('nested hooks enforce exact and one-short transitive work and active scratc
+   const outer=[1,2,0,0,'i64',[4],[[3,1,1],[4,1,1]],[2,0,72,1000,4096],[],[[1,0,[16,'new']],[7,[16,'owner'],0,[2,0]]]],outerFp=fragmentFingerprint(outer);r.hooks[outerFp]=outer;r.fields[0].hookFingerprint=outerFp;
+   const p=plan();p[4]=[];p[5]=[r.fields[0],r.fields[3],r.fields[4]].map(encodeField);p[9]=[[7,[4],0,[1,4,'1']]];p[8]=[3,0,108,10000,16384];const good=validateEffectOperationPlan(encodeEffectOperationPlan(p),r,8);assert.equal(good.writes,3n);assert.ok(good.scratch>=256);p[8][3]=Number(good.work);p[8][4]=good.scratch;assert.equal(validateEffectOperationPlan(encodeEffectOperationPlan(p),r,8).scratch,good.scratch);for(const i of [3,4]){p[8][i]--;fails(()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),r,8),'invalid_operation_plan');p[8][i]++;}
+ });
++
++// V4 probes: exact payload-slot accounting, independent of managed object sizes.
++const scratchPlan=(reg,locals=[],body=[],rows=[])=>{const p=plan();p[4]=locals;p[5]=[];p[7]=rows;p[8]=[0,0,0,1000000,16384];p[9]=body;return p;};
++const checkedScratch=(p,reg,expected)=>{const run=()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8);assert.equal(run().scratch,expected);p[8][4]=expected;assert.equal(run().scratch,expected);p[8][4]--;fails(run,'invalid_operation_plan');p[8][4]=16384;};
++const claimSite=(local,row=0)=>[9,local,[6,[1,2,0]],row,[4],[1,2,0]];
++test('V4 field counters include every declared field even without writes',()=>{
++  const reg=registry(),p=scratchPlan(reg);p[5]=reg.fields.map(encodeField);checkedScratch(p,reg,3*8);
++  p[5]=[];checkedScratch(p,reg,0);
++});
++test('V4 two claims to one schema each reserve full column state',()=>{
++  const {reg}=factFixture(),p=scratchPlan(reg,[13,13],[claimSite(0),claimSite(1)],[0]);
++  checkedScratch(p,reg,2*(128+256+14*32)+3*32);
++  p[8][4]=2*(128+256)+3*32;fails(()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8),'invalid_operation_plan');
++});
++const widerRegistry=()=>{const {reg}=factFixture(),row=structuredClone(reg.rows[0]);row[1]='wider';
++  for(let i=0;i<3;i++){const index=reg.fields.length;reg.fields.push(field({componentKey:72,fieldKey:1100+i,slot:2,ordinal:14+i,category:'list',capacity:8,codec:'i32'}));row[5].push([index,'status',8]);}
++  reg.rows.push(row);const fact=structuredClone(reg.facts[0]),decl=structuredClone(reg.payloads[0].declaration);decl[1]=22;fact[1]=22;fact[2]=fragmentFingerprint(decl);fact[4]=1;reg.payloads.push({typeId:22,fingerprint:fact[2],instant:true,fields:decl[3],declaration:decl});reg.facts.push(fact);return reg;
++};
++test('V4 different widths reserve per-local maximum across sites and unused locals only header',()=>{
++  const reg=widerRegistry(),p=scratchPlan(reg,[13,13,13],[[3,[1,1,true],[claimSite(0,0)],[claimSite(0,1)]],claimSite(1,0)],[0,1]);
++  checkedScratch(p,reg,3*(128+256)+(17+14)*32+4*32);
++  p[9]=[];checkedScratch(p,reg,3*(128+256));p[7]=[];checkedScratch(p,reg,3*(128+256));
++});
++test('V4 branch allocations stay reserved and loop columns reuse after retirement',()=>{
++  const {reg}=factFixture(),p=scratchPlan(reg,[2,13,13],[[3,[1,1,true],[claimSite(1)],[claimSite(2)]]],[0]);
++  checkedScratch(p,reg,3*128+2*(256+14*32)+4*32);
++  p[9]=[[4,0,[1,1],[claimSite(1)]]];checkedScratch(p,reg,3*128+2*256+14*32+4*32);
++  p[9][0][2][1]=8;checkedScratch(p,reg,3*128+2*256+14*32+4*32);
++  p[9][0][3].push(claimSite(1));fails(()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),reg,8),'invalid_operation_plan');
++});
++test('V4 retained association scratch includes every storage binding and fixed state',()=>{
++  const f=factFixture(),derived=validateEffectFact(f.fact,f.reg);assert.equal(derived.certificateBytes,297);assert.equal(derived.associationBindingBytes,14*8);assert.equal(derived.scratchBytes,297+64+14*8);
++  const budget={...f.budget,scratch:473};assert.equal(preflightEffectFact(f.fact,f.reg,f.storage,f.request,budget).index,0);
++  fails(()=>preflightEffectFact(f.fact,f.reg,f.storage,f.request,{...budget,scratch:472}),'fact_reservation_invariant');
++  const reg=widerRegistry(),wide=validateEffectFact(reg.facts[1],reg);assert.equal(wide.certificateBytes,297);assert.equal(wide.associationBindingBytes,17*8);assert.equal(wide.scratchBytes,497);
++  const cap={pendingRequests:2,reducerWrites:0,reducerFields:0,maxReducerValueBytes:0,reducerWriteBytes:0,reducerIndexedWrites:0,reducerWorkUnits:0,reducerScratchBytes:0,settlementFactWrites:26,settlementFactIndexedWrites:26,settlementFactFields:13,maxSettlementFactValueBytes:16,settlementFactWriteBytes:1248,settlementFactScratchBytes:994};
++  assert.equal(validateEffectConsumerCapacity(cap,[],[derived,wide]),true);fails(()=>validateEffectConsumerCapacity({...cap,settlementFactScratchBytes:993},[],[derived,wide]),'invalid_capacity_configuration');
++});
++test('V4 rejected admission requires full retained slice and completion never retires it',()=>{
++  const f=factFixture(),before=structuredClone(f.storage),short={...f.budget,scratch:472};
++  fails(()=>captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,short),'fact_reservation_invariant');
++  assert.deepEqual(f.storage,before);assert.equal(short.scratch,472);
++  const admitted=captureAdmittedEffectRequest(f.fact,f.reg,f.storage,f.request,f.budget),lease={active:true};
++  const claim=claimTypedEffectRow(0,f.reg,f.storage,0,{...f.request,kind:'Initial',outcome:'Rejected'},null,lease,admitted);
++  setClaimedEffectStatus(claim,f.start+13,2,lease,{writes:1,indexed:1,bytes:36});assert.equal(f.budget.scratch,473);
++  const applied=factFixture(),cap=preflightEffectFact(applied.fact,applied.reg,applied.storage,applied.request,applied.budget);
++  assert.equal(applied.budget.scratch,473);completeTypedEffectFact(cap,['4','2','2']);assert.equal(applied.budget.scratch,473);
++  assert.deepEqual([applied.budget.writes,applied.budget.indexed,applied.budget.bytes],[0,0,0]);
++});
++test('V4 nested hooks charge root coverage and each active fragment field counters',()=>{
++  const r=registry();r.fields.push(field({fieldKey:101,ordinal:2}),field({fieldKey:102,ordinal:3}));
++  const leaf=[1,2,0,2,'i64',[4],[[4,1,1]],[1,0,36,1000,4096],[],[[1,0,[16,'new']],[7,[16,'owner'],0,[2,0]]]],lf=fragmentFingerprint(leaf);r.hooks[lf]=leaf;r.fields[3].hookFingerprint=lf;
++  const outer=[1,2,0,0,'i64',[4],[[3,1,1],[4,1,1]],[2,0,72,1000,4096],[],[[1,0,[16,'new']],[7,[16,'owner'],0,[2,0]]]],of=fragmentFingerprint(outer);r.hooks[of]=outer;r.fields[0].hookFingerprint=of;
++  const p=scratchPlan(r,[],[[7,[4],0,[1,4,'1']]]);p[5]=[r.fields[0],r.fields[3],r.fields[4]].map(encodeField);p[8]=[3,0,108,10000,16384];
++  checkedScratch(p,r,3*8+2*32+(128+2*8+2*32)+(128+8+2*32));
++  p[5].pop();fails(()=>validateEffectOperationPlan(encodeEffectOperationPlan(p),r,8),'invalid_hook_fragment');
++});
+diff --git a/eng/verify-effect-lifecycle.mjs b/eng/verify-effect-lifecycle.mjs
+index d647f52..53cd404 100644
+--- a/eng/verify-effect-lifecycle.mjs
++++ b/eng/verify-effect-lifecycle.mjs
+@@ -407,7 +407,7 @@ export function checkEffectProduction(c) {
+   for (const row of Object.values(c.errorCodeSemantics)) for (const key of ['meaning','when','handling']) assert.ok(typeof row[key] === 'string' && row[key].length > 15,`errorCodeSemantics.${key}`);
+   // Pin the reviewed semantic surface, including every prose-only guard and mapping.
+   // Updating this requires reviewing the owning ADR/contract, not regenerating a baseline.
+-  assert.equal(createHash('sha256').update(JSON.stringify([c.production,c.errorCodes,c.inputMappings,c.admissionPrecedence,c.admissionValidationOrder,c.admissionPrecedenceExamples])).digest('hex'), 'bba645eb3729adf31026b7b4bdde963f3a05f3e72f7519434ac604c944c92638', 'production.semantic-integrity');
++  assert.equal(createHash('sha256').update(JSON.stringify([c.production,c.errorCodes,c.inputMappings,c.admissionPrecedence,c.admissionValidationOrder,c.admissionPrecedenceExamples])).digest('hex'), '930f37fe58b3fb73dd103d919f416aed20196479e134dcf702be0b023682f38d', 'production.semantic-integrity');
+ }
+ 
+ const timing = {
+diff --git a/engine/wire/effect-lifecycle-v1.json b/engine/wire/effect-lifecycle-v1.json
+index b9650dc..fc649ca 100644
+--- a/engine/wire/effect-lifecycle-v1.json
++++ b/engine/wire/effect-lifecycle-v1.json
+@@ -238,12 +238,12 @@
+         "settlementFactFields>=count(distinct expanded fact field identities)",
+         "maxSettlementFactValueBytes>=max(fact.fieldEncodedBounds)",
+         "settlementFactWriteBytes>=settlementFactWrites*(reducerWriteFixedBytes+maxSettlementFactValueBytes)+4*settlementFactIndexedWrites",
+-        "settlementFactScratchBytes>=pendingRequests*max(fact.certificateBytes)"
++        "settlementFactScratchBytes>=pendingRequests*max(fact.scratchBytes)"
+       ],
+       "admission": "atomically reserve pending count, exact snapshot bytes, identity and initial result record/bytes before returning success; controls reserve count/result record/bytes; no partial reservation, deferred/drop/evict/retry or admission during settlement Fact-bearing instant requests additionally atomically reserve the complete separate fact slice.",
+       "settlement": "target existence then eligibility then World live count, per-target live count, live bytes and recurring due/result credits; reject with correlated result if unavailable; instant executes native Pending/Active/Expired in request storage even when persistent rows are full Fact-bearing Apply is preceded by whole-row preflight and cannot mutate Base before its fact capability is armed.",
+       "protection": "reserve dueRecords>=liveRows and two recurring result credits per live row independently of pending requests/controls; a newly accepted finite row cannot period/expire on its Apply tick because D/P>0",
+-      "retirement": "Retain the complete admitted snapshot (full handle, TypeId, Target, Source, Tick, copied payload and owning declaration binding) and its original pending-snapshot byte credit through the full reducer round, including rejected requests and terminal handle retirement. Pending admission slots may retire after execution, but retained snapshot bytes cannot be reused until the full result window and every reducer/batch lease expires before phase 9 exits. Separate Q-based settlementFactScratchBytes certificate slices remain reserved from admission through that same boundary, including unused slices for rejection. Transient settlement fact write/indexed/byte credits retire after once-only completion or rejection; they never release retained snapshot or certificate storage. Recurring credits for retired rows also remain charged until the result window expires. Durable Game rows remain ordinary ECS.",
++      "retirement": "Retain the complete admitted snapshot (full handle, TypeId, Target, Source, Tick, copied payload and owning declaration binding) and its original pending-snapshot byte credit through the full reducer round, including rejected requests and terminal handle retirement. Pending admission slots may retire after execution, but retained snapshot bytes cannot be reused until the full result window and every reducer/batch lease expires before phase 9 exits. Separate Q-based settlementFactScratchBytes complete certificate/header/binding-reference slices remain reserved from admission through that same boundary, including full slices for rejection. Transient settlement fact write/indexed/byte credits retire after once-only completion or rejection; they never release retained snapshot, certificate, association header or binding-reference storage. Recurring credits for retired rows also remain charged until the result window expires. Durable Game rows remain ordinary ECS.",
+       "overflow": "exhausted configured admission/identity budget refuses; any broken reservation after admission is a fault, never silent rejection or partial publication",
+       "reducerIndexedWriteFixedBytes": 32
+     },
+@@ -722,7 +722,7 @@
+         ],
+         "validation": "Exact revisions, tuple arities/tags/types, canonical values, lexical scope, definite assignment, immutable loop indices, return branches, present-dominated Current.value, declared field/attribute/row indexes, unique declarations, acyclic dependencies and hooks; reject before Ready. Helpers inline with fresh locals. For captures bound once and owns increment. Stable Count owner cannot change in loop. Reject shared/cyclic in-memory nodes during construction; serialized tree contains no references. Current presence proofs merge by intersection of continuing branches; returning branches do not flow to successors. A loop invalidates all proofs of outer current locals assigned anywhere in its body before checking any iteration, and after the loop; the body may establish fresh present proofs after assignment. Branch-local declarations never escape.",
+         "work": "checked-u64 sequence sum; if charges condition+1+max(branch); for charges bound+1+N*(2+body); return/require/let/assign each 1 plus expressions. Every expression is 1 plus children. Storage read/write adds actual fixed width in bytes; list overwrite adds capacity*valueWidth for normal dirty/snapshot copy plus 1 for reference-indexed dirty lookup. Include all transitive hooks and row checks. No unbounded dirty ledger scan is permitted in F. Startup requires computed work <= declared maxWorkUnits <= cap, batch quota >= sum maxima. Debit actual work before each operation; exhaustion faults.",
+-        "scratch": "Allocate one value slot per local and one additional capability slot per rowClaim-typed local, even if a branch never creates it. Claims cannot be assigned/replaced or returned; a claim declaration in a loop reuses its local only after the prior iteration scope retires. Root scratch = localBytes*locals + claimBytes*count(rowClaim locals) + frameBytes*maximum structural depth + maximum simultaneously active hook scratch. Hook scratch recursively includes its own locals, structural frames and nested hook maximum. Distinct row-schema count is unrelated to live capability count. Checked u64 and caps apply before allocation.",
++        "scratch": "Bounded logical interpreter payload slots, not exact CLR/native heap or object sizes. Reserve localBytes*locals + claimBytes*count(rowClaim locals) + claimColumnBytes*sum(maxColumns(local)) + fieldCounterBytes*declaredFields + frameBytes*maximum structural depth + maximum simultaneously active hook scratch. Derive maxColumns(local) from validated Claim syntax and actual row schemas at all statically permitted sites assigning that local; take the maximum per local, then sum all locals independently. Unused claim locals retain the fixed header with zero columns; unrelated schemas add nothing. Branch alternatives retain all declared allocations. Claims cannot be assigned/replaced or returned; loop reuse occurs only after previous lexical claim retirement. Each hook recursively reserves its own locals, all declared field counters, structural frames and nested active scratch. Root declared fields must include hook-expanded coverage. Use checked u64 arithmetic and reject derived or declared scratch above scratchBytes cap before Ready; caller estimates never establish column counts.",
+         "maxima": [
+           "maxWrites",
+           "maxIndexedWrites",
+@@ -735,7 +735,9 @@
+         "scratchLayout": {
+           "localBytes": 128,
+           "claimBytes": 256,
+-          "frameBytes": 32
++          "frameBytes": 32,
++          "claimColumnBytes": 32,
++          "fieldCounterBytes": 8
+         },
+         "hookSchema": {
+           "version": 1,
+@@ -806,6 +808,30 @@
+           "rules": "At least one status column and one bool ready column. stateColumn is a status column; pendingValue is a canonical typed constant matching its codec. indexed=true requires all columns be hook-free lists of identical positive capacity; indexed=false requires scalars and capacity=1, index=0. All column bindings use the same concrete owner layout; duplicate columns/key selectors reject. captured/output/ready columns have maxReducerWrites=0. Status columns have a positive i32 maximum. readyColumn has role ready and bool codec. Keys must use captured columns and include all six required HandleWorld/HandleInstance/HandleGeneration/TypeId/Target/Source selectors with exact codecs; any extra payload selectors require matching captured payload schema in the bound fact plan.",
+           "claim": "The result is copied from the current batch, not an authored constant. Require exact full six-part association and current row state equal pendingValue. Applied requires ready=true and a captured Tick binding equal result.Tick; Rejected requires ready=false. Other result kinds/outcomes reject. The claim retains full record/storage identities, owner/index/extent, immutable key values and invocation identity. Each SetAt rechecks them and the row status declaration; replacing or moving rows invalidates it. A status write may change state from pending, so subsequent writes under the same claim check its captured initial state plus Engine-recorded own status mutations, never accept external reassignment.",
+           "work": "Preflight and every claim recheck charge 1 per column binding/extent check plus codec width per key read, 6 full-identity comparisons at their codec widths, 1 ready check and ready width; derived from concrete schema, no caller preflightWork. SetAt additionally charges actual list-copy and reference-indexed dirty costs."
++        },
++        "scratchStorage": {
++          "claimColumnLayout": [
++            [
++              "EngineStorageReference",
++              8
++            ],
++            [
++              "FixedScalarValue",
++              16
++            ],
++            [
++              "AttemptedWriteCount",
++              8
++            ]
++          ],
++          "fieldCounterLayout": [
++            [
++              "AttemptedWriteCount",
++              8
++            ]
++          ],
++          "allocation": "Validated syntax, row/field descriptors, binding indices, permissions, codec tags and derived per-local maxima are immutable startup storage bounded by encoded source/registry caps; share them, never duplicate metadata per claim or request. Allocate dense local, field-counter, claim-column and control-frame arrays from derived maxima outside F and reuse them. No per-write allocation, unbounded map, boxed scalar, dynamic closure or hidden per-column array in a fixed header. FixedScalarValue uses two u64 slots for every one of the six codecs, including entity; codec comes from frozen schema. Claim header256 and local128 are logical payload budgets. Allocate request certificate bytes, association headers and storage-reference slices before F; captured/output scalars use canonical slices and retained admitted snapshot rather than duplicate variable scalar arrays.",
++          "implementationBoundary": "Logical slots and canonical encoded-byte quotas are not exact managed allocations. Runtime must separately bound and disclose allocator object/array framing, alignment, pool bookkeeping and execution stack using validated caps and slot/array counts. Frame32 is a logical control-frame charge; use a bounded preallocated explicit stack or separately prove a bounded native/CLR stack implementation from structural and acyclic hook limits. Moving allocation outside F does not remove its reservation. JS oracle Maps, JSON strings and object copies model validation/identity, not a production allocator or proof of allocation-free execution."
+         }
+       },
+       "registryBinding": {
+@@ -1073,7 +1099,47 @@
+             "bytes"
+           ]
+         ],
+-        "rules": "Reserve one certificate slice per admitted initial fact request, stored as bounded Engine scratch alongside its existing admitted snapshot, not a persistent queue or global result dictionary. On completion copy all captured/output/ready values into the immutable certificate. Retain through the full reducer round, including after terminal handle retirement; Claim compares every immutable row column to this certificate and the copied actual result. Earlier Game mutation cannot forge attribution/amount/ready. Rejected requests have no completed certificate. Credits release with the full result window; F cannot spend them. certificateBytes = fixedBytes + sum(columnHeaderBytes + codecWidth) over all fact-written columns; exact generation/startup value, not caller estimate. Rejected Claim compares all immutable row key selectors, including payload attribution, against the Engine-copied admitted snapshot even though no completed certificate exists. In the oracle admission returns an opaque captured handle independently of preflight; the handle is required for rejection. Capture opaque Engine record/generation and storage tokens, concrete column object identities, schema, owner, bindings and extent at admission/preflight; revalidate at completion, Claim and every write. Retained admitted snapshot bytes and certificate scratch release only with the full result window as specified in capacity.retirement."
++        "rules": "Reserve one certificate slice per admitted initial fact request, stored as bounded Engine scratch alongside its existing admitted snapshot, not a persistent queue or global result dictionary. On completion copy all captured/output/ready values into the immutable certificate. Retain through the full reducer round, including after terminal handle retirement; Claim compares every immutable row column to this certificate and the copied actual result. Earlier Game mutation cannot forge attribution/amount/ready. Rejected requests have no completed certificate. Credits release with the full result window; F cannot spend them. certificateBytes = fixedBytes + sum(columnHeaderBytes + codecWidth) over all fact-written columns; exact generation/startup value, not caller estimate. Rejected Claim compares all immutable row key selectors, including payload attribution, against the Engine-copied admitted snapshot even though no completed certificate exists. In the oracle admission returns an opaque captured handle independently of preflight; the handle is required for rejection. Capture opaque Engine record/generation and storage tokens, concrete column object identities, schema, owner, bindings and extent at admission/preflight; revalidate at completion, Claim and every write. Retained admitted snapshot bytes and certificate scratch release only with the full result window as specified in capacity.retirement. associationBindingBytes = associationBindingReferenceBytes * row.columns.length, including status and non-written columns. scratchBytes = certificateBytes + associationHeaderBytes + associationBindingBytes, derived from validated actual schema, never a caller estimate. Header64 comprises exactly the listed six reference8 slots, extent4, index4 and lifecycleFlags8; it is an additional logical payload slot, not an object header estimate. Schema descriptors carry immutable bindings/codec metadata; captured storage references occupy the separately charged dense slice. Canonical certificate fixed84 and per-column8+V remain unchanged, including its reserved identity/owner/index slice for rejected rows; admitted identity and payload retain their original pending-snapshot byte credit. Reserve the full scratchBytes per request before eligibility, including Rejected requests with no completed certificate, and retain it throughout the reducer round. Preflight and completion check the retained per-request slice, do not spend or release scratch as transient write credit. Q-based startup reservation bounds simultaneous slices; whole-round release is Runtime-owned. No extra per-request scalar snapshot array is hidden behind the canonical bytes. Runtime framing is bounded separately as specified by operationPlan.scratchStorage.",
++        "associationHeaderBytes": 64,
++        "associationBindingReferenceBytes": 8,
++        "associationHeaderLayout": [
++          [
++            "StorageReference",
++            8
++          ],
++          [
++            "RecordIdentityReference",
++            8
++          ],
++          [
++            "GenerationStorageTokenReference",
++            8
++          ],
++          [
++            "FrozenSchemaReference",
++            8
++          ],
++          [
++            "AdmittedSnapshotReference",
++            8
++          ],
++          [
++            "SliceOwnerReference",
++            8
++          ],
++          [
++            "CapturedExtent",
++            4
++          ],
++          [
++            "Index",
++            4
++          ],
++          [
++            "LifecycleFlags",
++            8
++          ]
++        ]
+       }
+     }
+   },

@@ -1,0 +1,225 @@
+{
+  "complete": true,
+  "noForcePush": true,
+  "noServiceChanges": true,
+  "utc": "2026-10-05T13:18:13.5266433Z",
+  "noReleaseTag": true,
+  "schema": "101-other-repos-push-v1",
+  "repositories": [
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumiogameengine",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioGameEngine",
+      "parents": [
+        "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+        "662baab78f791558bb86c4f5d174fcc4f011639a",
+        "ecece8a4ed42be90f06a4bcd252088ab8e248505"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "ecece8a4ed42be90f06a4bcd252088ab8e248505",
+      "official24Source": "523c3d39f8f29b2dccd7d6451fe5a5e8c968c5c0",
+      "archiveCommit": "d4e943c3994cfa68745c24cf52ef1f5ab710f16e",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameEngine.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioGameEngine.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumiogameruntime",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioGameRuntime",
+      "parents": [
+        "04538c5828af4a95cb0de9b93e465f70f587155c",
+        "0a417a79c59e3122e65b1c9be0091e8b6bd7e49d",
+        "2b37ca8f615ebd75476dbcf0d6dd44a583b8a3d4",
+        "4e0d67b88322eabd999a1959320f30dfd96b198e",
+        "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+        "669a28c5910917d31e96050c3497d38a166d4d1f",
+        "b03ed97273e98afe5b9eb8cbc8b2a01c5a7b7af7",
+        "e5f3042872a07ba54a4ab488d69559fa352a7df3",
+        "f6364961affb07a391ab119d663864b31b2b99eb"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "04538c5828af4a95cb0de9b93e465f70f587155c",
+      "official24Source": "57bd5303dce46ca34fb28790fe65cb62e5bf4165",
+      "archiveCommit": "baab8421169efc53b75d3961fd43ef529d46afba",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioGameRuntime.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioGameRuntime.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumioclient",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioClient",
+      "parents": [
+        "4d79f50b26392fe8360ddba2062328dc21d38b72",
+        "a72d9ddf2b2b543556e3ddc1764cb412d6fc1b1b",
+        "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "4d79f50b26392fe8360ddba2062328dc21d38b72",
+      "official24Source": "a9d44ba42dab6f89f2e9e3c2916f3bf84fcc89cc",
+      "archiveCommit": "1d2273619b34d0b5cbe1fe9c9e9a01dd3b05b530",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioClient.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioClient.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumioserver",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioServer",
+      "parents": [
+        "008861074a2d3c9da1b0407325ede6f851704fd5",
+        "024ffd827030be826599a9072a778be7765f0b34",
+        "8b4fc473df11f7ceb21258987ee615baf96f8367"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "024ffd827030be826599a9072a778be7765f0b34",
+      "official24Source": "008861074a2d3c9da1b0407325ede6f851704fd5",
+      "archiveCommit": "88c999cdb2b18c7ded64c5da19c9564af8075a8a",
+      "primaryBranch": "fix/r588-ds-tick-failure-detail",
+      "repositoryUrl": "https://github.com/LumioGames/LumioServer.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioServer.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumionativecore",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioNativeCore",
+      "parents": [
+        "81b2501a621db2657bd087db2afa808ecfb9e846",
+        "c93b5c62ebd6dab32a92f70efef3e5d07151f689",
+        "cc24a21df3732d98684b1486a6c39b6c61804d60"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "c93b5c62ebd6dab32a92f70efef3e5d07151f689",
+      "official24Source": "81b2501a621db2657bd087db2afa808ecfb9e846",
+      "archiveCommit": "65b05cb2b49bad93683e2e1719411566ee313163",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioNativeCore.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioNativeCore.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumiovoxelengine",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioVoxelEngine",
+      "parents": [
+        "2ba61e431d8080ff6450a07e6ee447e3f0994e0b",
+        "658f71d658a6f1b66e350aca9450205034c2ad47",
+        "6eee59fbfd2439ce2b48e31d495c24d4d9076545"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "6eee59fbfd2439ce2b48e31d495c24d4d9076545",
+      "official24Source": "2ba61e431d8080ff6450a07e6ee447e3f0994e0b",
+      "archiveCommit": "ceab3b30d1b9fd3795ee235697a842caa2e5adca",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioVoxelEngine.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioVoxelEngine.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumioplatform",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioPlatform",
+      "parents": [
+        "3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89",
+      "official24Source": "3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89",
+      "archiveCommit": "0f529090386cc78e49e04c3a69a25081b21d5e28",
+      "primaryBranch": "feat/lumio-handoff",
+      "repositoryUrl": "https://github.com/LumioGames/LumioPlatform.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioPlatform.bundle"
+    },
+    {
+      "buildCachesAndLocalEvidenceRetained": true,
+      "mainPushed": false,
+      "primaryTrackedSourceClean": true,
+      "archiveRef": "refs/notes/101-bomber-handoff-20261005-closeout02/lumioconfig",
+      "sourceTreeEqualsPrimary": true,
+      "bundleVerified": true,
+      "name": "LumioConfig",
+      "parents": [
+        "6112af36825e2bd162353fe59bcfefdff2ee5794",
+        "a991a517f9dbae255321c25d65fea0bfdfdca42f",
+        "dd127edd87a00764b2b3ffb210df9f4b8d44d70a"
+      ],
+      "remoteVerified": true,
+      "reviewAccepted": false,
+      "primarySourceCommit": "dd127edd87a00764b2b3ffb210df9f4b8d44d70a",
+      "official24Source": "a991a517f9dbae255321c25d65fea0bfdfdca42f",
+      "archiveCommit": "52934b67cc4dead980a2d4905ef4de7a49fc7239",
+      "primaryBranch": "main",
+      "repositoryUrl": "https://github.com/LumioGames/LumioConfig.git",
+      "releasePublished": false,
+      "bundle": "C:/Work/LumioGames/LumioGame/.run/20261005-other-repos-push-01/bundles/LumioConfig.bundle"
+    }
+  ],
+  "noMainPush": true,
+  "ordinaryBranchPushes": [
+    {
+      "commit": "024ffd827030be826599a9072a778be7765f0b34",
+      "branch": "fix/r588-ds-tick-failure-detail",
+      "name": "LumioServer",
+      "remoteVerified": true
+    },
+    {
+      "commit": "3a2ef1a7c3d57128bdaafd5efeea5080f9cdbc89",
+      "branch": "feat/lumio-handoff",
+      "name": "LumioPlatform",
+      "remoteVerified": true
+    },
+    {
+      "commit": "6112af36825e2bd162353fe59bcfefdff2ee5794",
+      "branch": "codex/101-config-authoring",
+      "name": "LumioConfig",
+      "remoteVerified": true
+    },
+    {
+      "remoteVerified": true,
+      "name": "LumioConfig",
+      "commit": "a991a517f9dbae255321c25d65fea0bfdfdca42f",
+      "branch": "codex/101-config-registry"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "format": "lumio.block-asset-pack.v1",
+  "textureSize": 128,
+  "license": {
+    "spdx": "CC0-1.0",
+    "attribution": "Kenney Vleugels / Kenney (www.kenney.nl), Voxel Pack; LumioBomber contributors (self-drawn textures). Per-file sources in SOURCES.md",
+    "source": "https://kenney.nl/assets/voxel-pack ; Client/Assets/Blocks/source/generate-textures.mjs"
+  }
+}

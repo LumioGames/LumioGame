@@ -1,0 +1,133 @@
+{
+  "table": "movement",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "place_buffer_ms",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "place buffer ms"
+    },
+    {
+      "name": "corner_assist_milli",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "corner assist milli"
+    },
+    {
+      "name": "repeat_assist_milli",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "repeat assist milli"
+    },
+    {
+      "name": "repeat_window_ticks",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "repeat window ticks"
+    },
+    {
+      "name": "turn_buffer_ticks",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "turn buffer ticks"
+    },
+    {
+      "name": "secondary_axis_permille",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "secondary axis permille"
+    },
+    {
+      "name": "spawn_facing",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "spawn facing"
+    },
+    {
+      "name": "water_speed_permille",
+      "ordinal": 9,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "water speed permille"
+    },
+    {
+      "name": "player_collision",
+      "ordinal": 10,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "player collision"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    }
+  ]
+}

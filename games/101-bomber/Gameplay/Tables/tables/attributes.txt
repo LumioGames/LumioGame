@@ -1,0 +1,16 @@
+table: attributes
+schema: schemas/attributes.json
+
+| id     | name               | initial | minimum | maximum | upgrade_step | source_status | source_ref                               |
+| ------ | ------------------ | ------- | ------- | ------- | ------------ | ------------- | ---------------------------------------- |
+| 101001 | HealthPoints       | 6       | 0       | 16      | 0            | design        | ADR-0039; docs/specs/bomber/design.md#12 |
+
+| 101002 | BombPower          | 2       | 2       | 6       | 1            | design        | docs/specs/bomber/design.md#15           |
+
+| 101003 | BombCapacity       | 1       | 1       | 6       | 1            | design        | docs/specs/bomber/design.md#15           |
+
+| 101004 | AvailableBombs     | 1       | 0       | 6       | 0            | design        | docs/specs/bomber/design.md#15           |
+
+| 101005 | SpeedTier          | 0       | 0       | 8       | 1            | design        | docs/specs/bomber/design.md#15           |
+
+| 101006 | MovementSpeedMilli | 3500    | 3500    | 6000    | 350          | design        | docs/specs/bomber/design.md#15           |

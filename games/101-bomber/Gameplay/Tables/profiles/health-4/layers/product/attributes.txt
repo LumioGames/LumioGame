@@ -1,0 +1,6 @@
+table: attributes
+schema: schemas/attributes.json
+
+| name | initial | maximum |
+| --- | --- | --- |
+| HealthPoints | 4 | 4 |

@@ -1,0 +1,22 @@
+{
+  "contentFingerprint": "bd6c5dd223bd36e57bdc7e297c44caaca357122ca4b8917c40e49cdef40ed9c9",
+  "rows": [
+    {
+      "id": 126001,
+      "initial_mint_generations": 1,
+      "max_bomb_entities": 2912,
+      "max_bomb_placements_per_participant_tick": 6,
+      "max_chest_issuances_per_stage": 1,
+      "max_distinct_match_participants": 8,
+      "max_firezone_entities": 336,
+      "max_pickup_entities": 1607,
+      "max_wall_casts_per_participant_tick": 1,
+      "name": "default",
+      "reservation_retirement_slack_ticks": 2,
+      "source_ref": "docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046; 8*6*(48+8+2)+128",
+      "source_status": "derived from effective fuse and existing admitted terrain reserve; production residence unverified"
+    }
+  ],
+  "table": "object_budgets",
+  "target": "C"
+}

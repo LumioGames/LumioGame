@@ -1,0 +1,133 @@
+{
+  "table": "object_budgets",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "max_bomb_entities",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max bomb entities"
+    },
+    {
+      "name": "max_pickup_entities",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max pickup entities"
+    },
+    {
+      "name": "max_firezone_entities",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max firezone entities"
+    },
+    {
+      "name": "max_bomb_placements_per_participant_tick",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max bomb placements per participant tick"
+    },
+    {
+      "name": "max_wall_casts_per_participant_tick",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max wall casts per participant tick"
+    },
+    {
+      "name": "reservation_retirement_slack_ticks",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "reservation retirement slack ticks"
+    },
+    {
+      "name": "max_distinct_match_participants",
+      "ordinal": 8,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max distinct match participants"
+    },
+    {
+      "name": "initial_mint_generations",
+      "ordinal": 9,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "initial mint generations"
+    },
+    {
+      "name": "max_chest_issuances_per_stage",
+      "ordinal": 10,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "max chest issuances per stage"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    }
+  ]
+}

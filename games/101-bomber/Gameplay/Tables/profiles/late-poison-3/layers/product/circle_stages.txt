@@ -1,0 +1,8 @@
+table: circle_stages
+schema: schemas/circle_stages.json
+
+| name | poison_points |
+| --- | --- |
+| stage4 | 3 |
+| stage5 | 3 |
+| stage6 | 3 |

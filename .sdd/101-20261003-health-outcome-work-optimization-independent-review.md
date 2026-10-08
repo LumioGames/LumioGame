@@ -1,0 +1,7 @@
+# Health and Outcome lowering: independent narrow review
+
+Root accepts private v4 Health `3c89297d3b257b7993748525998342e6a4d84aedfe4d5c8146bdcf0a7ec22921` and Outcome `4aa133f174000e306fc86edcf0d83644b9108cf2d544d4bb83e8eed580dd3be2`, manifest `09c96a34bdc7646afc84fee5344ab87ce19685b5e4866cc588d8529a05af6c5f`, for official measurement.
+
+Health caches immutable result TypeId and Target, uses eager OR only for pure TypeId comparisons, and preserves the Has guard before any storage access. Claim owner/row, status outcome mapping, all health/holdings writes and their ordering remain equivalent. Outcome preserves the Has guard and participant association before its pure result predicates; nested branches preserve the last lethal, last restore and last applied-restore selection. The restore branch remains excluded for damage/burn types exactly as before. All later complete correlation, ambiguity and life-transition code is unchanged.
+
+Root checked full patches and original source, exact unchanged byte prefix/suffix, and full forward/inverse author proofs. Declarations, storage capacities, Runtime, source/handle association and public quotas are unchanged. Actual prior diagnostic shows both contexts failing official validation; these two candidates do not claim to repair old write declarations or choose a complete result cohort. Official GEN, actual work measurements and runtime regressions remain UNRUN at this narrow source review. Evidence is under `.run/reducer-work-root-publication-02/`.

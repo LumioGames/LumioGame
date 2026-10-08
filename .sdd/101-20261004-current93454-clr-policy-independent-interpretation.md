@@ -1,0 +1,15 @@
+# Current93454 元数据有限独立解释
+
+结论：当前快照明确存在 **旧终局观察归属与当前下一局资格不匹配**，按正式da24源码，两条当前归属匹配分支都会拒绝；这与已实际执行的Native outlet RED为同一源码分支。仍不能认定Rust held93454的具体结果或实际拒绝门，不能以此宣称线上根因已经完全闭合。
+
+只读Root唯一PSS输出（SHA `d38135e01649d3c8fbe626a23d28135225a30fcd46a3f676cc5310d0ba33a771`）、`run-result-01.json`、此前冻结报告/正式源码，以及已封Native结果/末raw。Root实际collector raw0、单次请求、64 fences前后不变；PSS10.8601ms，collector285.7303ms。审核者没有新目标查询、捕获、Native/CLR运行、浏览器、服务或生产写入。派生脚本raw0，`derived.json` SHA `8d64e2e29db7c89b663b880c3994fc4a0a2d7e89ae2555c16e5d50504dd89389`。
+
+唯一留credit为participant `00000000000000010000000000000011`，token world `5c3d710b6cb9486fa058785948432400`/slot6/allocation144、request36、reattach Applied、commitTick93454，observing epoch299→300。capturedOwnerFactsPresent=true、ResultDrained=true、GameConsumed=true，WelcomeDrained=true；PublicationComplete/Drained=false、BaselineDrained=false、BaselineClosedTick=null，仍留215811bytes。该Nullable有值只说明曾捕获事实，不代表当前仍有效或当时已成功送达。ResultDrained也不是客户端收到/应用ACK。
+
+保留association/eligibility为Match11/Intent147/Next148/revision1/EligibleTick0，association Eligible=false；当前真实Game Sync存储为Match12/Intent148/Next149/EligibleTick0/Eligible=true。CurrentLife、LastLife仍为完整实体 `00000000000000010000000000001800`，LifeGeneration147相等。旧life当前不在实体record，participant活着、Connected=true/epoch300；未prepared、cleanup、consumed、request/grant/witness。`WorldManager.SuccessorEligibility.cs:59`的MatchesCurrentEligibility要求当前Match/Intent/Next/EligibleTick等于保留记录，前三值不等使它false。`WorldManager.SuccessorProjection.cs:192`的MatchesTerminalObservation还要求完整当前policy等于captured false-policy，这里Eligible和tuple都不等，也false。`:160`的ValidateCurrentSuccessorOwner OR门因而拒绝，`:284`的ReadResultOwnerFacts如果在此快照状态执行，会返回null，即使credit仍留capturedfacts。**这是源码推论，未对目标调用该方法，也不能倒推之前Drain的精确事实元素。**
+
+worldTick93455不是恢复证明。正式`WorldManager.cs:459–468`先投影当前tick，PublishEgress再World.Tick++；successor结果`WorldManager.Successor.cs:560`在此前记录World.Tick。`WorldTickBinding.cs:246`把该步骤放在EgressPublish；TickRunner在成功提交后推进NextTickId。HostEntry `:2174`在Manager.Tick返回后读取World.Tick作为appliedTick，因此结果commit93454与Managed post-tick93455吻合。Rust owner `:5607/:5615/:5629`在receipt、delivery或successor相关门未过时返回旧last_committed_tick，只有`:5643`才更新。线上DS最后提交93454与Managed93455是两个提交边界；不能泛化为正常DS永远少一帧。`isStill93454=false`只比较了当前字段，不能证明持续执行下一Tick、发布新帧或准入恢复。
+
+原真实Native结果seal02 SHA `722eb1fa03c1047fea1f245e28b7d9e18778ac4b948f92adcd1396566f4516b7`：原da24全ProjectReference+正式16Native，1PASS/1FAIL/0skip，innerdotnet2/outerPS1。unchanged-policy baseline在terminal observe/真实销毁、disconnect、fresh observing reattach后facts非null/currentReadable=true；cross-match在合法policy变化后仍Applied、Welcome和WorldChange成立，却factsnull/currentReadablefalse，仅末149 NotNull失败。该flow与当前值命中相同(!MatchesCurrentEligibility && !MatchesTerminalObservation)源码门；fixture epoch2→3/EligibleTick10，线上299→300/EligibleTick0，fixture正常全drain而线上publication尚未闭合，不能把两份记录当同一批次。
+
+Managed PendingDrain、queues、operations目前为空；HostEntry成功编码会清PendingDrain，Rust可以继续保留整批successors。此次没有读取encoded-response、ParkedBatch或Rust内存，credit里的Result不是Rust pending row的替身。当前观察只提高该Runtime资格出口假设可信度；精确heldbatch、实际planner拒绝点、首hold历史时序及浏览器恢复仍为UNKNOWN。最初误读不存在的`run-result.json`及错误源码路径只读查找已纠正到实际文件，没有执行目标或改原件。

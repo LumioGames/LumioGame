@@ -1,0 +1,31 @@
+# Independent source review — resource formula candidate02263
+
+## Verdict and scope
+
+**Spec PASS / Quality PASS for the bounded calculator/reward-helper source changes; no actionable finding in this exact candidate.** This is an independent nonauthor static review, not compilation or actual production acceptance. Actual Resource10 historical2pass/8fail and contactedChests capacity5 debt are not closed by this review. No author's source/private file was modified.
+
+Exact calculator `.run/resource-chest-budget-formal-formula-draft-01/BomberObjectBudgets.cs.draft` SHA `02263d82ebb7e73163ec20fdc0eb502362ca4ae1908dcb4602808941efe55192`, helper `BomberResourceRewardRules.cs.draft` SHA `1958df1566fac9d399ab3a5371f4cea5635e76502671be02e2a5a010e4b85c06`. Read full authored plan/manifest, full changed calculator section/helper and two contact-consumer proposed replacements; read actual Regeneration absolute scheduler/stop gate and terrain resource reward producer. The unchanged default/profiles and storage declarations are dependencies, not included implementation.
+
+## Formula and owner checks
+
+First/interval/stop use effective SDK Ticks, with checked final+lead and checked products. Opportunities are exactly First < Stop, exclude the Stop opportunity, accept logical First0, and saturate Stop0 without a phantom wave. Conservative total resource cells4*orbits*opportunities bounds issuance even if some opportunities have no safe quartet, select a barrel/soft brick, or are missed due to Native availability. It does not discount1/6 box probability, nonzero gold/special probability or failed placement, and does not claim those boxes are currently produced.
+
+The common Maximum/Validate helper consumes tables+skills directly before Settings exists; it does not recursively call a half-created config. All exact supported reward rows are validated, so Max does not silently ignore a missing required named row. Initial unbound soft terrain can actually use the three Soft-row reward rules, making initial mapArea*maxSoft necessary for allowed UGC values. Default maxSoft1 retains original default results. Regenerated cells use the maximum of all six possible Soft/Wood/Iron/Gold outputs; strong issuance uses its actual supported designated shape and optional nonzero gold. Skills-off excludes only special output and preserves other credits. Unknown extra row or unsupported shape still rejects.
+
+`ChestLimit` becomes a conservative whole-match issuance bound for sparse Native birth accounting. `PerBombContactLimit` reads the actual ContactedChests declaration and is separate: the two proposed InspectChest/ValidateStorage consumers use the latter while IceBridge.CanBirth keeps the former. No other production constructor of BomberObjectBudgets was found; the calculator's sole constructor site is extended consistently. The helper overload/record extension do not add persisted fields or Reader schema. Current PerBombContactLimit is still5; increasing it is a separate generated container declaration/Release decision. This formula must not be represented as the sixth-contact fix by itself.
+
+## Independent arithmetic evidence
+
+I wrote and ran my own low-memory Node audit, reading actual source tables and enumerating65536 First/Stop/Interval combinations against an explicit opportunity loop, rather than trusting the author's66368-case report. It agrees with the candidate formula. Actual default entries produce245 lifetime chest identities and pickup1351/1106. Additional independent values: exclusive105s109 and807/698; First0=253 and1383/1130; First==Stop or Stop0=5 and391/386; 480/115=309 and1607/1298; 480/90=333 and1703/1370. No C# Runtime execution is claimed by this arithmetic proof.
+
+Private independent proof `.run/public-fire-admission-production-draft-01/resource-independent-proof.json` SHA `b21df3464e1da4a5ca33770d0716b352c87c56cdca5752e1c9e3167092150f93`. It pins both nonauthor candidates. The authored source/API proof remains unchanged.
+
+## Publication and testing dependencies
+
+- Current physical default max_pickup703 cannot accept default1351. A test-specific1351 overlay suffices for the focused default paths, but does not make all shipped profiles valid. Existing 480/115 profile independently needs1607; 480/90 composition needs1703 override. Every shipped source profile must be officially exported/read under its own exact configuration, with precise original105 expectation changes recorded rather than discarded. Larger allowed UGC Soft reward or shorter interval may need greater explicit capacity and still must reject when undersupplied.
+- M2 map/participant/block guards remain, as does current Regeneration O<=2 and its absence of real box producer. The formula is a conservative bound for intended issuance, not completion of actual resource-box birth, native binding, regeneration probabilities or all-map authoring.
+- Actual ContactedChests5 expansion needs the approved new declaration/capacity, separate per-bomb source proof, official GEN and an explicit new Release/schema migration. Current official canonical container restore rejects old5 data into changed52 before Game OnHydrate; the old immutable World must remain available under the old Release. A field rename, shadow store, manual generated mutation or fake migration is not included or permitted by the formula.
+- Calculator/globalChestLimit also changes Native birth reservations in IceBridge.CanBirth. Root must run actual minimum entity/world-byte/section/reducer budgets and common-owner regressions with the integrated source; a count formula is not that storage proof. Pending terrain, finite Effects, full memories and unknown source debts require their own actual maximum cohort capture/restore validation.
+- Fire budget/admission is a different four-delta private candidate. Resource02263 leaves Fire.dormant and the old ordinary residence unchanged. Combining reviewed resource logic with enabled Fire requires the exact integrated candidate, actual revised test RED then true execution; no standalone resource review grants a Favorite/Fire lifecycle PASS.
+
+The above are concrete remaining publication dependencies disclosed by the candidate plan, not invented defects or requests to weaken existing assertions. Goal101/full Game/whole Native producer scope remains open.

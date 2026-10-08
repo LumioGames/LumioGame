@@ -1,0 +1,9 @@
+table: skills
+schema: schemas/skills.json
+
+| name | candy_weight |
+| --- | --- |
+| freezeBomb | 1 |
+| pierceBomb | 1 |
+| toxinBomb | 1 |
+| shockBomb | 1 |

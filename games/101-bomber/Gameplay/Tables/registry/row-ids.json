@@ -1,0 +1,240 @@
+{
+  "aliases": {
+    "game": {},
+    "attributes": {},
+    "speed_tiers": {},
+    "movement": {},
+    "bomb": {},
+    "life": {},
+    "drops": {},
+    "pickup_kinds": {},
+    "map": {},
+    "blocks": {},
+    "regeneration": {},
+    "final_circle": {},
+    "circle_stages": {},
+    "chest": {},
+    "skill_rules": {},
+    "skills": {},
+    "skill_levels": {},
+    "skill_combos": {},
+    "characters": {},
+    "bomb_kinds": {},
+    "damage_causes": {},
+    "effects": {},
+    "bot_profiles": {},
+    "bot_tactics": {},
+    "presentation": {},
+    "regression_seeds": {},
+    "object_budgets": {}
+  },
+  "game": {
+    "default": 100001
+  },
+  "attributes": {
+    "HealthPoints": 101001,
+    "BombPower": 101002,
+    "BombCapacity": 101003,
+    "AvailableBombs": 101004,
+    "SpeedTier": 101005,
+    "MovementSpeedMilli": 101006
+  },
+  "speed_tiers": {
+    "tier0": 102001,
+    "tier1": 102002,
+    "tier2": 102003,
+    "tier3": 102004,
+    "tier4": 102005,
+    "tier5": 102006,
+    "tier6": 102007,
+    "tier7": 102008,
+    "tier8": 102009
+  },
+  "movement": {
+    "default": 103001
+  },
+  "bomb": {
+    "default": 104001
+  },
+  "life": {
+    "default": 105001
+  },
+  "drops": {
+    "default": 106001
+  },
+  "pickup_kinds": {
+    "Fire": 107001,
+    "Bomb": 107002,
+    "Speed": 107003,
+    "Health": 107004,
+    "Skill": 107005,
+    "GoldenHeart": 107006,
+    "Kick": 107007,
+    "Frenzy": 107008
+  },
+  "map": {
+    "default": 108001
+  },
+  "blocks": {
+    "air": 109001,
+    "floor": 109002,
+    "iron": 109003,
+    "hardPillar": 109004,
+    "softBrick": 109005,
+    "crate": 109006,
+    "water": 109007,
+    "chest": 109008,
+    "wood": 109009,
+    "firecracker": 109010,
+    "ice": 109011,
+    "barrel": 109012
+  },
+  "regeneration": {
+    "default": 110001
+  },
+  "final_circle": {
+    "default": 111001
+  },
+  "circle_stages": {
+    "stage1": 112001,
+    "stage2": 112002,
+    "stage3": 112003,
+    "stage4": 112004,
+    "stage5": 112005,
+    "stage6": 112006
+  },
+  "chest": {
+    "default": 113001,
+    "SoftOuter": 113002,
+    "SoftMiddle": 113003,
+    "SoftCore": 113004,
+    "Wood": 113005,
+    "Iron": 113006,
+    "Gold": 113007
+  },
+  "skill_rules": {
+    "default": 114001
+  },
+  "skills": {
+    "regen": 1,
+    "bubble": 2,
+    "blink": 3,
+    "fireAura": 4,
+    "kick": 5,
+    "freezeBomb": 6,
+    "pierceBomb": 7,
+    "fireDash": 8,
+    "bounceBubble": 9,
+    "glacierBomb": 10,
+    "toxinBomb": 11,
+    "shockBomb": 12,
+    "flyKick": 13,
+    "fireBomb": 40003,
+    "remoteBomb": 40004,
+    "splitBomb": 40005
+  },
+  "skill_levels": {
+    "regen_lv1": 116001,
+    "bubble_lv1": 116002,
+    "blink_lv1": 116003,
+    "fireAura_lv1": 116004,
+    "kick_lv1": 116005,
+    "freezeBomb_lv1": 116006,
+    "pierceBomb_lv1": 116007,
+    "toxinBomb_lv1": 116008,
+    "shockBomb_lv1": 116009,
+    "regen_lv2": 116010,
+    "bubble_lv2": 116011,
+    "blink_lv2": 116012,
+    "fireAura_lv2": 116013,
+    "kick_lv2": 116014,
+    "freezeBomb_lv2": 116015,
+    "pierceBomb_lv2": 116016,
+    "toxinBomb_lv2": 116017,
+    "shockBomb_lv2": 116018,
+    "regen_lv3": 116019,
+    "bubble_lv3": 116020,
+    "blink_lv3": 116021,
+    "fireAura_lv3": 116022,
+    "kick_lv3": 116023,
+    "freezeBomb_lv3": 116024,
+    "pierceBomb_lv3": 116025,
+    "toxinBomb_lv3": 116026,
+    "shockBomb_lv3": 116027,
+    "fireDash_lv1": 116028,
+    "bounceBubble_lv1": 116029,
+    "glacierBomb_lv1": 116030,
+    "flyKick_lv1": 116031,
+    "fireBomb_lv1": 116032,
+    "remoteBomb_lv1": 116033,
+    "splitBomb_lv1": 116034
+  },
+  "skill_combos": {
+    "fireDash": 117001,
+    "bounceBubble": 117002,
+    "glacierBomb": 117003
+  },
+  "characters": {
+    "rabbit": 118001,
+    "duck": 118002,
+    "cat": 118003,
+    "bear": 118004,
+    "kangaroo": 118005
+  },
+  "bomb_kinds": {
+    "Standard": 119001,
+    "Freeze": 119002,
+    "Fire": 119003,
+    "Pierce": 119004,
+    "Split": 119005,
+    "Toxin": 119006,
+    "Shock": 119007,
+    "Remote": 119008
+  },
+  "damage_causes": {
+    "Blast": 120001,
+    "Drown": 120002,
+    "Burn": 120003,
+    "RingPoison": 120004,
+    "Toxin": 120005
+  },
+  "effects": {
+    "BombDamage": 121001,
+    "DrownDamage": 121002,
+    "RingPoison": 121003,
+    "FireExposure": 121004,
+    "Toxin": 121005,
+    "HealthPack": 121006,
+    "Regen": 121007,
+    "PowerUpgrade": 121008,
+    "CapacityUpgrade": 121009,
+    "SpeedUpgrade": 121010,
+    "Freeze": 121011,
+    "ControlImmunity": 121012,
+    "Bubble": 121013,
+    "Shock": 121014
+  },
+  "bot_profiles": {
+    "easy": 122001,
+    "normal": 122002,
+    "hard": 122003,
+    "player": 122004,
+    "rookie": 122005
+  },
+  "bot_tactics": {
+    "default": 123001
+  },
+  "presentation": {
+    "default": 124001
+  },
+  "regression_seeds": {
+    "seed1": 125001,
+    "seed2": 125002,
+    "seed3": 125003,
+    "seed4": 125004,
+    "seed5": 125005
+  },
+  "object_budgets": {
+    "default": 126001
+  }
+}

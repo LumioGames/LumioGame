@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+    <IsPackable>false</IsPackable>
+    <BomberClientHostDirectory>$(MSBuildThisFileDirectory)../../Engine/bot/$(NETCoreSdkRuntimeIdentifier)</BomberClientHostDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Gameplay/Lumio.Bomber.Gameplay.csproj" AdditionalProperties="LumioEcsSide=client" />
+    <Reference Include="$(BomberClientHostDirectory)/Lumio.Client.*.dll" Private="true" />
+  </ItemGroup>
+  <Target Name="RequireBomberClientRelease" BeforeTargets="PrepareForBuild;ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(BomberClientHostDirectory)/Lumio.Client.Application.dll')"
+           Text="BOMBER_CLIENT_RELEASE_MISSING: expected Engine/bot/$(NETCoreSdkRuntimeIdentifier)/Lumio.Client.Application.dll. Initialize the pinned Engine submodule." />
+  </Target>
+</Project>

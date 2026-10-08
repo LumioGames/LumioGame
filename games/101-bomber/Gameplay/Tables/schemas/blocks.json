@@ -1,0 +1,143 @@
+{
+  "table": "blocks",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "name"
+    },
+    {
+      "name": "block_type",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "minimum": 0,
+      "description": "Official Engine BlockType identity from official-catalog.json; air is reserved type 0, other rows use minted official IDs >= 256. Not a prototype kind index or packed BlockId."
+    },
+    {
+      "name": "enabled",
+      "ordinal": 3,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "enabled"
+    },
+    {
+      "name": "walkable",
+      "ordinal": 4,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "walkable"
+    },
+    {
+      "name": "destructible",
+      "ordinal": 5,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "destructible"
+    },
+    {
+      "name": "blast_stop",
+      "ordinal": 6,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "blast stop"
+    },
+    {
+      "name": "cover_before_stop",
+      "ordinal": 7,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "cover before stop"
+    },
+    {
+      "name": "place_bomb",
+      "ordinal": 8,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "place bomb"
+    },
+    {
+      "name": "residue",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "residue"
+    },
+    {
+      "name": "drop_pool",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "drop pool"
+    },
+    {
+      "name": "ground_effect",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "ground effect"
+    },
+    {
+      "name": "sparse_binding",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "sparse binding"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 13,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 14,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": true,
+      "description": "source ref"
+    }
+  ]
+}

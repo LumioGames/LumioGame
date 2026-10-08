@@ -42,17 +42,19 @@ node .spec/tools/lint-extensions.mjs
 node --test .spec/tools/lint-extensions.test.mjs
 node --test clone-all.test.mjs
 dotnet build modules/server-gameplay/src/Lumio.Game.ServerGameplay/Lumio.Game.ServerGameplay.csproj --nologo
-dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj --nologo
+dotnet test --project modules/server-gameplay/tests/Lumio.Game.ServerGameplay.Tests/Lumio.Game.ServerGameplay.Tests.csproj
 ```
 
 测试栈：xunit.v3 4.0.0 + Microsoft.Testing.Platform 2.3.3（`global.json` `test.runner` = MTP）。生产程序集双 TFM `net10.0;netstandard2.1`，测试单 TFM `net10.0`。xUnit v3 要求 apphost。
 
-`dotnet test` 可能以退出码 5 报 `Zero tests ran`（user-local SDK 无 HKLM `InstallLocation`；Apple Silicon 上跑 x86_64 SDK 时 apphost 找不到运行时）。**不得把「运行了零个测试」当成通过**，改用下面两条之一，且必须核对 total 数：
+本仓当前 MTP 测试应用不接受 `--nologo`：该参数可用于上面的 `dotnet build`，传给 `dotnet test` 则可能使测试应用报「未知选项」并以退出码 5 结束，外层只显示 `Zero tests ran`。遇到零测试，先检查实际传给测试应用的参数、子进程退出码与标准错误；必要时收集 MTP / 宿主诊断日志，不凭外层摘要判断根因。apphost 找不到运行时是另一种可能原因，例如 user-local SDK 的安装位置未被宿主找到，或 Apple Silicon 上的 SDK / apphost 架构不匹配。
+
+**不得把「运行了零个测试」当成通过**。修正参数或已确认的环境问题后重跑；需要绕过启动包装定位问题时，可使用下面两条之一，仍须核对测试范围、total / passed / failed / skipped 和退出码：
 
 - `DOTNET_ROOT=<SDK 根> <测试项目>/bin/Debug/net10.0/<Assembly>` —— 直接跑 apphost，测试的真实入口。`<SDK 根>` 是**含 `shared/Microsoft.NETCore.App/` 的目录**，不是 `dotnet` 可执行文件所在目录：Homebrew 装的是 `/usr/local/Cellar/dotnet/<版本>/libexec`（`bin/` 里只有 wrapper 脚本，设成它无效）；`dotnet --list-runtimes` 打印的路径去掉末尾 `shared/...` 即是。
 - `dotnet exec <测试项目>/bin/Debug/net10.0/<Assembly>.dll` —— 经 `dotnet` muxer 启动，自行解析运行时，**不需要** `DOTNET_ROOT`。
 
-注意设了 `DOTNET_ROOT` 后 `dotnet test` 本身仍可能报 `Zero tests ran`（发现阶段拿到空 UID 列表），这是宿主侧问题，不是测试真的为零。
+设置 `DOTNET_ROOT` 不能修复非法测试参数；若仍报 `Zero tests ran`，继续检查发现与执行阶段的实际日志。直接入口跑过的计数应单独记录，不能据此宣称 `dotnet test` 包装入口已通过。诊断环境也可能改变子进程输出，定位后须在正常环境下复跑，不能把诊断输出混入机器可读结果后产生的失败归为同一根因。
 
 公共契约变更必须在架构仓 `LumioGameEngine` 完成（见 `AGENTS.md`「本仓验证入口」）；本仓只消费 `engine/wire/*.json`，不另写协议。消费口径由 `ChatWireContractTests` 之类的一致性用例钉住：它们在测试期直接打开架构仓的契约文件比对，因此跑 `dotnet test` 需要同级 `LumioGameEngine` 检出或 `LUMIO_ENGINE_ROOT` 指路，缺检出即失败（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。`dotnet build` 同样需要这份检出：Runtime net10.0 编译绑定 NativeLoader（目录名 `LumioGameEngine` 或 `LumioArchRoot`）。`dotnet test` 还要 `LUMIO_ENGINE_NATIVE_PATH` 指向现打的 native：测试世界由本仓的 `ServerWorldBoot` 启动，空间索引与 lumio-hfsm 都挂在 Native Context 上，缺 native 即 `LUMIO_ENGINE_NATIVE_MISSING` 失败——形态像代码红，先查环境（见 [`repository-architecture.md`](./repository-architecture.md)「跨仓检出」）。Scenario/Headless 与 formatter 命令随后续模块补进验证入口。
 

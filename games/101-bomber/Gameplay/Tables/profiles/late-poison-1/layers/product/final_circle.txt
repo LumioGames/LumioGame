@@ -1,0 +1,6 @@
+table: final_circle
+schema: schemas/final_circle.json
+
+| name | late_poison_points |
+| --- | --- |
+| default | 1 |

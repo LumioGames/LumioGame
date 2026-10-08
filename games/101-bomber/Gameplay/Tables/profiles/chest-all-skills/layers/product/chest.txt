@@ -1,0 +1,6 @@
+table: chest
+schema: schemas/chest.json
+
+| name | bomb_only |
+| --- | --- |
+| default | false |

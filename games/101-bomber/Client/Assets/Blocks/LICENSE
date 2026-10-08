@@ -1,0 +1,30 @@
+LumioBomber block texture pack (Client/Assets/Blocks)
+
+Everything in this directory is released under the Creative Commons CC0 1.0
+Universal Public Domain Dedication (SPDX: CC0-1.0). It comes from two sources;
+SOURCES.md records the source of every texture file.
+
+1. Kenney Voxel Pack, by Kenney Vleugels for Kenney (www.kenney.nl),
+   https://kenney.nl/assets/voxel-pack . Kenney released it under CC0 1.0; the
+   license text shipped in the pack is kept verbatim in LICENSE-kenney.txt.
+   The textures copied from it are listed in SOURCES.md with the original file
+   name and sha256. water.png and ice.png are derived from Kenney originals
+   (kept in source/kenney/) by changing the alpha channel only.
+
+2. Self-drawn by the LumioBomber contributors: the remaining textures, the
+   preview image under preview/, every lumio.*.json block asset description,
+   pack.json, and the generator source/generate-textures.mjs. The self-drawn
+   textures are produced procedurally by that script; no external image,
+   texture pack, or Minecraft / Mojang asset was used, traced, or referenced.
+   To the extent possible under law, the LumioBomber contributors have waived
+   all copyright and related or neighboring rights to these files by dedicating
+   them to the public domain under CC0 1.0.
+
+Full legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+The rest of the LumioBomber repository is licensed separately (see the LICENSE
+file at the repository root).
+
+If a texture from another source is added later, its source, version, author
+and license are recorded per file in SOURCES.md, and CC-BY-4.0 textures are
+credited in ATTRIBUTION.md. Only CC0-1.0 and CC-BY-4.0 are accepted.

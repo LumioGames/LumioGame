@@ -1,0 +1,77 @@
+[
+  {
+    "path": "Client/Presentation/src/index.ts",
+    "bytes": 4735,
+    "sha256": "73C7C6D64C6EDCBE1CDA9B56BCCF28D481F437159AC20659A7EF4CA22728E0E5"
+  },
+  {
+    "path": "Client/Presentation/src/hud/index.ts",
+    "bytes": 24791,
+    "sha256": "423C1436625BFB6DBA4AB2560D2502F800450F8EDD0F7D149FA924FD7AA16FB4"
+  },
+  {
+    "path": "Client/Presentation/src/hud/overlays.ts",
+    "bytes": 3736,
+    "sha256": "C05CF8435DDB8CDCBF60009311953BC02E4EF6604BCB0692E9056BEA584918ED"
+  },
+  {
+    "path": "Client/Presentation/src/hud/character-select.ts",
+    "bytes": 9062,
+    "sha256": "918776FA8B115BCC47F778257E6AAD1B6F50C7F593465899A95838D1BDEBEEC7"
+  },
+  {
+    "path": "Client/Presentation/src/presentation.css",
+    "bytes": 1060,
+    "sha256": "96CB8CBEF38667C241E45AC7AAF57E0330E55C4AF6B3BCB0B043533C5147B4C2"
+  },
+  {
+    "path": "Client/UI/Spectator/game-view.mjs",
+    "bytes": 3231,
+    "sha256": "95C0A762908A704A265CA83C42F2E4E8C298185EDC720969C1A156F6D88EDFDE"
+  },
+  {
+    "path": "Client/UI/Spectator/game-view.test.mjs",
+    "bytes": 3076,
+    "sha256": "2A6DB3B5F3FE6FE648CAF396C721DBEBFF7F19D641999D0925EF6D7504ACC711"
+  },
+  {
+    "path": "Client/UI/Spectator/player-controls.mjs",
+    "bytes": 3267,
+    "sha256": "48CA7DDAF4CDA631AE140496F6D17535B1AD02412851DB12B2C4983D96F6336F"
+  },
+  {
+    "path": "Client/UI/Spectator/player-controls.test.mjs",
+    "bytes": 5179,
+    "sha256": "796397734231A921860016CBB9BEB4F0AFCF890F7402F681F0B6A51F97862B95"
+  },
+  {
+    "path": "Client/UI/Spectator/main.js",
+    "bytes": 41723,
+    "sha256": "9318BDBEE9D89AF96063AA08BCEEB44E4A01907F715EF5F15F49316840BE3947"
+  },
+  {
+    "path": "Client/UI/Spectator/spectator.css",
+    "bytes": 5116,
+    "sha256": "0E4BCFE530AC84947FC6510DB4D89979070997235F3E69F90B2CB0908333D793"
+  },
+  {
+    "path": "Client/Presentation/tests/visual.ts",
+    "bytes": 1670,
+    "sha256": "CD9D19C2D9D592DF7278CBDFE92D4608A13E2BD5AD55091456C0DF51E47938BF"
+  },
+  {
+    "path": "Client/Presentation/tests/visual.html",
+    "bytes": 407,
+    "sha256": "D0A7C57E7B6EDE4D018399D05EC002BFA4142B76889D7E2CA5E929005CD52276"
+  },
+  {
+    "path": "Client/Presentation/tests/browser-smoke.mjs",
+    "bytes": 3305,
+    "sha256": "D160079B7FFDCD2F46743B7BBC491738A14B41D6360F3C551CDD1B43CE7DF7D9"
+  },
+  {
+    "path": "Client/UI/Spectator/main.test.mjs",
+    "bytes": 47880,
+    "sha256": "242CB7F1BFF124BFF5E65946F9034152DDA99943E2A271512983A16AAB38BF3F"
+  }
+]

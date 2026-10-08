@@ -1,0 +1,6 @@
+table: game
+schema: schemas/game.json
+
+| name | podium_ms |
+| --- | --- |
+| default | 6000 |

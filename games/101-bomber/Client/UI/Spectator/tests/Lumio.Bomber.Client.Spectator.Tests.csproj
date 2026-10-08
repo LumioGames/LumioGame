@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Spectator dump / replica-host tests. Not in LumioBomber.slnx. Compiles the two
+    game-side sources one level up against the engine parts of the Engine/ release: the
+    netstandard2.1 browser replica, including Lumio.Client.Spectator.dll with the two C#
+    engine parts ($(LumioSpectatorReplicaDir), see ../Directory.Build.props). CI builds this
+    project as the compile guard between this game and the pinned engine (test job in ci.yml).
+    LumioEcsGenerate=false: the SDK package enables generation for every consumer, and
+    this assembly declares no entities.
+  -->
+  <PropertyGroup>
+    <LumioProduction>false</LumioProduction>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Lumio.Bomber.Client.Spectator.Tests</RootNamespace>
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+    <AssemblyName>Lumio.Bomber.Client.Spectator.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../SpectatorDump.cs" Link="Spectator/SpectatorDump.cs" />
+    <Compile Include="../BomberClientConfig.cs" Link="Spectator/BomberClientConfig.cs" />
+    <Compile Include="../PresentationDump.cs" Link="Spectator/PresentationDump.cs" />
+    <Compile Include="../SpectatorReplicaHost.cs" Link="Spectator/SpectatorReplicaHost.cs" />
+    <Compile Include="../SpectatorJsonContracts.cs" Link="Spectator/SpectatorJsonContracts.cs" />
+    <Compile Include="../SpectatorJsonContext.cs" Link="Spectator/SpectatorJsonContext.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ADR-123: the engine is the Engine/ release — the Runtime through Lumio.Engine.SDK
+         (Engine/sdk, NuGet.config source mapping) and the netstandard2.1 Replica from
+         web/replica/. The gameplay is this repository's own. -->
+    <PackageReference Include="Lumio.Engine.SDK" Version="$(LumioSdkVersion)" />
+    <Reference Include="$(LumioSpectatorReplicaDir)Lumio.Client.*.dll" />
+    <ProjectReference Include="$(LumioBomberRepoRoot)Gameplay/Lumio.Bomber.Gameplay.csproj">
+      <Properties>LumioEcsSide=client</Properties>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

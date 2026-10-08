@@ -1,0 +1,9 @@
+# Frozen v14 Config links: Root independent review
+
+Verdict: STATIC ACCEPT for the exact private helper repair and its 15 additive filesystem guards. This author did not write the candidate. Build and historical child executions remain required.
+
+Reviewed full helper before/draft, seven complete operations, guard source, root-cause evidence and author report. Manifest c8705216c5566c2471c3df67bbd1f4af106a01b294fac13a0911ae4ab8535e41 pins helper 40991c9215d970dbcfd3dc3465baeab9deea35807ec8056fde9c262d21694655 to b325b088713694a21fa2a9417e66282db4834bd3e9fd6bd873de475f933103bc and new guards fcc0d81a2800f47403d14313001cd83f2d4e65f28160f0487524f2675e90c6cd.
+
+Only .agents/skills and .claude/skills can qualify, with exact stage0 Git mode120000/blob ed0ce3da518616ba5a06acc7262dabb1ff1451c9, relative target ../.spec/skills, ordinary ancestors and ordinary contained .spec/skills directory. Every other tracked input retains ordinary hashing and the original link fence. The entire link identity and ordinary-file fence are repeated after the child. The original NoLinks method body is unchanged; test-helper visibility alone becomes internal. Exact Config clean commit, Python, host identities, all frozen input bytes, original World/31 exports, raw child result/count checks and old Fact bodies remain required.
+
+The 15 new cases use real temporary filesystem links and cover exact positives, mode/blob/path/target/ancestor failures, archive-link refusal and before/after retargeting. They do not alter the existing 13 guards or either original Fact's 28 assertions. Static acceptance does not claim Windows link creation, actual child success, recovered original capture executor or hermetic fixture installation. Root publication records complete-byte inverse checks and all 3688 frozen input hashes separately.

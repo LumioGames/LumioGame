@@ -1,0 +1,162 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <!-- Spectator wasm host (the published game page). Not in LumioBomber.slnx; publishing needs the
+       wasm-tools workload, so CI compiles the shared sources through ../tests instead. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Lumio.Bomber.Client.Spectator</AssemblyName>
+    <RootNamespace>Lumio.Bomber.Client.Spectator</RootNamespace>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Fingerprint the wasm runtime (`_framework/`, bridged by the import map the
+      SDK writes into index.html) but not the page's own files. index.html
+      reaches main.js through `<script src>` and spectator.css through
+      `<link href>`, and an import map covers neither — it only rewrites ES
+      module specifiers. With content fingerprinting on, both would be published
+      as `main.<fingerprint>.js` / `spectator.<fingerprint>.css` and the page
+      would 404 on itself. Plain names also keep the published tree byte-for-byte
+      servable by the game bundle static host, which reads no asset manifest.
+    -->
+    <StaticWebAssetsFingerprintContent>false</StaticWebAssetsFingerprintContent>
+    <!-- Debug retains the browser agent for supported in-place C# deltas.
+         Release uses the optimized interpreter without the development agent. -->
+    <WasmEnableHotReload Condition="'$(Configuration)' == 'Debug'">true</WasmEnableHotReload>
+    <WasmEnableHotReload Condition="'$(Configuration)' != 'Debug'">false</WasmEnableHotReload>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>portable</DebugType>
+    <Optimize Condition="'$(Configuration)' == 'Debug'">false</Optimize>
+    <Optimize Condition="'$(Configuration)' != 'Debug'">true</Optimize>
+    <!-- LumioSpectatorParts / LumioSpectatorReplicaDir (Engine/web/) are resolved once in ../Directory.Build.props. -->
+    <LumioBrowserReplica>true</LumioBrowserReplica>
+    <_SpectatorCfg Condition="'$(Configuration)' != ''">$(Configuration)</_SpectatorCfg>
+    <_SpectatorCfg Condition="'$(_SpectatorCfg)' == ''">Debug</_SpectatorCfg>
+    <_SpectatorReplicaDir>$(LumioSpectatorReplicaDir)</_SpectatorReplicaDir>
+    <_SpectatorGameplayDir Condition="'$(LumioBrowserGameplayDir)' != ''">$(LumioBrowserGameplayDir)</_SpectatorGameplayDir>
+    <_SpectatorGameplayDir Condition="'$(_SpectatorGameplayDir)' == ''">$(LumioBomberRepoRoot)Gameplay/bin/$(_SpectatorCfg)/net10.0-browser/</_SpectatorGameplayDir>
+    <_SpectatorReplicaDll>$(_SpectatorReplicaDir)Lumio.Client.Gameplay.ECS.dll</_SpectatorReplicaDll>
+    <_SpectatorGameplayDll>$(_SpectatorGameplayDir)Lumio.Bomber.Gameplay.dll</_SpectatorGameplayDll>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\SpectatorDump.cs" Link="SpectatorDump.cs" />
+    <Compile Include="..\BomberClientConfig.cs" Link="BomberClientConfig.cs" />
+    <Compile Include="..\PresentationDump.cs" Link="PresentationDump.cs" />
+    <Compile Include="..\SpectatorJsonContracts.cs" Link="SpectatorJsonContracts.cs" />
+    <Compile Include="..\SpectatorJsonContext.cs" Link="SpectatorJsonContext.cs" />
+    <Compile Include="..\SpectatorReplicaHost.cs" Link="SpectatorReplicaHost.cs" />
+  </ItemGroup>
+  <!--
+    The page is the deliverable, so it has to be in the publish output. It lives
+    one level up (shared with the source tree that `dotnet watch` serves), and
+    this project has no `wwwroot/` of its own, so the files enter as linked
+    content: `ResolveProjectStaticWebAssets` matches `@(Content)` against
+    `wwwroot/**` by link path, which is what puts them next to the `_framework/`
+    the same publish produces. Without this, `publish/wwwroot/` held only
+    `_framework/` and the deployer had to hand-assemble the page around it.
+    `*.test.mjs` are node test files, never part of the bundle.
+
+    The page's own files come from this directory. Engine modules, including
+    engine-wasm.mjs and replica-voxel-grid.mjs, are linked from the selected
+    release's web/ into wwwroot/ beside main.js (ADR-123). Generated modules
+    remain owned by the Engine generators; this repository has no source copy.
+  -->
+  <ItemGroup>
+    <Content Include="..\index.html" Link="wwwroot\index.html" />
+    <Content Include="..\main.js" Link="wwwroot\main.js" />
+    <Content Include="..\player-controls.mjs" Link="wwwroot\player-controls.mjs" />
+    <Content Include="..\game-view.mjs" Link="wwwroot\game-view.mjs" />
+    <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.js" Link="wwwroot\presentation\presentation.js" />
+    <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.css" Link="wwwroot\presentation\presentation.css" />
+    <Content Include="..\spectator.css" Link="wwwroot\spectator.css" />
+    <Content Include="$(LumioSpectatorParts)*.mjs" Exclude="$(LumioSpectatorParts)*.test.mjs" Link="wwwroot\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!--
+    Block view (?view=blocks, ADR-124 C9). Engine half: the block renderer's three sibling
+    directories from the Engine/ release web/ (RHI/, Render/, Assets/; Render imports ../RHI
+    and ../Assets, so they keep their directory names). Game half: this page's
+    blocks-view.mjs, the block catalog v2 the DS uses (Server/Assets/Maps/official-catalog.json,
+    also the catalog supplied to the formal browser Engine world), and the block art
+    (Client/Assets/Blocks/, descriptions + textures + pack.json;
+    not the generator source or the preview sheet) under wwwroot/game-assets/Blocks/ (not assets/: on a case-insensitive disk that is the engine's Assets/ directory).
+  -->
+  <ItemGroup>
+    <Content Include="..\blocks-view.mjs" Link="wwwroot\blocks-view.mjs" />
+    <Content Include="$(LumioEngineWeb)RHI\*.mjs" Link="wwwroot\RHI\%(Filename)%(Extension)" />
+    <Content Include="$(LumioEngineWeb)Render\*.mjs" Link="wwwroot\Render\%(Filename)%(Extension)" />
+    <Content Include="$(LumioEngineWeb)Assets\*.mjs" Link="wwwroot\Assets\%(Filename)%(Extension)" />
+    <Content Include="$(LumioBomberRepoRoot)Server\Assets\Maps\official-catalog.json" Link="wwwroot\official-catalog.json" />
+    <Content Include="$(LumioBomberRepoRoot)Client\Assets\Blocks\*.json" Link="wwwroot\game-assets\Blocks\%(Filename)%(Extension)" />
+    <Content Include="$(LumioBomberRepoRoot)Client\Assets\Blocks\textures\*.png" Link="wwwroot\game-assets\Blocks\textures\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!--
+    The three wildcards above match nothing when the Engine/ release lacks those directories,
+    and the page would then 404 on its first import. Fail closed like the wasm module below:
+    one representative module per directory (the ones blocks-view.mjs and block-scene.mjs import).
+  -->
+  <Target Name="RequireEngineBlockRenderer" BeforeTargets="BeforeBuild;Publish">
+    <Error
+      Condition="!Exists('$(LumioEngineWeb)RHI/webgl2-device.mjs')"
+      Text="SPECTATOR_ENGINE_WEB_RHI_MISSING the Engine/ release web/ has no RHI/ (Engine/ empty? run: git submodule update --init --depth 1 Engine). Expected: $(LumioEngineWeb)RHI/webgl2-device.mjs" />
+    <Error
+      Condition="!Exists('$(LumioEngineWeb)Render/block-scene.mjs')"
+      Text="SPECTATOR_ENGINE_WEB_RENDER_MISSING the Engine/ release web/ has no Render/ (Engine/ empty? run: git submodule update --init --depth 1 Engine). Expected: $(LumioEngineWeb)Render/block-scene.mjs" />
+    <Error
+      Condition="!Exists('$(LumioEngineWeb)Assets/block-assets.mjs')"
+      Text="SPECTATOR_ENGINE_WEB_ASSETS_MISSING the Engine/ release web/ has no Assets/ (Engine/ empty? run: git submodule update --init --depth 1 Engine). Expected: $(LumioEngineWeb)Assets/block-assets.mjs" />
+  </Target>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+  <!-- Reference already-built ns2.1 Replica + browser Gameplay output. A
+       ProjectReference graph from this net10.0 wasm host unifies Runtime onto
+       net10.0 and NativeLoader enters _framework. The complete portable Session,
+       EngineWasm and replica closure comes from the same release directory
+       (ADR-123: the release ships no source). -->
+  <ItemGroup>
+    <Reference Include="$(_SpectatorReplicaDir)Lumio.Client.*.dll;$(_SpectatorReplicaDir)Lumio.GameRuntime.*.dll;$(_SpectatorReplicaDir)Lumio.Engine.NativeLoader.Hfsm.dll"><Private>true</Private></Reference>
+    <Reference Include="Lumio.Bomber.Gameplay"><HintPath>$(_SpectatorGameplayDll)</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+  <Target Name="RequireBrowserReplicaAssemblies" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(LumioBomberRepoRoot)Client/Presentation/dist/presentation.js') OR !Exists('$(LumioBomberRepoRoot)Client/Presentation/dist/presentation.css')"
+           Text="BOMBER_PRESENTATION_MISSING run corepack pnpm build in Client/Presentation before publishing the browser host." />
+    <Error
+      Condition="!Exists('$(_SpectatorReplicaDll)')"
+      Text="SPECTATOR_REPLICA_DLL_MISSING the Engine/ release has no netstandard2.1 Replica: $(_SpectatorReplicaDll)" />
+    <Error
+      Condition="!Exists('$(_SpectatorGameplayDll)')"
+      Text="SPECTATOR_GAMEPLAY_DLL_MISSING build Bomber gameplay with -p:LumioEcsSide=client -p:LumioBrowserReplica=true first: $(_SpectatorGameplayDll)" />
+    <Error
+      Condition="Exists('$(_SpectatorGameplayDir)Lumio.Engine.NativeLoader.dll')"
+      Text="SPECTATOR_GAMEPLAY_NATIVELOADER gameplay browser output still contains NativeLoader.dll: $(_SpectatorGameplayDir)" />
+  </Target>
+  <!--
+    The formal browser uses the full Engine WASM and its verified build sidecar.
+    Its Engine world owns both gameplay and voxel resources; rendering reads that
+    same world. The publish consumes released binaries rather than rebuilding or
+    vendoring Engine/Voxel source, and fails closed if the closure is incomplete.
+  -->
+  <ItemGroup>
+    <Content Include="$(LumioEngineWeb)lumio_engine_wasm.js" Link="wwwroot/lumio_engine_wasm.js" />
+    <Content Include="$(LumioEngineWeb)lumio_engine_wasm_bg.wasm" Link="wwwroot/lumio_engine_wasm_bg.wasm" />
+    <Content Include="$(LumioEngineWeb)engine-wasm-build-info.json" Link="wwwroot/engine-wasm-build-info.json" />
+  </ItemGroup>
+  <Target Name="RequireFullEngineWasm" BeforeTargets="Build;Publish">
+    <Error Condition="!Exists('$(LumioEngineWeb)lumio_engine_wasm_bg.wasm') OR !Exists('$(LumioEngineWeb)engine-wasm-build-info.json') OR !Exists('$(LumioEngineWeb)replica-voxel-grid.mjs')"
+           Text="SPECTATOR_ENGINE_WASM_MISSING: the selected release lacks the formal session world and its renderer." />
+    <Error Condition="Exists('$(_SpectatorReplicaDir)Lumio.Engine.NativeLoader.dll')" Text="Desktop NativeLoader cannot enter the browser closure." />
+  </Target>
+  <Target Name="ForbidNativeLoaderInBrowserPublish" AfterTargets="Build;Publish">
+    <PropertyGroup>
+      <_SpectatorFramework Condition="Exists('$(PublishDir)wwwroot\_framework')">$(PublishDir)wwwroot\_framework</_SpectatorFramework>
+      <_SpectatorFramework Condition="'$(_SpectatorFramework)' == '' AND Exists('$(OutDir)wwwroot\_framework')">$(OutDir)wwwroot\_framework</_SpectatorFramework>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(_SpectatorFramework)' != ''">
+      <_ForbiddenNativeLoaderWasm Include="$(_SpectatorFramework)\Lumio.Engine.NativeLoader.*.wasm"
+                                  Exclude="$(_SpectatorFramework)\Lumio.Engine.NativeLoader.Hfsm.*.wasm" />
+    </ItemGroup>
+    <Error
+      Condition="'@(_ForbiddenNativeLoaderWasm)' != ''"
+      Text="SPECTATOR_NATIVELOADER_WASM NativeLoader must not enter browser _framework: @(_ForbiddenNativeLoaderWasm). Browser wasm TypeLoadException on RuntimeInformation leaves dump stub empty." />
+  </Target>
+</Project>
+

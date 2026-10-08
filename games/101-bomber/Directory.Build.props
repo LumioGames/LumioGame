@@ -1,0 +1,67 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)eng/BomberRelease.props" />
+  <Import Project="$(LumioEngineSelectionProps)" Condition="'$(LumioEngineSelectionProps)' != ''" />
+  <!--
+    全仓共用的编译设置。这里**只放无条件生效的属性**。
+    目标框架与工程角色相关的设置写在各自的 .csproj 里——
+    Directory.Build.props 在 csproj 顶部导入,那时 csproj 自己的属性还没赋值,
+    在这里写 Condition="'$(SomeMarker)' == 'true'" 是永远不成立的死配置。
+  -->
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>14.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!--
+    ADR-123: the engine comes from one place only, the read-only submodule Engine/
+    (LumioEngineRelease pinned at a release tag). The SDK package is Engine/sdk/ and its
+    version is Engine/manifest.json#version. There is no sibling checkout, global-packages
+    or nuget.org path for Lumio.Engine.SDK; NuGet.config maps that one package to Engine/sdk.
+    Directory.Build.targets turns "not resolved" into LUMIO_SDK_UNRESOLVED.
+  -->
+  <PropertyGroup>
+    <LumioEngineRoot Condition="'$(LumioEngineRoot)' == ''">$(MSBuildThisFileDirectory)Engine/</LumioEngineRoot>
+    <LumioEngineManifest>$(LumioEngineRoot)manifest.json</LumioEngineManifest>
+    <LumioEngineSdkFeed>$(LumioEngineRoot)sdk/</LumioEngineSdkFeed>
+    <_LumioEngineManifestText Condition="Exists('$(LumioEngineManifest)')">$([System.IO.File]::ReadAllText('$(LumioEngineManifest)'))</_LumioEngineManifestText>
+    <LumioSdkVersion Condition="'$(_LumioEngineManifestText)' != ''">$([System.Text.RegularExpressions.Regex]::Match($(_LumioEngineManifestText), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</LumioSdkVersion>
+    <LumioSdkResolved Condition="'$(LumioSdkVersion)' != '' and Exists('$(LumioEngineSdkFeed)Lumio.Engine.SDK.$(LumioSdkVersion).nupkg')">true</LumioSdkResolved>
+  </PropertyGroup>
+
+  <!-- Client compile must not overwrite the default server output DS loads.
+       OutputPath has to be set here: Directory.Build.targets runs after the
+       SDK already computed bin/$(Configuration)/net10.0/. LumioEcsSide is a
+       global -p: property, so it is visible at props import. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioEcsSide)' == 'client' and '$(LumioBrowserReplica)' != 'true' and '$(ArtifactsPath)' == ''">
+    <OutputPath>$(MSBuildProjectDirectory)/bin/$(Configuration)/net10.0-client/</OutputPath>
+    <IntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(Configuration)/net10.0-client/</IntermediateOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <!-- Spectator wasm must not overwrite Bot.Host's net10.0-client output.
+       TargetFramework=netstandard2.1 is set in the gameplay csproj when
+       LumioBrowserReplica=true so NativeLoader cannot enter the wasm graph. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(LumioBrowserReplica)' == 'true' and '$(ArtifactsPath)' == ''">
+    <OutputPath>$(MSBuildProjectDirectory)/bin/$(Configuration)/net10.0-browser/</OutputPath>
+    <IntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(Configuration)/net10.0-browser/</IntermediateOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- A netstandard2.1 library does not copy package assemblies by default. The spectator
+         wasm host references this output directory for the Runtime it runs on, so the
+         Lumio.Engine.SDK netstandard2.1 assemblies have to land here. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <!-- Preserve the SDK's per-project artifact layout when callers isolate the whole graph. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Lumio.Bomber.Gameplay' and '$(ArtifactsPath)' != ''">
+    <ArtifactsPivots>$(Configuration)</ArtifactsPivots>
+    <ArtifactsPivots Condition="'$(LumioEcsSide)' == 'client'">$(Configuration)_client</ArtifactsPivots>
+    <ArtifactsPivots Condition="'$(LumioBrowserReplica)' == 'true'">$(Configuration)_browser</ArtifactsPivots>
+  </PropertyGroup>
+</Project>

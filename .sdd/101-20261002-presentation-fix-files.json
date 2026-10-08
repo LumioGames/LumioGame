@@ -1,0 +1,27 @@
+[
+  {
+    "path": "games/101-bomber/Client/Presentation/src/index.ts",
+    "bytes": 4735,
+    "sha256": "73C7C6D64C6EDCBE1CDA9B56BCCF28D481F437159AC20659A7EF4CA22728E0E5"
+  },
+  {
+    "path": "games/101-bomber/Client/Presentation/src/present/shortcuts.ts",
+    "bytes": 1009,
+    "sha256": "39C6BAA89287E9E794B910E28EBD49DE611E6C9C40459B94AAE48DC2E157CD4A"
+  },
+  {
+    "path": "games/101-bomber/Client/Presentation/src/present/shortcuts.test.ts",
+    "bytes": 3631,
+    "sha256": "19E3EF8FBE5A3424BBC4FCECF20CEB401710DD18B66EAF389EE454B38FC9F647"
+  },
+  {
+    "path": "games/101-bomber/Client/Presentation/dist/presentation.js",
+    "bytes": 1134521,
+    "sha256": "58FB81819E4EDDAC67731DC0D837D16D6A5462953B4FDC4729612C6E4E3ECBA9"
+  },
+  {
+    "path": "games/101-bomber/Client/Presentation/dist/presentation.css",
+    "bytes": 44767,
+    "sha256": "12814455286F3CD60B7B1BCDF449BBA660033FDCF3E56D04CF8362881B798521"
+  }
+]

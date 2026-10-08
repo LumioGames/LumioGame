@@ -1,0 +1,6 @@
+# 贴图（Kenney 原文件与生成物）与预览按二进制对待；描述与清单固定 LF，重新生成后逐字节可比。
+*.png binary
+*.json text eol=lf
+*.mjs text eol=lf
+# Kenney 许可原文按下载包里的字节原样保存（CRLF），不做换行转换。
+LICENSE-kenney.txt -text

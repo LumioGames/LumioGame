@@ -1,0 +1,10 @@
+<Project DefaultTargets="Build">
+  <!-- Bare probe of the one engine path (ADR-123): imports the repo-root props/targets without
+       the .NET SDK or a restore, so `dotnet msbuild eng/ResolveLumioSdk.proj` reports exactly
+       what `dotnet build` would about Engine/. Directory.Build.* are not auto-imported here. -->
+  <Import Project="..\Directory.Build.props" />
+  <Import Project="..\Directory.Build.targets" />
+  <Target Name="Build" DependsOnTargets="ResolveLumioSdk">
+    <Message Importance="high" Text="LUMIO_SDK_RESOLVED: Lumio.Engine.SDK $(LumioSdkVersion) from $(LumioEngineSdkFeed)" />
+  </Target>
+</Project>

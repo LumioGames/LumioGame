@@ -1,0 +1,1338 @@
+{
+  "mode": "bootstrap-audit",
+  "supportedInventoryConsistent": true,
+  "freezeEligible": false,
+  "baseline": {
+    "mode": "bootstrap-audit",
+    "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+    "tree": "373fca105c07a728331d71ec98acd104f5d0073e",
+    "revisions": [
+      "5348635658fdb438f0ee939e8afe527acbc11f80",
+      "10782b63824125fc77fe25facb0455444fdac53d",
+      "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+      "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+      "fab6f08ebe717614c04383a71d1e25ea6c071711"
+    ]
+  },
+  "inputHashes": {
+    "candidate": {
+      "path": "games/101-bomber/Gameplay/Compatibility/schema-identities.json",
+      "sha256": "c1b5ca7f603560028aaec94f7820d030d7332e2e2eceda5fbfa2728f9cac6d86"
+    },
+    "current": [
+      {
+        "path": "Engine/manifest.json",
+        "sha256": "710d6153165857a5a94168c1c4ad8b6d684f0adfd87d77afb8c5ca9b6ee5f3cf"
+      },
+      {
+        "path": "Engine/sdk/Lumio.Engine.SDK.0.0.4-main.54930d9.nupkg",
+        "sha256": "4b0477f82a7a00df53113e64db44c8a4307c5028e7aff3c5c9c534d3f9dd28f8"
+      },
+      {
+        "path": "Gameplay/Abilities/MoveAbility.Client.cs",
+        "sha256": "5da28bd7ea1b221cebee4704ba316196792616ef7f83f4f3709f757c04fa46ec"
+      },
+      {
+        "path": "Gameplay/Abilities/MoveAbility.Server.cs",
+        "sha256": "f0aa282dad9c368a5456f76cd5591cf785461c9abbc068ff725f8a52b0041654"
+      },
+      {
+        "path": "Gameplay/Abilities/MoveAbility.cs",
+        "sha256": "6d13c02cd92d002412b88ddc820d1756bcc32333f776b2d347ab48025294869b"
+      },
+      {
+        "path": "Gameplay/Abilities/PickupAbility.Client.cs",
+        "sha256": "b447e9e43c09e333bc73700062bccd0b2fa777b2028fbbd89eec866de18f3570"
+      },
+      {
+        "path": "Gameplay/Abilities/PickupAbility.Server.cs",
+        "sha256": "0285d3516d602e94a3c6bfb0a76254deec5e6cae59b7ed1ff406ee95194099c7"
+      },
+      {
+        "path": "Gameplay/Abilities/PickupAbility.cs",
+        "sha256": "ea605575e54f32ded242aae5ebbb72c91e85d437ab150cadb02e90143a86e9d4"
+      },
+      {
+        "path": "Gameplay/Abilities/PlaceBombAbility.Client.cs",
+        "sha256": "6f0dc62c6f5599f93b421c7a55a270d734a38baa3ec33f4f0485d2c7aa5a633b"
+      },
+      {
+        "path": "Gameplay/Abilities/PlaceBombAbility.Server.cs",
+        "sha256": "e8b52e2118ff6f7f38ac6e7eb4a954c81e3e3198b80818d88c1201304b063a84"
+      },
+      {
+        "path": "Gameplay/Abilities/PlaceBombAbility.cs",
+        "sha256": "eca3d245820a586a912126105e1493c0b8b2b04caadcd991dd251ad128da150e"
+      },
+      {
+        "path": "Gameplay/Abilities/SelectCharacterAbility.cs",
+        "sha256": "c68820e42f3c21e32684fa159bb4a3c908d3daec6806283d759545450344a22e"
+      },
+      {
+        "path": "Gameplay/Abilities/UseActiveSkillAbility.Server.cs",
+        "sha256": "9ae8c472cf98d31ad368f55f9c1ae9c73f904cb9829ed96dbbb3ee092e469cff"
+      },
+      {
+        "path": "Gameplay/Abilities/UseActiveSkillAbility.cs",
+        "sha256": "452eba2b2619c6eddff86364f881dca874355e35ad5c0472f206a5e82b0867d4"
+      },
+      {
+        "path": "Gameplay/BombSystem.Server.cs",
+        "sha256": "63b6c9f8f38f8eb577db39cfed14dfb343d35aadce743b14655f1cee93f56b46"
+      },
+      {
+        "path": "Gameplay/BomberBombKick.Server.cs",
+        "sha256": "f66415a2a12c38b9d1f737bfb6daccc312c1a1dda2c5a723d1833483d50b09b0"
+      },
+      {
+        "path": "Gameplay/BomberBombLifecycle.Server.cs",
+        "sha256": "43cf745e8608bd26bb7f25d412c2b96037d5bfa154df056002512d3f5df7f4b9"
+      },
+      {
+        "path": "Gameplay/BomberFoundationSystem.Server.cs",
+        "sha256": "042646c1d8e726b66bde56ce0329580f246a0d50e94f77d91b28039b490c80b3"
+      },
+      {
+        "path": "Gameplay/BomberGameplay.Server.cs",
+        "sha256": "ea7978a2c5cbbc80c8152c7f5cadc45631867a489ce9af4cf9316851a4edb1a3"
+      },
+      {
+        "path": "Gameplay/BomberGameplay.cs",
+        "sha256": "832dac322a7ca1ce947aede10c0309371b9dc3739234ccf7b736cf667bf90e29"
+      },
+      {
+        "path": "Gameplay/BomberHfsmDefinitions.Server.cs",
+        "sha256": "51d4634158f37719d9189b414edd1504321f1739cf51ef9d4433bbe917b5730a"
+      },
+      {
+        "path": "Gameplay/BomberHfsmSnapshot.Server.cs",
+        "sha256": "b29b8b720d61866cc4e04b4b60085c7e2c2a6cd970949223dae01455fba672c3"
+      },
+      {
+        "path": "Gameplay/BomberMatchRules.Server.cs",
+        "sha256": "352d3e4fac3dea0da9c529f9ef70a00d946a173c99b4ac4a5b3c3803e0c5b7fb"
+      },
+      {
+        "path": "Gameplay/BomberMatchRules.cs",
+        "sha256": "6ffed6905626bc9ebda56146b026f67a36c8cfa302cea9ecd38b3e562ca3f737"
+      },
+      {
+        "path": "Gameplay/BomberTerrainRead.Server.cs",
+        "sha256": "23fa0155ee3eff1843e6a844833be2ed30c4ed71ec290fc8265d47523e89bafa"
+      },
+      {
+        "path": "Gameplay/BomberTypes.cs",
+        "sha256": "12697c17da43acb1a1bf1754d1c52a518e98fda67991996bb325e4339728c38b"
+      },
+      {
+        "path": "Gameplay/BomberVoxelFrame.Server.cs",
+        "sha256": "0e057213546822b8b126d9ca63c4d53aead6b3286c1f8d542f5e00a15ab46306"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberBombState.Server.cs",
+        "sha256": "fa8bf5d5e109975bdf86c9acb5e7f60d1988943752531d046299f7800a1ab12f"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberBombState.cs",
+        "sha256": "8a7d56f29a7dae6717532f049ab9bfd4b156a05e1df0bbd31a7d2336d25d9d4d"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberChestState.Server.cs",
+        "sha256": "832590c38dd6e2d4ef2b5557ab209723e2aef3c3dcf7e32eab00b437b540451f"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberChestState.cs",
+        "sha256": "5a4e0693e4cfb8833f455205e777e3bb22b573c13d31d544a5159c17dcbf67e7"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberFinalCircleHfsmState.Server.cs",
+        "sha256": "f5b2feb9c57c8a9cb18ce97e33d2d91e4465560d627151168da6f7f2d45dc0de"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberFinalCircleHfsmState.cs",
+        "sha256": "5efd9eeb8ecea189733edb135dc02a4929ec12d866e63f29c4f3784e505cea0c"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberFinalCircleState.cs",
+        "sha256": "57107ed3eaaa51c5d8ce8a51cd921887e15e2db8f77178ebd796f71aa7017060"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberFireZoneState.cs",
+        "sha256": "0a54117d06a5756d002de348d264ab9fb17b265fafffc89b6628820339b22a0b"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberFoundationSystem.Server.cs",
+        "sha256": "87f3acb409328583ff34e59e805f8498ebd33919b057ec82d7e8161dbf8c91e0"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberHfsmState.Server.cs",
+        "sha256": "89883884dfc86c856ace7e042a10ecf42166eeecf43864403050c24a72e9e817"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberHfsmState.cs",
+        "sha256": "c6eeb6b86ec398aac90c77ccc62feab05997254733206e14fc755d1e67d7d2fa"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberMatchState.Server.cs",
+        "sha256": "e1972cf802f47e5e9b712519cdcb0d951520e90315cfeec728bdca7b596ec886"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberMatchState.cs",
+        "sha256": "716f354f7dbdf7947ac963df930f4b3afba3fa99495abac04374e818b6a1141e"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberObjectIdentity.cs",
+        "sha256": "e2539202c214321c7404d0f474e0e27d576538f610682a7127b0af7f8cbed2ea"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberParticipantState.Server.cs",
+        "sha256": "c9fa760954e545f427b66d5cb032df1e7c141dd47618fe01f16122a64d5e224b"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberParticipantState.cs",
+        "sha256": "90780137010b319cf98720f4752a46fd85ab2d378ee147a0a93d3448d99a41e6"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberPickupItem.cs",
+        "sha256": "45402e25d4dc45992715a9b4cd9c971cc28cd66a9982c69af07d5ac7acabca3b"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberPlayerState.cs",
+        "sha256": "4bb2065337edac16dbc52b8f39d05a994421b3ca29da9f761124b3949570678f"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberPresentationJournal.Server.cs",
+        "sha256": "a521a4f4948561314dec2833a7a9351f8e397c4195232f5154eafacd87770961"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberPresentationJournal.cs",
+        "sha256": "1e39cac79859fd045e0b192ff51682f6bf7efbe1c8ea3414e984ea26e0c4d40f"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberPresentationOccurrence.cs",
+        "sha256": "5681f2a468595c3f12c3b2976e485feddaceca6ab3fb1a7554ce898a5a1a83b8"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberRespawnCarry.cs",
+        "sha256": "709ca43d6f336a875e2412bb53752bf6a3b80c5369254bcf6b46f006298be9f9"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberResults.Server.cs",
+        "sha256": "789f71b29845d972407234d3415a294feefe7668a114442ac04683d2b9595a8c"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberResults.cs",
+        "sha256": "181400d3a105a6ea73c8c8b4d8da04f36d760bf6953570340a9045a6fa9e90cf"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberSkillState.cs",
+        "sha256": "256c7aae5eed48522b56673c214f61058a265dafcb752a25ba66f4513b55bc41"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberStatistics.cs",
+        "sha256": "64aea5b4397c735a83f6aba3b03b25202eff57fdcc67dee72812b68429386f2f"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberWorldRuntime.Server.cs",
+        "sha256": "4d85ba568bf041bc17ec311e1efd2ca5111d5aa411f4ea2aeb05182911b36170"
+      },
+      {
+        "path": "Gameplay/Components/Bomber/BomberWorldRuntime.cs",
+        "sha256": "4e8ba52dee002ed0f8e0e056904ac2faf1a4a904c1081450a7fd18f2840360fb"
+      },
+      {
+        "path": "Gameplay/Components/Identity/IdentityComponent.Server.cs",
+        "sha256": "6db1334fbd106a79af4a238921506d370118f7d5edbe2606961ab2173e926599"
+      },
+      {
+        "path": "Gameplay/Components/Identity/IdentityComponent.cs",
+        "sha256": "1f79f649b0bf0f58ba795c9303e1f29fd357781231cb7b336de125ae3a273e32"
+      },
+      {
+        "path": "Gameplay/EntityTypes/Bomber/BomberBombEntity.cs",
+        "sha256": "8a1f43e140a92104bb5ff35f3fe1d492d19cfb65ab101721b224a869012e1424"
+      },
+      {
+        "path": "Gameplay/EntityTypes/Bomber/BomberChestEntity.cs",
+        "sha256": "829ac8abc04ee68b2e68adb3be9e98b94d16cc3b9f73bb724997ceab3c1f4e37"
+      },
+      {
+        "path": "Gameplay/EntityTypes/Bomber/BomberFireZoneEntity.cs",
+        "sha256": "d080848f6c06d31767005c9c791ec8e84e93a4ce09b073182706a37e866a1ef4"
+      },
+      {
+        "path": "Gameplay/EntityTypes/Bomber/BomberParticipantEntity.cs",
+        "sha256": "6be78a4ef3cd95cd00d834ee5bde754f75f97e3fbcd35a247eab58604b8b39ed"
+      },
+      {
+        "path": "Gameplay/EntityTypes/Bomber/BomberPickupItemEntity.cs",
+        "sha256": "bc872671f53a12f5593f2a9a675d7aadcb52fff4cdec8480d7bc17dd52734b07"
+      },
+      {
+        "path": "Gameplay/EntityTypes/PlayerEntity.cs",
+        "sha256": "e196ccc3057e8d2e0cdf0ee737b007637d274e6d78c976e134304565011d4e7c"
+      },
+      {
+        "path": "Gameplay/EntityTypes/WorldEntity.cs",
+        "sha256": "34fc38465b5ad59cf48f5ecc6e8bf3d28b8721fe68d01604db8621e8f0d99e01"
+      },
+      {
+        "path": "Gameplay/Events/BomberEventCatalog.cs",
+        "sha256": "b086f353c23fa1d35be660f4a2d02bd5434385b31c7b5ae315018c7401dfb636"
+      },
+      {
+        "path": "Gameplay/Events/BomberEventValues.cs",
+        "sha256": "00ac4509a292738c662abe4ea3f7c53d82fddd54ef7a04b8a9b7518c52a581db"
+      },
+      {
+        "path": "Gameplay/Events/BomberEvents.cs",
+        "sha256": "c07a4a9c76f85d8f7e1e49deb39262561786da48c4b33ef90b7bc6769943d466"
+      },
+      {
+        "path": "Gameplay/Ports/IBomberTelemetrySink.cs",
+        "sha256": "4750e0602071a9cf4923e8dd76c23f521643bad1d924159484bdc93f7e22c1a4"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberBombEntity.Template.g.cs",
+        "sha256": "3f5a4890875133a259f97d13cb55ff7d2d4df5aa46e6dbeab681db3136690422"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberBombState.g.cs",
+        "sha256": "b2d82d26c6029916843de9a798e15b33bd368ec36bea0fa2ca41f74517b04526"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberChestEntity.Template.g.cs",
+        "sha256": "593bdfc12341b96e25665c3c51e0a79ed4cc33c711b4f5ec6061fc79ff69f1bb"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberChestState.g.cs",
+        "sha256": "bce128318a99841117398b89849e4ef8257ab5a91649f7a902e3be5061ecdc48"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberFinalCircleHfsmState.g.cs",
+        "sha256": "cd764ca85c14f7f86c1776ca8fa7041cfd6978e87943ffde68ebd5154f53ddb1"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberFinalCircleState.g.cs",
+        "sha256": "6479fd88bf48a1cbe2d8c0390a526e3b0bfff7d79516934dc48dd42d3d12a967"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberFireZoneEntity.Template.g.cs",
+        "sha256": "7a42e9008880fbd20e3ee988b2e8bd983b63c2b9c173e47f0ce3f1265d1b8408"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberFireZoneState.g.cs",
+        "sha256": "6184c9fcecc7d388ffb736237ceff17444700869e1b0f0eacb199c8e549229ad"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberHfsmState.g.cs",
+        "sha256": "96286cdb826b9859f8181cbf082e7091af578365d0f3e2a3ab65c8d03637e221"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberMatchState.g.cs",
+        "sha256": "4560de028b44dc269aaa294c90c59e5e4c8b33461c0ac0fdd7723fc604612a75"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberParticipantEntity.Template.g.cs",
+        "sha256": "08a4259c1c82bea13a58cd55654db406b73f996387d05e87e7a08a5c87b8a1a4"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberParticipantState.g.cs",
+        "sha256": "2ebffaf98212234aa9c3723b670444a7375598cac3321cb95c35f799a4ef8bbc"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberPickupItem.g.cs",
+        "sha256": "92f62610d307000886605f1dec6b7d9bd19b563909c16d8cdfc87fa8733337b9"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberPickupItemEntity.Template.g.cs",
+        "sha256": "1bdcbeff0dfc831805b12a28a13de5a22982b966b3f7c2af9e7040163db0f4b6"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberPlayerState.g.cs",
+        "sha256": "3ef09e02ed00803bd349949d06f0b7bc82eb0c9d8bf1fd286507dddc353d4511"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberPresentationJournal.g.cs",
+        "sha256": "050a4734746b66f2cc9358b4e85d45b99b041b53ac1e24e0729a7d1d618ed7f5"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberRespawnCarry.g.cs",
+        "sha256": "8b659abae0bedc9bdf90ead58ac71f0fc90855f2aeb9fe829c5e539065c2a6dd"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberResults.g.cs",
+        "sha256": "91728bcd0af99da627cabc7750b53dd2c911d7c36f249e265d5d951e2776d8df"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberSkillState.g.cs",
+        "sha256": "afe27de45efb8530f96ae73733a2ebda55012350fa117bb1a92f1c13f07ae625"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberStatistics.g.cs",
+        "sha256": "b673f16b0123b851b91f3f8dda6967ab4a5a92b9faabd394138a0aaee4336c0e"
+      },
+      {
+        "path": "Gameplay/generated/client/BomberWorldRuntime.g.cs",
+        "sha256": "663063e696a58656377633d09b46e91fde18afa6b809fc89b670c0638c91d8e3"
+      },
+      {
+        "path": "Gameplay/generated/client/GeneratedAbilityRegistry.g.cs",
+        "sha256": "85e24066e835ef878f5ac36f0b739c0b6295acd29bda9c7f115aabd70c99fa32"
+      },
+      {
+        "path": "Gameplay/generated/client/GeneratedEffectRegistry.g.cs",
+        "sha256": "4029e4e151e352fc07aeb3c0dc442a1525a60cde6a663e41fd8514e2d07e9a19"
+      },
+      {
+        "path": "Gameplay/generated/client/IdentityComponent.g.cs",
+        "sha256": "5a2be4e42625a1d77276b90343cd356e01bb837477e56fdbf36b0176372092b8"
+      },
+      {
+        "path": "Gameplay/generated/client/Lumio.Bomber.Gameplay.Registry.g.cs",
+        "sha256": "4cebcbd33247fe3795d548eef44d7ed25b104c0f4b897a48031733512221fe29"
+      },
+      {
+        "path": "Gameplay/generated/client/Lumio.Bomber.Gameplay.Sync.g.cs",
+        "sha256": "b2ecbe525cb2c0e474fa6c6f04d2a6fe751623a09e21aefb8bfebe91811bb810"
+      },
+      {
+        "path": "Gameplay/generated/client/MoveAbility.g.cs",
+        "sha256": "52d2b8abe1a5401867964e4c26e84237c5684e765a88f58f22aa043100371062"
+      },
+      {
+        "path": "Gameplay/generated/client/PickupAbility.g.cs",
+        "sha256": "bf448676df8641741ed4ab94cf099d03745ee043b0bfa9477fe1d88ade7e7651"
+      },
+      {
+        "path": "Gameplay/generated/client/PlaceBombAbility.g.cs",
+        "sha256": "15272745213d1535a50c23ef0db9f0ca845709d6eb6314f5cf7cae9559f38125"
+      },
+      {
+        "path": "Gameplay/generated/client/PlayerEntity.Template.g.cs",
+        "sha256": "d218f2bb7024129ab15232129106f3928abc4e385e26d504961fcdbbba90f89d"
+      },
+      {
+        "path": "Gameplay/generated/client/UseActiveSkillAbility.g.cs",
+        "sha256": "9914ed49d03f55ac1b9aee0f9d2fdd342fa667e6fe9b021d6d51f1e1c0a0e2b4"
+      },
+      {
+        "path": "Gameplay/generated/client/WorldEntity.Template.g.cs",
+        "sha256": "7d4df699bc4d4b756ea4399d639623c0b3384d2a5fafd4e84d2620ccf94d08ef"
+      },
+      {
+        "path": "Gameplay/generated/client/attribute-declarations.json",
+        "sha256": "8eac273bc0ce802cf1eb0646ca1522119eebea986125799874bb902da3e64d14"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberBombEntity.Template.g.cs",
+        "sha256": "3f5a4890875133a259f97d13cb55ff7d2d4df5aa46e6dbeab681db3136690422"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberBombState.g.cs",
+        "sha256": "b2d82d26c6029916843de9a798e15b33bd368ec36bea0fa2ca41f74517b04526"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberChestEntity.Template.g.cs",
+        "sha256": "593bdfc12341b96e25665c3c51e0a79ed4cc33c711b4f5ec6061fc79ff69f1bb"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberChestState.g.cs",
+        "sha256": "bce128318a99841117398b89849e4ef8257ab5a91649f7a902e3be5061ecdc48"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberFinalCircleHfsmState.g.cs",
+        "sha256": "cd764ca85c14f7f86c1776ca8fa7041cfd6978e87943ffde68ebd5154f53ddb1"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberFinalCircleState.g.cs",
+        "sha256": "6479fd88bf48a1cbe2d8c0390a526e3b0bfff7d79516934dc48dd42d3d12a967"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberFireZoneEntity.Template.g.cs",
+        "sha256": "7a42e9008880fbd20e3ee988b2e8bd983b63c2b9c173e47f0ce3f1265d1b8408"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberFireZoneState.g.cs",
+        "sha256": "6184c9fcecc7d388ffb736237ceff17444700869e1b0f0eacb199c8e549229ad"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberHfsmState.g.cs",
+        "sha256": "96286cdb826b9859f8181cbf082e7091af578365d0f3e2a3ab65c8d03637e221"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberMatchState.g.cs",
+        "sha256": "4560de028b44dc269aaa294c90c59e5e4c8b33461c0ac0fdd7723fc604612a75"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberParticipantEntity.Template.g.cs",
+        "sha256": "08a4259c1c82bea13a58cd55654db406b73f996387d05e87e7a08a5c87b8a1a4"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberParticipantState.g.cs",
+        "sha256": "2ebffaf98212234aa9c3723b670444a7375598cac3321cb95c35f799a4ef8bbc"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberPickupItem.g.cs",
+        "sha256": "92f62610d307000886605f1dec6b7d9bd19b563909c16d8cdfc87fa8733337b9"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberPickupItemEntity.Template.g.cs",
+        "sha256": "1bdcbeff0dfc831805b12a28a13de5a22982b966b3f7c2af9e7040163db0f4b6"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberPlayerState.g.cs",
+        "sha256": "3ef09e02ed00803bd349949d06f0b7bc82eb0c9d8bf1fd286507dddc353d4511"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberPresentationJournal.g.cs",
+        "sha256": "050a4734746b66f2cc9358b4e85d45b99b041b53ac1e24e0729a7d1d618ed7f5"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberRespawnCarry.g.cs",
+        "sha256": "8b659abae0bedc9bdf90ead58ac71f0fc90855f2aeb9fe829c5e539065c2a6dd"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberResults.g.cs",
+        "sha256": "91728bcd0af99da627cabc7750b53dd2c911d7c36f249e265d5d951e2776d8df"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberSkillState.g.cs",
+        "sha256": "afe27de45efb8530f96ae73733a2ebda55012350fa117bb1a92f1c13f07ae625"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberStatistics.g.cs",
+        "sha256": "b673f16b0123b851b91f3f8dda6967ab4a5a92b9faabd394138a0aaee4336c0e"
+      },
+      {
+        "path": "Gameplay/generated/server/BomberWorldRuntime.g.cs",
+        "sha256": "663063e696a58656377633d09b46e91fde18afa6b809fc89b670c0638c91d8e3"
+      },
+      {
+        "path": "Gameplay/generated/server/GeneratedAbilityRegistry.g.cs",
+        "sha256": "85e24066e835ef878f5ac36f0b739c0b6295acd29bda9c7f115aabd70c99fa32"
+      },
+      {
+        "path": "Gameplay/generated/server/GeneratedEffectRegistry.g.cs",
+        "sha256": "4029e4e151e352fc07aeb3c0dc442a1525a60cde6a663e41fd8514e2d07e9a19"
+      },
+      {
+        "path": "Gameplay/generated/server/IdentityComponent.g.cs",
+        "sha256": "14b1a2f543508fdb43253fec014a2b83540f19a85b1c1f0e489826ec5dea06f5"
+      },
+      {
+        "path": "Gameplay/generated/server/Lumio.Bomber.Gameplay.Registry.g.cs",
+        "sha256": "5a8de134831ef514942332e610ac04768a42dba44ae7afc9f6338f2ec517128b"
+      },
+      {
+        "path": "Gameplay/generated/server/Lumio.Bomber.Gameplay.Sync.g.cs",
+        "sha256": "b40a66ef9e01b9c1eeccb74b709d4d3edfc38596742a38be83e9829361d979f1"
+      },
+      {
+        "path": "Gameplay/generated/server/MoveAbility.g.cs",
+        "sha256": "52d2b8abe1a5401867964e4c26e84237c5684e765a88f58f22aa043100371062"
+      },
+      {
+        "path": "Gameplay/generated/server/PickupAbility.g.cs",
+        "sha256": "bf448676df8641741ed4ab94cf099d03745ee043b0bfa9477fe1d88ade7e7651"
+      },
+      {
+        "path": "Gameplay/generated/server/PlaceBombAbility.g.cs",
+        "sha256": "15272745213d1535a50c23ef0db9f0ca845709d6eb6314f5cf7cae9559f38125"
+      },
+      {
+        "path": "Gameplay/generated/server/PlayerEntity.Template.g.cs",
+        "sha256": "d218f2bb7024129ab15232129106f3928abc4e385e26d504961fcdbbba90f89d"
+      },
+      {
+        "path": "Gameplay/generated/server/UseActiveSkillAbility.g.cs",
+        "sha256": "9914ed49d03f55ac1b9aee0f9d2fdd342fa667e6fe9b021d6d51f1e1c0a0e2b4"
+      },
+      {
+        "path": "Gameplay/generated/server/WorldEntity.Template.g.cs",
+        "sha256": "7d4df699bc4d4b756ea4399d639623c0b3384d2a5fafd4e84d2620ccf94d08ef"
+      },
+      {
+        "path": "Gameplay/generated/server/attribute-declarations.json",
+        "sha256": "14810c237dc7b1510925c097eccbe73a21c98db012271d1da3252b68e419a656"
+      }
+    ],
+    "historical": [
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Commands/BomberCommands.cs",
+        "blob": "8b0f9ebdfa06219b5cdfedd8e41eec8ba1ff902b",
+        "sha256": "fba5692f99afd00a56263ac3d53e096c312aac9a6a98a5bc075f6a1d29f5f95c"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberBombState.cs",
+        "blob": "4edb1b1006110362d0b2bcdd78fb9315bca7d273",
+        "sha256": "1aed6dfea35ad11016ed11eb50d5347d9fbeb4549e666caf23ab7761da974eff"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberExplosionCell.cs",
+        "blob": "122e1bfac591fbc70c72aa81fb593468836e64c5",
+        "sha256": "5005ecc06fa88e36e7d740622698b4ab1cacdbbf4a7d7ff79752eba658019339"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberHatPile.cs",
+        "blob": "8c6202ca4e7a1864962062efd90abc6814935826",
+        "sha256": "828abda76945ae8dd7608c6a4d6e2bb44904680d34f6530e23fec80e6ca44eac"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberMatchState.cs",
+        "blob": "54fdbecf8eca85d5480c215b75407f8084c3925c",
+        "sha256": "87ffd1c9103c32141f314011e8912f4ce5cdf866ecc67fedc6635b8e39e67dc7"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPickupItem.cs",
+        "blob": "586255a678e8a4c9664d56b4fe243e8a104e1bf2",
+        "sha256": "4740cbcbfe9222e87cdf95673726b2c2b4aff9beb6274788bf92e5f22858f584"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPlayerState.cs",
+        "blob": "df25a27c9d423121c224401e19fe3858a94de3f3",
+        "sha256": "37d9ba8a92407b47362ad93df63a2cc57da788c3ca02e036842d7aacc46c25d2"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberBombEntity.cs",
+        "blob": "a5731865bd85afaac07836639b0d4efcfc600fb8",
+        "sha256": "bb14de6675098a45995f374adce833d15194e55f4841b51bdd7c3b5bc346b162"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberExplosionCellEntity.cs",
+        "blob": "5c6a2d756f9cc52637092c491dbd09da842440d1",
+        "sha256": "087226fe046348dbc5a8b553f923c884a8f71088f4ef1bbd2c203fc035a8d118"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberHatPileEntity.cs",
+        "blob": "67bc5182b47cdc4c92d39bbb729b95adfb7ce108",
+        "sha256": "2be9f17e0c9f399d481199ccc425c6c9c7b166ec0f6bf07b58443788a86922c8"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPickupItemEntity.cs",
+        "blob": "94a6d8e13ac30ab33f4f4cb65eb358aecfa62a20",
+        "sha256": "e213a09b1617c39ec2f61c31eb08f67f9b65d8afb40d4f957ca706d2bacbdbda"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPlayerEntity.cs",
+        "blob": "600afeb09e05dc524548da008f6768c3db2e1380",
+        "sha256": "5aef282d04cfb1a4e518ae408186f863dae589c26665cb053fb48a447f6bd8d0"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberWorldEntity.cs",
+        "blob": "83a5aef2afd3f7183894f2dea8822c6b6ef5bf7a",
+        "sha256": "00a19b5b5b567bd2466ba960387823279f923fa478da7d07ad6f69fc37e40176"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Events/BomberEvents.cs",
+        "blob": "b7b9bca075aefb9b81200f4b7c3ca9f5379e4e8f",
+        "sha256": "1a709a078bcffabbf3d30f5bac1668cdad844313404664f2182e3d8811506edf"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberRandom.cs",
+        "blob": "617b3cccc28aede9c4e64d8d59cfd632fd95f991",
+        "sha256": "152b6b75b5ed4f10951908618870a880099c6ca3981b1f33d807d4f8ebde4807"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberTelemetrySink.cs",
+        "blob": "b201454ee2cd02a5cda8a9452b190515d1d72720",
+        "sha256": "ee636dff0f92eca7a19c5c1ba3e9b9d8c058c2fc6c7e8b6e77091717114bc1f4"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberBombState.g.cs",
+        "blob": "5d9c17106da20f4fc79705263581d21e5a31d2d4",
+        "sha256": "e098a4578de6274aa55657ac4667c3c61be7ce199b3f76defc7a25d67e0be1bf"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberExplosionCell.g.cs",
+        "blob": "59797920f237b73f137f204ce5f513b09310c01a",
+        "sha256": "3faeccd75582537db90327772e1117acf1174653e2618c3782675106ee58fa76"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberHatPile.g.cs",
+        "blob": "ec9b3ff800210b2926370c7bcbdd0553ea82b66f",
+        "sha256": "c2669ea650e4aa20354837e422ae61e307d93e4f6cfda4a0b21ccaeba94d2031"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberMatchState.g.cs",
+        "blob": "8678c3a5ef1c181fa8a37c0064f7fd2d160509ab",
+        "sha256": "882a7dc245515a5b6fbcada3e35f30e2ade0a658c1ad210e16b54cbcaf28145a"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPickupItem.g.cs",
+        "blob": "b14281b878c858c0b5bbaeb9289bb05ce9722f78",
+        "sha256": "ed1ed157c8bf226755661e2d149c0886cf77faf12563e538a8c581420953154e"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPlayerState.g.cs",
+        "blob": "dff1a8155b07148bb224bd1871d63ae239b3e393",
+        "sha256": "11979c63c189808c285eefc2113409d0dedfda80c663ea0e8924f975dd677556"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Registry.g.cs",
+        "blob": "70e9bc9b27eac13be88cda863237e873072dd5d7",
+        "sha256": "d5dc465176e6c9e847a8a113ddd8587c46c83197fdf69ead3f3e704d689ccb61"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Sync.g.cs",
+        "blob": "7b1f72e63db16896b0a4057cff25b711a761b2d4",
+        "sha256": "8f19c9b7a5ebf9060ac4517b8ebf2e9af7db6e5a78480b861265f68b0be79754"
+      },
+      {
+        "revision": "5348635658fdb438f0ee939e8afe527acbc11f80",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/attribute-declarations.json",
+        "blob": "a8a12af40f1b0da22368f8efeaa75dc36598148a",
+        "sha256": "46935c9ca048ddc38807b21ca8be99a24c9b25863c7cf91ec83f300bbc58b8b1"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Commands/BomberCommands.cs",
+        "blob": "8b0f9ebdfa06219b5cdfedd8e41eec8ba1ff902b",
+        "sha256": "fba5692f99afd00a56263ac3d53e096c312aac9a6a98a5bc075f6a1d29f5f95c"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberBombState.cs",
+        "blob": "0d097e795377181701f783ce5d8e2f26376f7a80",
+        "sha256": "676019c21e6efec24a7235c71bccf1200367d0a847e28a3d9ecc864663fd2eb5"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberHatPile.cs",
+        "blob": "fcd88dba014a695ee19cfaa4601cbb322a444014",
+        "sha256": "a88f2305ebf09aee6c90c7caebd80ac6bd08daeeffc6ace982c9b21318e2d5cf"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberMatchState.cs",
+        "blob": "54fdbecf8eca85d5480c215b75407f8084c3925c",
+        "sha256": "87ffd1c9103c32141f314011e8912f4ce5cdf866ecc67fedc6635b8e39e67dc7"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPickupItem.cs",
+        "blob": "c6a36268b3ad73b3dc7f0c67da8afa5cda28530e",
+        "sha256": "e1fcdc384482e755f2882e4bfcb87b9d67b7a704c2033ab472f67f1c3548ff4f"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPlayerState.cs",
+        "blob": "78763bf7ff7cb82f664a504d9ab952b5197ae13b",
+        "sha256": "a53ab7efe9af1a626974001b210e0ba0a48cfa1586cefb193623e73b6b2dd89e"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberBombEntity.cs",
+        "blob": "a5731865bd85afaac07836639b0d4efcfc600fb8",
+        "sha256": "bb14de6675098a45995f374adce833d15194e55f4841b51bdd7c3b5bc346b162"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberHatPileEntity.cs",
+        "blob": "67bc5182b47cdc4c92d39bbb729b95adfb7ce108",
+        "sha256": "2be9f17e0c9f399d481199ccc425c6c9c7b166ec0f6bf07b58443788a86922c8"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPickupItemEntity.cs",
+        "blob": "94a6d8e13ac30ab33f4f4cb65eb358aecfa62a20",
+        "sha256": "e213a09b1617c39ec2f61c31eb08f67f9b65d8afb40d4f957ca706d2bacbdbda"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPlayerEntity.cs",
+        "blob": "600afeb09e05dc524548da008f6768c3db2e1380",
+        "sha256": "5aef282d04cfb1a4e518ae408186f863dae589c26665cb053fb48a447f6bd8d0"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberWorldEntity.cs",
+        "blob": "83a5aef2afd3f7183894f2dea8822c6b6ef5bf7a",
+        "sha256": "00a19b5b5b567bd2466ba960387823279f923fa478da7d07ad6f69fc37e40176"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Events/BomberEvents.cs",
+        "blob": "b74b4e09106a768912c25e67376ec6aa9f5e319a",
+        "sha256": "1c110392bed826d4ce831f35c74f86406cdc195c94ba558f5ae8ad8ebbc5b9e5"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberRandom.cs",
+        "blob": "617b3cccc28aede9c4e64d8d59cfd632fd95f991",
+        "sha256": "152b6b75b5ed4f10951908618870a880099c6ca3981b1f33d807d4f8ebde4807"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberTelemetrySink.cs",
+        "blob": "b201454ee2cd02a5cda8a9452b190515d1d72720",
+        "sha256": "ee636dff0f92eca7a19c5c1ba3e9b9d8c058c2fc6c7e8b6e77091717114bc1f4"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberBombState.g.cs",
+        "blob": "8e36931393104c96ed0a2cccc239c7e558839672",
+        "sha256": "c452ff9d42bc82d84853c5ccc2944b805fc60e5fe92a19b79446c4e49d4540a3"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberHatPile.g.cs",
+        "blob": "44a1ecf83119dcfcdfca28eca4192fbd04b54c16",
+        "sha256": "bff394c3c6beeed1187880b2a0bbc7c65f1fa332299b5b52e2b5c0b5d6974431"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberMatchState.g.cs",
+        "blob": "8678c3a5ef1c181fa8a37c0064f7fd2d160509ab",
+        "sha256": "882a7dc245515a5b6fbcada3e35f30e2ade0a658c1ad210e16b54cbcaf28145a"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPickupItem.g.cs",
+        "blob": "cfc44376294fad1199fbf6f1a8fe4faaf66b5258",
+        "sha256": "d96517fa3f8f3ed275df327830e3dc9f3e908ca81bd0af5b4c381656090c305b"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPlayerState.g.cs",
+        "blob": "40ff7c27f83cb6de2755ed2a8feeb352dcae572f",
+        "sha256": "582c95459c23a5c91b7bb159e567662ed38b6d021ded7fce76464696cbf90b2d"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Registry.g.cs",
+        "blob": "6cb78a2538fc6567fb6b411475357f1a0cf8799c",
+        "sha256": "9f5fe6135748341227ceea698d71387b5fcb22d193b616a0801f1eb4a03b60e3"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Sync.g.cs",
+        "blob": "23d93bb5d9338cf2af74185cacb947a10eb005aa",
+        "sha256": "0e9753777f475ed6787b62082928911bbb3df12ade61631ce807f701d4c75d4c"
+      },
+      {
+        "revision": "10782b63824125fc77fe25facb0455444fdac53d",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/attribute-declarations.json",
+        "blob": "e284ab337b71558426b52d9e8ceae5e2d1816407",
+        "sha256": "e589abe324c363673919e82f9777d9c5a29a0ba12604328972ab906b888c4e2f"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Commands/BomberCommands.cs",
+        "blob": "8b0f9ebdfa06219b5cdfedd8e41eec8ba1ff902b",
+        "sha256": "fba5692f99afd00a56263ac3d53e096c312aac9a6a98a5bc075f6a1d29f5f95c"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberBombState.cs",
+        "blob": "0d097e795377181701f783ce5d8e2f26376f7a80",
+        "sha256": "676019c21e6efec24a7235c71bccf1200367d0a847e28a3d9ecc864663fd2eb5"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberHatPile.cs",
+        "blob": "fcd88dba014a695ee19cfaa4601cbb322a444014",
+        "sha256": "a88f2305ebf09aee6c90c7caebd80ac6bd08daeeffc6ace982c9b21318e2d5cf"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberMatchState.cs",
+        "blob": "54fdbecf8eca85d5480c215b75407f8084c3925c",
+        "sha256": "87ffd1c9103c32141f314011e8912f4ce5cdf866ecc67fedc6635b8e39e67dc7"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPickupItem.cs",
+        "blob": "c6a36268b3ad73b3dc7f0c67da8afa5cda28530e",
+        "sha256": "e1fcdc384482e755f2882e4bfcb87b9d67b7a704c2033ab472f67f1c3548ff4f"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPlayerState.cs",
+        "blob": "78763bf7ff7cb82f664a504d9ab952b5197ae13b",
+        "sha256": "a53ab7efe9af1a626974001b210e0ba0a48cfa1586cefb193623e73b6b2dd89e"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberBombEntity.cs",
+        "blob": "a5731865bd85afaac07836639b0d4efcfc600fb8",
+        "sha256": "bb14de6675098a45995f374adce833d15194e55f4841b51bdd7c3b5bc346b162"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberHatPileEntity.cs",
+        "blob": "67bc5182b47cdc4c92d39bbb729b95adfb7ce108",
+        "sha256": "2be9f17e0c9f399d481199ccc425c6c9c7b166ec0f6bf07b58443788a86922c8"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPickupItemEntity.cs",
+        "blob": "94a6d8e13ac30ab33f4f4cb65eb358aecfa62a20",
+        "sha256": "e213a09b1617c39ec2f61c31eb08f67f9b65d8afb40d4f957ca706d2bacbdbda"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPlayerEntity.cs",
+        "blob": "600afeb09e05dc524548da008f6768c3db2e1380",
+        "sha256": "5aef282d04cfb1a4e518ae408186f863dae589c26665cb053fb48a447f6bd8d0"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberWorldEntity.cs",
+        "blob": "83a5aef2afd3f7183894f2dea8822c6b6ef5bf7a",
+        "sha256": "00a19b5b5b567bd2466ba960387823279f923fa478da7d07ad6f69fc37e40176"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Events/BomberEvents.cs",
+        "blob": "21d4d0c622a4d96fe028109c3d61cb5c3a1bc342",
+        "sha256": "c4717a09913ba8e0bc1053ef4c138d06668e577e48f76f169784e4c7a3716e16"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberRandom.cs",
+        "blob": "617b3cccc28aede9c4e64d8d59cfd632fd95f991",
+        "sha256": "152b6b75b5ed4f10951908618870a880099c6ca3981b1f33d807d4f8ebde4807"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberTelemetrySink.cs",
+        "blob": "b201454ee2cd02a5cda8a9452b190515d1d72720",
+        "sha256": "ee636dff0f92eca7a19c5c1ba3e9b9d8c058c2fc6c7e8b6e77091717114bc1f4"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberBombState.g.cs",
+        "blob": "8e36931393104c96ed0a2cccc239c7e558839672",
+        "sha256": "c452ff9d42bc82d84853c5ccc2944b805fc60e5fe92a19b79446c4e49d4540a3"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberHatPile.g.cs",
+        "blob": "44a1ecf83119dcfcdfca28eca4192fbd04b54c16",
+        "sha256": "bff394c3c6beeed1187880b2a0bbc7c65f1fa332299b5b52e2b5c0b5d6974431"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberMatchState.g.cs",
+        "blob": "8678c3a5ef1c181fa8a37c0064f7fd2d160509ab",
+        "sha256": "882a7dc245515a5b6fbcada3e35f30e2ade0a658c1ad210e16b54cbcaf28145a"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPickupItem.g.cs",
+        "blob": "cfc44376294fad1199fbf6f1a8fe4faaf66b5258",
+        "sha256": "d96517fa3f8f3ed275df327830e3dc9f3e908ca81bd0af5b4c381656090c305b"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPlayerState.g.cs",
+        "blob": "40ff7c27f83cb6de2755ed2a8feeb352dcae572f",
+        "sha256": "582c95459c23a5c91b7bb159e567662ed38b6d021ded7fce76464696cbf90b2d"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Registry.g.cs",
+        "blob": "6cb78a2538fc6567fb6b411475357f1a0cf8799c",
+        "sha256": "9f5fe6135748341227ceea698d71387b5fcb22d193b616a0801f1eb4a03b60e3"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Sync.g.cs",
+        "blob": "23d93bb5d9338cf2af74185cacb947a10eb005aa",
+        "sha256": "0e9753777f475ed6787b62082928911bbb3df12ade61631ce807f701d4c75d4c"
+      },
+      {
+        "revision": "b643e72b420227f0f8ba6a8d738fbde0dfc8a93b",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/attribute-declarations.json",
+        "blob": "e284ab337b71558426b52d9e8ceae5e2d1816407",
+        "sha256": "e589abe324c363673919e82f9777d9c5a29a0ba12604328972ab906b888c4e2f"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberBombState.cs",
+        "blob": "643b2ed72f802580b50e121c3e3cb8318bf8639f",
+        "sha256": "f73a3a24a931bc502751d801896ba9727e4271572420856b75d954cea1a7b8ac"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberHatPile.cs",
+        "blob": "bf1efb141d3a16e88e0d95847e1d8a16847224b7",
+        "sha256": "c648281d2dc8139bed6fff05a5727e86482f27c09b290f7b0305f2c11b17d8e7"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberMatchState.cs",
+        "blob": "54fdbecf8eca85d5480c215b75407f8084c3925c",
+        "sha256": "87ffd1c9103c32141f314011e8912f4ce5cdf866ecc67fedc6635b8e39e67dc7"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPickupItem.cs",
+        "blob": "69b0047a125f2d7deb53707493991e3733420c40",
+        "sha256": "fc0811a2eec08e032073be9cc3a2ba06f45e56725c0d62b9c482622d57418f87"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPlayerState.cs",
+        "blob": "de939b6e571464f23f8bab269d58dd8feac5ae73",
+        "sha256": "f352cbea1642806cde7f51fa1043993ac0a958334a4877eeda12404edddf90cb"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberBombEntity.cs",
+        "blob": "48ee863e07d54f90c99fbf80f939dfabf4989bff",
+        "sha256": "9f9000ce190e585b66313be6cf6bbe17e857d352658347d1b6684a328dd50da5"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberHatPileEntity.cs",
+        "blob": "90c9414a7e184277093a7d432ef73f804a664200",
+        "sha256": "9b76092a93aac6e9902f2c6a1c2532dfc364a70530785cf78c5724b904fec57b"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPickupItemEntity.cs",
+        "blob": "9810789e6bd6801b25b0cbe6d5df5c59999a613d",
+        "sha256": "dd443ce517b2d7a22189ed8a8bd1e84f5b4d356fac9482972dc27539c226e384"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPlayerEntity.cs",
+        "blob": "2676ec6a59879bd5aa2206563b7e0b26ef86061a",
+        "sha256": "044389df55b87376c4512015fb4d47b3fbc22b6022970f33164fdc136b08894f"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberWorldEntity.cs",
+        "blob": "83a5aef2afd3f7183894f2dea8822c6b6ef5bf7a",
+        "sha256": "00a19b5b5b567bd2466ba960387823279f923fa478da7d07ad6f69fc37e40176"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Events/BomberEvents.cs",
+        "blob": "90f81b8fee7895450ef5a0b0b34dd03eaa37b433",
+        "sha256": "639914c51f81e09286906772e7c5a68188c136cea53f8e28c692b704fbf0d9bc"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberRandom.cs",
+        "blob": "617b3cccc28aede9c4e64d8d59cfd632fd95f991",
+        "sha256": "152b6b75b5ed4f10951908618870a880099c6ca3981b1f33d807d4f8ebde4807"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberTelemetrySink.cs",
+        "blob": "b201454ee2cd02a5cda8a9452b190515d1d72720",
+        "sha256": "ee636dff0f92eca7a19c5c1ba3e9b9d8c058c2fc6c7e8b6e77091717114bc1f4"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberBombEntity.Template.g.cs",
+        "blob": "41fdbcfa2d8665e7304426adf0ecc12f8a387743",
+        "sha256": "ef579fe8ace04cd55db680291938a4b8fb34ad29387c1238de94d425c6bab257"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberBombState.g.cs",
+        "blob": "3bdfa604b7c62de404261856c09a0f48ef378278",
+        "sha256": "a11a4c78d70ba8b836d655e25ad50877fe5b6d1d6660e5546329ebeca97de3e0"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberHatPile.g.cs",
+        "blob": "be7da85f85117050c574e0a18340b065cbc120fd",
+        "sha256": "61bfd1f910a903c7d0ee6f0546b8ed8b3c5ed67a2bfe289941282a45d78e7597"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberHatPileEntity.Template.g.cs",
+        "blob": "916dd06a74ebd04c22f967181305e5f8c141f40d",
+        "sha256": "fab06ed391c574110b0e9e80d3141c369f5093df27951b12c6f38c3af9a088f7"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberMatchState.g.cs",
+        "blob": "3ff140e126149c26ecd6b92e419f936fa8f60f27",
+        "sha256": "0061788be3826449d4b8507aca87e947e3be52a420e9b981639c1317386be58e"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPickupItem.g.cs",
+        "blob": "3a1278226511ba7f49e3d86fcf654e99ffb8b760",
+        "sha256": "1bbb171484170b66d2f2d9e816752f405aebf36d4aa47c6e6d893c95c3fb6192"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPickupItemEntity.Template.g.cs",
+        "blob": "a0ad725760002514e4d95b99837d175fc91f9b2e",
+        "sha256": "e74ffe54ee17e7d3c262e7089c28b0afe757827f52a7fcd712a7904295c0491f"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPlayerEntity.Template.g.cs",
+        "blob": "1f05587295fdbfc0d08e99bc59c2cbaf18ca3f57",
+        "sha256": "a4239e7c68a15818e00385ab8f6f59e4af62631880b8716bcade6fcad622c182"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberPlayerState.g.cs",
+        "blob": "0ec6c322c982e28efad056247c30b2d63cef3cf6",
+        "sha256": "0f80e48ce0a9d23c888033efceca8435f996cd31a92434eead4a3a3e799b1a6c"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/BomberWorldEntity.Template.g.cs",
+        "blob": "dcd30a4e5e49178505380a6fbe198568349690e8",
+        "sha256": "88e27f1a871b7537e66701f7aa5ea972568ddbeaf43f3935e3a71f02fa78d11b"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Registry.g.cs",
+        "blob": "91a23d84fb0d427d943d6e86ae6eeb763e22c8ab",
+        "sha256": "6796e6b1cb4204a8dda4589348abe987652a05f23cbd1ab5141b172aff7f249c"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/Lumio.Game.ServerGameplay.Sync.g.cs",
+        "blob": "ca37af3970bedd97e66b89fa3a04198bbb0306c1",
+        "sha256": "f1907f2bc5dc23fc7c78e52d6946dd8e68944607583333c2a9f804696df45a60"
+      },
+      {
+        "revision": "4cd66dfaddc75addcca3f8bf82d4658daead1da1",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/generated/server/attribute-declarations.json",
+        "blob": "e7d556d75fc75b740d24d24bdadb7cdef601e05a",
+        "sha256": "896d8f768ab31ed63715806ae032bc2a1a6779914fd7ae17cd1ffd9f7666c118"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberBombState.cs",
+        "blob": "643b2ed72f802580b50e121c3e3cb8318bf8639f",
+        "sha256": "f73a3a24a931bc502751d801896ba9727e4271572420856b75d954cea1a7b8ac"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberHatPile.cs",
+        "blob": "bf1efb141d3a16e88e0d95847e1d8a16847224b7",
+        "sha256": "c648281d2dc8139bed6fff05a5727e86482f27c09b290f7b0305f2c11b17d8e7"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberMatchState.cs",
+        "blob": "54fdbecf8eca85d5480c215b75407f8084c3925c",
+        "sha256": "87ffd1c9103c32141f314011e8912f4ce5cdf866ecc67fedc6635b8e39e67dc7"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPickupItem.cs",
+        "blob": "69b0047a125f2d7deb53707493991e3733420c40",
+        "sha256": "fc0811a2eec08e032073be9cc3a2ba06f45e56725c0d62b9c482622d57418f87"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Components/BomberPlayerState.cs",
+        "blob": "de939b6e571464f23f8bab269d58dd8feac5ae73",
+        "sha256": "f352cbea1642806cde7f51fa1043993ac0a958334a4877eeda12404edddf90cb"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberBombEntity.cs",
+        "blob": "48ee863e07d54f90c99fbf80f939dfabf4989bff",
+        "sha256": "9f9000ce190e585b66313be6cf6bbe17e857d352658347d1b6684a328dd50da5"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberHatPileEntity.cs",
+        "blob": "90c9414a7e184277093a7d432ef73f804a664200",
+        "sha256": "9b76092a93aac6e9902f2c6a1c2532dfc364a70530785cf78c5724b904fec57b"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPickupItemEntity.cs",
+        "blob": "9810789e6bd6801b25b0cbe6d5df5c59999a613d",
+        "sha256": "dd443ce517b2d7a22189ed8a8bd1e84f5b4d356fac9482972dc27539c226e384"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberPlayerEntity.cs",
+        "blob": "2676ec6a59879bd5aa2206563b7e0b26ef86061a",
+        "sha256": "044389df55b87376c4512015fb4d47b3fbc22b6022970f33164fdc136b08894f"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/EntityTypes/BomberWorldEntity.cs",
+        "blob": "83a5aef2afd3f7183894f2dea8822c6b6ef5bf7a",
+        "sha256": "00a19b5b5b567bd2466ba960387823279f923fa478da7d07ad6f69fc37e40176"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Events/BomberEvents.cs",
+        "blob": "90f81b8fee7895450ef5a0b0b34dd03eaa37b433",
+        "sha256": "639914c51f81e09286906772e7c5a68188c136cea53f8e28c692b704fbf0d9bc"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberRandom.cs",
+        "blob": "617b3cccc28aede9c4e64d8d59cfd632fd95f991",
+        "sha256": "152b6b75b5ed4f10951908618870a880099c6ca3981b1f33d807d4f8ebde4807"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/Bomber/Contracts/Ports/IBomberTelemetrySink.cs",
+        "blob": "b201454ee2cd02a5cda8a9452b190515d1d72720",
+        "sha256": "ee636dff0f92eca7a19c5c1ba3e9b9d8c058c2fc6c7e8b6e77091717114bc1f4"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberBombEntity.Template.g.cs",
+        "blob": "2704870e1e5ad98da338dcbc08db2dbc7bc49317",
+        "sha256": "5df0d1adb734ba5b494dbb3f87a453c1fea91c262e3ba1fec645368af1c62500"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberBombState.g.cs",
+        "blob": "0907676520f33793d34820513e39f107136d79dc",
+        "sha256": "292a72995a796fb0f8c60090bc3c7bb45b6de48a96de3b70f62602b996cdea18"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberHatPile.g.cs",
+        "blob": "9c730b81bf63fdd256b5ddef15b6a1570a0b7cb9",
+        "sha256": "c258a9fb32f9b9d76d211e2b0eba2c07305679014387aece43f1f1e69250246f"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberHatPileEntity.Template.g.cs",
+        "blob": "76ccd0f3f0a5bcedbe89fa946f98917bd0fe4fdf",
+        "sha256": "670cf0903872e9bf65aae020645e78f117b7a33e0cc631c6f36f627ed8b5150b"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberMatchState.g.cs",
+        "blob": "22db41ff5b7d6f676181e32e406f81ba074507be",
+        "sha256": "694a8428d234f63512a70985cdee3883b3b3483bd7c4ac441ef2b7e48e74a1aa"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberPickupItem.g.cs",
+        "blob": "7944ed2de17c52665708cb9be790c2c9ad1280e8",
+        "sha256": "bddd623bdc897712dad4c2d3fc5bbcdfd86f5da6de022942a6142c671b5353e3"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberPickupItemEntity.Template.g.cs",
+        "blob": "36c7c4080af9685e4c6933658fce3ed0cb7b9afd",
+        "sha256": "42d4bb4b960816ac500b5364886f717e4fae9fdba786806398c12ce1442fcbe8"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberPlayerEntity.Template.g.cs",
+        "blob": "b6abf0868bf3460b06c76da77004eff184b39e35",
+        "sha256": "8337836fb33eba25d60239b8668fc0eac49d6f8c7852062f2cec241e1535bd86"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberPlayerState.g.cs",
+        "blob": "746754f4cc2354b26b441492c67ebace7b7a506b",
+        "sha256": "b6d269770538b3bb56bcdd845a47619cf45440f220f23e7e787891c480a27f4c"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/BomberWorldEntity.Template.g.cs",
+        "blob": "bb1db91f438e43c4af0be6d5e3f0302247571e86",
+        "sha256": "3dc531a2fc6e9ef256c5bfe151bc6d6a72e28dc071618819b645e041ec536199"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/ChatComponent.g.cs",
+        "blob": "2c7b9f2f293ad4492f6efffd9fbd8fbc8b74785b",
+        "sha256": "9462b7e8b94ddcc42fbc435bb8d814d7d7ae2d0756607dd57113941f45c627c7"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/GeneratedAbilityRegistry.g.cs",
+        "blob": "7e08eff370984b98b811ea4d719b4a85e8702189",
+        "sha256": "43ea344cd9194b3a054a5fae4b5c7c1cb5ab1d1e84e3f3479e830202f663988b"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/GeneratedEffectRegistry.g.cs",
+        "blob": "705ea07adfbdf25251a8a3b7f6432ec2f0853ea6",
+        "sha256": "8f0fe13b03d14d90e31a55fb92a863886896d01aef8f29d911155ed535569e0b"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/IdentityComponent.g.cs",
+        "blob": "19b397b83a4d734ec494b96b8077eea27371aba5",
+        "sha256": "7888fd2a44e3dd0fbbb0e8a0d09a82150063e198fd9308777782991feef51c92"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/Lumio.Game.ServerGameplay.Registry.g.cs",
+        "blob": "f657dde5d01b4cda5274673dc7a4bad002dcaa80",
+        "sha256": "05e8833b75a7a3fc830537e1c8a39746c279125e9135021894c772f03d1f6cec"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/Lumio.Game.ServerGameplay.Sync.g.cs",
+        "blob": "5a5d10b21d32597fadc3673af0784432181df8cd",
+        "sha256": "67f8b08f1da6da3119bba56183784693f56c36717ca91de7a26dda19b4221e9d"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/PlayerEntity.Template.g.cs",
+        "blob": "bfe47ad7d20d0f9716fcb6f91d1c9d1c18548213",
+        "sha256": "7eb7e582113b206b2a82b18c01898231204aed8824fbf6324403387163282589"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "modules/server-gameplay/src/Lumio.Game.ServerGameplay/generated/server/attribute-declarations.json",
+        "blob": "63d16482614d05e0f6effe5a267eb642486acce0",
+        "sha256": "93d7a1cf8a9099cbd2fa072d56e43290e161ec36354f0665a9959b04b2bc2318"
+      },
+      {
+        "revision": "fab6f08ebe717614c04383a71d1e25ea6c071711",
+        "path": "docs/specs/bomber/stage0-kernel-contract.md",
+        "blob": "1ca520c5a8b4e2944342af1023d3b680f09d2a1d",
+        "sha256": "8778e0b40c76a4d6b6088e557377067871fcf7081c8486dbcd7f77288f1aad18"
+      }
+    ]
+  },
+  "pendingDomains": [
+    "B135",
+    "F",
+    "P",
+    "T",
+    "effect-type",
+    "release-decision",
+    "successor-binding",
+    "tag"
+  ],
+  "diagnostics": [],
+  "diagnosticCount": 0,
+  "diagnosticsTruncated": false
+}

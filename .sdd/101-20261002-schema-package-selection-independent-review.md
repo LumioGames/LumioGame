@@ -1,0 +1,12 @@
+# Schema package selection — narrow independent review
+
+Reviewer: client_composition. Scope: five Root Tools files, compared against the exact Resume6 frozen read index and its hash-verified source paths. **PASS for this narrow selection change; no blocking finding.** This does not approve a full Engine release or change the ledger's pending product domains.
+
+Reviewed files: `schema-identity-read.mjs`, `schema-identities.test.mjs`, `schema-identity-generated.test.mjs`, `schema-identity-growth.test.mjs`, `verify-schema-identities.mjs`, all under `games/101-bomber/Tools`. Exact reviewed working hashes are recorded in `games/101-bomber/.run/20261002-client-session-integration/schema-selector-review-inputs.json`.
+
+- Pinned manifest SHA256 `031d95e028e4a71319cdaaeb17820fc882d3dbef2df3a65b22683564d819a3d7` and original nupkg SHA256 `eda5909ecaf57e447ccb3b3eab3d53f6202e302cc699aae74bc90e76204677c0` are byte-for-byte unchanged from frozen Resume6. The selected location changes only where those same bytes are read; both admission hashes still run in `observeSnapshot`.
+- Only logical `Engine/` inputs are redirected. Gameplay source/generated reads remain under the audited game root. An explicit absent package does not fall back. The environment selection is captured once by `readObservation`, reused for both snapshots, and their complete path/hash sets still compare before any observation returns.
+- CLI preserves canonical logical evidence paths and separately reports the selected absolute package directory. The independent actual CLI result reports the expected `sdk-consumer-06` directory with zero diagnostics and supportedInventoryConsistent=true.
+- Mutation fixtures retain their own package inputs: child CLI invocations clear the ambient selection for temporary repositories, and the one direct fixture observation explicitly passes engineRoot:null. The three test readers now obtain the same selected input bytes rather than re-reading the default Engine directory. No audit assertions were removed or weakened by this delta.
+
+Independent execution: `schema-selector-independent-01.log/.exit` ran the two affected generated/growth suites, **17/17 pass, 0 fail, 0 skip, exit0**. `schema-selector-cli-independent-01.json/.exit` ran the real production CLI against Root with the fixed bootstrap SHA, **exit0, zero diagnostics**. These files are in the same `.run/20261002-client-session-integration` directory. Root's broader 385/385 result is separate author execution, not relabeled as this reviewer's run.

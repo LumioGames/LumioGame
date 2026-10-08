@@ -1,0 +1,17 @@
+# Complete15 私有Game消费身份独审
+
+裁决：**ACCEPT_PRIVATE_COMPLETE15_GAME_CONSUMER_AND_ON_V9_BYTES_REAL_GAME_BROWSER_PENDING**。允许准备该精确普通/on/onV9私有诊断消费；没有游戏运行、首屏、重连、移动或性能改善验收结论，未更新正式产品pins/ledger。
+
+包级资格沿独立结果a347eec0…，实际complete15 manifest3b049071…、SDKec1f0781…、Nativec164ef07…、WASMa5aab23a…；并未借14的载荷身份。Game作者封件27b856b2…/result5cbd4d4e…，本审实读30项封存与原件无漂移。
+
+6950项独立只读检查通过：4088冻结私有输入字节不变，原Lifecycle97f275保留；四次正常C#构建/发布原始退出均0并声明new15选择。SDK恢复的actualarchive/SHA512及server、client、browser Gameplay实际compile copy一致；browser-host正常使用官方web/replica20，未把独立SDK NS2和web图字节强制相等。静态PE闭包14/14/11/22/30零引用缺口，Bot使用原官方28加clientGameplay与单plugin，不以CopyLocal-off的单DLL目录冒充全闭包。未执行程序集、Native或浏览器。
+
+五个实际Gameplay PE与各自portable PDB的CodeView一致，612文档checksum实核，其中610物理源码与2实际PDB嵌入生成源码fallback；独立解码PDB实际共有4个嵌入文档（另2已存在物理源）。新WebCIL实际22个，整份托管metadata与各自实际输入PE相等，20个引擎输入来源逐字节匹配complete15官方web闭包，2个Game输入匹配本次新build。该检查不扩称浏览器实际boot或Native gate运行。官方Runtime仍DebugType=none，无其新source-PDB资格，不引用旧PDB代替。
+
+普通、on、onV9各835个实际文件，完整路径集合相同，每层834个非main文件逐字节相同。普通main SHA 3844b096b3200ce8031d33ffdc837cd1d00f377e7b60e1f046213d054d650a99；on SHA 7e9a130cfc0ce4df750df650932dca7b8395c12c5e55f63b15a294ee6dbb551d；onV9 SHA 922d1c69773517f2c180d49498ff5ac3adfe8375a00da52c639f596139e64512。on只有唯一dotnet.create锚点在create前启用env1；V9为已审c152cb03…生成器的精确prefix和三seam，按整字节完整逆还原V9→on→普通。没有改旧世界/影子状态/配额/调用协议。
+
+边界：四个C#步骤使用RestoreLockedMode=false，不宣称严格锁恢复；PresentationJS/CSS继承已审14的同字节输入，不宣称新UI build/typecheck。测量与诊断桶有开销及inclusive重叠，不能相加或声称纯Native耗时/屏幕FPS。新15私有scene的真实Running同workload窗口仍待现场。
+
+行政错误保留而不作生产RED：首reader把Document的slash与backslash当不同文件，并错误要求browser-host web图字节等于SDK NS2；补02只纠正读器并重核全部；首embedded reader错误把2个fallback当全部embedded metadata数。02实际结果正确写入，但控制台回显旧01路径/hash；新只读回读更正03给出正确资格身份，原01/02都未覆盖。
+
+权威新结果：C:/Work/LumioGames/LumioGame/.run/candidate15-private-diagnostic-identity-audit-01/game-qualification-02.json，SHA256 aff8b76c0319e3ab954c46d65d354dcd44a3988ced4f66bdaeaf19821c3271e6；实际PE结果 SHA1d7de22a…，独立嵌入解码 SHA1d621115…。未启动服务/容器/页面，未修改共享Gameplay、Runtime、pins或ledger。

@@ -1,0 +1,108 @@
+{
+  "table": "skills",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "slot",
+      "ordinal": 2,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "slot"
+    },
+    {
+      "name": "is_combo",
+      "ordinal": 3,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "is combo"
+    },
+    {
+      "name": "candy_weight",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "candy weight"
+    },
+    {
+      "name": "bomb_kind_code",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "bomb kind code"
+    },
+    {
+      "name": "removes_protection",
+      "ordinal": 6,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "removes protection"
+    },
+    {
+      "name": "trigger",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "trigger"
+    },
+    {
+      "name": "effect_key",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "effect key"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+table: regression_seeds
+schema: schemas/regression_seeds.json
+
+| id     | name  | seed | source_status                  | source_ref                     |
+| ------ | ----- | ---- | ------------------------------ | ------------------------------ |
+| 125001 | seed1 | 101  | first-round regression fixture | docs/specs/bomber/design.md#15 |
+
+| 125002 | seed2 | 202  | first-round regression fixture | docs/specs/bomber/design.md#15 |
+
+| 125003 | seed3 | 303  | first-round regression fixture | docs/specs/bomber/design.md#15 |
+
+| 125004 | seed4 | 404  | first-round regression fixture | docs/specs/bomber/design.md#15 |
+
+| 125005 | seed5 | 505  | first-round regression fixture | docs/specs/bomber/design.md#15 |

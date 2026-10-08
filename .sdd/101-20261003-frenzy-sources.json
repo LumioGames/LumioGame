@@ -1,0 +1,56 @@
+{
+  "status": "production-author-source-ready-uncompiled",
+  "officialManifestSha256": "8f05d11aa64baae75e489b859f82a1e57ae300623769ba70f1eca778b8fa51b4",
+  "expectedStaticCases": 25,
+  "actualNewMatrixRunCount": 0,
+  "files": [
+    {
+      "path": "games/101-bomber/Gameplay/BomberFrenzy.cs",
+      "sha256": "5f36baaabf43d30b80482beb234df9ce93e81aa8c9e75f94107095815cf25385"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/BomberFrenzy.Server.cs",
+      "sha256": "d35b6715f48626828f2b7658f532a68e5f4ec5540ec23b7e079cc021ba4eac55"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/BomberHealthBusiness.Server.cs",
+      "sha256": "7a7d5a7d3c2120ba643e5d004cebdd603231433615c4fdbeaf335f523f2e349b"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Effects/BomberHealEffect.Server.cs",
+      "sha256": "ae3c9ed208f63b7548be3287c5790677de09144ee826d858cc99dbc53431e1ab"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Abilities/PickupAbility.cs",
+      "sha256": "2d06602876e74c37d5da28dde5333804bd49544a2a0fb0b25bd4ce34b444e9a3"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Abilities/PlaceBombAbility.cs",
+      "sha256": "cfeb7bfedbde14a60e0520917de6620b44a44c64216fcd737b6f008613a799ce"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Abilities/PlaceBombAbility.Server.cs",
+      "sha256": "494f46c33c620d642ee3ad9ca1128f1d284ca20ef5576bfd20700d33e1511431"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Abilities/PlaceBombAbility.Client.cs",
+      "sha256": "a9011932eee1ce74dd9fe877c5558a7fb9e008a7cbe38cfa16c863a8633301d8"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/BomberInventory.Server.cs",
+      "sha256": "4a676c5d1325f6a9f0069a6c4b09cf33975ae7e872f3e2fd2fa9c48f783c952e"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/BomberTypes.cs",
+      "sha256": "420fb37056f7f838bde254ad2d83c1fee9239c2ac7cbdf166ecd9d839ce672ca"
+    },
+    {
+      "path": "games/101-bomber/Gameplay/Components/Bomber/BomberHealthFacts.Server.cs",
+      "sha256": "b11088db96b7bd4593210c242e2e688ce9feb5c9e3ffaaaec9646d3f418a5248"
+    },
+    {
+      "path": "games/101-bomber/Server/Tests/Gameplay/BomberFrenzyProductionTests.cs",
+      "sha256": "3ba161aab33bb5975eea7610ef4e4d8f0ce9d098c13b10444af0e8626042c737"
+    }
+  ]
+}

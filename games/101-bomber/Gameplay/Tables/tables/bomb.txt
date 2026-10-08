@@ -1,0 +1,6 @@
+table: bomb
+schema: schemas/bomb.json
+
+| id     | name    | fuse_ms | danger_ms | damage_points | kick_speed_milli | max_kicks_per_player_tick | capacity_return_phase | chain_damage_cap_attribute | moving_bomb_chain_reaction | source_status | source_ref                     |
+| ------ | ------- | ------- | --------- | ------------- | ---------------- | ------------------------- | --------------------- | -------------------------- | -------------------------- | ------------- | ------------------------------ |
+| 104001 | default | 2100    | 400       | 2             | 8000             | 1                         | LeaveFuse             | HealthPoints               | true                       | design        | docs/specs/bomber/design.md#15 |

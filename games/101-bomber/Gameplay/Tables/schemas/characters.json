@@ -1,0 +1,91 @@
+{
+  "table": "characters",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "bound_skill_id",
+      "ordinal": 2,
+      "type": "ref",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "refTarget": "skills",
+      "description": "bound skill id"
+    },
+    {
+      "name": "bound_level",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "bound level"
+    },
+    {
+      "name": "bound_slot",
+      "ordinal": 4,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "bound slot"
+    },
+    {
+      "name": "bound_max_level",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "bound max level"
+    },
+    {
+      "name": "base_attributes_profile",
+      "ordinal": 6,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "base attributes profile"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

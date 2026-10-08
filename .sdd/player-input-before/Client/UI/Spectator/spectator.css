@@ -1,0 +1,53 @@
+body { font-family: system-ui, sans-serif; margin: 1rem; }
+#status { margin: 0.5rem 0; }
+canvas { border: 1px solid #333; background: #111; display: block; }
+/* Block-id legend: the page never receives the block catalog, so the swatches
+   are what makes the derived colours readable. */
+#legend ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0.5rem 0; padding: 0; font-size: 0.85rem; }
+#legend li { display: flex; align-items: center; gap: 0.35rem; }
+#legend i { width: 0.9rem; height: 0.9rem; border: 1px solid #333; display: inline-block; }
+
+/* Block view (?view=blocks): full-window WebGL2 canvas, the 2D grid and HUD on top. */
+#blocks, #blocks-hud, #blocks-cams { display: none; }
+body.blocks-view { margin: 0; overflow: hidden; background: #87b8eb; }
+body.blocks-view #blocks { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; cursor: grab; touch-action: none; }
+body.blocks-view #field { position: fixed; right: 8px; bottom: 44px; width: 192px; height: 144px; opacity: 0.85; z-index: 2; }
+body.blocks-view h1, body.blocks-view #enter, body.blocks-view #legend { display: none; }
+body.blocks-view #status { position: fixed; right: 8px; top: 8px; margin: 0; padding: 4px 8px; background: rgba(0,0,0,.55); color: #fff; border-radius: 4px; z-index: 2; font: 12px ui-monospace, Menlo, monospace; }
+body.blocks-view #blocks-hud { display: block; position: fixed; left: 8px; top: 8px; padding: 6px 9px; background: rgba(0,0,0,.55); color: #fff; border-radius: 4px; white-space: pre; pointer-events: none; font: 12px/1.4 ui-monospace, Menlo, monospace; z-index: 2; }
+body.blocks-view #blocks-cams { display: flex; position: fixed; left: 8px; right: 208px; bottom: 8px; flex-wrap: wrap; gap: 4px; z-index: 2; }
+#blocks-cams button { font: 12px ui-monospace, Menlo, monospace; padding: 3px 7px; border: 0; border-radius: 3px; background: rgba(0,0,0,.55); color: #fff; cursor: pointer; }
+#blocks-cams button.on { background: #e8a33d; color: #000; }
+
+body.player-page { margin: 0 auto; padding: 16px; max-width: 860px; box-sizing: border-box; background: #f4f6f7; color: #202628; }
+.player-page h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: 0; }
+.player-page #status { display: inline-block; min-width: 150px; font-size: 14px; }
+.player-page #field { width: min(100%, 68vh); height: auto; aspect-ratio: 1; margin: 12px auto; box-sizing: border-box; background: #38493e url('./game-assets/Blocks/textures/grass_top.png'); image-rendering: pixelated; }
+.player-page #legend { display: none; }
+.player-page > button, .player-page #player-controls button { min-height: 40px; padding: 8px 14px; border: 1px solid #a5b2b4; border-radius: 4px; background: #fff; color: #202628; font: inherit; cursor: pointer; }
+.player-page #player-controls button:disabled { opacity: .45; cursor: default; }
+.player-page #player-controls button:active:not(:disabled) { background: #dcece7; }
+.player-page #player-info { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; line-height: 1.5; }
+.player-page #player-controls { display: flex; justify-content: center; align-items: center; gap: 32px; }
+.direction-pad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; }
+.direction-pad button { width: 44px; height: 44px; padding: 0; font-size: 24px; touch-action: none; user-select: none; }
+.direction-pad [data-direction="1"] { grid-column: 2; }
+.direction-pad [data-direction="4"] { grid-column: 1; grid-row: 2; }
+.direction-pad [data-direction="3"] { grid-column: 2; grid-row: 2; }
+.direction-pad [data-direction="2"] { grid-column: 3; grid-row: 2; }
+.player-page [data-bomb] { background: #b93a4b; border-color: #b93a4b; color: white; min-height: 54px; }
+@media (max-width: 480px) { body.player-page { padding: 10px; } .player-page #player-controls { gap: 22px; } }
+
+body.presentation-mode { margin: 0; padding: 0; max-width: none; overflow: hidden; background: #ddf1f7; }
+#presentation { position: fixed; inset: 0; width: 100%; height: 100dvh; overflow: hidden; }
+#presentation[hidden] { display: none; }
+.presentation-mode > h1, .presentation-mode #field, .presentation-mode #legend,
+.presentation-mode #player-info, .presentation-mode #enter { display: none; }
+.presentation-mode #game-stage canvas { border: 0; background: transparent; }
+.presentation-mode #status { position: fixed; z-index: 10; top: 16px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); background: #fff; color: #202628; padding: 6px 12px; border-radius: 4px; overflow-wrap: anywhere; }
+.presentation-mode #status[hidden] { display: none; }
+.presentation-mode #player-controls { position: fixed; bottom: 86px; left: 14px; z-index: 4; }
+.presentation-mode #player-controls > [data-bomb], .presentation-mode #player-controls > [data-skill] { display: none; }
+.presentation-mode .sel-sub { display: none; }
+.presentation-mode .terrain-pending #game-stage { visibility: hidden; }
+@media (pointer: fine) { .presentation-mode #player-controls { display: none; } }

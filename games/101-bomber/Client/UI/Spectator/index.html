@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumio Spectator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./spectator.css">
+  <link rel="stylesheet" href="./presentation/presentation.css">
+  <!--
+    .NET 10 fingerprints the wasm runtime files: `_framework/` holds
+    `dotnet.<fingerprint>.js`, never a plain `dotnet.js`. The unfingerprinted
+    name exists only as a route in the StaticWebAssets endpoint manifest, which
+    a plain static file server does not read — so `main.js`'s
+    `import("./_framework/dotnet.js")` can only resolve through an import map.
+    These two elements are the SDK's markers: `OverrideHtmlAssetPlaceholders`
+    rewrites the preload link and fills the empty import map at build/publish
+    with `"./_framework/dotnet.js" -> "./_framework/dotnet.<fingerprint>.js"`.
+    Leave them empty here; the published copy carries the real values.
+  -->
+  <link rel="preload" id="webassembly" />
+  <script type="importmap"></script>
+</head>
+<body>
+  <div id="presentation" hidden>
+    <div id="game-stage"></div>
+    <div id="game-labels"></div>
+    <div id="game-hud"></div>
+  </div>
+  <h1>Lumio Spectator</h1>
+  <p id="status">starting</p>
+  <button id="enter" type="button">Enter game</button>
+  <div id="player-info" hidden><span id="player-state"></span><span id="player-self"></span></div>
+  <canvas id="field" width="640" height="480"></canvas>
+  <div id="player-controls" hidden>
+    <div class="direction-pad">
+      <button type="button" data-direction="1" aria-label="Move up" title="Move up" disabled>&#8593;</button>
+      <button type="button" data-direction="4" aria-label="Move left" title="Move left" disabled>&#8592;</button>
+      <button type="button" data-direction="3" aria-label="Move down" title="Move down" disabled>&#8595;</button>
+      <button type="button" data-direction="2" aria-label="Move right" title="Move right" disabled>&#8594;</button>
+    </div>
+    <button type="button" data-bomb disabled>Place bomb</button>
+    <button type="button" data-skill title="Use active skill" disabled>Skill</button>
+  </div>
+  <!-- Block id -> swatch, built at runtime from the ids actually on screen. -->
+  <div id="legend"></div>
+  <!-- ?view=blocks: the same voxel world drawn by the engine's WebGL2 block renderer (ADR-124). -->
+  <canvas id="blocks"></canvas>
+  <div id="blocks-hud"></div>
+  <div id="blocks-cams"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

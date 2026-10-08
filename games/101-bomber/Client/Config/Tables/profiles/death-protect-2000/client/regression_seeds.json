@@ -1,0 +1,42 @@
+{
+  "contentFingerprint": "e277fc941395bb7e91ea43c50919ab0382a26824268ec0fd227a90edd3df5e37",
+  "rows": [
+    {
+      "id": 125001,
+      "name": "seed1",
+      "seed": 101,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "first-round regression fixture"
+    },
+    {
+      "id": 125002,
+      "name": "seed2",
+      "seed": 202,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "first-round regression fixture"
+    },
+    {
+      "id": 125003,
+      "name": "seed3",
+      "seed": 303,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "first-round regression fixture"
+    },
+    {
+      "id": 125004,
+      "name": "seed4",
+      "seed": 404,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "first-round regression fixture"
+    },
+    {
+      "id": 125005,
+      "name": "seed5",
+      "seed": 505,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "first-round regression fixture"
+    }
+  ],
+  "table": "regression_seeds",
+  "target": "C"
+}

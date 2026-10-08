@@ -1,0 +1,21 @@
+{
+  "name": "@lumio/bomber-presentation",
+  "private": true,
+  "version": "0.0.5-bomber.schema15",
+  "type": "module",
+  "exports": { ".": "./dist/presentation.js", "./style.css": "./dist/presentation.css" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build",
+    "guard": "node --test tests/dependency-guard.test.mjs"
+  },
+  "dependencies": { "three": "^0.186.1" },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

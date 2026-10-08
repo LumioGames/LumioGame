@@ -1,0 +1,114 @@
+{
+  "table": "drops",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "soft_drop_permille",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "soft drop permille"
+    },
+    {
+      "name": "death_drop_permille",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "death drop permille"
+    },
+    {
+      "name": "final_death_drop_permille",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "final death drop permille"
+    },
+    {
+      "name": "death_protection_ms",
+      "ordinal": 5,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "death protection ms"
+    },
+    {
+      "name": "ordinary_expiry_enabled",
+      "ordinal": 6,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "ordinary expiry enabled"
+    },
+    {
+      "name": "scatter_mode",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "scatter mode"
+    },
+    {
+      "name": "pickup_distance_milli",
+      "ordinal": 8,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "pickup distance milli"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 9,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 10,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

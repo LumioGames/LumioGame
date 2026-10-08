@@ -1,0 +1,37 @@
+{
+  "contentFingerprint": "051793501c6bcb55be39b8d719ab10fa8ac1418ccea0d592a0da860d4a1cba38",
+  "rows": [
+    {
+      "boundary_cells": 1,
+      "cover_reach_cells": 10,
+      "crate_quadrant_max": 4,
+      "crate_quadrant_min": 3,
+      "depth": 23,
+      "entity_budget_mode": "EffectiveProducerLifetimeBounds",
+      "ground_layer": 0,
+      "hard_pillar_stride": 2,
+      "id": 108001,
+      "layout_kind": "M2Moat",
+      "moat_branch_cells": 4,
+      "moat_radius_cells": 4,
+      "name": "default",
+      "obstacle_layer": 1,
+      "open_min_per_player": 9,
+      "pond_max_span_cells": 3,
+      "pond_quadrant_max": 4,
+      "pond_quadrant_min": 3,
+      "potential_max_per_player": 30,
+      "potential_min_per_player": 26,
+      "soft_brick_permille": 650,
+      "source_ref": "ADR-0048",
+      "source_status": "inferred; author-only; unverified",
+      "spawn_min_distance": 6,
+      "spawn_safe_cells": 3,
+      "spawn_search_mode": "AllLegalCellsOnce",
+      "water_max_permille": 50,
+      "width": 23
+    }
+  ],
+  "table": "map",
+  "target": "C"
+}

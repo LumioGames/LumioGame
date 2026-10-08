@@ -1,0 +1,14 @@
+table: characters
+schema: schemas/characters.json
+
+| id     | name     | bound_skill_id | bound_level | bound_slot | bound_max_level | base_attributes_profile | source_status              | source_ref                                        |
+| ------ | -------- | -------------- | ----------- | ---------- | --------------- | ----------------------- | -------------------------- | ------------------------------------------------- |
+| 118001 | rabbit   | 1              | 1           | Passive    | 1               | default                 | design                     | docs/specs/bomber/design.md#15                    |
+
+| 118002 | duck     | 2              | 1           | Active     | 3               | default                 | design                     | docs/specs/bomber/design.md#15                    |
+
+| 118003 | cat      | 3              | 1           | Active     | 3               | default                 | design                     | docs/specs/bomber/design.md#15                    |
+
+| 118004 | bear     | 4              | 1           | Active     | 3               | default                 | design                     | docs/specs/bomber/design.md#15                    |
+
+| 118005 | kangaroo | 13             | 1           | Active     | 1               | default                 | design; balance unverified | docs/specs/bomber/design.md#8; ADR-0047; ADR-0048 |

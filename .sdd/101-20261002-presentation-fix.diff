@@ -1,0 +1,192 @@
+diff --git a/C:/Work/LumioGames/probe/container-delta-candidate-game/games/101-bomber/Client/Presentation/src/index.ts b/games/101-bomber/Client/Presentation/src/index.ts
+index c8b5df5..52226ea 100644
+--- a/C:/Work/LumioGames/probe/container-delta-candidate-game/games/101-bomber/Client/Presentation/src/index.ts
++++ b/games/101-bomber/Client/Presentation/src/index.ts
+@@ -4,6 +4,7 @@ import { CHARACTER_ORDER, DEFAULT_CONFIG, DEFAULT_RULES, type BomberConfig, type
+ import { createHud } from './hud'
+ import { PresentationFeed } from './present/feed'
+ import { loadSettings, saveSettings } from './present/settings'
++import { attachPresentationShortcuts } from './present/shortcuts'
+ import { createView, renderDollPortraits } from './view'
+ 
+ export * from './contract'
+@@ -51,6 +52,12 @@ export function createPresentation(options: PresentationOptions): Presentation {
+     container: stage, labelRoot: labels, config, rules, localPlayerId, settings,
+     requestHitstop: (ms) => feed.freeze(ms, performance.now()),
+   })
++  const toggleMute = (): void => {
++    settings.muted = !settings.muted
++    audio.setMuted(settings.muted)
++    hud.setMuted(settings.muted)
++    saveSettings(settings)
++  }
+   const hud = createHud({
+     root: hudRoot, config, rules, localPlayerId, settings,
+     project: (x, y, z) => view.project(x, y, z),
+@@ -59,18 +66,17 @@ export function createPresentation(options: PresentationOptions): Presentation {
+       : new Map(),
+     callbacks: {
+       ...callbacks,
+-      onToggleMute: () => {
+-        settings.muted = !settings.muted
+-        audio.setMuted(settings.muted)
+-        hud.setMuted(settings.muted)
+-        saveSettings(settings)
+-      },
++      onToggleMute: toggleMute,
+       onToggleOverview: () => view.toggleOverview(),
+       onToggleMusic: (on) => audio.setMusicEnabled(on),
+       onSettingsChanged: () => { audio.setMuted(settings.muted); saveSettings(settings) },
+     },
+   })
+   hud.setMuted(settings.muted)
++  const detachShortcuts = attachPresentationShortcuts(window, {
++    overview: () => view.toggleOverview(), mute: toggleMute,
++    blocked: () => document.hidden || hudRoot.querySelector('.hud-modal.is-on') !== null,
++  })
+   let disposed = false
+   let last = performance.now()
+   let animation = 0
+@@ -101,6 +107,7 @@ export function createPresentation(options: PresentationOptions): Presentation {
+     dispose: () => {
+       if (disposed) return
+       disposed = true
++      detachShortcuts()
+       cancelAnimationFrame(animation)
+       observer?.disconnect()
+       window.removeEventListener('pointerdown', unlock)
+diff --git a/games/101-bomber/Client/Presentation/src/present/shortcuts.ts b/games/101-bomber/Client/Presentation/src/present/shortcuts.ts
+new file mode 100644
+index 0000000..167ce39
+--- /dev/null
++++ b/games/101-bomber/Client/Presentation/src/present/shortcuts.ts
+@@ -0,0 +1,24 @@
++interface PresentationShortcutActions {
++  overview(): void
++  mute(): void
++  blocked(): boolean
++}
++
++/** Local display controls only; gameplay input remains with the production host. */
++export function attachPresentationShortcuts(
++  target: Pick<Window, 'addEventListener' | 'removeEventListener'>,
++  actions: PresentationShortcutActions,
++): () => void {
++  const keydown = (event: KeyboardEvent): void => {
++    if (event.defaultPrevented || event.repeat || event.isComposing ||
++      event.altKey || event.ctrlKey || event.metaKey || actions.blocked()) return
++    const source = event.target as Element | null
++    if (source?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]')) return
++    const action = event.code === 'KeyV' ? actions.overview : event.code === 'KeyM' ? actions.mute : null
++    if (!action) return
++    event.preventDefault()
++    action()
++  }
++  target.addEventListener('keydown', keydown)
++  return () => target.removeEventListener('keydown', keydown)
++}
+diff --git a/games/101-bomber/Client/Presentation/src/present/shortcuts.test.ts b/games/101-bomber/Client/Presentation/src/present/shortcuts.test.ts
+new file mode 100644
+index 0000000..d23b758
+--- /dev/null
++++ b/games/101-bomber/Client/Presentation/src/present/shortcuts.test.ts
+@@ -0,0 +1,99 @@
++import { describe, expect, it } from 'vitest'
++import { attachPresentationShortcuts } from './shortcuts'
++
++function key(code: string, fields: Record<string, unknown> = {}): KeyboardEvent {
++  const event = new Event('keydown', { cancelable: true })
++  for (const [name, value] of Object.entries({ code, repeat: false, ...fields }))
++    Object.defineProperty(event, name, { value })
++  return event as KeyboardEvent
++}
++
++function setup(target = new EventTarget()) {
++  const calls = { overview: 0, mute: 0 }
++  let blocked = false
++  const detach = attachPresentationShortcuts(target as Window, {
++    overview: () => calls.overview++, mute: () => calls.mute++, blocked: () => blocked,
++  })
++  return { target, calls, detach, block: (value: boolean) => { blocked = value } }
++}
++
++describe('production presentation keyboard shortcuts', () => {
++  it('V changes the camera and M changes mute exactly once per physical key press', () => {
++    const session = setup()
++    for (const code of ['KeyV', 'KeyM']) {
++      const press = key(code)
++      session.target.dispatchEvent(press)
++      expect(press.defaultPrevented).toBe(true)
++      session.target.dispatchEvent(key(code, { repeat: true }))
++    }
++    expect(session.calls).toEqual({ overview: 1, mute: 1 })
++    session.target.dispatchEvent(key('KeyM'))
++    expect(session.calls.mute).toBe(2)
++    session.detach()
++  })
++
++  it.each(['ctrlKey', 'altKey', 'metaKey', 'isComposing'])('leaves %s keyboard actions to the browser', field => {
++    const session = setup()
++    for (const code of ['KeyV', 'KeyM']) {
++      const event = key(code, { [field]: true })
++      session.target.dispatchEvent(event)
++      expect(event.defaultPrevented).toBe(false)
++    }
++    expect(session.calls).toEqual({ overview: 0, mute: 0 })
++    session.detach()
++  })
++
++  it('does not consume gameplay keys or events already consumed by a dialog', () => {
++    const session = setup()
++    const consumed = key('KeyV')
++    consumed.preventDefault()
++    session.target.dispatchEvent(consumed)
++    for (const code of ['Space', 'ShiftLeft', 'KeyW', 'Escape']) {
++      const event = key(code)
++      session.target.dispatchEvent(event)
++      expect(event.defaultPrevented).toBe(false)
++    }
++    expect(session.calls).toEqual({ overview: 0, mute: 0 })
++    session.detach()
++  })
++
++  it('leaves shortcuts inactive while a modal or hidden page blocks local input', () => {
++    const session = setup()
++    session.block(true)
++    const event = key('KeyM')
++    session.target.dispatchEvent(event)
++    expect(event.defaultPrevented).toBe(false)
++    expect(session.calls.mute).toBe(0)
++    session.block(false)
++    session.target.dispatchEvent(key('KeyM'))
++    expect(session.calls.mute).toBe(1)
++    session.detach()
++  })
++
++  it('leaves keys inside interactive and editable elements untouched', () => {
++    class InteractiveTarget extends EventTarget {
++      closest(selector: string): this | null {
++        expect(selector).toContain('[contenteditable]')
++        expect(selector).toContain('button')
++        return this
++      }
++    }
++    const session = setup(new InteractiveTarget())
++    const event = key('KeyM')
++    session.target.dispatchEvent(event)
++    expect(event.defaultPrevented).toBe(false)
++    expect(session.calls.mute).toBe(0)
++    session.detach()
++  })
++
++  it('removes disposed-session listeners before a new match binds its presentation', () => {
++    const first = setup()
++    first.detach()
++    first.detach()
++    const next = setup(first.target)
++    next.target.dispatchEvent(key('KeyV'))
++    expect(first.calls).toEqual({ overview: 0, mute: 0 })
++    expect(next.calls).toEqual({ overview: 1, mute: 0 })
++    next.detach()
++  })
++})

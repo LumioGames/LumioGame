@@ -1,0 +1,58 @@
+[
+  {
+    "path": "Tools/schema-identities.test.mjs",
+    "sha256": "cd4d74084766687b593fc5d5b3523aa6fad863f91d80707282635c415ec08505"
+  },
+  {
+    "path": "Tools/schema-identity-finalize-evidence.mjs",
+    "sha256": "a2b6bfaa08cf599468396db66f223318f013c0508c2004ba7593769bf4b2232d"
+  },
+  {
+    "path": "Tools/schema-identity-generated.test.mjs",
+    "sha256": "073bcc345533afd9afaf42719f481261528ccb7162bfbe92cf14f90898fb7ab0"
+  },
+  {
+    "path": "Tools/schema-identity-history.mjs",
+    "sha256": "29f8f3596c66195ad7e46a09d7e9fb471f223623ab1f89e1ff3a5a06d0777626"
+  },
+  {
+    "path": "Tools/schema-identity-migration-plan.md",
+    "sha256": "1aff8e36ec03ecf19b47f0cf0c826cf824038547e3ef514a88f785cf93e2d5ed"
+  },
+  {
+    "path": "Tools/schema-identity-migration.test.mjs",
+    "sha256": "0cf3c1b4939c53e3498ce9658b84bf44f1e365f0a2cd19815c53692ce168f71b"
+  },
+  {
+    "path": "Tools/schema-identity-model.mjs",
+    "sha256": "92eeb4d858d6f5fe2565cfc335bced450ee25312ce830fdd69cf14d5128e5367"
+  },
+  {
+    "path": "Tools/schema-identity-read.mjs",
+    "sha256": "74226c95203cb7a3973e1611ea931cb269d7e70302145c79a3e7b96e9823f7cf"
+  },
+  {
+    "path": "Tools/verify-schema-identities.mjs",
+    "sha256": "a88332e4e1f952ec93efaef3a4b06a643770aa7a5bbcb00b5120302e44ea053e"
+  },
+  {
+    "path": "Gameplay/Compatibility/schema-identities.before-container-candidate.json",
+    "sha256": "5d0b9990adab9cf84e9a1719991d8c0eaebfcc9709b73543ab30ac5d7f9f4092"
+  },
+  {
+    "path": "Gameplay/Compatibility/schema-identities.before-container-input-hashes.json",
+    "sha256": "ceccfb6030d3880e4fe6de64168e0fc99a30a6e20d8ab0704dd08e7435ccf4a8"
+  },
+  {
+    "path": "Gameplay/Compatibility/schema-identities.container-finalize-evidence.json",
+    "sha256": "69dc1956bd86255832f5095b28d49453efeb2d03b41d93a9ce43ffd6c0f32e5b"
+  },
+  {
+    "path": "Gameplay/Compatibility/schema-identities.container-migration.json",
+    "sha256": "fdd08a21c624141f171406a914814c816e945d3bad2403f6cc7d11064e8e8dea"
+  },
+  {
+    "path": "Gameplay/Compatibility/schema-identities.json",
+    "sha256": "5d0b9990adab9cf84e9a1719991d8c0eaebfcc9709b73543ab30ac5d7f9f4092"
+  }
+]

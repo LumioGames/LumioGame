@@ -1,0 +1,19 @@
+# 101 后继准备拒绝码取证
+
+状态：仅真实诊断，未通过浏览器体验验收。正式交付目标继续进行。
+
+实际诊断局live-11-prepare-diagnostic-02于23:08:33.8355422Z启动，launcher25008、Node45320、DS64770；原A48/B49首次同八人，A真实关闭48→新50一次（约23:13:54Z），新A协商758.2ms。完整新局未捕获Prepare首拒，正常match_ended7547→next_match7868，不能据此解释旧live11原6513拒因。23:15:26Z三Bot实际successor bad_envelope，Bot5日志最早23:15:26.1406515Z；Bot1 PID16268随后Faulted却scenario.finished passed=true/exit0，启动器首先发现该正常退出并关闭scene，最终exit1/verification FAIL。Root未停止新scene；A50/B49末屏failed，probe最后authority8066/match2/active，不能用这份旧active状态称服务正常。原compact数据及截图已封存；首full probe字符串200000截断版本为INVALID，未用于验收。
+
+Root已只移除自己的临时诊断block，验证整个Lifecycle再次等于原97f275969a8a8826a13007c1b315b5e7a258821853e6329013fc7b66dbc2f0de。原诊断源、构建、日志和官方消费副本继续保留；不会把默认关闭诊断的旧DLL当正式普通页资格。当前18101无监听，18081/82/84/85仍46248。
+
+live11 的正式 cut7799/8399/8999 都保留 A currentLife0202、generation13、DeathTick6513、RespawnAt6573、DeathStructurePending=true、ReservationSlot0。其死亡日志早于第二次关闭约4.9秒。检查点不保存 Observer、连接、后继预留或信用账本；不能从恢复世界冒充读取故障现场的这些字段。
+
+Root 仅在 BomberSuccessorLifecycle.Server.cs 的 PrepareSuccessor 返回非null分支增加默认关闭日志。启用条件是 LUMIO_BOMBER_DIAG_SUCCESSOR_PREPARE 精确等于1且 world.Tick 等于 DeathStructureTick+1；输出世界 Tick、完整 participant/life、life generation 和原拒绝码。不查询额外 Runtime 状态，不改变 token、return false、业务状态或权限。原源97f275969a8a8826a13007c1b315b5e7a258821853e6329013fc7b66dbc2f0de，诊断源1542b811bd763486659b1766c017747881b1859d277bbe685a85b29bf294f493；两份原字节保存在 Game/.run/browser-experience-repair-01/prepare-refusal-diagnostic-01。
+
+非作者已接受这一精确私有诊断范围；每个新死亡的首attempt至多一行，恢复到更晚cut不会补记录，后续拒码变化也不会记录。首码只能证明首拒因，后续滞留仍须真实链路回归核实。Console与页面探针有取证开销，诊断局不能作为最终普通页面性能验收。
+
+原97 pins完整集合实际PASS，但不包含这一Lifecycle源；其通过不能证明所有源码没有诊断。原pins、协议、额度、仿真频率和八人数量均不改。最终移除Root自己的日志block时，要逐字恢复原源并重新做正式Game构建与独审。
+
+首次新构建candidate11-prepare-diagnostic-01在正式selector阶段实际拒绝：live11崩溃写入原完整11/server/win-x64/hostentry_fault.log，未列manifest。原目录与故障日志原SHA5d899d29fe041d5d402fe7920938deeb43faa5407498f425e8fb7f963eec4224（2042bytes）保留。另建 complete-release-11-consumer-freeze-01，完整复制305个原manifest路径，每个原/新SHA均等于manifest，manifest仍f058833a218241c49b5f35078fd839dbc130ef5d3bcf5b57dbbaf3419e241867，Native仍ac8afd5bf861d6818468434c51c22e94ef78863962d2a47e975046cb943767ff；正式selector --verify退出0。没有删除原现场、修改manifest、放宽官方校验或替换旧DLL。
+
+candidate11-prepare-diagnostic-02采用新完整消费副本做实际三边与浏览器构建；取得消费独审后才启动新的两独立Human加六真实Bot局。此局只为复现“观察重进→正式转入新Life→下一死亡”并取得拒码，不合并进live11的五次重进计数。若属引擎问题，在所属仓写真实失败测试并最小修复，再经官方完整包消费；不得用Result门放宽掩盖卡住的复活。

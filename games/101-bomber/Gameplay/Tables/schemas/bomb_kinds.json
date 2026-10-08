@@ -1,0 +1,71 @@
+{
+  "table": "bomb_kinds",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "kind_code",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "kind code"
+    },
+    {
+      "name": "enabled",
+      "ordinal": 3,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "enabled"
+    },
+    {
+      "name": "effect_key",
+      "ordinal": 4,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "effect key"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 5,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 6,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    }
+  ]
+}

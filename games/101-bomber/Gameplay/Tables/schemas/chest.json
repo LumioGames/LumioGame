@@ -1,0 +1,189 @@
+{
+  "table": "chest",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "independent_bomb_hits",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "independent bomb hits"
+    },
+    {
+      "name": "fire_count",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "fire count"
+    },
+    {
+      "name": "bomb_count",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "bomb count"
+    },
+    {
+      "name": "speed_count",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "speed count"
+    },
+    {
+      "name": "health_count",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "health count"
+    },
+    {
+      "name": "skill_count",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "skill count"
+    },
+    {
+      "name": "bomb_only",
+      "ordinal": 8,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "bomb only"
+    },
+    {
+      "name": "exclude_center",
+      "ordinal": 9,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "exclude center"
+    },
+    {
+      "name": "exclude_early_center_cross",
+      "ordinal": 10,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "exclude early center cross"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 11,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 12,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "random_slots",
+      "ordinal": 13,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "random slots"
+    },
+    {
+      "name": "include_health",
+      "ordinal": 14,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "include health"
+    },
+    {
+      "name": "special_permille",
+      "ordinal": 15,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "special permille"
+    },
+    {
+      "name": "gold_heart_permille",
+      "ordinal": 16,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "gold heart permille"
+    },
+    {
+      "name": "drop_permille",
+      "ordinal": 17,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "drop permille"
+    },
+    {
+      "name": "kick_permille",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "kick permille"
+    }
+  ]
+}

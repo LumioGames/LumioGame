@@ -1,0 +1,20 @@
+{
+  "contentFingerprint": "530b2420d0419496d8684e58b91902e8ded4d2c79c35c835b2d4f99d54735734",
+  "rows": [
+    {
+      "death_protection_flash_ms": 800,
+      "footprint_milli": 700,
+      "forward_reach_milli": 350,
+      "hat_king_threshold": 1,
+      "hat_pillar_threshold": 3,
+      "id": 124001,
+      "leaderboard_count": 10,
+      "mobile_leaderboard_count": 5,
+      "name": "default",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "prototype-candidate"
+    }
+  ],
+  "table": "presentation",
+  "target": "C"
+}

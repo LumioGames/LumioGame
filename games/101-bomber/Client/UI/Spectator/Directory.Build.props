@@ -1,0 +1,54 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)../../../eng/BomberRelease.props" />
+  <Import Project="$(LumioEngineSelectionProps)" Condition="'$(LumioEngineSelectionProps)' != ''" />
+  <!--
+    Spectator page + its C# wasm host and tests. MSBuild stops walking after this file,
+    so the repo-root analyzers / central package management do not apply here (the
+    shared sources below were written against the settings in this file).
+    None of these projects are in LumioBomber.slnx.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <LangVersion>14.0</LangVersion>
+    <LumioSpectatorRoot>$(MSBuildThisFileDirectory)</LumioSpectatorRoot>
+    <LumioBomberRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../'))</LumioBomberRepoRoot>
+    <!--
+      ADR-123: the engine parts this page is assembled from (R-00710: connect-ds /
+      voxel-grid / generated close-code and not_serving tables / dev hot-reload bridge,
+      the netstandard2.1 browser replica, and the VoxelEngine browser wasm — ADR-078 决策 1)
+      come from the Engine/ release's web/, and from nowhere else. The release's web/ layout
+      (repository-architecture「引擎发布物」): web/*.mjs flat, web/lumio_voxel_wasm.wasm, and
+      web/replica/netstandard2.1/ with Lumio.Client.Gameplay.ECS.dll, Lumio.Client.Log.dll and
+      Lumio.Client.Spectator.dll (SpectatorSectionFrame, ReplicaApplyTickLoop). The release
+      carries no source: the C# parts are referenced as that DLL, never compiled by link.
+      Nothing is copied into this repository. Engine/ empty is BLOCKED with the submodule
+      command (Directory.Build.targets).
+    -->
+    <LumioEngineRoot Condition="'$(LumioEngineRoot)' == ''">$(LumioBomberRepoRoot)Engine/</LumioEngineRoot>
+    <LumioEngineWeb>$(LumioEngineRoot)web/</LumioEngineWeb>
+    <LumioSpectatorParts>$(LumioEngineWeb)</LumioSpectatorParts>
+    <LumioSpectatorReplicaDir>$(LumioEngineWeb)replica/netstandard2.1/</LumioSpectatorReplicaDir>
+    <LumioVoxelWasm>$(LumioEngineWeb)lumio_voxel_wasm.wasm</LumioVoxelWasm>
+    <!-- Same one version as the repo-root build: Engine/manifest.json#version. -->
+    <_LumioEngineManifestText Condition="Exists('$(LumioEngineRoot)manifest.json')">$([System.IO.File]::ReadAllText('$(LumioEngineRoot)manifest.json'))</_LumioEngineManifestText>
+    <LumioSdkVersion Condition="'$(_LumioEngineManifestText)' != ''">$([System.Text.RegularExpressions.Regex]::Match($(_LumioEngineManifestText), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</LumioSdkVersion>
+  </PropertyGroup>
+  <!--
+    This game's own LumioConfig client export, embedded beside the shared spectator
+    sources. The Bomber client registry declares a gameplay config contract, so
+    WorldManager refuses to build a world without the projected tables. Browser wasm
+    has no host filesystem, so the export cannot be resolved by directory there; both
+    C# projects here compile the same SpectatorDump.cs, so both carry it. Layout
+    matches the export the Bomber assembly itself copies: root manifest plus the
+    client projection.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="$(LumioBomberRepoRoot)Client/Config/Tables/manifest.json" LogicalName="BomberConfigExport/manifest.json" />
+    <EmbeddedResource Include="$(LumioBomberRepoRoot)Client/Config/Tables/client/*.json" LogicalName="BomberConfigExport/client/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

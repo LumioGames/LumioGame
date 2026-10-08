@@ -1,0 +1,36 @@
+{
+  "contentFingerprint": "e5a05e1de755edea8d13a2015ea0a2dcf128f5277c20e1a020c3f30bca507294",
+  "rows": [
+    {
+      "central_supply_announce_ms": 50000,
+      "central_supply_enabled": false,
+      "central_supply_frenzy_count": 1,
+      "central_supply_golden_heart_count": 1,
+      "central_supply_health_count": 2,
+      "central_supply_open_ms": 60000,
+      "central_supply_special_count": 2,
+      "central_supply_strengthening_count": 5,
+      "default_bot_profile": "normal",
+      "frenzy_concurrent_limit": 6,
+      "frenzy_duration_ms": 6000,
+      "frenzy_enabled": true,
+      "frenzy_fuse_ms": 1200,
+      "frenzy_min_placement_ticks": 5,
+      "id": 100001,
+      "initial_seed": 1,
+      "map_size": 19,
+      "match_duration_ms": 420000,
+      "name": "default",
+      "player_count": 8,
+      "podium_ms": 10000,
+      "results_ms": 6000,
+      "skills_enabled": true,
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "tick_rate_hz": 20,
+      "warmup_ms": 3000
+    }
+  ],
+  "table": "game",
+  "target": "C"
+}

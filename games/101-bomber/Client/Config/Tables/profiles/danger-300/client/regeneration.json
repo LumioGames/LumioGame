@@ -1,0 +1,21 @@
+{
+  "contentFingerprint": "f5185d08e86747ff01b09cc83e1809e507fe90725e302af5754da45b9aa93e04",
+  "rows": [
+    {
+      "barrel_roll_denominator": 32,
+      "chest_roll_denominator": 6,
+      "first_trigger_ms": 8000,
+      "id": 110001,
+      "interval_ms": 8000,
+      "max_mirror_orbits": 2,
+      "name": "default",
+      "source_ref": "docs/specs/bomber/design.md#15; .spec/decisions/0048-bomber-m2-map-packages-and-interaction-boundaries.md",
+      "source_status": "design",
+      "stop_before_final_ms": 60000,
+      "target_initial_permille": 600,
+      "threat_distance_cells": 3
+    }
+  ],
+  "table": "regeneration",
+  "target": "C"
+}

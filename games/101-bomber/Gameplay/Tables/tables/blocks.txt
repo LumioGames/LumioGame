@@ -1,0 +1,28 @@
+table: blocks
+schema: schemas/blocks.json
+
+| id     | name        | block_type | enabled | walkable | destructible | blast_stop | cover_before_stop | place_bomb | residue    | drop_pool | ground_effect | sparse_binding     | source_status | source_ref                                          |
+| ------ | ----------- | ---------- | ------- | -------- | ------------ | ---------- | ----------------- | ---------- | ---------- | --------- | ------------- | ------------------ | ------------- | --------------------------------------------------- |
+| 109001 | air         | 0          | true    | true     | false        | false      | true              | true       | air        | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109002 | floor       | 1022       | true    | true     | false        | false      | true              | true       | floor      | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109003 | iron        | 1023       | true    | false    | false        | true       | false             | false      | iron       | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109004 | hardPillar  | 1024       | true    | false    | false        | true       | false             | false      | hardPillar | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109005 | softBrick   | 1025       | true    | false    | true         | true       | false             | false      | air        | soft      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109006 | crate       | 1026       | true    | false    | true         | true       | false             | false      | air        | skill     | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109007 | water       | 1027       | true    | true     | false        | true       | true              | false      | water      | none      | drown         | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109008 | chest       | 1028       | true    | false    | true         | true       | false             | false      | air        | chest     | none          | BomberChestEntity  | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109009 | wood        | 1029       | false   | false    | true         | true       | false             | false      | air        | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109010 | firecracker | 1030       | false   | false    | true         | true       | false             | false      | air        | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109011 | ice         | 1031       | false   | true     | false        | false      | true              | true       | ice        | none      | none          | none               | design        | docs/specs/bomber/design.md#5; ADR-0019; ADR-0021   |
+
+| 109012 | barrel      | 1032       | false   | false    | true         | true       | false             | false      | air        | none      | none          | BomberBarrelEntity | design        | docs/specs/bomber/design.md#5.1; ADR-0042; ADR-0048 |

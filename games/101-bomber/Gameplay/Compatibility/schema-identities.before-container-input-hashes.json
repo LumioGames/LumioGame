@@ -1,0 +1,686 @@
+[
+  {
+    "path": "Gameplay/Abilities/MoveAbility.Client.cs",
+    "sha256": "5da28bd7ea1b221cebee4704ba316196792616ef7f83f4f3709f757c04fa46ec"
+  },
+  {
+    "path": "Gameplay/Abilities/MoveAbility.cs",
+    "sha256": "6d13c02cd92d002412b88ddc820d1756bcc32333f776b2d347ab48025294869b"
+  },
+  {
+    "path": "Gameplay/Abilities/MoveAbility.Server.cs",
+    "sha256": "f0aa282dad9c368a5456f76cd5591cf785461c9abbc068ff725f8a52b0041654"
+  },
+  {
+    "path": "Gameplay/Abilities/PickupAbility.Client.cs",
+    "sha256": "b447e9e43c09e333bc73700062bccd0b2fa777b2028fbbd89eec866de18f3570"
+  },
+  {
+    "path": "Gameplay/Abilities/PickupAbility.cs",
+    "sha256": "ea605575e54f32ded242aae5ebbb72c91e85d437ab150cadb02e90143a86e9d4"
+  },
+  {
+    "path": "Gameplay/Abilities/PickupAbility.Server.cs",
+    "sha256": "0285d3516d602e94a3c6bfb0a76254deec5e6cae59b7ed1ff406ee95194099c7"
+  },
+  {
+    "path": "Gameplay/Abilities/PlaceBombAbility.Client.cs",
+    "sha256": "6f0dc62c6f5599f93b421c7a55a270d734a38baa3ec33f4f0485d2c7aa5a633b"
+  },
+  {
+    "path": "Gameplay/Abilities/PlaceBombAbility.cs",
+    "sha256": "eca3d245820a586a912126105e1493c0b8b2b04caadcd991dd251ad128da150e"
+  },
+  {
+    "path": "Gameplay/Abilities/PlaceBombAbility.Server.cs",
+    "sha256": "e8b52e2118ff6f7f38ac6e7eb4a954c81e3e3198b80818d88c1201304b063a84"
+  },
+  {
+    "path": "Gameplay/Abilities/SelectCharacterAbility.cs",
+    "sha256": "c68820e42f3c21e32684fa159bb4a3c908d3daec6806283d759545450344a22e"
+  },
+  {
+    "path": "Gameplay/Abilities/UseActiveSkillAbility.cs",
+    "sha256": "452eba2b2619c6eddff86364f881dca874355e35ad5c0472f206a5e82b0867d4"
+  },
+  {
+    "path": "Gameplay/Abilities/UseActiveSkillAbility.Server.cs",
+    "sha256": "9ae8c472cf98d31ad368f55f9c1ae9c73f904cb9829ed96dbbb3ee092e469cff"
+  },
+  {
+    "path": "Gameplay/BomberBombKick.Server.cs",
+    "sha256": "f66415a2a12c38b9d1f737bfb6daccc312c1a1dda2c5a723d1833483d50b09b0"
+  },
+  {
+    "path": "Gameplay/BomberBombLifecycle.Server.cs",
+    "sha256": "43cf745e8608bd26bb7f25d412c2b96037d5bfa154df056002512d3f5df7f4b9"
+  },
+  {
+    "path": "Gameplay/BomberFoundationSystem.Server.cs",
+    "sha256": "042646c1d8e726b66bde56ce0329580f246a0d50e94f77d91b28039b490c80b3"
+  },
+  {
+    "path": "Gameplay/BomberGameplay.cs",
+    "sha256": "832dac322a7ca1ce947aede10c0309371b9dc3739234ccf7b736cf667bf90e29"
+  },
+  {
+    "path": "Gameplay/BomberGameplay.Server.cs",
+    "sha256": "ea7978a2c5cbbc80c8152c7f5cadc45631867a489ce9af4cf9316851a4edb1a3"
+  },
+  {
+    "path": "Gameplay/BomberHfsmDefinitions.Server.cs",
+    "sha256": "51d4634158f37719d9189b414edd1504321f1739cf51ef9d4433bbe917b5730a"
+  },
+  {
+    "path": "Gameplay/BomberHfsmSnapshot.Server.cs",
+    "sha256": "b29b8b720d61866cc4e04b4b60085c7e2c2a6cd970949223dae01455fba672c3"
+  },
+  {
+    "path": "Gameplay/BomberMatchRules.cs",
+    "sha256": "6ffed6905626bc9ebda56146b026f67a36c8cfa302cea9ecd38b3e562ca3f737"
+  },
+  {
+    "path": "Gameplay/BomberMatchRules.Server.cs",
+    "sha256": "352d3e4fac3dea0da9c529f9ef70a00d946a173c99b4ac4a5b3c3803e0c5b7fb"
+  },
+  {
+    "path": "Gameplay/BomberTerrainRead.Server.cs",
+    "sha256": "23fa0155ee3eff1843e6a844833be2ed30c4ed71ec290fc8265d47523e89bafa"
+  },
+  {
+    "path": "Gameplay/BomberTypes.cs",
+    "sha256": "12697c17da43acb1a1bf1754d1c52a518e98fda67991996bb325e4339728c38b"
+  },
+  {
+    "path": "Gameplay/BomberVoxelFrame.Server.cs",
+    "sha256": "0e057213546822b8b126d9ca63c4d53aead6b3286c1f8d542f5e00a15ab46306"
+  },
+  {
+    "path": "Gameplay/BombSystem.Server.cs",
+    "sha256": "63b6c9f8f38f8eb577db39cfed14dfb343d35aadce743b14655f1cee93f56b46"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberBombState.cs",
+    "sha256": "8a7d56f29a7dae6717532f049ab9bfd4b156a05e1df0bbd31a7d2336d25d9d4d"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberBombState.Server.cs",
+    "sha256": "fa8bf5d5e109975bdf86c9acb5e7f60d1988943752531d046299f7800a1ab12f"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberChestState.cs",
+    "sha256": "5a4e0693e4cfb8833f455205e777e3bb22b573c13d31d544a5159c17dcbf67e7"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberChestState.Server.cs",
+    "sha256": "832590c38dd6e2d4ef2b5557ab209723e2aef3c3dcf7e32eab00b437b540451f"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberFinalCircleHfsmState.cs",
+    "sha256": "5efd9eeb8ecea189733edb135dc02a4929ec12d866e63f29c4f3784e505cea0c"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberFinalCircleHfsmState.Server.cs",
+    "sha256": "f5b2feb9c57c8a9cb18ce97e33d2d91e4465560d627151168da6f7f2d45dc0de"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberFinalCircleState.cs",
+    "sha256": "57107ed3eaaa51c5d8ce8a51cd921887e15e2db8f77178ebd796f71aa7017060"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberFireZoneState.cs",
+    "sha256": "0a54117d06a5756d002de348d264ab9fb17b265fafffc89b6628820339b22a0b"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberFoundationSystem.Server.cs",
+    "sha256": "87f3acb409328583ff34e59e805f8498ebd33919b057ec82d7e8161dbf8c91e0"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberHfsmState.cs",
+    "sha256": "c6eeb6b86ec398aac90c77ccc62feab05997254733206e14fc755d1e67d7d2fa"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberHfsmState.Server.cs",
+    "sha256": "89883884dfc86c856ace7e042a10ecf42166eeecf43864403050c24a72e9e817"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberMatchState.cs",
+    "sha256": "716f354f7dbdf7947ac963df930f4b3afba3fa99495abac04374e818b6a1141e"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberMatchState.Server.cs",
+    "sha256": "e1972cf802f47e5e9b712519cdcb0d951520e90315cfeec728bdca7b596ec886"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberObjectIdentity.cs",
+    "sha256": "e2539202c214321c7404d0f474e0e27d576538f610682a7127b0af7f8cbed2ea"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberParticipantState.cs",
+    "sha256": "90780137010b319cf98720f4752a46fd85ab2d378ee147a0a93d3448d99a41e6"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberParticipantState.Server.cs",
+    "sha256": "c9fa760954e545f427b66d5cb032df1e7c141dd47618fe01f16122a64d5e224b"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberPickupItem.cs",
+    "sha256": "45402e25d4dc45992715a9b4cd9c971cc28cd66a9982c69af07d5ac7acabca3b"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberPlayerState.cs",
+    "sha256": "4bb2065337edac16dbc52b8f39d05a994421b3ca29da9f761124b3949570678f"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberPresentationJournal.cs",
+    "sha256": "1e39cac79859fd045e0b192ff51682f6bf7efbe1c8ea3414e984ea26e0c4d40f"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberPresentationJournal.Server.cs",
+    "sha256": "a521a4f4948561314dec2833a7a9351f8e397c4195232f5154eafacd87770961"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberPresentationOccurrence.cs",
+    "sha256": "5681f2a468595c3f12c3b2976e485feddaceca6ab3fb1a7554ce898a5a1a83b8"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberRespawnCarry.cs",
+    "sha256": "709ca43d6f336a875e2412bb53752bf6a3b80c5369254bcf6b46f006298be9f9"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberResults.cs",
+    "sha256": "181400d3a105a6ea73c8c8b4d8da04f36d760bf6953570340a9045a6fa9e90cf"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberResults.Server.cs",
+    "sha256": "789f71b29845d972407234d3415a294feefe7668a114442ac04683d2b9595a8c"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberSkillState.cs",
+    "sha256": "256c7aae5eed48522b56673c214f61058a265dafcb752a25ba66f4513b55bc41"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberStatistics.cs",
+    "sha256": "64aea5b4397c735a83f6aba3b03b25202eff57fdcc67dee72812b68429386f2f"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberWorldRuntime.cs",
+    "sha256": "4e8ba52dee002ed0f8e0e056904ac2faf1a4a904c1081450a7fd18f2840360fb"
+  },
+  {
+    "path": "Gameplay/Components/Bomber/BomberWorldRuntime.Server.cs",
+    "sha256": "4d85ba568bf041bc17ec311e1efd2ca5111d5aa411f4ea2aeb05182911b36170"
+  },
+  {
+    "path": "Gameplay/Components/Identity/IdentityComponent.cs",
+    "sha256": "1f79f649b0bf0f58ba795c9303e1f29fd357781231cb7b336de125ae3a273e32"
+  },
+  {
+    "path": "Gameplay/Components/Identity/IdentityComponent.Server.cs",
+    "sha256": "6db1334fbd106a79af4a238921506d370118f7d5edbe2606961ab2173e926599"
+  },
+  {
+    "path": "Gameplay/Config/BomberConfigBinding.cs",
+    "sha256": "fb6615d9284473468107dfd2d88a164e3f98d4b320f53ec9312b9615082b861c"
+  },
+  {
+    "path": "Gameplay/Config/BomberObjectBudgets.cs",
+    "sha256": "b2db852db19875efc033f3c5c8145d0b3423d2aac57c789b61d1a7bf4c0c40ac"
+  },
+  {
+    "path": "Gameplay/Config/BomberSpecialBombResolver.cs",
+    "sha256": "f959db536ad48b1280896c2ddf78e68091a5a0a19f0be2d6abe14ee573efcb31"
+  },
+  {
+    "path": "Gameplay/Config/BomberTables.cs",
+    "sha256": "0d375e7c02cef997740070e35770165ca2d730cddd3eed3b4f06e5d266a7ff19"
+  },
+  {
+    "path": "Gameplay/Config/BomberTypedTables.cs",
+    "sha256": "34714535b8973163dc6507da850390aaf5b07b85b7e76819549d833fba0308d9"
+  },
+  {
+    "path": "Gameplay/Config/ConfigBindings.Client.cs",
+    "sha256": "616fdf73db6e8053d8b8aacfec1c0079a04cdb3f26dd3f9f38f1e7872b8f816e"
+  },
+  {
+    "path": "Gameplay/Config/ConfigBindings.Server.cs",
+    "sha256": "852546d80b0a35ee7bb0298e2959e9d94d364d16587e458af1b0efb6b0639967"
+  },
+  {
+    "path": "Gameplay/Config/M2BudgetEnvelope.cs",
+    "sha256": "c3df41ae9604daf02f457ca687f1f9165b34e5744ec89690cd4a5f87e9c79754"
+  },
+  {
+    "path": "Gameplay/Config/M2InitialLayout.cs",
+    "sha256": "ae5f4cf939abcb2d27ac543dce04ba01d39884942347790e1893a72ac413bbeb"
+  },
+  {
+    "path": "Gameplay/EntityTypes/Bomber/BomberBombEntity.cs",
+    "sha256": "8a1f43e140a92104bb5ff35f3fe1d492d19cfb65ab101721b224a869012e1424"
+  },
+  {
+    "path": "Gameplay/EntityTypes/Bomber/BomberChestEntity.cs",
+    "sha256": "829ac8abc04ee68b2e68adb3be9e98b94d16cc3b9f73bb724997ceab3c1f4e37"
+  },
+  {
+    "path": "Gameplay/EntityTypes/Bomber/BomberFireZoneEntity.cs",
+    "sha256": "d080848f6c06d31767005c9c791ec8e84e93a4ce09b073182706a37e866a1ef4"
+  },
+  {
+    "path": "Gameplay/EntityTypes/Bomber/BomberParticipantEntity.cs",
+    "sha256": "6be78a4ef3cd95cd00d834ee5bde754f75f97e3fbcd35a247eab58604b8b39ed"
+  },
+  {
+    "path": "Gameplay/EntityTypes/Bomber/BomberPickupItemEntity.cs",
+    "sha256": "bc872671f53a12f5593f2a9a675d7aadcb52fff4cdec8480d7bc17dd52734b07"
+  },
+  {
+    "path": "Gameplay/EntityTypes/PlayerEntity.cs",
+    "sha256": "e196ccc3057e8d2e0cdf0ee737b007637d274e6d78c976e134304565011d4e7c"
+  },
+  {
+    "path": "Gameplay/EntityTypes/WorldEntity.cs",
+    "sha256": "34fc38465b5ad59cf48f5ecc6e8bf3d28b8721fe68d01604db8621e8f0d99e01"
+  },
+  {
+    "path": "Gameplay/Events/BomberEventCatalog.cs",
+    "sha256": "b086f353c23fa1d35be660f4a2d02bd5434385b31c7b5ae315018c7401dfb636"
+  },
+  {
+    "path": "Gameplay/Events/BomberEvents.cs",
+    "sha256": "c07a4a9c76f85d8f7e1e49deb39262561786da48c4b33ef90b7bc6769943d466"
+  },
+  {
+    "path": "Gameplay/Events/BomberEventValues.cs",
+    "sha256": "00ac4509a292738c662abe4ea3f7c53d82fddd54ef7a04b8a9b7518c52a581db"
+  },
+  {
+    "path": "Gameplay/generated/client/attribute-declarations.json",
+    "sha256": "b83277cbe7049623aa8421470fd10d82f995582af8a4d822b98bf7061a5f4958"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberBombEntity.Template.g.cs",
+    "sha256": "3f5a4890875133a259f97d13cb55ff7d2d4df5aa46e6dbeab681db3136690422"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberBombState.g.cs",
+    "sha256": "b4e44402c119afa256334c5ee3df926b4f0d98d19986640b1dee491535b3d2c3"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberChestEntity.Template.g.cs",
+    "sha256": "593bdfc12341b96e25665c3c51e0a79ed4cc33c711b4f5ec6061fc79ff69f1bb"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberChestState.g.cs",
+    "sha256": "116bd9230770456708d976439b115fdc2cdd461577f7bb113e741390f53bfb07"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberFinalCircleHfsmState.g.cs",
+    "sha256": "aa4c6d9f7d0febd04bfdbc3a4f3fdf345ce32470a4290fdf38e31590d26fcc85"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberFinalCircleState.g.cs",
+    "sha256": "9f2957e2c8c7335a2d421caf39f8a148a5806c56d55631422f97a321bc66597f"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberFireZoneEntity.Template.g.cs",
+    "sha256": "7a42e9008880fbd20e3ee988b2e8bd983b63c2b9c173e47f0ce3f1265d1b8408"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberFireZoneState.g.cs",
+    "sha256": "ccdea462724831af7d8040e567336ac617bec36e4da4e528a98443f1b787173c"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberHfsmState.g.cs",
+    "sha256": "8af9b6ef3d7a5536885b673bedfdc955e8811744fc3e06d302734f84d3cbcd73"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberMatchState.g.cs",
+    "sha256": "3f982323e295ff0e2a7d54eb26938b8824de39983022a26aa667d8a3ee9944dc"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberParticipantEntity.Template.g.cs",
+    "sha256": "08a4259c1c82bea13a58cd55654db406b73f996387d05e87e7a08a5c87b8a1a4"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberParticipantState.g.cs",
+    "sha256": "f9ef7949c3ccbdf4184033141a60c3940ba5a053578e0332fcbeffec9d1022f4"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberPickupItem.g.cs",
+    "sha256": "8c167b091ed8fbb0c78c7d6423c858c246e27d7fa2275bbac0e443f22fe24ddc"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberPickupItemEntity.Template.g.cs",
+    "sha256": "1bdcbeff0dfc831805b12a28a13de5a22982b966b3f7c2af9e7040163db0f4b6"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberPlayerState.g.cs",
+    "sha256": "f38a8cdc8dd2a3f7f0f7f8ae484e06f9440b3e39a50b54e8f6fbd869c20384f5"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberPresentationJournal.g.cs",
+    "sha256": "12eb9b40a7b26f32cabad1fb23cbc96f0b71998911efb749d68ba00e7b7cb892"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberRespawnCarry.g.cs",
+    "sha256": "e8b116636a2c58f59b6fb2a4c90563da7283147501b88b222af980e62618d8a4"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberResults.g.cs",
+    "sha256": "94bc15cb01bd70a63079c2fd5711dc7803f8dc3a1a739b0f53c65573c88510f9"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberSkillState.g.cs",
+    "sha256": "f9ea17baef362e90852126e1bb27f17a4c24871ec87e62d02b3489040447d903"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberStatistics.g.cs",
+    "sha256": "23e9131e879cd2e9abe6d5874318f46d20a44944129a925eb26cca9cc30fba62"
+  },
+  {
+    "path": "Gameplay/generated/client/BomberWorldRuntime.g.cs",
+    "sha256": "bcd7742dbaed0e51e580d36b610372544cdfcd552fcf8c2cd5c8c3ec462b2f84"
+  },
+  {
+    "path": "Gameplay/generated/client/GeneratedAbilityRegistry.g.cs",
+    "sha256": "85e24066e835ef878f5ac36f0b739c0b6295acd29bda9c7f115aabd70c99fa32"
+  },
+  {
+    "path": "Gameplay/generated/client/GeneratedEffectRegistry.g.cs",
+    "sha256": "4029e4e151e352fc07aeb3c0dc442a1525a60cde6a663e41fd8514e2d07e9a19"
+  },
+  {
+    "path": "Gameplay/generated/client/IdentityComponent.g.cs",
+    "sha256": "291dc167c07cf9fb44487fabd8dd9941363b6c7423c641b050da38fdfe61430c"
+  },
+  {
+    "path": "Gameplay/generated/client/Lumio.Bomber.Gameplay.Registry.g.cs",
+    "sha256": "29a2dea873cff127f3ea3b149d9b949f7beb3de189593718b0680b6dc66c3221"
+  },
+  {
+    "path": "Gameplay/generated/client/Lumio.Bomber.Gameplay.Sync.g.cs",
+    "sha256": "b2ecbe525cb2c0e474fa6c6f04d2a6fe751623a09e21aefb8bfebe91811bb810"
+  },
+  {
+    "path": "Gameplay/generated/client/MoveAbility.g.cs",
+    "sha256": "fb00c05b5b600648051892d6d71631b2c2a8da69de549390688888c3ca842fd4"
+  },
+  {
+    "path": "Gameplay/generated/client/PickupAbility.g.cs",
+    "sha256": "7e121c60e69ae4cbb9a1c807e6ee86b070236d1aa35460942bf819586539fd9e"
+  },
+  {
+    "path": "Gameplay/generated/client/PlaceBombAbility.g.cs",
+    "sha256": "2c5a7dbec15dd29c144ce3c5c9390d54f4f21c54c52199482a29b62aadeb14e8"
+  },
+  {
+    "path": "Gameplay/generated/client/PlayerEntity.Template.g.cs",
+    "sha256": "d218f2bb7024129ab15232129106f3928abc4e385e26d504961fcdbbba90f89d"
+  },
+  {
+    "path": "Gameplay/generated/client/UseActiveSkillAbility.g.cs",
+    "sha256": "bc07a857574fe23f7cc0965fc14df93e9ec2ed089f1301fab8a6e583f2030ae4"
+  },
+  {
+    "path": "Gameplay/generated/client/WorldEntity.Template.g.cs",
+    "sha256": "7d4df699bc4d4b756ea4399d639623c0b3384d2a5fafd4e84d2620ccf94d08ef"
+  },
+  {
+    "path": "Gameplay/generated/server/attribute-declarations.json",
+    "sha256": "235a97dd0915569988cbe0c7f93d06b9c663f4312426ad418e37a2fad3c41e26"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberBombEntity.Template.g.cs",
+    "sha256": "3f5a4890875133a259f97d13cb55ff7d2d4df5aa46e6dbeab681db3136690422"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberBombState.g.cs",
+    "sha256": "b4e44402c119afa256334c5ee3df926b4f0d98d19986640b1dee491535b3d2c3"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberChestEntity.Template.g.cs",
+    "sha256": "593bdfc12341b96e25665c3c51e0a79ed4cc33c711b4f5ec6061fc79ff69f1bb"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberChestState.g.cs",
+    "sha256": "116bd9230770456708d976439b115fdc2cdd461577f7bb113e741390f53bfb07"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberFinalCircleHfsmState.g.cs",
+    "sha256": "aa4c6d9f7d0febd04bfdbc3a4f3fdf345ce32470a4290fdf38e31590d26fcc85"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberFinalCircleState.g.cs",
+    "sha256": "9f2957e2c8c7335a2d421caf39f8a148a5806c56d55631422f97a321bc66597f"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberFireZoneEntity.Template.g.cs",
+    "sha256": "7a42e9008880fbd20e3ee988b2e8bd983b63c2b9c173e47f0ce3f1265d1b8408"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberFireZoneState.g.cs",
+    "sha256": "ccdea462724831af7d8040e567336ac617bec36e4da4e528a98443f1b787173c"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberHfsmState.g.cs",
+    "sha256": "8af9b6ef3d7a5536885b673bedfdc955e8811744fc3e06d302734f84d3cbcd73"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberMatchState.g.cs",
+    "sha256": "3f982323e295ff0e2a7d54eb26938b8824de39983022a26aa667d8a3ee9944dc"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberParticipantEntity.Template.g.cs",
+    "sha256": "08a4259c1c82bea13a58cd55654db406b73f996387d05e87e7a08a5c87b8a1a4"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberParticipantState.g.cs",
+    "sha256": "f9ef7949c3ccbdf4184033141a60c3940ba5a053578e0332fcbeffec9d1022f4"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberPickupItem.g.cs",
+    "sha256": "8c167b091ed8fbb0c78c7d6423c858c246e27d7fa2275bbac0e443f22fe24ddc"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberPickupItemEntity.Template.g.cs",
+    "sha256": "1bdcbeff0dfc831805b12a28a13de5a22982b966b3f7c2af9e7040163db0f4b6"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberPlayerState.g.cs",
+    "sha256": "f38a8cdc8dd2a3f7f0f7f8ae484e06f9440b3e39a50b54e8f6fbd869c20384f5"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberPresentationJournal.g.cs",
+    "sha256": "12eb9b40a7b26f32cabad1fb23cbc96f0b71998911efb749d68ba00e7b7cb892"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberRespawnCarry.g.cs",
+    "sha256": "e8b116636a2c58f59b6fb2a4c90563da7283147501b88b222af980e62618d8a4"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberResults.g.cs",
+    "sha256": "94bc15cb01bd70a63079c2fd5711dc7803f8dc3a1a739b0f53c65573c88510f9"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberSkillState.g.cs",
+    "sha256": "f9ea17baef362e90852126e1bb27f17a4c24871ec87e62d02b3489040447d903"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberStatistics.g.cs",
+    "sha256": "23e9131e879cd2e9abe6d5874318f46d20a44944129a925eb26cca9cc30fba62"
+  },
+  {
+    "path": "Gameplay/generated/server/BomberWorldRuntime.g.cs",
+    "sha256": "bcd7742dbaed0e51e580d36b610372544cdfcd552fcf8c2cd5c8c3ec462b2f84"
+  },
+  {
+    "path": "Gameplay/generated/server/GeneratedAbilityRegistry.g.cs",
+    "sha256": "85e24066e835ef878f5ac36f0b739c0b6295acd29bda9c7f115aabd70c99fa32"
+  },
+  {
+    "path": "Gameplay/generated/server/GeneratedEffectRegistry.g.cs",
+    "sha256": "4029e4e151e352fc07aeb3c0dc442a1525a60cde6a663e41fd8514e2d07e9a19"
+  },
+  {
+    "path": "Gameplay/generated/server/IdentityComponent.g.cs",
+    "sha256": "b6566ffddb19120fc74361a7915db0ed4860c7dd8bece3c3be79667e5bfb7f7a"
+  },
+  {
+    "path": "Gameplay/generated/server/Lumio.Bomber.Gameplay.Registry.g.cs",
+    "sha256": "a43bb7b9e229a8c63682f991d02bc3bbb95c70736910d099c9342447d71fe41e"
+  },
+  {
+    "path": "Gameplay/generated/server/Lumio.Bomber.Gameplay.Sync.g.cs",
+    "sha256": "b40a66ef9e01b9c1eeccb74b709d4d3edfc38596742a38be83e9829361d979f1"
+  },
+  {
+    "path": "Gameplay/generated/server/MoveAbility.g.cs",
+    "sha256": "fb00c05b5b600648051892d6d71631b2c2a8da69de549390688888c3ca842fd4"
+  },
+  {
+    "path": "Gameplay/generated/server/PickupAbility.g.cs",
+    "sha256": "7e121c60e69ae4cbb9a1c807e6ee86b070236d1aa35460942bf819586539fd9e"
+  },
+  {
+    "path": "Gameplay/generated/server/PlaceBombAbility.g.cs",
+    "sha256": "2c5a7dbec15dd29c144ce3c5c9390d54f4f21c54c52199482a29b62aadeb14e8"
+  },
+  {
+    "path": "Gameplay/generated/server/PlayerEntity.Template.g.cs",
+    "sha256": "d218f2bb7024129ab15232129106f3928abc4e385e26d504961fcdbbba90f89d"
+  },
+  {
+    "path": "Gameplay/generated/server/UseActiveSkillAbility.g.cs",
+    "sha256": "bc07a857574fe23f7cc0965fc14df93e9ec2ed089f1301fab8a6e583f2030ae4"
+  },
+  {
+    "path": "Gameplay/generated/server/WorldEntity.Template.g.cs",
+    "sha256": "7d4df699bc4d4b756ea4399d639623c0b3384d2a5fafd4e84d2620ccf94d08ef"
+  },
+  {
+    "path": "Gameplay/Ports/IBomberTelemetrySink.cs",
+    "sha256": "4750e0602071a9cf4923e8dd76c23f521643bad1d924159484bdc93f7e22c1a4"
+  },
+  {
+    "path": "Gameplay/Tables/profiles.json",
+    "sha256": "3c500c5ca2245d487c9d3e24fc667f53e69e8b1c18f207ba9954ee2b8f810b7d"
+  },
+  {
+    "path": "Gameplay/Tables/registry/row-ids.json",
+    "sha256": "3b5dd9f105d6cca314a9ba93b84c0953f9f62c59da445036cb481bf2b9e546c3"
+  },
+  {
+    "path": "Gameplay/Tables/registry/tombstones.json",
+    "sha256": "ec234fc9fe435d8d5301c1e27fac2b02bd465933e868230419f29cc8a52debf1"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/attributes.json",
+    "sha256": "fbf260dfc50177191decd50ae032a5df6f471c563ab5acbde07befffa8af6b53"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/blocks.json",
+    "sha256": "0ce83c61e01d670ff8ae331b12cd99acdaddab8d80c89b5e1daaae9b5ffed1b2"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/bomb_kinds.json",
+    "sha256": "3037c28b0a9e6a9c592765e301eb0711aeb5574affd106725b70ffb3317a1092"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/bomb.json",
+    "sha256": "6ccd18a1d2896cbf56e391abf6e80fa7ac8c872aed63dedf808c02d72ee3bce9"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/bot_profiles.json",
+    "sha256": "2c5f9a44a4486acecf915ea06987cff49feb966e03b522ef9e9663918cc6c3fe"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/bot_tactics.json",
+    "sha256": "bbf01acdba164a328bef591ef4d028299409ea2ca0d9fe0370d176638d7f6e86"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/characters.json",
+    "sha256": "5fe4d4e1373cfa8462ffcfac2261ee5eac9b5fbb431dd9283fdae4b1ec8e76bd"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/chest.json",
+    "sha256": "525847f177895dc5714bc79596fb9d2ecf37c2a2352ea2df00220f4a89e80451"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/circle_stages.json",
+    "sha256": "251c41dc8ae34de831b13b07d6b9deebe9897afa70da0b5cc9f50114ca8a7144"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/damage_causes.json",
+    "sha256": "12b146d5c098f61eb6f3869cf0aeef179ae03c22ee136d0867af896aa77b0d28"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/drops.json",
+    "sha256": "79d1158c01c0cf459bc8db0da4222a327bb107e5dd39f5aadef4f5675e1b7429"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/effects.json",
+    "sha256": "9f05dc2f220a9a62e9748980037766e10a54c83e06bbd1a5ac83d6c61e5cd8fd"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/final_circle.json",
+    "sha256": "096fdf8edbde7eef3603f64e1b316ce26d239f8e69c808d08711dc5b90fa2ee2"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/game.json",
+    "sha256": "a8060999a611ac57190530288e4f7cf4bd60b4b1fd9e840646699f1497059763"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/life.json",
+    "sha256": "389033b6050c6ce6f6799233de7da702a30c7dae474b2bd98251d23720efbe96"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/map.json",
+    "sha256": "432c43f3674ad92be46232d37a0d621d1b115c8a5febb032762b29a492d38d15"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/movement.json",
+    "sha256": "539c4d57d702a3d98995016a645b2bdd65e0ce3c4b9e03eaf53aede190fe4ba7"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/object_budgets.json",
+    "sha256": "21481667f9f701cb3fa5aae0f833a12726597cc62cffec2f1adf5c145d0ee24f"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/pickup_kinds.json",
+    "sha256": "1eea772ef5c3b65499a558cf8e35d32a42e78ce130d33875be7cad7d321032fd"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/presentation.json",
+    "sha256": "2843ae13b7daec33631c86d9c5194338de3b4c2a43ae06ff736e1fc4640cdbe7"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/regeneration.json",
+    "sha256": "3a6d71f678e4231dbb02255af4ee1ef62ba744626dabc40a75be2a639d1a40c2"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/regression_seeds.json",
+    "sha256": "8c6244e6091d4a5c4e79596b9f591667966060e19ccf9da1b975d389fd8c43f1"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/skill_combos.json",
+    "sha256": "79641bf52b7b0380aee10b960b0ec488eddfeadb12ab5da6503d72384395e6bc"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/skill_levels.json",
+    "sha256": "76a871c59beda53ba29708a63845b6b0c264bd6f929b968c111502f149881a0a"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/skill_rules.json",
+    "sha256": "66a21d75bd105abd36f6c6805ccf5ef462ab4c38fb30ae4db1c16b616529211b"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/skills.json",
+    "sha256": "108e6edaaa8fc9f938336feffc0bdfaf666079e3df5d0757e3808c285491a1dc"
+  },
+  {
+    "path": "Gameplay/Tables/schemas/speed_tiers.json",
+    "sha256": "4a6266e26432fb85557be8bf83415c84e9ef0ca9c1fb655b1a908541782c9fe5"
+  }
+]

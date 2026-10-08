@@ -1,0 +1,10 @@
+table: skill_combos
+schema: schemas/skill_combos.json
+
+| id     | name         | left_skill_id | right_skill_id | result_skill_id | preserve_source_levels | bound_if_either_bound | source_status | source_ref                     |
+| ------ | ------------ | ------------- | -------------- | --------------- | ---------------------- | --------------------- | ------------- | ------------------------------ |
+| 117001 | fireDash     | 3             | 4              | 8               | true                   | true                  | design        | docs/specs/bomber/design.md#15 |
+
+| 117002 | bounceBubble | 2             | 5              | 9               | true                   | true                  | design        | docs/specs/bomber/design.md#15 |
+
+| 117003 | glacierBomb  | 6             | 7              | 10              | true                   | true                  | design        | docs/specs/bomber/design.md#15 |

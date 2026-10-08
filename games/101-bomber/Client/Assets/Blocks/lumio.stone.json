@@ -1,0 +1,6 @@
+{
+  "format": "lumio.block-asset.v1",
+  "faces": {
+    "all": "textures/stone.png"
+  }
+}

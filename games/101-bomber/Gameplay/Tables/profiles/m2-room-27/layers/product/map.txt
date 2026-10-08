@@ -1,0 +1,6 @@
+table: map
+schema: schemas/map.json
+
+| name | width | depth | layout_kind | moat_radius_cells | moat_branch_cells | source_status | source_ref |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| default | 27 | 27 | M2Moat | 5 | 6 | inferred; author-only; unverified | ADR-0048 |

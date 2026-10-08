@@ -1,0 +1,6 @@
+table: bomb
+schema: schemas/bomb.json
+
+| name | fuse_ms |
+| --- | --- |
+| default | 1800 |

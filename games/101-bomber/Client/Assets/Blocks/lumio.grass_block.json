@@ -1,0 +1,8 @@
+{
+  "format": "lumio.block-asset.v1",
+  "faces": {
+    "top": "textures/grass_top.png",
+    "bottom": "textures/dirt.png",
+    "side": "textures/dirt_grass.png"
+  }
+}

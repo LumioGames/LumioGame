@@ -1,0 +1,113 @@
+{
+  "reviewDate": "2026-10-02 Asia/Shanghai",
+  "scope": "Targeted ordinary reads only; no complete source rehash or test rerun",
+  "source": "C:/Work/LumioGames/LumioGameRuntime-101-finite-successor-composition",
+  "selectedSource": [
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.cs",
+      "bytes": 112125,
+      "sha256": "13b460db1972f18a616b3639219535d15342a4a6b5d662dcf0954a8d14590a22",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.Visibility.cs",
+      "bytes": 33783,
+      "sha256": "d8df9881fede104970701e354f6a21f67478affede38c1bb2aaf9679c4c04a65",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.Partition.cs",
+      "bytes": 3508,
+      "sha256": "816c7acb853968ec6a65f5c6dd8d334e160dc4d962b6aa1bc1ab7a37b4ae984a",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.Successor.cs",
+      "bytes": 55742,
+      "sha256": "2b1efaed942d52315bedf0b37072fdf85be7d92ae0065a63bd3cfdee276ce988",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.SuccessorProjection.cs",
+      "bytes": 19504,
+      "sha256": "b05aea0c90305a9dab4d0b193ada94e5fb7a758145667fe0caee69cb5e790394",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/ecs/src/Lumio.GameRuntime.Ecs/World/WorldManager.EffectProjection.cs",
+      "bytes": 3627,
+      "sha256": "2498f26e1068e93d9efc6281624f21e45adc9593ea01f0a95d0dbd7fa45ed20d",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/src/Lumio.GameRuntime.Gas/Lifecycle/GasWorldContext.cs",
+      "bytes": 16247,
+      "sha256": "090878348287b0cec1f03f9579f9b186563ab39d1943a43f2f1bb053a0f13546",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/src/Lumio.GameRuntime.Gas/Evaluation/AttributeEvaluator.cs",
+      "bytes": 12563,
+      "sha256": "dc3ecdb6cf62170b9791a3bfddb4af5c73fa895336a74af43cf3db90b181ce30",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/replication/src/Lumio.GameRuntime.Replication/Binding/EntityBindingQuery.cs",
+      "bytes": 51253,
+      "sha256": "77e6d66c732baa3384663d25d70de67c0668b9bc5da806e6786a3972be7607ed",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/replication/tests/Lumio.GameRuntime.Replication.Tests/FiniteSuccessorCompositionTests.cs",
+      "bytes": 7775,
+      "sha256": "a41108f033890be093884de3c1ea3d1d44f8bc146f4115582be61affd27f0ec4",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/tests/fixtures/successor/FiniteDormantEffect.cs",
+      "bytes": 517,
+      "sha256": "ee01d11113bfbc399c8cbdfaf50bf836e1151920fd159cccbbce7aec6b2143a8",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/tests/fixtures/successor/SuccessorScenario.cs",
+      "bytes": 4675,
+      "sha256": "42ac8f3eb08a79e41ff2328416d20652b14f7e35a0d72e42475fb7d5d0cc855e",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/tests/Lumio.GameRuntime.Gas.Tests/FiniteEffectLifecycleTests.cs",
+      "bytes": 4482,
+      "sha256": "11bd8253faa2aee35f7785eb5ac23005fd178dddc5b8c1ac7a5672255897cb95",
+      "matchesFinal": true
+    },
+    {
+      "path": "modules/gas/tests/Lumio.GameRuntime.Gas.Tests/FiniteProbeEffect.cs",
+      "bytes": 3128,
+      "sha256": "43d9ae9a2ca2ed050a71b86023d4492c4f2592927cc52de66eabb9f489f2df5e",
+      "matchesFinal": true
+    }
+  ],
+  "pins": [
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime-101-effect-integrated-evidence\\finite-successor-composition-v1\\runtime-final-manifest-final2.json",
+      "bytes": 193189,
+      "sha256": "a885bc831dc3a81249cd01b8bb1aa6e4f02cca48b496dc0555d9e2c0e45c2a7c"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime-101-effect-integrated-evidence\\finite-successor-composition-v1\\dependency-final-manifest-final2.json",
+      "bytes": 157050,
+      "sha256": "c3a08f6118df6b5160fa4977822e60b511fa24ddbd2c736f2ecebe006468cc33"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime-101-effect-integrated-evidence\\finite-successor-composition-v1\\common890-to-final-final2.patch",
+      "bytes": 857077,
+      "sha256": "4e17606d6dc2abf2187f02d1efc2c275f2b88deeb95c4baa09e38a1a901d20f0"
+    },
+    {
+      "path": "C:\\Work\\LumioGames\\LumioGameRuntime-101-effect-integrated-evidence\\finite-successor-composition-v1\\reviewedRSC945-to-final-final2.patch",
+      "bytes": 379451,
+      "sha256": "f0b04bf3a1576bd0198ac14035db0089af36a451e05635afaf589bc447d64b30"
+    }
+  ]
+}

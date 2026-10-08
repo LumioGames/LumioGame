@@ -1,0 +1,7 @@
+# 完整14非作者资格核验
+
+Root独立接受精确完整14供Game构建消费，真实体验仍未验收。核对305载荷/306磁盘成员、全部hash、八仓cleanHEAD与唯一Client3文件862f差异；原7来源不动。实际官方verify0，fresh SDK解出的五组PE13/10/13/28/20无依赖错配；Root另以新缓存实际build0/run0执行原默认CLR真实Native HFSM ctor，实际archiveSHA256/SHA512及全部13 SDK输出相等。
+
+manifest 65bcedda784e3a99ac5f0ff55d9f1fb20bfeaef14313f28001b25e741270a9c9；SDK d7c97107620696669d8657e590d19d085cc2112243783ce48ac2d912bbdb21d0；Native e15c2b124d339a000b5348d47cdf4ef7571e55ff8447637386795e0cf0034c89。新Platform镜像lumio-platform-local:0.0.5-main.523c3d3@sha256:fab3933b5a4f4c931097f787a451c1f3d73813ad44c8e0dddec44044cc3943b0，须新隔离profile绑定，不能沿用13镜像宣称身份闭合。
+
+不包括离线语义草案，未判定Game/WebCIL、UI真实首屏、移动或十次重进通过。纯单格修复沿既有Native trace语义，知识豁免：不改变公共规则；所有失败与旧报告保留。证据：C:/Work/LumioGames/LumioGame/.run/complete14-package-independent-review-01/result.json。

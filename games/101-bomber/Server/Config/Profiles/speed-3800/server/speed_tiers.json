@@ -1,0 +1,79 @@
+{
+  "contentFingerprint": "9265ed3c0c1f2bcd9367cfe5e9d0c53232550b1d3a09a78a83d77c02ff668d33",
+  "rows": [
+    {
+      "id": 102001,
+      "name": "tier0",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 3800,
+      "tier": 0
+    },
+    {
+      "id": 102002,
+      "name": "tier1",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 4150,
+      "tier": 1
+    },
+    {
+      "id": 102003,
+      "name": "tier2",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 4500,
+      "tier": 2
+    },
+    {
+      "id": 102004,
+      "name": "tier3",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 4850,
+      "tier": 3
+    },
+    {
+      "id": 102005,
+      "name": "tier4",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 5200,
+      "tier": 4
+    },
+    {
+      "id": 102006,
+      "name": "tier5",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 5550,
+      "tier": 5
+    },
+    {
+      "id": 102007,
+      "name": "tier6",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 5900,
+      "tier": 6
+    },
+    {
+      "id": 102008,
+      "name": "tier7",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 6000,
+      "tier": 7
+    },
+    {
+      "id": 102009,
+      "name": "tier8",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design",
+      "speed_milli": 6000,
+      "tier": 8
+    }
+  ],
+  "table": "speed_tiers",
+  "target": "S"
+}

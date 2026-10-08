@@ -1,0 +1,6 @@
+table: life
+schema: schemas/life.json
+
+| name | protection_ms |
+| --- | --- |
+| default | 1500 |

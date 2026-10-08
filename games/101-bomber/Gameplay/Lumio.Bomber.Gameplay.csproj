@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Spectator wasm cannot consume the net10.0 Runtime graph: that TFM
+         ProjectReferences NativeLoader, and NuGet unifies the whole wasm
+         restore onto net10.0 even when inner Runtime refs ask for ns2.1. -->
+    <TargetFramework Condition="'$(LumioBrowserReplica)' == 'true'">netstandard2.1</TargetFramework>
+    <TargetFramework Condition="'$(LumioBrowserReplica)' != 'true'">net10.0</TargetFramework>
+    <AssemblyName>Lumio.Bomber.Gameplay</AssemblyName>
+    <RootNamespace>Lumio.Bomber.Gameplay</RootNamespace>
+    <LumioGameplayConfigContract>Lumio.Bomber.Gameplay.Config.IBomberConfig</LumioGameplayConfigContract>
+    <LumioGameplayConfigAdapter>Lumio.Bomber.Gameplay.Config.BomberConfigBinding</LumioGameplayConfigAdapter>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <_LumioConfigSide Condition="'$(LumioEcsSide)' == 'client'">client</_LumioConfigSide>
+    <_LumioConfigSide Condition="'$(_LumioConfigSide)' == ''">server</_LumioConfigSide>
+    <_LumioConfigTablesRoot Condition="'$(_LumioConfigSide)' == 'client'">$(MSBuildThisFileDirectory)../Client/Config/Tables</_LumioConfigTablesRoot>
+    <_LumioConfigTablesRoot Condition="'$(_LumioConfigTablesRoot)' == ''">$(MSBuildThisFileDirectory)../Server/Config/Tables</_LumioConfigTablesRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Compatibility/ModuleInitializerAttribute.cs" />
+    <Compile Include="Compatibility/ModuleInitializerAttribute.cs" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+    <Compile Remove="Compatibility/IsExternalInit.cs" />
+    <Compile Include="Compatibility/IsExternalInit.cs" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+    <!-- ADR-115: the compiler exports per end. Server/Config/Tables carries S+V,
+         Client/Config/Tables carries C. The output layout the Runtime loader reads
+         (config/manifest.json + config/<projection>/) is unchanged. -->
+    <None Include="$(_LumioConfigTablesRoot)/**/*" Link="config/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="System.Text.Json" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+  </ItemGroup>
+</Project>

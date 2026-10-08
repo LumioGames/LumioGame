@@ -1,0 +1,48 @@
+# IceBridge WaterPending Fuse eligibility — independent production review
+
+2026-10-03, registry_bounds_review, non-author of these two production deltas. The twelfth long-withheld test was authored by this reviewer; its test design/helper changes are excluded from independent review here. Root/another reviewer owns that test's quality verdict. This review reads exact production before/current bytes, existing validation/consumer/call timing and recorded build/run evidence; no compiled/source/Table/GEN/index or heavy operation is performed.
+
+**Spec/quality PASS for this narrow source repair. Execution closure remains pending.** The actual targeted RED exists. The post-fix run reaches later receipt delivery but fails `restore_target_not_fresh`; its name `green-candidate-01` is not a GREEN verdict. This report neither closes that fixture issue nor certifies the whole Ice/Game suite.
+
+## Exact source scope
+
+| File | Preserved before SHA256 | Reviewed current SHA256 |
+|---|---|---|
+| BomberIceBridges.Server.cs | `c686434a160577045d8d2700fca3d0c6c2bb491407087b34ec32e7e19fe2e74b` | `3e7a8f8ecf7b6952c630dab715b296f884d12185ed29091ed615b39ad4be25b8` |
+| BombSystem.Server.cs | `490fba2617bdfe192e8c6357583fda88dfb69da752f5ab197e3deefd62164b1c` | `a42880ac82e3a6e8b13c9866dd13a9a8888216031138d7097b78dada0efaabc1` |
+
+Before-images are the two exact `.before` files under `.run/ice-bridge-water-fuse-production-fix-01`; no before/after JSON exists there at this audit, so identity is derived directly from those actual files and the build's recorded source dictionary. Independent Node byte comparison proves removing only the new HoldsFuse method reconstructs the entire helper before-image; applying only the three known eligibility insertions reconstructs the entire BombSystem current image. Other source/guards/EOL bytes are exact.
+
+## Eligibility and timing checks
+
+`HoldsFuse` (helper:52–67) returns false for a non-live/non-Fuse bomb or no current WaterPending row at the bomb's actual LogicTransform cell. A candidate match must pass `ForBridgeOwnerObservation`: generic full pending header/column/match validation, all persistent full bridge owners and every bridge pending source/cell/generation/submission detail tuple. The complete shared two-layer photo is ready/has block IDs by the existing Reader contract. Qualification then requires the exact configured water material, section revision strictly beyond that owner's expected revision, and actual Native `BindingGet` returning null at that cell. Prior ice, a different cell, an unrelated/absent owner or a non-advancing water revision does not qualify.
+
+This is observation-derived **eligibility**, not a successful receipt. The function performs no Save, structural command, phase/clock/identity write, HFSM Send, inventory or journal settlement, and it never clears pending debt. Full-token/generation/current-match guards and the Original-only result consumer remain unchanged. Material/revision uses the already reviewed same-Tick/same-adapter full photo; real binding reads remain Native-owned. Unknown debt continues to own the actual row and credit without a timeout or replay.
+
+BombSystem checks qualification in exactly three places:
+
+- Due queue admission: it does not schedule an elapsed Fuse whose committed water cut is still awaiting Original.
+- Immediately before Native `FuseElapsed`: it rechecks after any previous processing in the queue, before phase transition and explosion.
+- Chain admission: it checks **before** `chained.Add`, `FuseEndTick=world.Tick`, `ChainId=source.ChainId` and enqueue, preserving the original clock/chain while water settlement is owned.
+
+The earlier bomb validation/actual Native HFSM projection checks remain; Danger/Burn retirement holds remain distinct. A genuine failed/pre-commit ice cut is not held as water. Once the exact Original is consumed, existing full-cohort/current-occupant validation and Native Extinguish/once-only original-Life inventory/Frenzy paths settle normally before ordinary due processing; no new refund or phase rule is introduced. Already exploded Danger/Burn is excluded from this gate. The hold may continue indefinitely only while the same validated unresolved committed-water owner exists, matching the existing Unknown ownership boundary.
+
+These checks implement ADR0048/design§5.3/core§6's water extinguishment boundary without inventing an Engine contract, resetting the eight-second bridge clock, extending FuseEndTick or borrowing a successor's inventory. No new Persist field, token, budget/Native slot, declaration, generated file or public M2 admission is changed. The repair retains the earlier photo-only guards and changes no other lifecycle source.
+
+## Actual evidence and limits
+
+Actual `build20-ice-water-fuse-hold` log/JSON/raw exit show0warnings/0errors and child0; its recorded source hashes match both reviewed current files. Actual `ice-long-withheld-red-candidate-02` records test SHA `7c62a3bb0abba8b59890640701e2f6b2d8320b3a281ecc7c279bdc2181976e99`,1total/1failed/0passed/0skipped/child2, failure at held-Fuse phase assertion line348: expected0(Fuse), actual1(Danger). This is the targeted real Native business RED after the first freeze/water/Original prerequisites, distinct from earlier HFSM fixture setup failures.
+
+With the same test SHA, `ice-long-withheld-green-candidate-01` also records1total/1failed/0passed/0skipped/child2. Its failure is later at `DeliverAndTick`/`BindCandidate` receipt restoration (`restore_target_not_fresh`), not the earlier held phase assertion. The later stack is consistent with Root's observed crossing of the original deadline+2 and retained native machine/source/no-refund assertions, but it does not prove Original settlement, once-only refund or duplicate handling passed. The helper order correction and a true targeted GREEN must retain their own source/run identity and independent test review.
+
+The exact log/JSON hashes, actual child exits, build/start/end source hashes and historical DLL/Native identities are preserved in `.run/ice-bridge-water-fuse-independent-review-01/verification.json`. Existing sourceChanges arrays are empty. The static verifier runs Node only and does not reinterpret reused current DLL paths as historical binaries. Remote/Frenzy long-delivery, chain-specific execution, all-water/multi-cohort, accepted-water paired restoration, ingress saturation and full product/suite acceptance remain beyond this specific case; no blanket completion claim is made.
+
+## Execution closure after genuine GREEN (2026-10-03)
+
+Root subsequently completed `build22-ice-fixture-and-continuation`: actual log0warnings/0errors, JSON and raw child exit0. `ice-bridge-production-green-candidate-02` actual summary is12total/12succeeded/0failed/0skipped,15.768seconds, JSON/raw child0, sourceChanges empty. Both independently reviewed production files remain byte-identical at helper `3e7a8f8ecf7b6952c630dab715b296f884d12185ed29091ed615b39ad4be25b8` and BombSystem `a42880ac82e3a6e8b13c9866dd13a9a8888216031138d7097b78dada0efaabc1`; these exact values occur at both build/run starts and ends. The run records Gameplay DLL `532cd6d2caf08f78ee6d022d4fcd595b367d00c460cb23da912821ce07d0172a` and Tests DLL `1a18d1b1e5ed779ff9ade7be356cb1385201e530f875928c80e9ad5c4a340a57`.
+
+The final12-case source SHA is `93f2069ff42f47366f0710fa179aeaa1a4cf75f85d9eeedf904c28bf5c24a361`, distinct from the earlier targeted RED/post-hold fixture-failure source `7c62…`. Root corrected actual Native result restoration order and scoped fixture initialization/isolation; this report does not label that changed test source as same-hash RED→GREEN. This reviewer authored the added12th case and therefore **does not independently review that case or approve its fixture changes here**. That task belongs to the separate non-author reviewer. The observed GREEN closes the execution limitation of the independently reviewed two production domains for the real stationary long-withheld-water scenario, while preserving the earlier RED and restore-target failure evidence.
+
+Root also completed `build21-ice-native-photo-witness`0warnings/0errors/raw0 and `ice-native-photo-green-candidate-01`:3total/3succeeded/0failed/0skipped,7.570seconds, raw/JSON0 and empty sourceChanges. Exact test source remains `69539d581c4fab09a70e33780f78b7f868d5aace7e7d6dea6bda0d4e81b155c2`; Tests DLL is `646c733dd30833e9e974f31761d7ea93a9c19b467761f2b35538556681216dcd`, Gameplay DLL is the same `532cd…`. These witness executions cover the three material/revision photo moments: freeze Original, active owner, water Original. The witness author is this reviewer; this paragraph records Root's actual run evidence and does not substitute for independent test review or claim every Native API is batch-only. Genuine BindingGet remains separately Native-owned.
+
+Both final runs record complete07 manifest `652b5a55cd8bd4fea69839b78ba7401b6ad1a76980f5af40911e3e640345fe04`, Config commit `a991a517f9dbae255321c25d65fea0bfdfdca42f`, unchanged Native DLL `c01599b8c31ea72185f2a206dbcc5c4ff8fb432c68bb61ea3dabab5e6d4ddb12` and build-info `f9752593b0d802b76996a5bcaa8fdda4a75d2f9449fd160d268e793029f3570d`. Read-only closure evidence `.run/ice-bridge-water-fuse-independent-review-01/execution-close.json` SHA `ad5728252497ae6d860ba8609bd358ee70277579611b7867194fcdd9f4122ee2` preserves actual argv, times, all four log/JSON hashes, source identities and recorded DLL identities. The Node verifier exited0; no build/test/source/GEN was executed by this reviewer. Remaining remote/Frenzy/chain-specific and paired-recovery limits above continue to apply; this is not complete Game or formal M2 acceptance.

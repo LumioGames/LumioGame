@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <AssemblyName>Lumio.Bomber.Bots</AssemblyName>
+    <RootNamespace>Lumio.Bomber.Bots</RootNamespace>
+    <Description>Bomber Bot.Host scenarios (--scenario assembly)</Description>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- This assembly declares no entities; it only drives the ones the gameplay assembly does. -->
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+    <!-- The plugin and launcher select the same complete release's bot/<rid> graph. -->
+    <LumioClientBotDirectory Condition="'$(LumioClientBotDirectory)' == ''">$(LumioEngineRoot)bot/$(NETCoreSdkRuntimeIdentifier)</LumioClientBotDirectory>
+    <LumioClientBotAssembly>$(LumioClientBotDirectory)/Lumio.Client.Bot.dll</LumioClientBotAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Tests/**/*.cs" />
+    <Compile Remove="ReadTests/**/*.cs" />
+    <!--
+      Everything is Private="false" on purpose. Bot.Host loads this assembly as a plugin next to
+      the gameplay assembly it already loaded, and its resolver probes the scenario directory:
+      a copy of Lumio.Bomber.Gameplay or Lumio.Client.Bot sitting here would shadow the host's
+      own copy with a second identity. Compile against them, ship none of them.
+    -->
+    <ProjectReference Include="../../Gameplay/Lumio.Bomber.Gameplay.csproj" AdditionalProperties="LumioEcsSide=client" Private="false" />
+    <Reference Include="Lumio.Client.Bot" HintPath="$(LumioClientBotAssembly)" Private="false" />
+    <Reference Include="Lumio.Client.Gameplay.ECS" HintPath="$(LumioClientBotDirectory)/Lumio.Client.Gameplay.ECS.dll" Private="false" />
+    <Reference Include="Lumio.Client.Gameplay.Input" HintPath="$(LumioClientBotDirectory)/Lumio.Client.Gameplay.Input.dll" Private="false" />
+    <!-- The client gameplay project is intentionally shipped without its host graph;
+         Bot scenarios still compile against the Runtime identity types they inspect. -->
+    <Reference Include="Lumio.GameRuntime.Ecs" HintPath="$(LumioClientBotDirectory)/Lumio.GameRuntime.Ecs.dll" Private="false" />
+    <Reference Include="Lumio.GameRuntime.Primitives" HintPath="$(LumioClientBotDirectory)/Lumio.GameRuntime.Primitives.dll" Private="false" />
+  </ItemGroup>
+  <!--
+    Private="false" only covers the two direct references; the Runtime graph still arrives
+    transitively through the gameplay reference. The host already owns every one of those
+    assemblies, so the plugin output is emptied of them here and ships as a single file.
+  -->
+  <Target Name="BomberBotsShipWithoutTheHostGraph" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+  </Target>
+  <!--
+    The Bot.Host graph comes from the Engine/ release (bot/<rid>/), the same directory the
+    launcher starts Bot.Host from. This project stays outside LumioBomber.slnx so that
+    `dotnet build LumioBomber.slnx` does not depend on a Bot.Host build for this platform.
+  -->
+  <Target Name="RequireClientBotArtifacts" BeforeTargets="PrepareForBuild;ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(LumioClientBotAssembly)')"
+           Text="BOMBER_BOTS_CLIENT_BOT_MISSING: $(LumioClientBotAssembly) is not in the Engine/ release (Engine/ empty? run: git submodule update --init --depth 1 Engine)." />
+    <Error Condition="!Exists('$(LumioClientBotDirectory)/Lumio.Client.Gameplay.Input.dll')"
+           Text="BOMBER_BOTS_CLIENT_GRAPH_MISSING: $(LumioClientBotDirectory)/Lumio.Client.Gameplay.Input.dll is not in the Engine/ release." />
+    <Error Condition="!Exists('$(LumioClientBotDirectory)/Lumio.Client.Gameplay.ECS.dll')"
+           Text="BOMBER_BOTS_CLIENT_GRAPH_MISSING: $(LumioClientBotDirectory)/Lumio.Client.Gameplay.ECS.dll is not in the Engine/ release." />
+  </Target>
+</Project>

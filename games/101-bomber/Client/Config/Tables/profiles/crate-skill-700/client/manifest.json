@@ -1,0 +1,383 @@
+{
+  "tables": [
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "56bde15c81cd5bbb5d4d47e430a22d96f3b5b1386f077c3e509f884483163e33",
+          "path": "client/attributes.json"
+        }
+      ],
+      "contentFingerprint": "117b659844a62e8728a024a680604b4bb3916243ba674be5e8690083fc872f34",
+      "packageFingerprint": "56bde15c81cd5bbb5d4d47e430a22d96f3b5b1386f077c3e509f884483163e33",
+      "path": "client/attributes.json",
+      "sourceFingerprint": "ba82a6dd719c2756a446ad4c7c374957d4a5745d18f60a11781cc072124e03d5",
+      "table": "attributes"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "54862364aa7f0a6d5df7550a987e44b952798b051b95d6b26fd97981ef648d98",
+          "path": "client/blocks.json"
+        }
+      ],
+      "contentFingerprint": "0300bdd5f5019548638165b2fcf19f73e3474a262f5636930395ab06afc4b924",
+      "packageFingerprint": "54862364aa7f0a6d5df7550a987e44b952798b051b95d6b26fd97981ef648d98",
+      "path": "client/blocks.json",
+      "sourceFingerprint": "7afc0904300f3cb3cbf4e26157751b1a818bc886dd15f865929d480f7356dbf2",
+      "table": "blocks"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "2076bd554e929c0183eae9c78aceca8b9381e24e6e27c0253f50777d358b9848",
+          "path": "client/bomb.json"
+        }
+      ],
+      "contentFingerprint": "5e169227bdef661cc75ae62a556e2b9ec3cc002cb77b831c9dbee46924a3e5dc",
+      "packageFingerprint": "2076bd554e929c0183eae9c78aceca8b9381e24e6e27c0253f50777d358b9848",
+      "path": "client/bomb.json",
+      "sourceFingerprint": "b4274e7c63d56bf1185ff39ee8cadb8fe9beb2fafb450d95c84496e564d922b2",
+      "table": "bomb"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "890a0b7afd04388069471b6201d6f9abeeeb0ccd0818ffdf810a67b92f6e0e71",
+          "path": "client/bomb_kinds.json"
+        }
+      ],
+      "contentFingerprint": "3b01041f6f9173f692035ab2787f014e0e60d2fd373e3e5e3b2d6c5deecc54f7",
+      "packageFingerprint": "890a0b7afd04388069471b6201d6f9abeeeb0ccd0818ffdf810a67b92f6e0e71",
+      "path": "client/bomb_kinds.json",
+      "sourceFingerprint": "34e642972de496ee6e51f4ac70877fc893ffeacd26b437b39082ff6a4bd0bf8c",
+      "table": "bomb_kinds"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "dac364c65df7e738655aa6f2605ea7093e3ac8e4cea9753874f6fe3a6eb4a3f8",
+          "path": "client/bot_profiles.json"
+        }
+      ],
+      "contentFingerprint": "fe0879a954c7b9ae5a7067f3dcbad6f808913d3bc728491a21a1b8069c87a2eb",
+      "packageFingerprint": "dac364c65df7e738655aa6f2605ea7093e3ac8e4cea9753874f6fe3a6eb4a3f8",
+      "path": "client/bot_profiles.json",
+      "sourceFingerprint": "b130e4946d6aea7269e957b1791853654a0c8b88896aa0bddc2dffa4c4544458",
+      "table": "bot_profiles"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "532aaae03e1291f28e9c7032be7a52523841ce885498fc563b209cd4616ca65d",
+          "path": "client/bot_tactics.json"
+        }
+      ],
+      "contentFingerprint": "b5570c6ee6cedcde53c5474d0372547a75db037c5b512d3f16d4f952c8505ce7",
+      "packageFingerprint": "532aaae03e1291f28e9c7032be7a52523841ce885498fc563b209cd4616ca65d",
+      "path": "client/bot_tactics.json",
+      "sourceFingerprint": "393776ba4a5bc1a01aa9722a7a4912bb7f88f5b97e64a0dce32d2dbc9d8b39ab",
+      "table": "bot_tactics"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "29c261706c35318c9efd338ac04dd77aba81a0a50dfe918836cec13ef0cbfde3",
+          "path": "client/characters.json"
+        }
+      ],
+      "contentFingerprint": "e075fa4a7ecfb6ff43f1c6ae008090590d741caedce13c794e26eb8b535d347c",
+      "packageFingerprint": "29c261706c35318c9efd338ac04dd77aba81a0a50dfe918836cec13ef0cbfde3",
+      "path": "client/characters.json",
+      "sourceFingerprint": "eaf668d0008bf51a581274e87b1b57e793d2f4ffebebdbfe904c2417851d93e7",
+      "table": "characters"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "259643cb1269f0ce85914d16e109f6096980103a0a173243b935c35507b0b147",
+          "path": "client/chest.json"
+        }
+      ],
+      "contentFingerprint": "62903d0d883df4319996f597260f220be3ac156340c730aa26cae2d1d70def00",
+      "packageFingerprint": "259643cb1269f0ce85914d16e109f6096980103a0a173243b935c35507b0b147",
+      "path": "client/chest.json",
+      "sourceFingerprint": "0b37eb2b0db44d907323480a5e51e5b487199432982780468acfbd24e58ebada",
+      "table": "chest"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "62b788130ffb7eacabac8f905e2e7df0c21b0f4dc6ae53898a86e5f7db2e68d9",
+          "path": "client/circle_stages.json"
+        }
+      ],
+      "contentFingerprint": "556e2dc7693b4c75d0ef328763fee76fd4e26dae99c3f8f32cb0bc1e8f74f672",
+      "packageFingerprint": "62b788130ffb7eacabac8f905e2e7df0c21b0f4dc6ae53898a86e5f7db2e68d9",
+      "path": "client/circle_stages.json",
+      "sourceFingerprint": "1f2d9f855a725c891f6246288d190946bead1e938c74bebe4b2b2d1475933683",
+      "table": "circle_stages"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "36627ce7b26dcd65727448fd5d16a8a7985b588bbefe8d6949635be0ecac944f",
+          "path": "client/damage_causes.json"
+        }
+      ],
+      "contentFingerprint": "2b4accda44a8d778242524e37d5d4cfcb5c290835c94d5642ee706812b329c0a",
+      "packageFingerprint": "36627ce7b26dcd65727448fd5d16a8a7985b588bbefe8d6949635be0ecac944f",
+      "path": "client/damage_causes.json",
+      "sourceFingerprint": "8c8db108eac8c4e20656a0ce4861c5e68a2a96610c9624931566f35ca28b7157",
+      "table": "damage_causes"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "14d0fad1aeca86ee4e4fe8c208e5e0ed02c782a95658dd9bc576a7d1a53de4c0",
+          "path": "client/drops.json"
+        }
+      ],
+      "contentFingerprint": "656db9a303fc226db1d798590c7eb1252d202f3573d14ed13980f5cda09f1706",
+      "packageFingerprint": "14d0fad1aeca86ee4e4fe8c208e5e0ed02c782a95658dd9bc576a7d1a53de4c0",
+      "path": "client/drops.json",
+      "sourceFingerprint": "0f0abffa454ea8b5d5757bf1914aeef6fb0b3ccc3f77be0ba674832e1a349041",
+      "table": "drops"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "78947001bcec9f8db8b2e5d3150177a46a3161e039315efc3bedebb3950046b1",
+          "path": "client/effects.json"
+        }
+      ],
+      "contentFingerprint": "778c7d32e206011c2db0a66d02f4ae5e64b68a165e87edc4e663494618643d39",
+      "packageFingerprint": "78947001bcec9f8db8b2e5d3150177a46a3161e039315efc3bedebb3950046b1",
+      "path": "client/effects.json",
+      "sourceFingerprint": "66cef58884346e9c7fb6385b0903fae1cd1baf9070ae6a3e3724c145a655df49",
+      "table": "effects"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "6f458d7503b73a29c9204e42ac37a7357fa3801d56a5341ff42dd9213e74f076",
+          "path": "client/final_circle.json"
+        }
+      ],
+      "contentFingerprint": "3a0d89934ce6679e5c33519cfd1d7a73b79f8e779fd1e48b52502e4ec945d156",
+      "packageFingerprint": "6f458d7503b73a29c9204e42ac37a7357fa3801d56a5341ff42dd9213e74f076",
+      "path": "client/final_circle.json",
+      "sourceFingerprint": "d3dd1a16ca28053252165e47e3c9a709d45cf89fe9e6d85ed60d033c83398401",
+      "table": "final_circle"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "a6db31eaf24f2ab3c7347c233430892e8a511a2b11139c151a51536dbbaa8363",
+          "path": "client/game.json"
+        }
+      ],
+      "contentFingerprint": "e5a05e1de755edea8d13a2015ea0a2dcf128f5277c20e1a020c3f30bca507294",
+      "packageFingerprint": "a6db31eaf24f2ab3c7347c233430892e8a511a2b11139c151a51536dbbaa8363",
+      "path": "client/game.json",
+      "sourceFingerprint": "6687e3204d95753045c13e18505061ccf4b0251bce0068bf1d4652f2fa09d311",
+      "table": "game"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "4bc6fd26260b9a8b76fe78e9a711b956b3e44265d1f6daae3e0e83441d48bf23",
+          "path": "client/life.json"
+        }
+      ],
+      "contentFingerprint": "8fa9142b7e5e07a4db4af495594ef492423c776340f1972eb95f77f438566517",
+      "packageFingerprint": "4bc6fd26260b9a8b76fe78e9a711b956b3e44265d1f6daae3e0e83441d48bf23",
+      "path": "client/life.json",
+      "sourceFingerprint": "5630e1b29467eb436f8165ef3fdaf5915e5e2a6ec545e7b3fc787448f62e7621",
+      "table": "life"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "b5854ae9d8051e2df89b0906f2368c9105545585fac74450eb7e607b6a0c5e0e",
+          "path": "client/map.json"
+        }
+      ],
+      "contentFingerprint": "3ccdb9d7040519c900079a039ae39727c808a93e730995ee3f83ef9c78bd2f1a",
+      "packageFingerprint": "b5854ae9d8051e2df89b0906f2368c9105545585fac74450eb7e607b6a0c5e0e",
+      "path": "client/map.json",
+      "sourceFingerprint": "0c2623a45beaa19bb83ab5df25043f11e6c745e413e6048ed48470355e051713",
+      "table": "map"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "ded9bf2c14ebe071dee20c34c1912ed42cc399d5793fbadcb92018af9d388f29",
+          "path": "client/movement.json"
+        }
+      ],
+      "contentFingerprint": "f82dbd281c573fca5d5a678c2da18196c332247fa79bfbd91c4d310bfc0e87e4",
+      "packageFingerprint": "ded9bf2c14ebe071dee20c34c1912ed42cc399d5793fbadcb92018af9d388f29",
+      "path": "client/movement.json",
+      "sourceFingerprint": "9294b7a86af843292793c0012862621bee07d0f77c15e66b8717457920c0d24c",
+      "table": "movement"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "868e4719c118ce7c74085363971fad6f1255d9803438c7062f28044832aa1128",
+          "path": "client/object_budgets.json"
+        }
+      ],
+      "contentFingerprint": "1c63fa925a3209e6d8940cf7cec6b0f6b7a9be9c13774f2820f0e5b1751a216b",
+      "packageFingerprint": "868e4719c118ce7c74085363971fad6f1255d9803438c7062f28044832aa1128",
+      "path": "client/object_budgets.json",
+      "sourceFingerprint": "07152d55a93a2a12cd73f548f3eb65bb53383dfefb450c6a9353cc15068b8642",
+      "table": "object_budgets"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "ef658d82024c11771a5f55e4f84003773731bbfb0ec1c5dfa3b17ff028a4e11c",
+          "path": "client/pickup_kinds.json"
+        }
+      ],
+      "contentFingerprint": "38753d872df7431672a3ab44ba8a83e846e47e5a291316a3640776ac4b2def16",
+      "packageFingerprint": "ef658d82024c11771a5f55e4f84003773731bbfb0ec1c5dfa3b17ff028a4e11c",
+      "path": "client/pickup_kinds.json",
+      "sourceFingerprint": "e3479acdaa8c82f35e3fb07b8a043f0d416e10c3ebf561a374f3b45d49b18d24",
+      "table": "pickup_kinds"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "35665ccff05c727192b214c142f5339260fb626c9e0bb61b0ad92406c979b988",
+          "path": "client/presentation.json"
+        }
+      ],
+      "contentFingerprint": "530b2420d0419496d8684e58b91902e8ded4d2c79c35c835b2d4f99d54735734",
+      "packageFingerprint": "35665ccff05c727192b214c142f5339260fb626c9e0bb61b0ad92406c979b988",
+      "path": "client/presentation.json",
+      "sourceFingerprint": "ae0f688a0bf323009799e511eb7e64a89bd0cec51833b247bd1546e06deb73a4",
+      "table": "presentation"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "9e50390e78a456b2c597dc795c3a3fa83ff176792107c97127dae91e39a432fd",
+          "path": "client/regeneration.json"
+        }
+      ],
+      "contentFingerprint": "f5185d08e86747ff01b09cc83e1809e507fe90725e302af5754da45b9aa93e04",
+      "packageFingerprint": "9e50390e78a456b2c597dc795c3a3fa83ff176792107c97127dae91e39a432fd",
+      "path": "client/regeneration.json",
+      "sourceFingerprint": "1bcea01177a0025d3a2e952f962f82ef1b01ba2628d7333f241b88f4207eb004",
+      "table": "regeneration"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "c760041bc37948cb481f909415645ff4e12938c8c7ef827f9489901167098222",
+          "path": "client/regression_seeds.json"
+        }
+      ],
+      "contentFingerprint": "e277fc941395bb7e91ea43c50919ab0382a26824268ec0fd227a90edd3df5e37",
+      "packageFingerprint": "c760041bc37948cb481f909415645ff4e12938c8c7ef827f9489901167098222",
+      "path": "client/regression_seeds.json",
+      "sourceFingerprint": "d9446353393d1e98519e78e56f534bf0aa191091b42ce9fd1973e38c71133750",
+      "table": "regression_seeds"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "497b207682857c42a4d1ab37674941807926ac8ee917c92e207c6aca89cdf4d2",
+          "path": "client/skill_combos.json"
+        }
+      ],
+      "contentFingerprint": "e5063ddb9aa59be922befb84c2b10c66c18fa0f935aed714930810b6ff82bdc1",
+      "packageFingerprint": "497b207682857c42a4d1ab37674941807926ac8ee917c92e207c6aca89cdf4d2",
+      "path": "client/skill_combos.json",
+      "sourceFingerprint": "2468dd13dc2c64f0d3cf8bd6c2d8b039fd29f1ae3624ee78ef3381874bfe4abe",
+      "table": "skill_combos"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "8328c104f024fbdc08d8374855964756fd04dca8864560b0969f5751954617a2",
+          "path": "client/skill_levels.json"
+        }
+      ],
+      "contentFingerprint": "e3ea8092ec3dbdb02cbfc904e62c658657918264b74728c672265d760835afa5",
+      "packageFingerprint": "8328c104f024fbdc08d8374855964756fd04dca8864560b0969f5751954617a2",
+      "path": "client/skill_levels.json",
+      "sourceFingerprint": "4bd421d81ea9a25960bf40564cd194f1824ce55890d34a35921b4784952aa848",
+      "table": "skill_levels"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "cdd8222936e05b312b40c172d0d65023387edff4102e5df615fa260c887c9e57",
+          "path": "client/skill_rules.json"
+        }
+      ],
+      "contentFingerprint": "404339431cc94c72ca32715ee86125dfc3a2108ef9e0bea294bc2405ee333d98",
+      "packageFingerprint": "cdd8222936e05b312b40c172d0d65023387edff4102e5df615fa260c887c9e57",
+      "path": "client/skill_rules.json",
+      "sourceFingerprint": "952a6af39730ab403f24668184adcb96e647f42977be3d8f0a8b21946c057410",
+      "table": "skill_rules"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "9ef1f8fa2f2c6ea3b84634e2e6c534ed4bb282ff4f5c7f7097e206b49fd77fe2",
+          "path": "client/skills.json"
+        }
+      ],
+      "contentFingerprint": "07e833d5a51d3c5bb76b26b13ccf5ed98dcb5e3d5af87006c506203de54653e3",
+      "packageFingerprint": "9ef1f8fa2f2c6ea3b84634e2e6c534ed4bb282ff4f5c7f7097e206b49fd77fe2",
+      "path": "client/skills.json",
+      "sourceFingerprint": "728b5ac4576ab8f0c2df41b81f89cd187cbed7a455ee4f29b578465a4a2300e2",
+      "table": "skills"
+    },
+    {
+      "chunks": [
+        {
+          "id": 0,
+          "packageFingerprint": "0fa671c1683d3d8a67237ca66bfcf78e1320aef46e2c1eb96a8e0cd1439ad764",
+          "path": "client/speed_tiers.json"
+        }
+      ],
+      "contentFingerprint": "c9befc33ba095519167893dc243996afa086f326cd99fd33b98d5bd74052ad93",
+      "packageFingerprint": "0fa671c1683d3d8a67237ca66bfcf78e1320aef46e2c1eb96a8e0cd1439ad764",
+      "path": "client/speed_tiers.json",
+      "sourceFingerprint": "920b3100a410f478b4222a0b334d622321e17384c2c93b5b8752a8e0a02315ea",
+      "table": "speed_tiers"
+    }
+  ],
+  "target": "C"
+}

@@ -1,0 +1,591 @@
+{
+  "table": "bot_tactics",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "showdown_side_cells",
+      "ordinal": 2,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "showdown side cells"
+    },
+    {
+      "name": "late_entry_ticks",
+      "ordinal": 3,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "late entry ticks"
+    },
+    {
+      "name": "trade_min_hp_left",
+      "ordinal": 4,
+      "type": "i64",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "trade min hp left"
+    },
+    {
+      "name": "tie_trade_enabled",
+      "ordinal": 5,
+      "type": "bool",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "tie trade enabled"
+    },
+    {
+      "name": "hunt_scale",
+      "ordinal": 6,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hunt scale"
+    },
+    {
+      "name": "weak_weight",
+      "ordinal": 7,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "weak weight"
+    },
+    {
+      "name": "skill_lead_ticks",
+      "ordinal": 8,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "skill lead ticks"
+    },
+    {
+      "name": "skill_retry_ticks",
+      "ordinal": 9,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "skill retry ticks"
+    },
+    {
+      "name": "aura_range_cells",
+      "ordinal": 10,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "aura range cells"
+    },
+    {
+      "name": "aura_crowd_steps",
+      "ordinal": 11,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "aura crowd steps"
+    },
+    {
+      "name": "aura_crowd_count",
+      "ordinal": 12,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "aura crowd count"
+    },
+    {
+      "name": "blink_chase_min_steps",
+      "ordinal": 13,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "blink chase min steps"
+    },
+    {
+      "name": "burn_pad_cells",
+      "ordinal": 14,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "burn pad cells"
+    },
+    {
+      "name": "candy_evolve_steps",
+      "ordinal": 15,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "candy evolve steps"
+    },
+    {
+      "name": "candy_level_steps",
+      "ordinal": 16,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "candy level steps"
+    },
+    {
+      "name": "candy_equip_steps",
+      "ordinal": 17,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "candy equip steps"
+    },
+    {
+      "name": "rabbit_hurt_hunt_permille",
+      "ordinal": 18,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "rabbit hurt hunt permille"
+    },
+    {
+      "name": "heal_reach_steps",
+      "ordinal": 19,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "heal reach steps"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 20,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 21,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "human_chasers",
+      "ordinal": 22,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "human chasers"
+    },
+    {
+      "name": "human_near_cells",
+      "ordinal": 23,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "human near cells"
+    },
+    {
+      "name": "human_target_penalty",
+      "ordinal": 24,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "human target penalty"
+    },
+    {
+      "name": "behavior_min_ticks",
+      "ordinal": 25,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "behavior min ticks"
+    },
+    {
+      "name": "behavior_max_ticks",
+      "ordinal": 26,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "behavior max ticks"
+    },
+    {
+      "name": "rookie_weight",
+      "ordinal": 27,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "rookie weight"
+    },
+    {
+      "name": "normal_weight",
+      "ordinal": 28,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "normal weight"
+    },
+    {
+      "name": "hard_weight",
+      "ordinal": 29,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hard weight"
+    },
+    {
+      "name": "farmer_farm_weight",
+      "ordinal": 30,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "farmer farm weight"
+    },
+    {
+      "name": "farmer_hunt_weight",
+      "ordinal": 31,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "farmer hunt weight"
+    },
+    {
+      "name": "farmer_collect_weight",
+      "ordinal": 32,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "farmer collect weight"
+    },
+    {
+      "name": "farmer_roam_weight",
+      "ordinal": 33,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "farmer roam weight"
+    },
+    {
+      "name": "hunter_farm_weight",
+      "ordinal": 34,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hunter farm weight"
+    },
+    {
+      "name": "hunter_hunt_weight",
+      "ordinal": 35,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hunter hunt weight"
+    },
+    {
+      "name": "hunter_collect_weight",
+      "ordinal": 36,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hunter collect weight"
+    },
+    {
+      "name": "hunter_roam_weight",
+      "ordinal": 37,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "hunter roam weight"
+    },
+    {
+      "name": "collector_farm_weight",
+      "ordinal": 38,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "collector farm weight"
+    },
+    {
+      "name": "collector_hunt_weight",
+      "ordinal": 39,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "collector hunt weight"
+    },
+    {
+      "name": "collector_collect_weight",
+      "ordinal": 40,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "collector collect weight"
+    },
+    {
+      "name": "collector_roam_weight",
+      "ordinal": 41,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "collector roam weight"
+    },
+    {
+      "name": "roamer_farm_weight",
+      "ordinal": 42,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "roamer farm weight"
+    },
+    {
+      "name": "roamer_hunt_weight",
+      "ordinal": 43,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "roamer hunt weight"
+    },
+    {
+      "name": "roamer_collect_weight",
+      "ordinal": 44,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "roamer collect weight"
+    },
+    {
+      "name": "roamer_roam_weight",
+      "ordinal": 45,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "roamer roam weight"
+    },
+    {
+      "name": "engage_steps",
+      "ordinal": 46,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain engage_steps"
+    },
+    {
+      "name": "engage_check_ticks",
+      "ordinal": 47,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain engage_check_ticks"
+    },
+    {
+      "name": "farmer_engage_permille",
+      "ordinal": 48,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain farmer_engage_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "hunter_engage_permille",
+      "ordinal": 49,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain hunter_engage_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "collector_engage_permille",
+      "ordinal": 50,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain collector_engage_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "roamer_engage_permille",
+      "ordinal": 51,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain roamer_engage_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "farm_blast_permille",
+      "ordinal": 52,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain farm_blast_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "hunt_blast_permille",
+      "ordinal": 53,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain hunt_blast_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "collect_blast_permille",
+      "ordinal": 54,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain collect_blast_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "roam_blast_permille",
+      "ordinal": 55,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain roam_blast_permille",
+      "maximum": 1000
+    },
+    {
+      "name": "engage_min_ticks",
+      "ordinal": 56,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain engage_min_ticks"
+    },
+    {
+      "name": "engage_max_ticks",
+      "ordinal": 57,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "Approved prototype af385a9 bot-brain engage_max_ticks"
+    }
+  ]
+}

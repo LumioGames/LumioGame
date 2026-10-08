@@ -1,0 +1,6 @@
+table: drops
+schema: schemas/drops.json
+
+| id     | name    | soft_drop_permille | death_drop_permille | final_death_drop_permille | death_protection_ms | ordinary_expiry_enabled | scatter_mode                    | pickup_distance_milli | source_status                                           | source_ref                     |
+| ------ | ------- | ------------------ | ------------------- | ------------------------- | ------------------- | ----------------------- | ------------------------------- | --------------------- | ------------------------------------------------------- | ------------------------------ |
+| 106001 | default | 300                | 500                 | 1000                      | 3000                | false                   | NearestWalkableCellThenIdentity | 500                   | prototype-candidate; pickup radius first-round decision | docs/specs/bomber/design.md#15 |

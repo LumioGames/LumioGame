@@ -1,0 +1,514 @@
+{
+  "profiles": [
+    {
+      "name": "fuse-1800",
+      "group": "core",
+      "parameters": [
+        "bomb.default.fuse_ms"
+      ],
+      "derived": [],
+      "value": 1800
+    },
+    {
+      "name": "fuse-2400",
+      "group": "core",
+      "parameters": [
+        "bomb.default.fuse_ms"
+      ],
+      "derived": [
+        "object_budgets.default.max_bomb_entities",
+        "object_budgets.default.source_status",
+        "object_budgets.default.source_ref"
+      ],
+      "value": 2400
+    },
+    {
+      "name": "power-1",
+      "group": "core",
+      "parameters": [
+        "attributes.BombPower.initial"
+      ],
+      "derived": [
+        "attributes.BombPower.minimum"
+      ],
+      "value": 1
+    },
+    {
+      "name": "speed-3300",
+      "group": "core",
+      "parameters": [
+        "attributes.MovementSpeedMilli.initial"
+      ],
+      "derived": [
+        "speed_tiers.tier0.speed_milli",
+        "speed_tiers.tier1.speed_milli",
+        "speed_tiers.tier2.speed_milli",
+        "speed_tiers.tier3.speed_milli",
+        "speed_tiers.tier4.speed_milli",
+        "speed_tiers.tier5.speed_milli",
+        "speed_tiers.tier6.speed_milli",
+        "speed_tiers.tier7.speed_milli",
+        "attributes.MovementSpeedMilli.minimum"
+      ],
+      "value": 3300
+    },
+    {
+      "name": "speed-3800",
+      "group": "core",
+      "parameters": [
+        "attributes.MovementSpeedMilli.initial"
+      ],
+      "derived": [
+        "speed_tiers.tier0.speed_milli",
+        "speed_tiers.tier1.speed_milli",
+        "speed_tiers.tier2.speed_milli",
+        "speed_tiers.tier3.speed_milli",
+        "speed_tiers.tier4.speed_milli",
+        "speed_tiers.tier5.speed_milli",
+        "speed_tiers.tier6.speed_milli",
+        "speed_tiers.tier7.speed_milli",
+        "attributes.MovementSpeedMilli.minimum"
+      ],
+      "value": 3800
+    },
+    {
+      "name": "respawn-4000",
+      "group": "core",
+      "parameters": [
+        "life.default.respawn_ms"
+      ],
+      "derived": [],
+      "value": 4000
+    },
+    {
+      "name": "match-360000",
+      "group": "core",
+      "parameters": [
+        "game.default.match_duration_ms"
+      ],
+      "derived": [],
+      "value": 360000
+    },
+    {
+      "name": "match-480000",
+      "group": "core",
+      "parameters": [
+        "game.default.match_duration_ms"
+      ],
+      "derived": [],
+      "value": 480000
+    },
+    {
+      "name": "protect-1500",
+      "group": "core",
+      "parameters": [
+        "life.default.protection_ms"
+      ],
+      "derived": [],
+      "value": 1500
+    },
+    {
+      "name": "protect-2500",
+      "group": "core",
+      "parameters": [
+        "life.default.protection_ms"
+      ],
+      "derived": [],
+      "value": 2500
+    },
+    {
+      "name": "protect-4000",
+      "group": "core",
+      "parameters": [
+        "life.default.protection_ms"
+      ],
+      "derived": [],
+      "value": 4000
+    },
+    {
+      "name": "drown-2000",
+      "group": "core",
+      "parameters": [
+        "life.default.drown_interval_ms"
+      ],
+      "derived": [],
+      "value": 2000
+    },
+    {
+      "name": "danger-300",
+      "group": "core",
+      "parameters": [
+        "bomb.default.danger_ms"
+      ],
+      "derived": [],
+      "value": 300
+    },
+    {
+      "name": "danger-500",
+      "group": "core",
+      "parameters": [
+        "bomb.default.danger_ms"
+      ],
+      "derived": [],
+      "value": 500
+    },
+    {
+      "name": "buffer-100",
+      "group": "core",
+      "parameters": [
+        "movement.default.place_buffer_ms"
+      ],
+      "derived": [],
+      "value": 100
+    },
+    {
+      "name": "buffer-150",
+      "group": "core",
+      "parameters": [
+        "movement.default.place_buffer_ms"
+      ],
+      "derived": [],
+      "value": 150
+    },
+    {
+      "name": "corner-assist-400",
+      "group": "design",
+      "parameters": [
+        "movement.default.corner_assist_milli"
+      ],
+      "derived": [],
+      "value": 400
+    },
+    {
+      "name": "podium-6000",
+      "group": "design",
+      "parameters": [
+        "game.default.podium_ms"
+      ],
+      "derived": [],
+      "value": 6000
+    },
+    {
+      "name": "final-circle-90000",
+      "group": "design",
+      "parameters": [
+        "final_circle.default.duration_ms"
+      ],
+      "derived": [
+        "circle_stages.stage2.at_ms",
+        "circle_stages.stage3.at_ms",
+        "circle_stages.stage4.at_ms",
+        "circle_stages.stage5.at_ms",
+        "circle_stages.stage6.at_ms"
+      ],
+      "value": 90000
+    },
+    {
+      "name": "final-circle-140000",
+      "group": "design",
+      "parameters": [
+        "final_circle.default.duration_ms"
+      ],
+      "derived": [
+        "circle_stages.stage2.at_ms",
+        "circle_stages.stage3.at_ms",
+        "circle_stages.stage4.at_ms",
+        "circle_stages.stage5.at_ms",
+        "circle_stages.stage6.at_ms"
+      ],
+      "value": 140000
+    },
+    {
+      "name": "late-poison-1",
+      "group": "design",
+      "parameters": [
+        "final_circle.default.late_poison_points"
+      ],
+      "derived": [
+        "circle_stages.stage4.poison_points",
+        "circle_stages.stage5.poison_points",
+        "circle_stages.stage6.poison_points"
+      ],
+      "value": 1
+    },
+    {
+      "name": "late-poison-3",
+      "group": "design",
+      "parameters": [
+        "final_circle.default.late_poison_points"
+      ],
+      "derived": [
+        "circle_stages.stage4.poison_points",
+        "circle_stages.stage5.poison_points",
+        "circle_stages.stage6.poison_points"
+      ],
+      "value": 3
+    },
+    {
+      "name": "death-drop-300",
+      "group": "design",
+      "parameters": [
+        "drops.default.death_drop_permille"
+      ],
+      "derived": [
+        "skill_rules.default.death_drop_permille"
+      ],
+      "value": 300
+    },
+    {
+      "name": "death-drop-1000",
+      "group": "design",
+      "parameters": [
+        "drops.default.death_drop_permille"
+      ],
+      "derived": [
+        "skill_rules.default.death_drop_permille"
+      ],
+      "value": 1000
+    },
+    {
+      "name": "death-protect-2000",
+      "group": "design",
+      "parameters": [
+        "drops.default.death_protection_ms"
+      ],
+      "derived": [],
+      "value": 2000
+    },
+    {
+      "name": "death-protect-5000",
+      "group": "design",
+      "parameters": [
+        "drops.default.death_protection_ms"
+      ],
+      "derived": [],
+      "value": 5000
+    },
+    {
+      "name": "health-4",
+      "group": "design",
+      "parameters": [
+        "attributes.HealthPoints.initial"
+      ],
+      "derived": [
+        "attributes.HealthPoints.maximum"
+      ],
+      "value": 4
+    },
+    {
+      "name": "fire-exposure-1",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.fire_points"
+      ],
+      "derived": [],
+      "value": 1
+    },
+    {
+      "name": "bubble-duration-2000",
+      "group": "design",
+      "parameters": [
+        "skill_levels.bubble_lv1.duration_ms"
+      ],
+      "derived": [],
+      "value": 2000
+    },
+    {
+      "name": "bubble-cooldown-15000",
+      "group": "design",
+      "parameters": [
+        "skill_levels.bubble_lv1.cooldown_ms"
+      ],
+      "derived": [],
+      "value": 15000
+    },
+    {
+      "name": "bubble-cooldown-22000",
+      "group": "design",
+      "parameters": [
+        "skill_levels.bubble_lv1.cooldown_ms"
+      ],
+      "derived": [],
+      "value": 22000
+    },
+    {
+      "name": "regen-5000",
+      "group": "design",
+      "parameters": [
+        "skill_levels.regen_lv1.interval_ms"
+      ],
+      "derived": [],
+      "value": 5000
+    },
+    {
+      "name": "crate-skill-300",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.crate_skill_permille"
+      ],
+      "derived": [],
+      "value": 300
+    },
+    {
+      "name": "crate-skill-700",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.crate_skill_permille"
+      ],
+      "derived": [],
+      "value": 700
+    },
+    {
+      "name": "bomb-candy-weight-1",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.bomb_candy_weight"
+      ],
+      "derived": [
+        "skills.freezeBomb.candy_weight",
+        "skills.pierceBomb.candy_weight",
+        "skills.toxinBomb.candy_weight",
+        "skills.shockBomb.candy_weight"
+      ],
+      "value": 1
+    },
+    {
+      "name": "chest-all-skills",
+      "group": "design",
+      "parameters": [
+        "chest.default.bomb_only"
+      ],
+      "derived": [],
+      "value": false
+    },
+    {
+      "name": "toxin-points-2",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.toxin_points"
+      ],
+      "derived": [],
+      "value": 2
+    },
+    {
+      "name": "toxin-nonlethal",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.toxin_lethal"
+      ],
+      "derived": [],
+      "value": false
+    },
+    {
+      "name": "shock-500",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.shock_speed_permille"
+      ],
+      "derived": [],
+      "value": 500
+    },
+    {
+      "name": "freeze-no-damage",
+      "group": "design",
+      "parameters": [
+        "skill_rules.default.freeze_bomb_damages"
+      ],
+      "derived": [],
+      "value": false
+    },
+    {
+      "name": "m2-map-19",
+      "group": "authoring",
+      "runtimeEligible": false,
+      "parameters": ["map.default.width"],
+      "derived": ["map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref", "game.default.source_status", "game.default.source_ref", "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref"],
+      "value": 19
+    },
+    {
+      "name": "m2-map-23",
+      "group": "authoring",
+      "runtimeEligible": false,
+      "parameters": ["map.default.width"],
+      "derived": ["map.default.depth", "map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref", "game.default.player_count", "game.default.map_size", "game.default.source_status", "game.default.source_ref", "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref"],
+      "value": 23
+    },
+    {
+      "name": "m2-map-27",
+      "group": "authoring",
+      "runtimeEligible": false,
+      "parameters": ["map.default.width"],
+      "derived": ["map.default.depth", "map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref", "game.default.player_count", "game.default.map_size", "game.default.source_status", "game.default.source_ref", "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref"],
+      "value": 27
+    },
+    {
+      "name": "m2-room-19",
+      "group": "room",
+      "runtimeEligible": false,
+      "parameters": ["game.default.match_duration_ms"],
+      "derived": [
+        "game.default.player_count", "game.default.map_size", "game.default.source_status", "game.default.source_ref",
+        "map.default.width", "map.default.depth", "map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref",
+        "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref",
+        "circle_stages.stage1.spawn_chest", "circle_stages.stage1.source_status", "circle_stages.stage1.source_ref",
+        "circle_stages.stage2.spawn_chest", "circle_stages.stage2.source_status", "circle_stages.stage2.source_ref",
+        "circle_stages.stage3.spawn_chest", "circle_stages.stage3.source_status", "circle_stages.stage3.source_ref",
+        "circle_stages.stage4.spawn_chest", "circle_stages.stage4.source_status", "circle_stages.stage4.source_ref",
+        "circle_stages.stage5.spawn_chest", "circle_stages.stage5.source_status", "circle_stages.stage5.source_ref"
+      ],
+      "value": 240000
+    },
+    {
+      "name": "m2-room-23",
+      "group": "room",
+      "runtimeEligible": false,
+      "parameters": ["game.default.match_duration_ms"],
+      "derived": [
+        "game.default.player_count", "game.default.map_size", "game.default.source_status", "game.default.source_ref",
+        "map.default.width", "map.default.depth", "map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref",
+        "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref",
+        "circle_stages.stage1.spawn_chest", "circle_stages.stage1.source_status", "circle_stages.stage1.source_ref",
+        "circle_stages.stage2.spawn_chest", "circle_stages.stage2.source_status", "circle_stages.stage2.source_ref",
+        "circle_stages.stage3.spawn_chest", "circle_stages.stage3.source_status", "circle_stages.stage3.source_ref",
+        "circle_stages.stage4.spawn_chest", "circle_stages.stage4.source_status", "circle_stages.stage4.source_ref",
+        "circle_stages.stage5.spawn_chest", "circle_stages.stage5.source_status", "circle_stages.stage5.source_ref"
+      ],
+      "value": 240000
+    },
+    {
+      "name": "m2-room-27",
+      "group": "room",
+      "runtimeEligible": false,
+      "parameters": ["game.default.match_duration_ms"],
+      "derived": [
+        "game.default.player_count", "game.default.map_size", "game.default.source_status", "game.default.source_ref",
+        "map.default.width", "map.default.depth", "map.default.layout_kind", "map.default.moat_radius_cells", "map.default.moat_branch_cells", "map.default.source_status", "map.default.source_ref",
+        "regeneration.default.max_mirror_orbits", "regeneration.default.stop_before_final_ms", "regeneration.default.first_trigger_ms", "regeneration.default.source_status", "regeneration.default.source_ref",
+        "circle_stages.stage1.spawn_chest", "circle_stages.stage1.source_status", "circle_stages.stage1.source_ref",
+        "circle_stages.stage2.spawn_chest", "circle_stages.stage2.source_status", "circle_stages.stage2.source_ref",
+        "circle_stages.stage3.spawn_chest", "circle_stages.stage3.source_status", "circle_stages.stage3.source_ref",
+        "circle_stages.stage4.spawn_chest", "circle_stages.stage4.source_status", "circle_stages.stage4.source_ref",
+        "circle_stages.stage5.spawn_chest", "circle_stages.stage5.source_status", "circle_stages.stage5.source_ref"
+      ],
+      "value": 240000
+    },
+    {
+      "name": "skills-on",
+      "group": "product",
+      "parameters": [
+        "game.default.skills_enabled"
+      ],
+      "derived": [],
+      "value": true
+    },
+    {
+      "name": "skills-off",
+      "group": "product",
+      "parameters": [
+        "game.default.skills_enabled"
+      ],
+      "derived": [],
+      "value": false
+    }
+  ]
+}

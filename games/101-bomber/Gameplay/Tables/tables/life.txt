@@ -1,0 +1,6 @@
+table: life
+schema: schemas/life.json
+
+| id     | name    | points_per_heart | respawn_ms | protection_ms | health_pack_points | drown_interval_ms | drown_points | protection_blocks_ring | first_spawn_protected | source_status | source_ref                     |
+| ------ | ------- | ---------------- | ---------- | ------------- | ------------------ | ----------------- | ------------ | ---------------------- | --------------------- | ------------- | ------------------------------ |
+| 105001 | default | 2                | 3000       | 3000          | 2                  | 1000              | 1            | false                  | true                  | design        | docs/specs/bomber/design.md#15 |

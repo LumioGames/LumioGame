@@ -1,0 +1,14 @@
+<Project>
+  <Target Name="VerifyExplicitEngineCandidate" BeforeTargets="Restore;CollectPackageReferences;PrepareForBuild">
+    <PropertyGroup>
+      <_DefaultEngine>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../Engine/'))</_DefaultEngine>
+      <_SelectedEngine>$([System.IO.Path]::GetFullPath('$(LumioEngineRoot)'))</_SelectedEngine>
+    </PropertyGroup>
+    <Error Condition="'$(_DefaultEngine)' != '$(_SelectedEngine)' and ('$(LumioEngineCandidate)' != 'true' or '$(LumioEngineSelectionProps)' == '')"
+           Text="LUMIO_ENGINE_CANDIDATE_UNVERIFIED: select official output with eng/select-engine-release.mjs (complete) or eng/select-engine-candidate.mjs (browser validation) and pass LumioEngineSelectionProps." />
+    <Error Condition="'$(LumioEngineCandidate)' == 'true' and '$(LumioEngineCandidateKind)' != '' and '$(LumioEngineCandidateKind)' != 'complete-release'"
+           Text="LUMIO_ENGINE_CANDIDATE_UNVERIFIED: unknown candidate kind." />
+    <Exec Condition="'$(LumioEngineCandidate)' == 'true' and '$(LumioEngineCandidateKind)' == ''" Command="node &quot;$(MSBuildThisFileDirectory)select-engine-candidate.mjs&quot; --verify &quot;$(LumioEngineRoot)&quot;" />
+    <Exec Condition="'$(LumioEngineCandidate)' == 'true' and '$(LumioEngineCandidateKind)' == 'complete-release'" Command="node &quot;$(MSBuildThisFileDirectory)select-engine-release.mjs&quot; --verify &quot;$(LumioEngineRoot)&quot;" />
+  </Target>
+</Project>

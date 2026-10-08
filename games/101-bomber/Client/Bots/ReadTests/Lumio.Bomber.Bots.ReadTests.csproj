@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Decision/*.cs" Link="Decision/%(Filename)%(Extension)" />
+    <Compile Include="../BomberPlayObservation.cs" Link="BomberPlayObservation.cs" />
+    <Compile Include="../BomberMatchScenario.cs" Link="BomberMatchScenario.cs" />
+    <Compile Include="../BomberAdmissionScenario.cs" Link="BomberAdmissionScenario.cs" />
+    <Reference Include="$(ProductBotGraph)/Lumio.*.dll" Private="true" />
+    <Reference Include="Lumio.Bomber.Gameplay" HintPath="$(ProductClientGameplay)" Private="true" />
+    <None Include="../../Config/Tables/**/*" Exclude="../../Config/Tables/profiles/**/*" Link="config/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Platform" />
+  </ItemGroup>
+  <Target Name="RequireOfficialBotGraph" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(ProductBotGraph)/Lumio.Client.Bot.dll') Or !Exists('$(ProductClientGameplay)')" Text="Select the official Bot graph and compiled client Gameplay for observation tests." />
+  </Target>
+</Project>

@@ -48,10 +48,11 @@ dotnet test LumioGame.sln --no-build
 
 | 子模块 | 责任 | 状态 |
 | --- | --- | --- |
-| `modules/server-gameplay` | 权威 Component、Processor、Chat 系统与炸弹人 Stage 0 契约壳 | 已建 |
+| `modules/server-gameplay` | 权威 Component、Processor、Chat 与 Identity 系统；炸弹人玩法已迁入独立工作区 | 已建 |
 | `modules/config` | 源配表、Schema、默认值和 typed table 输入 | 骨架 |
 | `modules/scenario` | 初始状态、输入、Bot、断言、Capability 要求 | 骨架 |
 | `integration/` | 端到端集成验收工具（`hello`） | 已建 |
+| [`games/101-bomber/`](games/101-bomber/) | 101 炸弹人独立引擎工作区：Gameplay、配表、客户端、Bot 与验证工具 | 实施中 |
 | `games/101-bomber/prototype` | 101 炸弹人网页原型：Three.js 表现层 + TS 规则替身，抛弃型参考，不进 sln / Release / CI（ADR 0024） | 原型 |
 
 尚未建立的子模块不在本表中；需要时按 [`docs/specs/engineering/module-scaffolding-design.md`](docs/specs/engineering/module-scaffolding-design.md) 逐个立卡新建。
@@ -96,4 +97,8 @@ dotnet test LumioGame.sln --no-build
 
 ## 当前阶段与开发节奏
 
-当前阶段是炸弹人方向 B「成长爽局」M1，首发产品仍是阶梯 ①。切片划分、每阶段的量化通过门与依赖见 [`docs/specs/bomber/design.md`](docs/specs/bomber/design.md) §16「实现切片：Gate 0 + Stage 0–6」。Stage 0 的内核契约见 [`docs/specs/bomber/stage0-kernel-contract.md`](docs/specs/bomber/stage0-kernel-contract.md)。
+网页原型当前阶段是炸弹人方向 B「成长爽局」M1，正式引擎工作区按设计稿中的 M2 范围收敛，首发产品仍是阶梯 ①。切片划分、每阶段的量化通过门与依赖见 [`docs/specs/bomber/design.md`](docs/specs/bomber/design.md) §16「实现切片：Gate 0 + Stage 0–6」。Stage 0 的内核契约见 [`docs/specs/bomber/stage0-kernel-contract.md`](docs/specs/bomber/stage0-kernel-contract.md)。
+
+## Lumio Bomber 101
+
+[101 正式工作区](games/101-bomber/)通过只读 `Engine/` 发布物消费引擎，产品与 SDK 版本要求见 [BomberRelease.props](games/101-bomber/eng/BomberRelease.props)。玩法结构、启动与证据入口分别见 [bomber-gameplay.md](games/101-bomber/.spec/knowledge/features/bomber-gameplay.md) 和 [bomber-tour.md](games/101-bomber/.spec/knowledge/features/bomber-tour.md)；完整玩法与体验是否通过，以实际验收证据为准。

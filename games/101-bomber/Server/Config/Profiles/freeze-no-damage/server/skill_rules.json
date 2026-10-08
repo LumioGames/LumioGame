@@ -1,0 +1,30 @@
+{
+  "contentFingerprint": "006021ee652c14fb4001f5c3f13bd08b872169d4f4f47904bc55a0a0fb21622d",
+  "rows": [
+    {
+      "aura_side_cells": 3,
+      "bomb_candy_weight": 2,
+      "candy_level": 1,
+      "control_immunity_ms": 1000,
+      "crate_skill_permille": 500,
+      "death_drop_permille": 500,
+      "fire_exposure_ms": 1000,
+      "fire_points": 2,
+      "freeze_bomb_damages": false,
+      "freeze_cap_ms": 2500,
+      "id": 114001,
+      "max_level": 3,
+      "name": "default",
+      "ordinary_candy_weight": 1,
+      "shock_speed_permille": 300,
+      "slot_count": 3,
+      "source_ref": "games/101-bomber/prototype/src/contract/config.ts@af385a9cd0f261317e97240a7e55accdda8d01d5; .spec/decisions/0044-bomber-m1-playtest-adjustments.md@af385a9cd0f261317e97240a7e55accdda8d01d5; docs/specs/bomber/design.md#76-\u9996\u8f6e\u5bf9\u8c61\u9884\u7b97\u4e0e\u89c4\u5219\u8bb0\u5fc6; ADR-0046",
+      "source_status": "prototype-candidate; effect SDK semantics pending",
+      "toxin_interval_ms": 2000,
+      "toxin_lethal": true,
+      "toxin_points": 1
+    }
+  ],
+  "table": "skill_rules",
+  "target": "S"
+}

@@ -1,0 +1,124 @@
+{
+  "table": "regeneration",
+  "idColumn": "id",
+  "columns": [
+    {
+      "name": "id",
+      "ordinal": 0,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "id"
+    },
+    {
+      "name": "name",
+      "ordinal": 1,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "name"
+    },
+    {
+      "name": "interval_ms",
+      "ordinal": 2,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "interval ms"
+    },
+    {
+      "name": "target_initial_permille",
+      "ordinal": 3,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "target initial permille"
+    },
+    {
+      "name": "max_mirror_orbits",
+      "ordinal": 4,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "max mirror orbits"
+    },
+    {
+      "name": "threat_distance_cells",
+      "ordinal": 5,
+      "type": "i32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "threat distance cells"
+    },
+    {
+      "name": "stop_before_final_ms",
+      "ordinal": 6,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "stop before final ms"
+    },
+    {
+      "name": "source_status",
+      "ordinal": 7,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source status"
+    },
+    {
+      "name": "source_ref",
+      "ordinal": 8,
+      "type": "string",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "description": "source ref"
+    },
+    {
+      "name": "first_trigger_ms",
+      "ordinal": 9,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 0,
+      "description": "first regeneration trigger, measured from match start; the initial layout is not a wave"
+    },
+    {
+      "name": "barrel_roll_denominator",
+      "ordinal": 10,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 1,
+      "description": "Exact regeneration probability denominator; ADR0048 and design section 5"
+    },
+    {
+      "name": "chest_roll_denominator",
+      "ordinal": 11,
+      "type": "u32",
+      "required": true,
+      "visibility": "CS",
+      "sharedPrediction": false,
+      "minimum": 1,
+      "description": "Exact regeneration probability denominator; ADR0048 and design section 5"
+    }
+  ]
+}

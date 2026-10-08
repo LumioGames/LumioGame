@@ -1,0 +1,24 @@
+.DS_Store
+node_modules/
+*.log
+.env
+.env.*
+
+bin/
+obj/
+TestResults/
+.workflow-drafts/
+Tools/logs/**
+!Tools/logs/README.md
+.run/
+Gameplay/generated/*/gen.hash
+
+# ADR-115: lumio-ds creates these at run time. Never tracked, never an empty shell.
+Server/Storage/
+Server/Diagnostics/
+
+# Spectator page (R-00710): local inject pages carry credentials, _framework/ and the
+# VoxelEngine browser module are build outputs copied in by the host publish.
+Client/UI/Spectator/boot-*.html
+Client/UI/Spectator/_framework/
+Client/UI/Spectator/lumio_voxel_wasm.wasm

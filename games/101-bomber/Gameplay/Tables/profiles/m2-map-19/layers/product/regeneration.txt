@@ -1,0 +1,6 @@
+table: regeneration
+schema: schemas/regeneration.json
+
+| name | max_mirror_orbits | stop_before_final_ms | first_trigger_ms | source_status | source_ref |
+| --- | --- | --- | --- | --- | --- |
+| default | 2 | 20000 | 8000 | inferred; author-only; unverified | ADR0048; ADR0035 |

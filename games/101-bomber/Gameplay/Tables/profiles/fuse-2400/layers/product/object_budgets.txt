@@ -1,0 +1,6 @@
+table: object_budgets
+schema: schemas/object_budgets.json
+
+| name | max_bomb_entities | source_status | source_ref |
+| --- | --- | --- | --- |
+| default | 2912 | derived from effective fuse and existing admitted terrain reserve; production residence unverified | docs/specs/bomber/design.md#76-首轮对象预算与规则记忆; ADR-0046; 8*6*(48+8+2)+128 |

@@ -1,0 +1,20 @@
+table: bomb_kinds
+schema: schemas/bomb_kinds.json
+
+| id     | name     | kind_code | enabled | effect_key  | source_status                                                   | source_ref                     |
+| ------ | -------- | --------- | ------- | ----------- | --------------------------------------------------------------- | ------------------------------ |
+| 119001 | Standard | 0         | true    | BombDamage  | design                                                          | docs/specs/bomber/design.md#15 |
+
+| 119002 | Freeze   | 1         | true    | Freeze      | design                                                          | docs/specs/bomber/design.md#15 |
+
+| 119003 | Fire     | 2         | false   | FireResidue | dormant design content pending producer/effect/budget migration | ADR-0047                       |
+
+| 119004 | Pierce   | 3         | true    | Pierce      | design                                                          | docs/specs/bomber/design.md#15 |
+
+| 119005 | Split    | 4         | false   | Split       | dormant design content pending producer/effect/budget migration | ADR-0047                       |
+
+| 119006 | Toxin    | 5         | true    | Toxin       | design                                                          | docs/specs/bomber/design.md#15 |
+
+| 119007 | Shock    | 6         | true    | Shock       | design                                                          | docs/specs/bomber/design.md#15 |
+
+| 119008 | Remote   | 7         | false   | Remote      | dormant design content pending producer/effect/budget migration | ADR-0047                       |

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <AssemblyName>Lumio.Bomber.Server.HostTests</AssemblyName>
+    <RootNamespace>Lumio.Bomber.Server.HostTests</RootNamespace>
+    <LumioEcsGenerate>false</LumioEcsGenerate>
+    <!-- ADR-115: Server/ holds data only, so the cases' sources live under
+         Server/Tests/Host and only this project file sits outside it. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- This project is deliberately NOT in LumioBomber.slnx. It drives a built
+         Lumio.Server.HostEntry from the Engine/ release, the same way Client/Bots
+         needs a prebuilt engine artifact. `dotnet test LumioBomber.slnx`
+         must not change its shape because of it; run it through
+         Tools/test-server-host.mjs, which gives each case its own process. -->
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/Host/**/*.cs" Link="Host/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- ADR-123: HostEntry and the Runtime three-path come from Engine/server/<rid>/. -->
+    <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/EngineRelease.cs" Link="EngineRelease.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Platform" />
+    <!-- HostEntry loads into this process's default context and its Runtime three-path needs the
+         logging abstractions at run time; the release's server/<rid>/SDK/Managed does not carry
+         framework-adjacent packages (same reason as Lumio.Bomber.Gameplay.Tests). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="10.0.11" />
+  </ItemGroup>
+</Project>

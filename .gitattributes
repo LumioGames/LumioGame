@@ -3,3 +3,9 @@
 *.sha256 text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# Identity history and official config manifests authenticate the exact file bytes.
+games/101-bomber/Gameplay/Compatibility/schema-identities*.json -text
+games/101-bomber/Gameplay/Compatibility/schema-retirements*.json -text
+games/101-bomber/Server/Config/**/*.json -text
+games/101-bomber/Client/Config/**/*.json -text

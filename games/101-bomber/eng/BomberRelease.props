@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.0.6-bomber.schema16</Version>
+    <LumioRequiredSdkVersion>0.0.5-main.0e2fc74</LumioRequiredSdkVersion>
+  </PropertyGroup>
+</Project>

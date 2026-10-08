@@ -1,0 +1,27 @@
+// Independently captured Root history predates the frozen integration. This
+// audit input is required regardless of what the candidate ledger references.
+export const LOCAL_HISTORY_SNAPSHOTS = Object.freeze([
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-traversal-favorite-regions.json',
+    sha256:'d3bca141e0a1f777892ba6c6e7e155dfc5842ddaf09ca5eea1857184c41dcb7f'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-m2-producers.json',
+    sha256:'0a15a9e69cff29c83915493472c7583977a585f3e850548ad49adfee48ca7e36'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-bomb-promises.json',
+    sha256:'97abc333647fed9ada2654d68146bdf93e54691308240edb674067c7c5b7db44'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-button-input.json',
+    sha256:'fedb3e9bdfde5c2af9e59c633768147d06e129e6f5a3b2b03ee5d597fdf2b121'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-input-memory.json',
+    sha256:'42b3a730285ad0eb23703887b578545147a6839f89927ae17981c6d48d723109'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-durable-results.json',
+    sha256:'207837ed3450081b3cf639dc24f09791000e4c490e7a265f4ab8092b7017ca0b'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-strong-chest.json',sha256:'48c5ba892ffd83704dcfa67c39c133ef29292f9cd89f195bfb6134ef4d2c4d5a'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-contact-freeze.json',
+    sha256:'e9627d90aaa029bc0645e60cd0013be473c0b8ce170cf999cea3197816e0a698'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.root-before-integration.json',
+    sha256:'7004279b097f4f37b18f2e420bc4d5d8be33ef335cccc9abfedf9090090e8776'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-finite-candidate.json',
+    sha256:'1ace4b5df56aad5d7122b8ffb3a7c96502cee548c9d43f9c79dd6006fe7b93c6'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-round-lifecycle.json',
+    sha256:'ad044dc1a153ca4032bbe469e49ebc3d07e0328dfd6ca4be089d2ea86af1277b'}),
+  Object.freeze({path:'Gameplay/Compatibility/schema-identities.before-successor-consumer.json',
+    sha256:'75af076ce3d5fc12b98d88b4f82b46316f342ec2520f66ce2fd1a39f6e2ad11d'}),
+]);

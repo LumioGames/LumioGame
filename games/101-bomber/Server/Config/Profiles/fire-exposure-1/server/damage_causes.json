@@ -1,0 +1,52 @@
+{
+  "contentFingerprint": "2b4accda44a8d778242524e37d5d4cfcb5c290835c94d5642ee706812b329c0a",
+  "rows": [
+    {
+      "blocked_by_protection": true,
+      "cause_code": 0,
+      "effect_key": "BombDamage",
+      "id": 120001,
+      "name": "Blast",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "blocked_by_protection": true,
+      "cause_code": 1,
+      "effect_key": "DrownDamage",
+      "id": 120002,
+      "name": "Drown",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "blocked_by_protection": true,
+      "cause_code": 2,
+      "effect_key": "FireExposure",
+      "id": 120003,
+      "name": "Burn",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "blocked_by_protection": false,
+      "cause_code": 3,
+      "effect_key": "RingPoison",
+      "id": 120004,
+      "name": "RingPoison",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    },
+    {
+      "blocked_by_protection": true,
+      "cause_code": 4,
+      "effect_key": "Toxin",
+      "id": 120005,
+      "name": "Toxin",
+      "source_ref": "docs/specs/bomber/design.md#15",
+      "source_status": "design"
+    }
+  ],
+  "table": "damage_causes",
+  "target": "S"
+}

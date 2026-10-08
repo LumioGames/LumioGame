@@ -1,0 +1,6 @@
+table: skill_rules
+schema: schemas/skill_rules.json
+
+| name | death_drop_permille |
+| --- | --- |
+| default | 300 |

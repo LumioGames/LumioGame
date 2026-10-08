@@ -1,0 +1,20 @@
+# Browser observer Self adapter — independent review
+
+Verdict: **ACCEPT_SOURCE_ONLY**. Reviewer `/root/schema_pins_review` did not author or modify production. No P1/P2 found in the exact two-file candidate. This accepts the adapter change and its source evidence; it does not close browser entry, performance, terminal transport, release identity or ten-reopen acceptance.
+
+| Source | Preserved before SHA256 | Accepted candidate SHA256 |
+|---|---|---|
+| `Client/Presentation/src/replica-adapter.ts` | `a918a29dba8a34d16759c357b834bfd4d7bf31c199b0acb03fac0d49d6008bf1` | `d89e22570469574b759398ecf39cd00202a7e2cc83f1c822504063f8c3aa939c` |
+| `Client/Presentation/src/replica-adapter.test.ts` | `d6450b7af1351fb3269e7e92a5e85436a87255b9105dfa18ddc6765d7ad28df2` | `4f11e7a2aebbd6015051e6a628a8aebf4af55d500e75070472ba3774aecaeae0` |
+
+Reviewed the full preserved before/candidate files, both forward and saved inverse diffs, author report SHA256 `55d5fca9065a550787533a8aa13ecd4db590450afdd7af0eb4d6f7d731fb7dc3`, and sealed manifest `fabe2358cb6b591722709457563d754bf6878e6d153c0cb9f08d626fba7f6a94`. Current source, candidate copies, before copies and every sealed raw result match their hashes (20 checks).
+
+Production changes only the existing participant fallback at adapter lines115–116: an exact `p.id === frame.selfId` now binds when `p.matchId === match.matchId`. The unchanged primary player lookup and current/last-life fallback retain their behavior. There is no new local simulation or inferred Self: `PresentationDump.Dump` line32 reads `world.TryGetSelf(...).Id.ToHex()`, and lines58–62 export participant IDs, match IDs and life fields from the same committed World. Thus the new branch selects a durable participant that the authoritative replica identifies as Self. Match identity reset still precedes lookup; the display loop still excludes seats from other matches. Renderer handles are local presentation IDs and are never inserted into input requests; the existing host still resolves `replica.Manager.World.Self.Id` when activating an input.
+
+All pose, health, input, interpolation and life-generation code is unchanged. For an unseen observing seat in phase2/3 the existing display projection retains a HUD row with unknown position and zero health. The added branch only gives that existing row its local HUD handle. It does not follow another life, create a playing entity, open input, expose private skill state, or change bombs/other participants.
+
+The complete test inverse diff contains exactly three added cases (phase2 and3, plus a foreign match), with no deletion or weakening of the22 existing cases. The raw RED has25 total,23 pass,2 expected failures, exit1. Both failures are the local handle assertion (`expected +0 to be 1`), not build/discovery/fixture errors. The cross-match case already passes on RED. Same candidate test bytes on GREEN have25/25 pass, zero pending, raw exit0; test inventories are equal and no-emit typecheck is raw0. Reviewer inspected these raw JSON/log/exit records and did not rerun the suite. The foreign-match test covers fresh direct participant Self, not every legacy cached/fallback combination, which this patch does not alter.
+
+Independent read-only inventory verifies exactly53 authored plus44 generated source pins (97 total), not107. Only the two accepted paths above differ from existing pins; the other95 match. All110 previously protected generated/lock bytes match the diagnostic09 identity audit baseline. The pin module remains `aa880ac3839ced140386d2a17c974077a763a4e9c27a220f234725a72a9e8a6e`; an actual `requireV15Review` read against current bytes still refuses with `v15_review_bytes`. No pins were modified by this reviewer. Root may update only these two exact accepted hashes with this review in the evidence chain, subject to a final source hash reread.
+
+Independent evidence: `.run/browser-observer-self-independent-review-01/verification.json`, two inverse diffs, and publication manifest. Production/source-pin/generated/lock files were read only. Final publication rereads both accepted candidate hashes, the unmodified pin module and the report before sealing.

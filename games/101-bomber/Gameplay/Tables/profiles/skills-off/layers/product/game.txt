@@ -1,0 +1,6 @@
+table: game
+schema: schemas/game.json
+
+| name | skills_enabled |
+| --- | --- |
+| default | false |
