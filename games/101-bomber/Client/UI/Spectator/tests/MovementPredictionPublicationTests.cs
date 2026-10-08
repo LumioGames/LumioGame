@@ -25,6 +25,9 @@ public sealed class MovementPredictionPublicationTests
     [InlineData("own-bomb")]
     [InlineData("other-life-bomb")]
     public void UnconfirmedInputPublishesMovedOwnerWithoutChangingConfirmedLogic(string boundary)
+        => RunActualPrediction(boundary);
+
+    internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null)
     {
         using var owner = new BrowserSessionOwner(parts: true);
         using var server = owner.CreateServerProjectionWorld(new ProjectionRegistry(BrowserSessionOwner.LoadServerRegistry()), 7);
@@ -138,6 +141,7 @@ public sealed class MovementPredictionPublicationTests
         var displayDot = positions.RootElement.EnumerateArray()
             .Single(row => row.GetProperty("id").GetString() == life.AssignedId.ToHex());
         Assert.Equal(after.X, displayDot.GetProperty("x").GetSingle());
+        inspect?.Invoke(owner, life.AssignedId);
     }
 
     private sealed record ExportedSection(string Key, ulong Revision, string Encoding, byte[] Payload, string Sha256);

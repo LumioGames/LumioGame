@@ -138,6 +138,12 @@ public sealed class SpectatorReplicaHost : IDisposable
         AuthorityTick.ToString(CultureInfo.InvariantCulture),
         (_session.TryGetPrediction(out var prediction) ? prediction.GetSnapshot().ConfirmedSeq : 0).ToString(CultureInfo.InvariantCulture));
     public string PresentationState() => PresentationDump.Dump(World, AuthorityTick.ToString(CultureInfo.InvariantCulture));
+    public string OwnerPresentation()
+    {
+        if (_closing || !_session.TryUpdateOwnerPresentation(out var pose)) return "null";
+        return JsonSerializer.Serialize(OwnerPresentationDto.From(_session.GetSnapshot().Generation, pose),
+            SpectatorJsonContext.Default.OwnerPresentationDto);
+    }
     public byte[] WorldHandleBytes() => Replica is { } replica ? EngineWasmWorldVoxelResources.Require(replica.Manager).WorldHandleBytes : Array.Empty<byte>();
     public string ReadBox(int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
     {

@@ -2,7 +2,7 @@ import './presentation.css'
 import { createAudio } from './audio'
 import { CHARACTER_ORDER, DEFAULT_CONFIG, DEFAULT_RULES, type BomberConfig, type CharacterId, type ProtoRules, type TickFrame, type U64, type 方向 } from './contract'
 import { createHud } from './hud'
-import { PresentationFeed } from './present/feed'
+import { PresentationFeed, type LocalPresentationPose } from './present/feed'
 import { loadSettings, saveSettings } from './present/settings'
 import { attachPresentationShortcuts } from './present/shortcuts'
 import { TouchControls } from './present/touch-controls'
@@ -12,7 +12,7 @@ export * from './contract'
 export type { GameView, ScreenPoint, ViewOptions } from './view'
 export { renderDollPortraits } from './view'
 export { PresentationFeed } from './present/feed'
-export type { FeedSample } from './present/feed'
+export type { FeedSample, LocalPresentationPose } from './present/feed'
 export { createReplicaAdapter } from './replica-adapter'
 export { projectReplicaConfig } from './replica-config'
 export { ReplicaTerrain } from './replica-terrain'
@@ -23,6 +23,7 @@ export interface PresentationOptions {
   labels: HTMLElement
   hud: HTMLElement
   localPlayerId: U64
+  readLocalPose?(): LocalPresentationPose | null
   config?: BomberConfig
   rules?: ProtoRules
   callbacks?: {
@@ -105,6 +106,7 @@ export function createPresentation(options: PresentationOptions): Presentation {
     last = now
     const sample = feed.sample(now)
     if (sample) {
+      if (options.readLocalPose) sample.localPose = options.readLocalPose()
       view.update(sample, dt)
       hud.update(sample, dt)
       touch?.setSkill(hud.skillButton())

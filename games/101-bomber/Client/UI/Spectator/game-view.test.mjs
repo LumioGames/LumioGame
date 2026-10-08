@@ -96,7 +96,7 @@ test('selection follows local readiness and phases without rebuilding presentati
 
 // Isolate observable presentation lifetime; the source under test remains the
 // actual GameView module above. This fixture does not establish raw adapter IDs.
-function waitingPresentationFixture() {
+function waitingPresentationFixture(callbacks = {}) {
   const nodes = new Map(['presentation','game-stage','game-labels','game-hud'].map(id => [id,
     { hidden: true, classList: { add() {}, remove() {} }, querySelector: () => ({ style: {} }) }]));
   const state = { ready: false, localId: 1, projectable: true, adapters: [], presentations: [], now: 1,
@@ -122,13 +122,79 @@ function waitingPresentationFixture() {
     },
   };
   vm.runInNewContext(source + '\nglobalThis.createGameView = createGameView;', sandbox);
-  const view = sandbox.createGameView({ inputReady: () => state.ready });
+  const view = sandbox.createGameView({ inputReady: () => state.ready, ...callbacks });
   const frame = tick => ({ tick, selfId: '00000000000000010000000000000003',
     match: { id: '00000000000000010000000000000001', matchId: '1', phase: 2 },
     players: [{ id: '00000000000000010000000000000003' }], chests: [], events: [],
     config: { mapSize: 19, groundLayer: 0, obstacleLayer: 1, blocks: [] } });
   return { nodes, state, view, frame, evidence: sandbox.window.__lumioPresentation };
 }
+
+test('owner pose maps only the current raw life to its renderer handle and retains a valid pose without interpolation', () => {
+  let value;
+  const read = () => value;
+  const p = waitingPresentationFixture({ readOwnerPose: read });
+  p.view.update(p.frame('10'), { ready: true });
+  const options = p.state.presentations[0].options;
+  assert.equal(typeof options.readLocalPose, 'function');
+  assert.equal(options.readLocalPose(), null);
+  value = { entity: p.frame('10').selfId, connectionGeneration: '9', publicationSequence: '9007199254740993',
+    sessionGeneration: '1', model: { position: { x: 12, y: 0, z: 13 }, rotation: { x: 0, y: 0, z: 0, w: 1 } } };
+  const pose = options.readLocalPose();
+  assert.equal(pose.playerId, 1); assert.equal(pose.entity, value.entity);
+  assert.equal(pose.connectionGeneration, '9'); assert.equal(pose.publicationSequence, '9007199254740993');
+  assert.equal(pose.model, value.model);
+  value = null;
+  assert.equal(options.readLocalPose(), pose, 'an unavailable evaluation holds only the current lifetime display');
+  p.view.suspend('world-rebinding');
+  assert.equal(options.readLocalPose(), null);
+  p.view.update(p.frame('11'), { ready: true });
+  assert.equal(options.readLocalPose(), null, 'a rebound lifetime has no inherited Model display');
+  p.view.dispose();
+  assert.equal(options.readLocalPose(), null);
+});
+
+test('same-tick publication replacement is accepted while old entity, sequence and generation are rejected', () => {
+  let calls = 0, value;
+  const p = waitingPresentationFixture({ readOwnerPose: () => { calls++; return value; } });
+  p.view.update(p.frame('10'), { ready: true });
+  const read = p.state.presentations[0].options.readLocalPose;
+  assert.equal(typeof read, 'function');
+  const pose = (generation, sequence, x = 1, entity = p.frame('10').selfId) => ({ entity,
+    connectionGeneration: generation, publicationSequence: sequence, sessionGeneration: '1',
+    model: { position: { x, y: 0, z: 2 }, rotation: { x: 0, y: 0, z: 0, w: 1 } } });
+  value = pose('9', '9007199254740993'); read();
+  value = pose('9', '9007199254740994', 5); assert.equal(read().model.position.x, 5);
+  value = pose('9', '9007199254740993', 7); assert.equal(read().model.position.x, 5);
+  value = pose('10', '1', 8); assert.equal(read().model.position.x, 8);
+  value = pose('9', '9007199254740995', 9); assert.equal(read().model.position.x, 8);
+  value = pose('10', '2', 9, 'other-life'); assert.equal(read(), null);
+  const formerRead = read;
+  p.state.localId = 2; p.view.update(p.frame('11'), { ready: true });
+  const before = calls; assert.equal(formerRead(), null); assert.equal(calls, before);
+  p.view.dispose();
+  const disposedRead = p.state.presentations.at(-1).options.readLocalPose;
+  assert.equal(disposedRead(), null); assert.equal(calls, before);
+});
+
+test('older consumers without an owner callback preserve their optional rendering contract', () => {
+  const p = waitingPresentationFixture(); p.view.update(p.frame('10'), { ready: true });
+  assert.equal(p.state.presentations[0].options.readLocalPose, undefined);
+});
+
+test('inactive or replaced Session lifetime clears a cached pose even before a new publication exists', () => {
+  let lifetime = 'attempt1:session1';
+  let value;
+  const p = waitingPresentationFixture({ readOwnerPose: () => value, ownerPoseLifetime: () => lifetime });
+  p.view.update(p.frame('10'), { ready: true });
+  const read = p.state.presentations[0].options.readLocalPose;
+  value = { entity: p.frame('10').selfId, connectionGeneration: '9', publicationSequence: '1', sessionGeneration: '1',
+    model: { position: { x: 12, y: 0, z: 13 }, rotation: { x: 0, y: 0, z: 0, w: 1 } } };
+  assert.equal(read().model.position.x, 12);
+  value = null; assert.equal(read().model.position.x, 12);
+  lifetime = null; assert.equal(read(), null);
+  lifetime = 'attempt1:session2'; assert.equal(read(), null);
+});
 
 for (const missing of ['match', 'config']) test(`a new GameView with missing ${missing} remains hidden and cannot act as a first screen`, () => {
   const p = waitingPresentationFixture(), frame = p.frame('1'); delete frame[missing];
