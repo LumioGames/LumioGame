@@ -15,26 +15,32 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     events.push(event);
   }
   const visibility = () => doc?.visibilityState ?? 'unknown';
+  const focus = () => {
+    try { return typeof doc?.hasFocus === 'function' ? Boolean(doc.hasFocus()) : null; }
+    catch { return null; }
+  };
   const number = value => (typeof value === 'number' && Number.isFinite(value) ? value : null);
   const text = value => (value === undefined || value === null ? null : String(value));
   const publication = pose => (pose ? {
+    sessionGeneration: text(pose.sessionGeneration), entity: text(pose.entity), connectionGeneration: text(pose.connectionGeneration),
     seq: text(pose.publicationSequence), step: text(pose.localStepOrdinal), tick: text(pose.executionTick),
     inputSeq: text(pose.inputSequence), cause: text(pose.cause),
     tx: number(pose.target?.position?.x), tz: number(pose.target?.position?.z),
   } : null);
   return {
-    key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility() }); },
+    key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility(), focused: focus() }); },
     input(kind, accepted, args = []) { push({ k: 'input', t: now(), kind, accepted, args }); },
     // Inputs published before tickAt are admitted by this pump's Session Tick; pose is the owner
     // publication read right after that Tick.
     pump({ startedAt, tickAt, tickMs, totalMs, state, pose = null }) {
-      push({ k: 'pump', t: startedAt, tickAt, tickMs, totalMs, state, vis: visibility(), pose: publication(pose) });
+      push({ k: 'pump', t: startedAt, tickAt, tickMs, totalMs, state, vis: visibility(), focused: focus(), pose: publication(pose) });
     },
     frame({ now: frameNow, dt, renderTick, localPose, local }) {
       const target = localPose?.target?.position;
       const model = localPose?.model?.position;
       push({
-        k: 'frame', t: frameNow, dt, vis: visibility(), rt: number(renderTick),
+        k: 'frame', t: frameNow, dt, vis: visibility(), focused: focus(), rt: number(renderTick),
+        sessionGeneration: text(localPose?.sessionGeneration), entity: text(localPose?.entity), connectionGeneration: text(localPose?.connectionGeneration),
         seq: text(localPose?.publicationSequence), step: text(localPose?.localStepOrdinal),
         tick: text(localPose?.executionTick), inputSeq: text(localPose?.inputSequence), cause: text(localPose?.cause),
         tx: number(target?.x), tz: number(target?.z), mx: number(model?.x), mz: number(model?.z),
@@ -54,8 +60,12 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
 }
 
 export function observeLongTasks(trace, Observer = globalThis.PerformanceObserver) {
-  if (typeof Observer !== 'function' || !Observer.supportedEntryTypes?.includes?.('longtask')) return () => {};
+  if (typeof Observer !== 'function' || !Observer.supportedEntryTypes?.includes?.('longtask')) {
+    trace.note('longtask=unsupported');
+    return () => {};
+  }
   const observer = new Observer(list => { for (const entry of list.getEntries()) trace.longTask(entry); });
   observer.observe({ type: 'longtask', buffered: false });
+  trace.note('longtask=supported');
   return () => observer.disconnect();
 }

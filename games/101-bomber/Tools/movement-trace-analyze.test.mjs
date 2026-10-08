@@ -106,3 +106,203 @@ test('facing deviation and hidden frames are reported separately', () => {
 test('a trace without events is rejected', () => {
   assert.throws(() => analyzeMovementTrace({}), /movement_trace_events_missing/);
 });
+
+function recorded({ keys = [], inputs = [], pumps = [], frames = [] }) {
+  return { version: 1, events: [
+    ...keys.map(([t, type, code = 'KeyW', repeat = false]) => ({ k: 'key', t, type, code, repeat, vis: 'visible' })),
+    ...inputs.map(t => ({ k: 'input', t, kind: 'move', accepted: true, args: [1, 0, false] })),
+    ...pumps.map(t => ({ k: 'pump', t, tickAt: t, vis: 'visible',
+      pose: { tick: String(t), tx: frames.filter(frame => frame[0] <= t).at(-1)?.[1] ?? 0, tz: 0, cause: 'InputPublication' } })),
+    ...frames.map(([t, target, display]) => ({ k: 'frame', t, vis: 'visible', tx: target, tz: 0, dx: display, dz: 0, yaw: Math.PI / 2 })),
+  ] };
+}
+
+test('each later hold counts only requests admitted since the preceding pump', () => {
+  const summary = analyzeMovementTrace(recorded({ inputs: [5, 55, 505, 555], pumps: [10, 60, 510, 560] }));
+  assert.equal(summary.counts.holdWindows, 2);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 4 });
+});
+
+test('direction key edges preserve continuous empty pumps until the actual release', () => {
+  const summary = analyzeMovementTrace(recorded({ keys: [[0, 'keydown'], [200, 'keydown', 'KeyW', true], [400, 'keyup']],
+    inputs: [5, 55, 355], pumps: [10, 60, 110, 160, 210, 260, 310, 360, 410] }));
+  assert.equal(summary.counts.holdWindows, 1);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 0: 5, 1: 3 });
+});
+
+test('a request gap without keyup does not create a stop overshoot sample', () => {
+  const summary = analyzeMovementTrace(recorded({ keys: [[0, 'keydown']], inputs: [5, 55, 355],
+    pumps: [10, 60, 110, 160, 210, 260, 310, 360],
+    frames: [[10, .1, .1], [60, .2, .2], [70, .2, .3], [100, .2, .2], [350, .2, .2], [360, .3, .3], [410, .3, .3], [710, .3, .3]] }));
+  assert.equal(summary.display.stopOvershootM.n, 0);
+  assert.equal(summary.display.stopOvershootM.max, null);
+});
+
+test('a physical tap without a pump does not contribute requests to the following hold', () => {
+  const summary = analyzeMovementTrace(recorded({ keys: [[0, 'keydown'], [2, 'keyup'], [5, 'keydown', 'ArrowRight'], [80, 'keyup', 'ArrowRight']],
+    inputs: [1, 6], pumps: [10, 60, 110] }));
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 0: 1, 1: 1 });
+  assert.equal(summary.counts.holdWindows, 2);
+  assert.equal(summary.admission.requestsOutsideHeldMetrics, 1);
+});
+
+test('a release after an accepted request gap measures only the actual stop tail', () => {
+  const summary = analyzeMovementTrace(recorded({ keys: [[0, 'keydown'], [400, 'keyup']], inputs: [5, 55, 355],
+    pumps: [10, 60, 110, 160, 210, 260, 310, 360],
+    frames: [[10, .1, .1], [60, .2, .2], [70, .2, .3], [100, .2, .2], [350, .2, .2], [360, .3, .3], [410, .3, .3], [710, .3, .3]] }));
+  assert.equal(summary.display.stopOvershootM.n, 1);
+  assert.equal(summary.display.stopOvershootM.max, 0);
+});
+
+const identity = { sessionGeneration: '9007199254740993', entity: '00000000000000070000000000000002', connectionGeneration: '18446744073709551615' };
+function observed(t, x, extra = {}) {
+  return { ...identity, t, vis: 'visible', focused: true, cause: 'InputPublication', tick: String(t), tx: x, tz: 0, dx: x, dz: 0,
+    yaw: Math.PI / 2, ...extra };
+}
+
+test('identity, null pose, visibility, focus and publication boundaries break frame and pump comparisons', () => {
+  const boundaries = [
+    { k: 'frame', ...observed(100, 50, { entity: '00000000000000070000000000000003' }) },
+    { k: 'frame', ...observed(100, 50, { sessionGeneration: null }) },
+    { k: 'frame', ...observed(100, 50, { vis: 'hidden' }) },
+    { k: 'frame', ...observed(100, 50, { focused: false }) },
+    { k: 'frame', ...observed(100, 50, { tx: null, dx: null }) },
+    { k: 'frame', ...observed(100, 50, { cause: 'AuthorityCorrection' }) },
+    { k: 'frame', ...observed(100, 50, { cause: 'UnknownPublication' }) },
+    { k: 'pump', t: 100, tickAt: 100, vis: 'visible', focused: true, pose: null },
+  ];
+  for (const boundary of boundaries) {
+    const trace = recorded({ keys: [[0, 'keydown']], inputs: [5, 55, 155, 205], pumps: [] });
+    trace.events.push(
+      { k: 'pump', ...observed(10, 0), tickAt: 10, pose: observed(10, 0) },
+      { k: 'frame', ...observed(20, 0) },
+      { k: 'pump', ...observed(60, .2), tickAt: 60, pose: observed(60, .2) },
+      { k: 'frame', ...observed(70, .2, { dx: .3 }) },
+      boundary,
+      { k: 'pump', ...observed(160, -.1), tickAt: 160, pose: observed(160, -.1) },
+      { k: 'frame', ...observed(170, -.1, { yaw: -Math.PI / 2 }) },
+      { k: 'pump', ...observed(210, .1), tickAt: 210, pose: observed(210, .1) },
+      { k: 'frame', ...observed(220, .1) },
+    );
+    const summary = analyzeMovementTrace(trace);
+    assert.equal(summary.display.backwardFrames, 0, JSON.stringify(boundary));
+    assert.equal(summary.facing.over90deg, 0, JSON.stringify(boundary));
+    assert.equal(summary.execution.targetStepPerHeldPumpM.n, boundary.vis === 'hidden' || boundary.focused === false ? 1 : 2, JSON.stringify(boundary));
+    assert.equal(summary.execution.targetStepPerHeldPumpM.max, .2, JSON.stringify(boundary));
+  }
+});
+
+test('legal turn display inertia is excluded from straight backward displacement samples', () => {
+  const trace = synthetic({ stride: i => (i < 10 ? STEP : -STEP), display: interpolate });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.backwardFrames, 0);
+  assert.ok(summary.display.turnExcludedFrames > 0);
+});
+
+test('non-finite display coordinates have no valid movement or facing denominator', () => {
+  const trace = recorded({ keys: [[0, 'keydown']], inputs: [5, 55], pumps: [10, 60], frames: [] });
+  trace.events.push({ k: 'frame', ...observed(10, 0, { dz: undefined }) },
+    { k: 'frame', ...observed(60, .2, { dx: Infinity }) }, { k: 'frame', ...observed(70, .2, { dx: NaN }) });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.heldFrames, 0);
+  assert.equal(summary.display.leadAlongMotionM.n, 0);
+  assert.equal(summary.display.maxBackwardM, null);
+  assert.equal(summary.display.totalBackwardM, null);
+  assert.equal(summary.facing.deviationDeg.n, 0);
+  assert.equal(summary.facing.deviationDeg.max, null);
+});
+
+test('analysis preserves every raw event and reports legacy hold inference explicitly', () => {
+  const trace = synthetic({ display: interpolate });
+  const original = JSON.stringify(trace);
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(JSON.stringify(trace), original);
+  assert.equal(summary.holds.source, 'accepted-request-gap-inference');
+  assert.ok(summary.holds.limitations.length > 0);
+  assert.match(summary.admission.source, /not GAS/);
+});
+
+test('post-Tick pump observations break continuity at tickAt rather than the earlier pump start', () => {
+  const trace = recorded({ keys: [[0, 'keydown']], inputs: [1] });
+  trace.events.push({ k: 'pump', t: 2, tickAt: 10, vis: 'visible', pose: observed(10, 50, { entity: 'other-life' }) },
+    { k: 'frame', ...observed(5, 0) }, { k: 'frame', ...observed(15, .2) });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.heldFrames, 0);
+  assert.equal(summary.facing.heldFrames, 0);
+});
+
+test('a request published before release retains its later admitting pump without counting released empty pumps', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [90, 'keyup']], inputs: [5, 55, 85], pumps: [10, 60, 110, 160, 210] });
+  const summary = analyzeMovementTrace(trace);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 3 });
+  assert.equal(summary.admission.heldPumps, 3);
+  assert.equal(summary.admission.requestsOutsideHeldMetrics, 0);
+});
+
+test('legacy inferred holds sharing a delayed pump count that pump once', () => {
+  const summary = analyzeMovementTrace(recorded({ inputs: [5, 205], pumps: [300] }));
+  assert.equal(summary.counts.holdWindows, 2);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 2: 1 });
+});
+
+test('a stop with less than 300 ms of observed tail is unavailable', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [100, 'keyup']], inputs: [5, 55],
+    frames: [[10, 0, 0], [60, .2, .2], [110, .2, .2]] });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.stopOvershootM.n, 0);
+  assert.equal(summary.display.stopOvershootM.max, null);
+  assert.equal(summary.display.partialStopWindows, 1);
+});
+
+test('current identified observations with missing cause cannot establish motion continuity', () => {
+  const trace = recorded({ keys: [[0, 'keydown']] });
+  trace.events.push({ k: 'frame', ...observed(10, 0, { cause: null }) }, { k: 'frame', ...observed(60, .2, { cause: null }) });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.heldFrames, 0);
+  assert.equal(summary.facing.heldFrames, 0);
+  assert.equal(summary.diagnostics.excludedObservations.publicationCause, 2);
+  assert.match(summary.display.scope, /AuthorityCorrection.*excluded/);
+});
+
+test('missing long-task API evidence is unavailable while supported zero observations is zero', () => {
+  const trace = { events: [{ k: 'note', t: 0, message: 'longtask=unsupported' }] };
+  const unavailable = analyzeMovementTrace(trace);
+  assert.equal(unavailable.timing.longTasksAvailable, false);
+  assert.equal(unavailable.timing.longTasks, null);
+  const supported = analyzeMovementTrace({ events: [{ k: 'note', t: 0, message: 'longtask=supported' }] });
+  assert.equal(supported.timing.longTasksAvailable, true);
+  assert.equal(supported.timing.longTasks, 0);
+  assert.equal(analyzeMovementTrace({ events: [] }).timing.longTasksAvailable, null);
+});
+
+test('stop measurement keeps the release-to-final-publication display travel and rejects an unstable endpoint', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [90, 'keyup']], inputs: [5, 55, 85], pumps: [10, 60, 110],
+    frames: [[10, 0, 0], [60, .2, .2], [100, .2, .6], [120, .4, .4], [410, .4, .4]] });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.stopOvershootM.n, 1);
+  assert.equal(summary.display.stopOvershootM.max, .2);
+  const last = trace.events.find(e => e.k === 'frame' && e.t === 410);
+  last.tx = .5;
+  last.dx = .5;
+  const unstable = analyzeMovementTrace(trace);
+  assert.equal(unstable.display.stopOvershootM.n, 0);
+  assert.equal(unstable.display.unstableStopWindows, 1);
+});
+
+test('a new physical hold cannot inherit a direction or facing denominator before its own target movement', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [100, 'keyup'], [200, 'keydown', 'ArrowLeft']], inputs: [5, 55, 205],
+    frames: [[10, 0, 0], [60, .2, .2], [110, .2, .2], [210, .2, .2], [260, .2, .2]] });
+  trace.events.find(e => e.k === 'frame' && e.t === 260).yaw = -Math.PI / 2;
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.heldFrames, 1);
+  assert.equal(summary.facing.heldFrames, 1);
+  assert.equal(summary.facing.over90deg, 0);
+});
+
+test('an endpoint exactly 300 ms after release must agree with a distinct preceding target sample', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [100, 'keyup']], inputs: [5, 55],
+    frames: [[10, 0, 0], [60, .2, .2], [110, .2, .2], [400, .4, .4]] });
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.stopOvershootM.n, 0);
+  assert.equal(summary.display.unstableStopWindows, 1);
+});
