@@ -9,24 +9,45 @@ export function createPlayerIntentControls({ setMoveIntent, setBombIntent, latch
   let touch = [0, 0];
   let focused = true;
   let disposed = false;
+  let cleanup = null;
 
   function blocked() {
     const active = target.document?.activeElement;
     return !focused || target.document?.hidden ||
       (active?.closest?.(UI_FOCUS) && !panel?.contains?.(active));
   }
+  function clearManaged() {
+    if (cleanup.clearStarted) return;
+    cleanup.clearStarted = true;
+    clearIntent();
+  }
   function reset() {
+    if (cleanup) {
+      // Nested disposal must finish pending cleanup before its caller resumes.
+      if (disposed) clearManaged();
+      return;
+    }
+    cleanup = { clearStarted: false };
     held.clear();
     touch = [0, 0];
     const cancelBomb = bombSources.size > 0;
     bombSources.clear();
-    if (cancelBomb) setBombIntent('cancel');
-    clearIntent();
+    const errors = [];
+    try {
+      try { if (cancelBomb) setBombIntent('cancel'); } catch (error) { errors.push(error); }
+      try { clearManaged(); } catch (error) { errors.push(error); }
+    } finally { cleanup = null; }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length === 2) throw new AggregateError(errors, 'Intent cleanup failed');
   }
   function clear() { if (!disposed) reset(); }
   function allowed() {
-    if (disposed) return false;
-    if (!ready() || blocked()) { clear(); return false; }
+    if (disposed || cleanup) return false;
+    const isReady = ready();
+    if (disposed || cleanup) return false;
+    const isBlocked = blocked();
+    if (disposed || cleanup) return false;
+    if (!isReady || isBlocked) { clear(); return false; }
     return true;
   }
   function directions() {

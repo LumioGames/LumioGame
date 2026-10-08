@@ -275,3 +275,133 @@ test('adapter contains no scheduler, simulation, direct ability, or sampling pat
   assert.deepEqual(f.events, []);
   f.controls.destroy();
 });
+
+function assertDetached(f) {
+  for (const surface of [f.target, f.target.document, f.right, f.down, f.bomb, f.skill])
+    for (const listeners of surface.listeners.values()) assert.equal(listeners.size, 0);
+}
+
+for (const action of ['clear', 'destroy']) {
+  for (const clearFails of [false, true]) {
+    test(`cleanup ${action} attempts managed clear after cancel failure${clearFails ? ' and retains both errors' : ''}`, () => {
+      const cancelError = new Error('cancel failed'), clearError = new Error('clear failed');
+      const calls = [];
+      const f = fixture({ setBombIntent: phase => {
+        calls.push(phase);
+        if (phase === 'cancel') throw cancelError;
+      }, clearIntent: () => {
+        calls.push('clear');
+        if (clearFails) throw clearError;
+      } });
+      f.key('keydown', 'KeyD'); f.controls.setBombPressed(true);
+      let failure;
+      try { f.controls[action](); } catch (error) { failure = error; }
+      assert.deepEqual(calls, ['begin', 'cancel', 'clear']);
+      if (clearFails) {
+        assert.ok(failure instanceof AggregateError);
+        assert.equal(failure.errors.length, 2);
+        assert.equal(failure.errors[0], cancelError); assert.equal(failure.errors[1], clearError);
+      } else assert.equal(failure, cancelError);
+      const count = calls.length;
+      f.key('keyup', 'KeyD'); f.controls.setBombPressed(false);
+      assert.equal(f.moves.length, 1); assert.equal(calls.length, count);
+      if (action === 'destroy') {
+        f.controls.destroy(); f.controls.clear(); f.controls.setTouchDirection(1);
+        f.controls.setBombPressed(true); f.skill.emit('click');
+        assert.equal(calls.length, count); assert.equal(f.moves.length, 1); assert.equal(f.skills, 0);
+        assertDetached(f);
+      }
+    });
+  }
+  test(`cleanup ${action} preserves a standalone managed clear error`, () => {
+    const failure = new Error('standalone clear failed');
+    let clears = 0;
+    const f = fixture({ clearIntent: () => { clears++; throw failure; } });
+    assert.throws(() => f.controls[action](), error => error === failure);
+    assert.equal(clears, 1);
+    if (action === 'destroy') { f.controls.destroy(); assert.equal(clears, 1); assertDetached(f); }
+  });
+}
+
+for (const [name, invoke] of [
+  ['touch', f => f.controls.setTouchDirection(2)],
+  ['bomb', f => f.controls.setBombPressed(true)],
+  ['Shift', f => f.key('keydown', 'ShiftLeft')],
+  ['skill click', f => f.skill.emit('click')],
+  ['direction release', f => f.key('keyup', 'KeyD')],
+  ['bomb release', f => f.controls.setBombPressed(false)],
+  ['assistive click', f => f.bomb.emit('click', { detail: 0 })],
+]) {
+  test(`lifecycle ready destroy blocks ${name} continuation after destroy returns`, () => {
+    let f, armed = false;
+    const calls = [];
+    f = fixture({ ready: () => {
+      if (armed) { f.controls.destroy(); calls.push('destroy-return'); }
+      return true;
+    }, setMoveIntent: () => calls.push('move'), setBombIntent: phase => calls.push(phase),
+    latchSkillIntent: () => calls.push('skill'), clearIntent: () => calls.push('clear') });
+    if (name === 'direction release') f.key('keydown', 'KeyD');
+    if (name === 'bomb release') f.controls.setBombPressed(true);
+    calls.length = 0; armed = true; invoke(f);
+    assert.deepEqual(calls, name === 'bomb release' ? ['cancel', 'clear', 'destroy-return'] : ['clear', 'destroy-return']);
+    assertDetached(f);
+  });
+}
+
+test('lifecycle cancel destroy takes pending managed clear before returning exactly once', () => {
+  let f;
+  const calls = [];
+  f = fixture({ setBombIntent: phase => {
+    calls.push(phase);
+    if (phase === 'cancel') { f.controls.destroy(); calls.push('destroy-return'); }
+  }, clearIntent: () => calls.push('clear') });
+  f.controls.setBombPressed(true); f.controls.clear();
+  assert.deepEqual(calls, ['begin', 'cancel', 'clear', 'destroy-return']);
+  f.controls.destroy(); f.controls.clear();
+  assert.deepEqual(calls, ['begin', 'cancel', 'clear', 'destroy-return']);
+  assertDetached(f);
+});
+
+test('lifecycle clear callback destroy terminates without a duplicate clear', () => {
+  let f, clears = 0;
+  const calls = [];
+  f = fixture({ clearIntent: () => {
+    clears++; calls.push('clear');
+    assert.equal(clears, 1, 'managed clear must not recursively invoke itself');
+    f.controls.destroy(); calls.push('destroy-return');
+  } });
+  f.controls.clear();
+  assert.deepEqual(calls, ['clear', 'destroy-return']); assert.equal(clears, 1); assertDetached(f);
+});
+
+test('lifecycle recursive clear and input during cancellation cannot add a new gesture', () => {
+  let f, recurse = true, cancels = 0;
+  const calls = [];
+  f = fixture({ setBombIntent: phase => {
+    calls.push(phase);
+    if (phase === 'cancel') {
+      cancels++; assert.equal(cancels, 1, 'cancellation must not recursively open another gesture');
+      f.controls.setBombPressed(true); f.controls.setTouchDirection(1); f.skill.emit('click');
+      f.controls.clear();
+    }
+  }, clearIntent: () => {
+    calls.push('clear');
+    if (recurse) { recurse = false; f.controls.clear(); }
+  } });
+  f.controls.setBombPressed(true); f.controls.clear();
+  assert.deepEqual(calls, ['begin', 'cancel', 'clear']);
+  assert.deepEqual(f.moves, []); assert.equal(f.skills, 0);
+  f.controls.setBombPressed(false); assert.deepEqual(calls, ['begin', 'cancel', 'clear']);
+  f.controls.setBombPressed(true); assert.deepEqual(calls, ['begin', 'cancel', 'clear', 'begin']);
+});
+
+test('lifecycle assistive begin destroy prevents the following release callback', () => {
+  let f;
+  const calls = [];
+  f = fixture({ setBombIntent: phase => {
+    calls.push(phase);
+    if (phase === 'begin') { f.controls.destroy(); calls.push('destroy-return'); }
+  }, clearIntent: () => calls.push('clear') });
+  f.bomb.emit('click', { detail: 0 });
+  assert.deepEqual(calls, ['begin', 'cancel', 'clear', 'destroy-return']); assertDetached(f);
+});
