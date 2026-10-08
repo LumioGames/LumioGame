@@ -291,7 +291,6 @@ public sealed class BomberFrenzyProductionTests
         var firstMachine = world.Get<BomberHfsmState>(first.Entity);
         var firstPublication = new FrenzyProbeRow();
         bool firstPublicationComplete = CopyFrenzyProbeRow(firstPublication, first, firstMachine);
-        JsonElement[] firstPlaced = BomberEffectIntegrationTests.Events(world, "bomb_placed");
         while (world.Tick < first.PlacedAtTick.Value + config.Game.FrenzyMinPlacementTicks) scene.Manager.Tick();
         ActivatePlace(scene, 9, 5);
         scene.Manager.Tick();
@@ -305,52 +304,72 @@ public sealed class BomberFrenzyProductionTests
         Assert.Equal(second.PlacedAtTick.Value + Ticks.FromMilliseconds(config.Game.FrenzyFuseMs, config.Game.TickRateHz), originalDue);
         Assert.NotEqual(firstChain, originalChain);
         var secondMachine = world.Get<BomberHfsmState>(secondId);
-        JsonElement[] bothPlaced = BomberEffectIntegrationTests.Events(world, "bomb_placed");
         var probe = new FrenzyProbe(world, first, firstMachine, second, secondMachine,
-            firstPublication, firstPublicationComplete, firstPlaced, bothPlaced,
+            firstPublication, firstPublicationComplete,
             Ticks.FromMilliseconds(config.Game.FrenzyFuseMs, config.Game.TickRateHz));
-        probe.CheckBaseline();
-        probe.ReadPair(probe.Baseline, world.Tick);
-        if (!probe.Baseline.Complete || !firstPublicationComplete || !firstPublication.HfsmSnapshotPresent ||
-            firstPublication.Entity != first.Entity || firstPlaced.Length != 1 || bothPlaced.Length != 2 ||
-            !firstMachine.SnapshotPresent.Value || !secondMachine.SnapshotPresent.Value)
-            throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: ordinary publication did not yield two complete initialized machines.");
-
         EventHandler<FirstChanceExceptionEventArgs> handler = (_, args) => probe.OnFirstChance(args.Exception);
         Exception? outerTickException = null;
-        AppDomain.CurrentDomain.FirstChanceException += handler;
-        probe.Active = true;
+        bool subscribed = false;
         try
         {
+            probe.CheckBaseline();
+            probe.ReadPair(probe.ImmediateAfterPlacement, world.Tick);
+            probe.CapturePublications();
             while (world.Tick <= firstDue)
             {
-                try
+                if (probe.BaselineReady)
                 {
+                    if (!subscribed)
+                    {
+                        AppDomain.CurrentDomain.FirstChanceException += handler;
+                        subscribed = true;
+                        probe.Active = true;
+                    }
                     probe.CheckBaseline();
                     probe.ReadPair(probe.LastPreTick, world.Tick);
-                    if (!probe.LastPreTick.Complete)
+                    if (!probe.LastPreTick.Complete || !probe.LastPreTick.BothReady)
                         throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: incomplete pre-Tick pair.");
+                    probe.ArmedPreTick = world.Tick;
                 }
-                catch
+                try
                 {
-                    probe.BaselineFailure = true;
-                    throw;
+                    probe.InsideOwnedTick = probe.BaselineReady;
+                    scene.Manager.Tick();
                 }
-                probe.ArmedPreTick = world.Tick;
-                probe.InsideOwnedTick = true;
-                try { scene.Manager.Tick(); }
                 catch (Exception error)
                 {
                     outerTickException = error;
                     throw;
                 }
                 finally { probe.InsideOwnedTick = false; }
+                if (!probe.BaselineReady)
+                {
+                    probe.CheckBaseline();
+                    probe.ReadPair(probe.LastPending, world.Tick);
+                    probe.CapturePublications();
+                    if (probe.LastPending.BothReady && probe.PublicationsReady)
+                    {
+                        probe.ReadPair(probe.Baseline, world.Tick);
+                        probe.BaselineReady = probe.Baseline.Complete && probe.Baseline.BothReady;
+                        if (probe.BaselineReady) probe.ReadinessTick = world.Tick;
+                    }
+                }
             }
+        }
+        catch (Exception error)
+        {
+            if (outerTickException is null)
+            {
+                probe.BaselineFailure = true;
+                outerTickException = error;
+            }
+            throw;
         }
         finally
         {
             probe.Active = false;
-            AppDomain.CurrentDomain.FirstChanceException -= handler;
+            probe.InsideOwnedTick = false;
+            if (subscribed) AppDomain.CurrentDomain.FirstChanceException -= handler;
             try { WriteFrenzyProbeReport(outputPath, probe, outerTickException); }
             catch { /* Evidence failure cannot replace the gameplay exception. */ }
         }
@@ -391,9 +410,13 @@ public sealed class BomberFrenzyProductionTests
         public readonly Guid RunId = Guid.NewGuid();
         public readonly FrenzyProbeRow FirstPublication;
         public readonly bool FirstPublicationComplete;
-        public readonly JsonElement[] FirstPlaced;
-        public readonly JsonElement[] BothPlaced;
+        public JsonElement? ActualFirstPlaced;
+        public JsonElement? ActualSecondPlaced;
+        public bool PublicationInvalid;
+        public bool PublicationsReady => ActualFirstPlaced.HasValue && ActualSecondPlaced.HasValue && !PublicationInvalid;
         public readonly ulong DerivedNominalFuseTicks;
+        public readonly FrenzyProbePair ImmediateAfterPlacement = new();
+        public readonly FrenzyProbePair LastPending = new();
         public readonly FrenzyProbePair Baseline = new();
         public readonly FrenzyProbePair LastPreTick = new();
         public readonly FrenzyProbePair FirstChance = new();
@@ -403,13 +426,15 @@ public sealed class BomberFrenzyProductionTests
         public bool Attempted;
         public bool ObserverFailure;
         public bool BaselineFailure;
+        public bool BaselineReady;
+        public ulong ReadinessTick;
         public Exception? ObserverException;
         public Exception? FirstChanceException;
         public ulong ArmedPreTick;
 
         public FrenzyProbe(World world, BomberBombState first, BomberHfsmState firstMachine,
             BomberBombState second, BomberHfsmState secondMachine, FrenzyProbeRow firstPublication,
-            bool firstPublicationComplete, JsonElement[] firstPlaced, JsonElement[] bothPlaced, ulong derivedNominalFuseTicks)
+            bool firstPublicationComplete, ulong derivedNominalFuseTicks)
         {
             this.world = world;
             this.first = first;
@@ -422,9 +447,41 @@ public sealed class BomberFrenzyProductionTests
             threadId = Environment.CurrentManagedThreadId;
             FirstPublication = firstPublication;
             FirstPublicationComplete = firstPublicationComplete;
-            FirstPlaced = firstPlaced;
-            BothPlaced = bothPlaced;
             DerivedNominalFuseTicks = derivedNominalFuseTicks;
+        }
+
+        public void CapturePublications()
+        {
+            if (PublicationsReady || PublicationInvalid) return;
+            var journal = world.Single<BomberPresentationJournal>();
+            JsonElement? foundFirst = null;
+            JsonElement? foundSecond = null;
+            int firstCount = 0, secondCount = 0;
+            string firstHex = firstId.ToHex();
+            string secondHex = secondId.ToHex();
+            for (int i = 0; i < journal.Entries.Count; i++)
+            {
+                using JsonDocument document = JsonDocument.Parse(journal.Entries[i]);
+                JsonElement record = document.RootElement;
+                if (record.GetProperty("kind").GetString() != "bomb_placed") continue;
+                string? entityId = record.GetProperty("entityId").GetString();
+                if (entityId == firstHex)
+                {
+                    firstCount++;
+                    if (firstCount == 1) foundFirst = record.Clone();
+                }
+                else if (entityId == secondHex)
+                {
+                    secondCount++;
+                    if (secondCount == 1) foundSecond = record.Clone();
+                }
+            }
+            PublicationInvalid = firstCount > 1 || secondCount > 1;
+            if (!PublicationInvalid)
+            {
+                if (foundFirst.HasValue) ActualFirstPlaced = foundFirst;
+                if (foundSecond.HasValue) ActualSecondPlaced = foundSecond;
+            }
         }
 
         public void CheckBaseline()
@@ -451,7 +508,12 @@ public sealed class BomberFrenzyProductionTests
             pair.Complete = firstComplete && secondComplete && pair.WorldInstanceId == worldInstanceId &&
                 pair.ManagedThreadId == threadId && pair.First.Entity == firstId && pair.Second.Entity == secondId &&
                 pair.First.HfsmEntity == firstId && pair.Second.HfsmEntity == secondId;
+            pair.FirstReady = pair.Complete && IsInitializedPath(pair.First);
+            pair.SecondReady = pair.Complete && IsInitializedPath(pair.Second);
         }
+
+        private static bool IsInitializedPath(FrenzyProbeRow row) => row.HfsmSnapshotPresent && row.PathCountsValid &&
+            row.ActiveStatesCount > 0 && row.HfsmMachineKey != 0 && row.HfsmOwnerEntity == row.Entity;
 
         public void OnFirstChance(Exception error)
         {
@@ -479,6 +541,9 @@ public sealed class BomberFrenzyProductionTests
         public ulong ArmedPreTick;
         public int ManagedThreadId;
         public bool Complete;
+        public bool FirstReady;
+        public bool SecondReady;
+        public bool BothReady => FirstReady && SecondReady;
         public readonly FrenzyProbeRow First = new();
         public readonly FrenzyProbeRow Second = new();
     }
@@ -554,30 +619,40 @@ public sealed class BomberFrenzyProductionTests
         bool sameExceptionInChain = false;
         for (Exception? candidate = outerTickException; candidate is not null; candidate = candidate.InnerException)
             if (ReferenceEquals(candidate, probe.FirstChanceException)) sameExceptionInChain = true;
-        string status = probe.ObserverFailure || probe.BaselineFailure || !probe.FirstPublicationComplete || !probe.Baseline.Complete ||
-            !probe.LastPreTick.Complete || !probe.FirstChance.Complete || !sameExceptionInChain
-            ? "UNKNOWN" : "COMPLETE_MATCHING_FIRST_CHANCE";
-        if (!probe.Attempted && !probe.BaselineFailure && outerTickException is null) status = "UNEXPECTED_NO_MATCH";
+        string status = !probe.BaselineReady
+            ? outerTickException is null ? "BASELINE_UNKNOWN" : "EARLY_FAULT_BASELINE_UNKNOWN"
+            : probe.ObserverFailure || probe.BaselineFailure || !probe.FirstPublicationComplete ||
+              !probe.PublicationsReady || !probe.Baseline.Complete || !probe.LastPreTick.Complete ||
+              !probe.FirstChance.Complete || !sameExceptionInChain
+                ? "UNKNOWN" : "COMPLETE_MATCHING_FIRST_CHANCE";
+        if (probe.BaselineReady && !probe.Attempted && !probe.BaselineFailure && outerTickException is null)
+            status = "UNEXPECTED_NO_MATCH";
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(new
         {
-            schema = "f1-frenzy-value-probe-v1",
+            schema = "f1-frenzy-value-probe-v2",
             status,
             test = nameof(DiagnosticTwoActualFrenzyPlacementsCapturesOriginalProvenanceFault),
             runId = probe.RunId,
             processId = Environment.ProcessId,
             firstPublicationComplete = probe.FirstPublicationComplete,
-            firstPublication = probe.FirstPublication,
-            firstPlaced = probe.FirstPlaced,
-            bothPlaced = probe.BothPlaced,
+            firstAtFirstVisibility = probe.FirstPublication,
+            actualFirstPlaced = probe.ActualFirstPlaced,
+            actualSecondPlaced = probe.ActualSecondPlaced,
+            publicationInvalid = probe.PublicationInvalid,
+            publicationsReady = probe.PublicationsReady,
             derivedNominalFuseTicks = probe.DerivedNominalFuseTicks,
             derivedNominalFirstDeadlineMatchesObservedOriginal =
                 ulong.MaxValue - probe.FirstPublication.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
                 probe.FirstPublication.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.FirstPublication.FuseEndTick,
             derivedNominalSecondDeadlineMatchesObservedOriginal =
-                ulong.MaxValue - probe.Baseline.Second.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
-                probe.Baseline.Second.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.Baseline.Second.FuseEndTick,
-            initializedByOrdinaryPublication = probe.Baseline.Complete,
-            baseline = probe.Baseline,
+                ulong.MaxValue - probe.ImmediateAfterPlacement.Second.PlacedAtTick >= probe.DerivedNominalFuseTicks &&
+                probe.ImmediateAfterPlacement.Second.PlacedAtTick + probe.DerivedNominalFuseTicks == probe.ImmediateAfterPlacement.Second.FuseEndTick,
+            baselineReady = probe.BaselineReady,
+            initializationSource = probe.BaselineReady ? "ordinary_successful_tick" : "PENDING",
+            readinessTick = probe.BaselineReady ? probe.ReadinessTick : (ulong?)null,
+            immediateAfterPlacement = probe.ImmediateAfterPlacement,
+            lastPending = probe.LastPending,
+            initializedBaseline = probe.Baseline,
             lastPreTick = probe.LastPreTick,
             firstChance = probe.FirstChance,
             matchingAttempts = probe.Attempted ? 1 : 0,
