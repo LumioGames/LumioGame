@@ -290,7 +290,9 @@ public sealed class BomberFrenzyProductionTests
         ulong firstChain = first.ChainId.Value;
         var firstMachine = world.Get<BomberHfsmState>(first.Entity);
         var firstPublication = new FrenzyProbeRow();
-        bool firstPublicationComplete = CopyFrenzyProbeRow(firstPublication, first, firstMachine);
+        bool firstPublicationCopied = CopyFrenzyProbeRow(firstPublication, first, firstMachine);
+        DerivePathCountsValid(firstPublication);
+        bool firstPublicationComplete = firstPublicationCopied && firstPublication.PathCountsValid;
         while (world.Tick < first.PlacedAtTick.Value + config.Game.FrenzyMinPlacementTicks) scene.Manager.Tick();
         ActivatePlace(scene, 9, 5);
         scene.Manager.Tick();
@@ -540,8 +542,12 @@ public sealed class BomberFrenzyProductionTests
         public void DerivePairReadiness(FrenzyProbePair pair)
         {
             bool sameContext = pair.WorldInstanceId == worldInstanceId && pair.ManagedThreadId == threadId;
-            pair.FirstComplete = pair.FirstComplete && sameContext && pair.First.Entity == firstId && pair.First.HfsmEntity == firstId;
-            pair.SecondComplete = pair.SecondComplete && sameContext && pair.Second.Entity == secondId && pair.Second.HfsmEntity == secondId;
+            DerivePathCountsValid(pair.First);
+            DerivePathCountsValid(pair.Second);
+            pair.FirstComplete = pair.FirstComplete && pair.First.PathCountsValid && sameContext &&
+                pair.First.Entity == firstId && pair.First.HfsmEntity == firstId;
+            pair.SecondComplete = pair.SecondComplete && pair.Second.PathCountsValid && sameContext &&
+                pair.Second.Entity == secondId && pair.Second.HfsmEntity == secondId;
             pair.FirstReady = pair.FirstComplete ? IsInitializedPath(pair.First) : null;
             pair.SecondReady = pair.SecondComplete ? IsInitializedPath(pair.Second) : null;
             pair.Complete = pair.FirstComplete && pair.SecondComplete;
@@ -593,6 +599,7 @@ public sealed class BomberFrenzyProductionTests
         public int Phase, BombKind, Power, FutureChildren, SkillLevel, PierceLayers, ChildDirection;
         public int KickDirection, KickRange, HfsmSchemaVersion, HfsmMachineKind, HfsmLifecycle;
         public bool Frenzy, PlacementRecorded, CapacityReturned, HfsmSnapshotPresent, PathCountsValid;
+        public bool ActiveStatesCopyComplete, ActiveActivationsCopyComplete;
         public string? PromiseToken;
         public int ActiveStatesCount, ActiveActivationsCount;
         public readonly uint[] ActiveStates = new uint[7];
@@ -601,6 +608,9 @@ public sealed class BomberFrenzyProductionTests
 
     private static bool CopyFrenzyProbeRow(FrenzyProbeRow row, BomberBombState bomb, BomberHfsmState machine)
     {
+        row.PathCountsValid = false;
+        row.ActiveStatesCopyComplete = false;
+        row.ActiveActivationsCopyComplete = false;
         row.Entity = bomb.Entity;
         row.Owner = bomb.Owner.Value;
         row.SourceLife = bomb.SourceLife.Value;
@@ -636,15 +646,24 @@ public sealed class BomberFrenzyProductionTests
         row.HfsmLifecycle = machine.Lifecycle.Value;
         row.ActiveStatesCount = machine.ActiveStates.Count;
         row.ActiveActivationsCount = machine.ActiveActivations.Count;
-        row.PathCountsValid = row.ActiveStatesCount is >= 0 and <= 7 && row.ActiveActivationsCount is >= 0 and <= 7 &&
-            row.ActiveStatesCount == row.ActiveActivationsCount;
-        if (!row.PathCountsValid) return false;
-        for (int i = 0; i < row.ActiveStatesCount; i++) row.ActiveStates[i] = machine.ActiveStates[i];
-        for (int i = 0; i < row.ActiveActivationsCount; i++) row.ActiveActivations[i] = machine.ActiveActivations[i];
-        for (int i = row.ActiveStatesCount; i < 7; i++) row.ActiveStates[i] = 0;
-        for (int i = row.ActiveActivationsCount; i < 7; i++) row.ActiveActivations[i] = 0;
-        return true;
+        if (row.ActiveStatesCount is >= 0 and <= 7)
+        {
+            for (int i = 0; i < row.ActiveStatesCount; i++) row.ActiveStates[i] = machine.ActiveStates[i];
+            row.ActiveStatesCopyComplete = true;
+        }
+        for (int i = row.ActiveStatesCopyComplete ? row.ActiveStatesCount : 0; i < 7; i++) row.ActiveStates[i] = 0;
+        if (row.ActiveActivationsCount is >= 0 and <= 7)
+        {
+            for (int i = 0; i < row.ActiveActivationsCount; i++) row.ActiveActivations[i] = machine.ActiveActivations[i];
+            row.ActiveActivationsCopyComplete = true;
+        }
+        for (int i = row.ActiveActivationsCopyComplete ? row.ActiveActivationsCount : 0; i < 7; i++) row.ActiveActivations[i] = 0;
+        return row.ActiveStatesCopyComplete && row.ActiveActivationsCopyComplete;
     }
+
+    private static void DerivePathCountsValid(FrenzyProbeRow row) =>
+        row.PathCountsValid = row.ActiveStatesCopyComplete && row.ActiveActivationsCopyComplete &&
+            row.ActiveStatesCount == row.ActiveActivationsCount;
 
     private static class FrenzyProbeJson
     {
