@@ -5,23 +5,27 @@ import { analyzeMovementTrace } from './movement-trace-analyze.mjs';
 const STEP = 0.2;
 const H = 50;
 
-// Held +X for `steps` pumps; `display(t, target, admittedAt)` decides what the doll shows.
-function synthetic({ steps = 20, movesPerPump = () => 1, pumpLate = () => 0, display, yaw = () => Math.PI / 2, hidden = () => false }) {
-  const events = [{ k: 'note', t: 0, message: 'input=interval' }];
+// Held along X for `steps` pumps (stride sign per pump), then `trailing` pumps with nothing held.
+// The interval driver publishes 5 ms before a pump; the pump driver publishes inside it, before the Tick.
+// `display(t, target, admittedAt)` decides what the doll shows.
+function synthetic({ steps = 20, trailing = 0, driver = 'interval', movesPerPump = () => 1, stride = () => STEP,
+  pumpLate = () => 0, display, yaw = () => Math.PI / 2, hidden = () => false }) {
+  const events = [{ k: 'note', t: 0, message: `input=${driver}` }];
   let target = 0, seq = 0, tick = 10, admittedAt = 0, inputTime = 0;
   const admissions = [];
-  for (let i = 0; i < steps; i++) {
+  for (let i = 0; i < steps + trailing; i++) {
     const startedAt = i * H + pumpLate(i);
-    const moves = movesPerPump(i);
+    const moves = i < steps ? movesPerPump(i) : 0;
     for (let m = 0; m < moves; m++) {
-      inputTime = startedAt - 5 + m * 0.1;
+      inputTime = (driver === 'pump' ? startedAt + 0.1 : startedAt - 5) + m * 0.1;
       events.push({ k: 'input', t: inputTime, kind: 'move', accepted: true, args: [2, 0, m === 0 && i === 0] });
     }
-    events.push({ k: 'pump', t: startedAt, tickAt: startedAt + 0.5, tickMs: 3, totalMs: 6, state: 'active', vis: 'visible' });
     tick++;
-    if (moves) { target += moves * STEP; seq++; admittedAt = startedAt + 0.5; admissions.push({ t: admittedAt, target, seq, tick }); }
+    if (moves) { target += moves * stride(i); seq++; admittedAt = startedAt + 0.5; admissions.push({ t: admittedAt, target, seq, tick }); }
+    events.push({ k: 'pump', t: startedAt, tickAt: startedAt + 0.5, tickMs: 3, totalMs: 6, state: 'active', vis: 'visible',
+      pose: { seq: String(seq), step: String(tick), tick: String(tick), inputSeq: String(seq), cause: 'InputPublication', tx: target, tz: 0 } });
   }
-  const end = steps * H + 300;
+  const end = (steps + trailing) * H + 300;
   for (let t = 1; t < end; t += 16.7) {
     const latest = admissions.filter(a => a.t <= t).at(-1);
     if (!latest) continue;
@@ -49,7 +53,8 @@ test('steady cadence with interpolation shows no backward frames, overshoot or f
   const summary = analyzeMovementTrace(synthetic({ display: interpolate }));
   assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 20 });
   assert.equal(summary.admission.nonOneRatio, 0);
-  assert.deepEqual(summary.publications.executionTickAdvance, { 1: 19 });
+  assert.deepEqual(summary.execution.tickAdvancePerHeldPump, { 1: 19 });
+  assert.equal(summary.execution.heldPumpsWithUnchangedTarget, 0);
   assert.equal(summary.display.backwardFrames, 0);
   assert.equal(summary.display.stopOvershootM.max, 0);
   assert.equal(summary.facing.over90deg, 0);
@@ -66,12 +71,29 @@ test('late admissions under extrapolation are counted as reversals and stop over
   assert.ok(summary.display.leadAlongMotionM.max > 0, 'extrapolation leads the logic target');
 });
 
-test('empty and double pumps appear in the admission histogram and as tick jumps', () => {
+test('empty and double pumps appear in the admission histogram and as executed-step gaps', () => {
   const pattern = [1, 1, 0, 2, 1, 1, 0, 2, 1, 1];
   const summary = analyzeMovementTrace(synthetic({ steps: pattern.length, movesPerPump: i => pattern[i], display: interpolate }));
   assert.deepEqual(summary.admission.movesPerHeldPump, { 0: 2, 1: 6, 2: 2 });
   assert.equal(summary.admission.nonOneRatio, 0.4);
-  assert.equal(summary.publications.executionTickAdvance[2], 2);
+  assert.deepEqual(summary.execution.tickAdvancePerHeldPump, { 1: 9 });
+  assert.equal(summary.execution.heldPumpsWithUnchangedTarget, 2);
+});
+
+test('pumps after the release are not counted as empty held pumps', () => {
+  for (const driver of ['interval', 'pump']) {
+    const summary = analyzeMovementTrace(synthetic({ driver, trailing: 6, display: interpolate }));
+    assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 20 }, driver);
+    assert.equal(summary.execution.heldPumpsWithUnchangedTarget, 0, driver);
+  }
+});
+
+test('a deliberate reversal swinging the doll is not counted as a facing error', () => {
+  const turnAt = 10 * H;
+  const summary = analyzeMovementTrace(synthetic({ stride: i => (i < 10 ? STEP : -STEP), display: interpolate,
+    yaw: t => (t < turnAt + 150 ? Math.PI / 2 : -Math.PI / 2) }));
+  assert.equal(summary.facing.over90deg, 0);
+  assert.ok(summary.facing.heldFrames > 0);
 });
 
 test('facing deviation and hidden frames are reported separately', () => {

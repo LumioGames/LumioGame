@@ -1,6 +1,6 @@
 // Summarizes a browser movement trace exported by `__lumioMovementTrace.export()`
-// (Client/UI/Spectator/movement-trace.mjs). Reports per-pump admission counts, owner
-// publication cadence, per-frame displacement against the logic motion direction,
+// (Client/UI/Spectator/movement-trace.mjs). Reports per-pump admission counts, executed
+// steps read after each Tick, per-frame displacement against the logic motion direction,
 // facing deviation, stop overshoot and frame/pump timing. Never averages a whole
 // window into one FPS figure: spikes stay visible as counts and maxima.
 import fs from 'node:fs';
@@ -45,8 +45,12 @@ function holdWindows(inputs) {
   return windows;
 }
 
-function inWindow(windows, t, slack = 0) {
-  return windows.find(w => t >= w.start && t <= w.end + slack) ?? null;
+const TURN_SETTLE_MS = 250;
+
+// The pump admitting an input is the first one whose Tick starts at or after it.
+function admittingPump(pumps, t) {
+  const index = pumps.findIndex(p => (p.tickAt ?? p.t) >= t);
+  return index < 0 ? null : index;
 }
 
 export function analyzeMovementTrace(trace) {
@@ -57,36 +61,43 @@ export function analyzeMovementTrace(trace) {
   const frames = events.filter(e => e.k === 'frame');
   const longTasks = events.filter(e => e.k === 'longtask');
   const windows = holdWindows(inputs);
-  const period = pumps.length > 1 ? (pumps.at(-1).t - pumps[0].t) / (pumps.length - 1) : 50;
 
-  // Inputs published before a pump's Tick start are admitted by that pump.
+  // A held window spans the pumps from the one admitting its first input to the one admitting its last,
+  // so released pumps never count as empty. In the pump driver every held pump publishes one move by
+  // construction; there the executed-step figures below are the meaningful ones.
+  for (const [i, w] of windows.entries()) {
+    w.firstPump = admittingPump(pumps, w.start);
+    w.lastPump = admittingPump(pumps, w.end);
+    w.heldUntil = w.lastPump === null ? w.end : (pumps[w.lastPump].tickAt ?? pumps[w.lastPump].t);
+    w.next = windows[i + 1]?.start ?? Infinity;
+  }
   const admitted = [];
-  let cursor = 0;
-  for (let i = 0; i < pumps.length; i++) {
-    const tickAt = pumps[i].tickAt ?? pumps[i].t;
-    let count = 0;
-    while (cursor < inputs.length && inputs[cursor].t <= tickAt) { count++; cursor++; }
-    if (inWindow(windows, tickAt, period)) admitted.push(count);
-  }
-
-  // Owner publications as observed by render frames.
-  const publications = [];
-  for (const frame of frames) {
-    if (frame.seq === null || frame.tx === null) continue;
-    if (publications.at(-1)?.seq === frame.seq) continue;
-    publications.push(frame);
-  }
   const tickAdvance = [];
-  for (let i = 1; i < publications.length; i++) {
-    const a = publications[i - 1], b = publications[i];
-    if (!inWindow(windows, b.t, period * 2) || a.tick === null || b.tick === null) continue;
-    tickAdvance.push(Number(BigInt(b.tick) - BigInt(a.tick)));
+  const targetStep = [];
+  let unchangedTarget = 0;
+  for (const w of windows) {
+    if (w.firstPump === null) continue;
+    for (let i = w.firstPump; i <= w.lastPump; i++) {
+      const from = i === w.firstPump ? -Infinity : pumps[i - 1].tickAt ?? pumps[i - 1].t;
+      const to = pumps[i].tickAt ?? pumps[i].t;
+      admitted.push(inputs.filter(input => input.t > from && input.t <= to).length);
+      const a = pumps[i - 1]?.pose, b = pumps[i].pose;
+      if (i === w.firstPump || !a || !b || a.tick === null || b.tick === null) continue;
+      tickAdvance.push(Number(BigInt(b.tick) - BigInt(a.tick)));
+      if (a.tx !== null && b.tx !== null) {
+        const step = Math.hypot(b.tx - a.tx, b.tz - a.tz);
+        targetStep.push(step);
+        if (step < 1e-6) unchangedTarget++;
+      }
+    }
   }
+  const heldWindow = t => windows.find(w => t >= w.start && t <= w.heldUntil) ?? null;
 
   // Per-frame displacement of what the player sees against the latest logic step direction.
   const displayed = frames.filter(f => f.dx !== null && f.tx !== null);
   let direction = null;
   let lastTarget = null;
+  let turnedAt = -Infinity;
   const backward = [];
   const lead = [];
   const facing = [];
@@ -95,29 +106,39 @@ export function analyzeMovementTrace(trace) {
     if (lastTarget && (f.tx !== lastTarget.x || f.tz !== lastTarget.z)) {
       const vx = f.tx - lastTarget.x, vz = f.tz - lastTarget.z;
       const length = Math.hypot(vx, vz);
-      if (length > 1e-6) direction = { x: vx / length, z: vz / length };
+      if (length > 1e-6) {
+        const next = { x: vx / length, z: vz / length };
+        if (direction && next.x * direction.x + next.z * direction.z < 0.999) turnedAt = f.t;
+        direction = next;
+      }
     }
     lastTarget = { x: f.tx, z: f.tz };
-    if (!direction || !inWindow(windows, f.t, period * 2) || i === 0) continue;
+    if (!direction || !heldWindow(f.t) || i === 0) continue;
     const previous = displayed[i - 1];
     const along = (f.dx - previous.dx) * direction.x + (f.dz - previous.dz) * direction.z;
     if (along < -BACKWARD_EPSILON_M) backward.push({ t: f.t, along, frame: i });
     lead.push((f.dx - f.tx) * direction.x + (f.dz - f.tz) * direction.z);
-    if (f.yaw !== null) facing.push(angleDelta(f.yaw, Math.atan2(direction.x, direction.z)));
+    // A deliberate turn needs a moment to swing the doll; only settled frames count as facing errors.
+    if (f.yaw !== null && f.t - turnedAt > TURN_SETTLE_MS) facing.push(angleDelta(f.yaw, Math.atan2(direction.x, direction.z)));
   }
   let reversalEvents = 0;
   for (let i = 0; i < backward.length; i++) if (i === 0 || backward[i].frame !== backward[i - 1].frame + 1) reversalEvents++;
 
-  // After each held window: display travel beyond the final logic target, along start→final.
+  // After each held window: display travel beyond the final logic target along the last step direction,
+  // observed until the next hold starts.
   const overshoot = [];
   for (const w of windows) {
-    const before = displayed.filter(f => f.t >= w.start && f.t <= w.end);
-    const after = displayed.filter(f => f.t > w.end && f.t <= w.end + STOP_WINDOW_MS);
+    const before = displayed.filter(f => f.t >= w.start && f.t <= w.heldUntil);
+    const after = displayed.filter(f => f.t > w.heldUntil && f.t <= Math.min(w.heldUntil + STOP_WINDOW_MS, w.next));
     if (!before.length || !after.length) continue;
-    const start = before[0], final = after.at(-1);
-    const length = Math.hypot(final.tx - start.tx, final.tz - start.tz);
-    if (length < 1e-6) continue;
-    const dir = { x: (final.tx - start.tx) / length, z: (final.tz - start.tz) / length };
+    const final = after.at(-1);
+    let dir = null;
+    for (let i = before.length - 1; i > 0 && !dir; i--) {
+      const vx = before[i].tx - before[i - 1].tx, vz = before[i].tz - before[i - 1].tz;
+      const length = Math.hypot(vx, vz);
+      if (length > 1e-6) dir = { x: vx / length, z: vz / length };
+    }
+    if (!dir) continue;
     overshoot.push(Math.max(0, ...after.map(f => (f.dx - final.tx) * dir.x + (f.dz - final.tz) * dir.z)));
   }
 
@@ -135,7 +156,8 @@ export function analyzeMovementTrace(trace) {
       hiddenPumps: pumps.filter(p => p.vis !== 'visible').length },
     admission: { movesPerHeldPump: histogram(admitted),
       nonOneRatio: admitted.length ? admitted.filter(v => v !== 1).length / admitted.length : null },
-    publications: { executionTickAdvance: histogram(tickAdvance) },
+    execution: { tickAdvancePerHeldPump: histogram(tickAdvance), targetStepPerHeldPumpM: stats(targetStep),
+      heldPumpsWithUnchangedTarget: unchangedTarget },
     display: {
       heldFrames: lead.length,
       backwardFrames: backward.length,
