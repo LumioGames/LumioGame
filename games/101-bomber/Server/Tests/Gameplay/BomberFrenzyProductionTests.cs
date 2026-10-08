@@ -315,7 +315,7 @@ public sealed class BomberFrenzyProductionTests
             probe.Operation = "initial_baseline_check";
             probe.CheckBaseline();
             probe.Operation = "immediate_pair_read";
-            probe.ReadPair(probe.ImmediateAfterPlacement, world.Tick);
+            probe.CaptureOrdinaryPair(probe.ImmediateAfterPlacement, world.Tick);
             probe.Operation = "initial_publication_read";
             probe.CapturePublications();
             while (world.Tick <= firstDue)
@@ -331,7 +331,7 @@ public sealed class BomberFrenzyProductionTests
                     probe.Operation = "pre_tick_baseline_check";
                     probe.CheckBaseline();
                     probe.Operation = "pre_tick_pair_read";
-                    probe.ReadPair(probe.LastPreTick, world.Tick);
+                    probe.CaptureOrdinaryPair(probe.LastPreTick, world.Tick);
                     if (!probe.LastPreTick.Complete || !probe.LastPreTick.BothReady)
                         throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: incomplete pre-Tick pair.");
                     probe.ArmedPreTick = world.Tick;
@@ -352,13 +352,13 @@ public sealed class BomberFrenzyProductionTests
                     probe.Operation = "pending_baseline_check";
                     probe.CheckBaseline();
                     probe.Operation = "pending_pair_read";
-                    probe.ReadPair(probe.LastPending, world.Tick);
+                    probe.CaptureOrdinaryPair(probe.LastPending, world.Tick);
                     probe.Operation = "pending_publication_read";
                     probe.CapturePublications();
                     if (probe.LastPending.BothReady && probe.PublicationsReady)
                     {
                         probe.Operation = "initialized_baseline_read";
-                        probe.ReadPair(probe.Baseline, world.Tick);
+                        probe.CaptureOrdinaryPair(probe.Baseline, world.Tick);
                         probe.BaselineReady = probe.Baseline.Complete && probe.Baseline.BothReady;
                         if (probe.BaselineReady) probe.ReadinessTick = world.Tick;
                     }
@@ -381,7 +381,11 @@ public sealed class BomberFrenzyProductionTests
             probe.Active = false;
             probe.InsideOwnedTick = false;
             if (subscribed) AppDomain.CurrentDomain.FirstChanceException -= handler;
-            try { WriteFrenzyProbeReport(outputPath, probe, outerTickException); }
+            try
+            {
+                probe.DerivePairReadiness(probe.FirstChance);
+                WriteFrenzyProbeReport(outputPath, probe, outerTickException);
+            }
             catch { /* Evidence failure cannot replace the gameplay exception. */ }
         }
 
@@ -511,7 +515,13 @@ public sealed class BomberFrenzyProductionTests
                 throw new InvalidOperationException("BLOCKED_PROBE_BASELINE: retained world or bomb identities changed.");
         }
 
-        public void ReadPair(FrenzyProbePair pair, ulong armedPreTick)
+        public void CaptureOrdinaryPair(FrenzyProbePair pair, ulong armedPreTick)
+        {
+            CopyPair(pair, armedPreTick);
+            DerivePairReadiness(pair);
+        }
+
+        private void CopyPair(FrenzyProbePair pair, ulong armedPreTick)
         {
             pair.Complete = false;
             pair.FirstComplete = false;
@@ -522,13 +532,18 @@ public sealed class BomberFrenzyProductionTests
             pair.WorldTick = world.Tick;
             pair.ManagedThreadId = Environment.CurrentManagedThreadId;
             pair.ArmedPreTick = armedPreTick;
-            bool firstComplete = CopyFrenzyProbeRow(pair.First, first, firstMachine);
+            pair.FirstComplete = CopyFrenzyProbeRow(pair.First, first, firstMachine);
+            pair.SecondComplete = CopyFrenzyProbeRow(pair.Second, second, secondMachine);
+            pair.Complete = pair.FirstComplete && pair.SecondComplete;
+        }
+
+        public void DerivePairReadiness(FrenzyProbePair pair)
+        {
             bool sameContext = pair.WorldInstanceId == worldInstanceId && pair.ManagedThreadId == threadId;
-            pair.FirstComplete = firstComplete && sameContext && pair.First.Entity == firstId && pair.First.HfsmEntity == firstId;
-            if (pair.FirstComplete) pair.FirstReady = IsInitializedPath(pair.First);
-            bool secondComplete = CopyFrenzyProbeRow(pair.Second, second, secondMachine);
-            pair.SecondComplete = secondComplete && sameContext && pair.Second.Entity == secondId && pair.Second.HfsmEntity == secondId;
-            if (pair.SecondComplete) pair.SecondReady = IsInitializedPath(pair.Second);
+            pair.FirstComplete = pair.FirstComplete && sameContext && pair.First.Entity == firstId && pair.First.HfsmEntity == firstId;
+            pair.SecondComplete = pair.SecondComplete && sameContext && pair.Second.Entity == secondId && pair.Second.HfsmEntity == secondId;
+            pair.FirstReady = pair.FirstComplete ? IsInitializedPath(pair.First) : null;
+            pair.SecondReady = pair.SecondComplete ? IsInitializedPath(pair.Second) : null;
             pair.Complete = pair.FirstComplete && pair.SecondComplete;
         }
 
@@ -543,7 +558,7 @@ public sealed class BomberFrenzyProductionTests
             ObserverBusy = true;
             Attempted = true;
             FirstChanceException = error;
-            try { ReadPair(FirstChance, ArmedPreTick); }
+            try { CopyPair(FirstChance, ArmedPreTick); }
             catch (Exception observerError)
             {
                 ObserverFailure = true;
