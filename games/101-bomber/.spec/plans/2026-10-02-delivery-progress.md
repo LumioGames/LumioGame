@@ -1838,3 +1838,11 @@ Scene33仍在18103/18333/18402服务，新[60秒只读节拍收据](../../../../
 Game34开发派生预览从Game33字节冻结，私有复制官方31 portable/web，只替换已审Runtime Ecs DLL/PDB；原正式包与旧封件未修改。[身份收据](../../../../.run/game34-runtime-correction-dev-preview-01/runtime32-identity.json)绑定DLL94f00e56、PDB4741ac48、源码8752；实际导出API语义3047项无差异、PDB GUID及修改源码校验一致。第一版按元数据原始token及编译器私有类型比较得到假差异、第二版PowerShell反射字符串转换失败，脚本保留，第三版语义比较成功。网页publish于00:46:05 UTC raw0，非AOT/非裁剪；[实际网页库审计](../../../../.run/game34-runtime-correction-dev-preview-01/published-runtime-audit.json)确认宿主引用DLL精确SHA、新MVID和三个实际方法IL均在WebCIL，gzip/br解压一致及boot资源引用匹配。不是仅看DLL文件名宣称新版。
 
 第一次隐藏独立pwsh启动在任何账号/DS/页面变更前被旧Scene33校验器拒绝：原运行副本多出hostentry_fault.log，307文件对预期306；保全该日志、旧启动及失败，不删除日志或放宽封件校验，准备从官方31构造全新运行副本。预览尚未SERVING/未向用户冒称可玩。全ECS/GAS暂缓至试玩窗口后，避免本任务重测试干扰前台；相关保护scratch、到期回拉、输入双定时器、初选错误与死亡链仍未关闭。Game朝向设计检查另确认位移纠偏不应替代已有Facing决策，未在当前仅Runtime预览偷偷修改玩法朝向。
+
+### 移动手感排障：checkpoint105，Runtime32新版开发预览实际SERVING，交用户立即试手感（2026-10-08）
+
+第二次启动从官方complete31构造全新306文件运行副本，通过封件校验；随后在账号与DS启动前被原底图路径守卫拒绝：复制后的preview.gameInput与未改DS配置绑定的Game33资产根目录不一致。旧失败、旧fault日志及全部封件保留。[第三次变更审计](../../../../.run/game34-runtime-correction-dev-preview-01/attempt-03-change-audit.md)仅将launcher资产根目录对齐到已冻结base.gameInput，114份Tools文件与复制件SHA一致；原守卫在复制根目录复现FAIL、原资产根目录PASS，未放宽守卫、改底图或重编网页。[独立复审](../../../../.run/20261007-runtime-movement-repair-01/task-11-preview-startup-rereview-03.md)PASS后，于00:56:31 UTC以隐藏独立pwsh PID28976启动attempt03。
+
+[新预览收据](../../../../.run/game34-runtime-correction-dev-preview-01/root-readiness.json)实际为NEW_DEVELOPMENT_PREVIEW_SERVING，原launcher验证SERVING，requiredBots/admittedBots/botHostsStarted均6，另留A/B两个人类槽位。页面18104、DS18333、原独立平台18402；全新八账号前缀Move3420261008005648/Human3420261008005648及新DS store，密码仅launcher内存。[prefix收据](../../../../.run/game34-runtime-correction-dev-preview-01/prefix-receipt.json)记录新身份且不含密码。A/B页面及平台health均HTTP200，实际服务的main.js与新publish匹配，新Runtime WebCIL SHA精确为2952cb2b2f1af9e5a988968052b4f0fe7c89ede939bdbb35a502eab0976d85b8；不是旧版链接或仅源代码已改。
+
+已给用户新版入口http://127.0.0.1:18104/play/?player=A及B，按用户要求先试玩，不在试玩窗口启动重构建/全套测试。当前是已审Runtime8752纠偏修复的Release优化解释执行开发预览，不是原正式AOT原位热更或新complete正式包；83项聚焦回归通过不代替完整回归或前台通过。到期回拉、Game朝向、初选错误、双定时器量化及已知Server死亡链仍未关闭，原Scene33前台FAIL保持，新版前台验收PENDING。未宣称代理已打开默认浏览器。知识同步豁免：本段是既有启动模式修复与进度证据追加，没有新增规范/产品规则；Owner门及他人文件保持。
