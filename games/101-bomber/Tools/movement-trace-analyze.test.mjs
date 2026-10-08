@@ -239,6 +239,16 @@ test('a request published before release retains its later admitting pump withou
   assert.equal(summary.admission.requestsOutsideHeldMetrics, 0);
 });
 
+test('adjacent holds sharing a pump retain requests from both physical holds exactly once', () => {
+  const trace = recorded({ keys: [[0, 'keydown'], [90, 'keyup'], [100, 'keydown'], [180, 'keyup']],
+    inputs: [5, 55, 85, 105, 155, 175], pumps: [10, 60, 110, 160, 210] });
+  const summary = analyzeMovementTrace(trace);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 4, 2: 1 });
+  assert.equal(summary.admission.heldPumps, 5);
+  assert.equal(summary.admission.requestsOutsideHeldMetrics, 0);
+  assert.equal(summary.admission.nonOneRatio, .2);
+});
+
 test('legacy inferred holds sharing a delayed pump count that pump once', () => {
   const summary = analyzeMovementTrace(recorded({ inputs: [5, 205], pumps: [300] }));
   assert.equal(summary.counts.holdWindows, 2);

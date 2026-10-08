@@ -155,10 +155,14 @@ export function analyzeMovementTrace(trace) {
     while (admittingIndex < pumps.length && (pumps[admittingIndex].tickAt ?? pumps[admittingIndex].t) < input.t) admittingIndex++;
     if (admittingIndex < pumps.length) pumpInputs[admittingIndex].push(input);
   }
+  // Eligibility belongs to a physical hold; admission belongs to the actual pump. A pump can
+  // drain requests from two adjacent holds, so count their union rather than its first owner.
+  const measuredInputs = new Set(inputs.filter(input => !keyed || windows.some(w =>
+    w.firstPump !== null && input.t >= w.start && input.t < w.end)));
   for (const w of windows) {
     if (!keyed || !w.released || w.firstPump === null) continue;
     const tail = w.lastPump + 1;
-    if (tail < pumps.length && (pumps[tail].tickAt ?? pumps[tail].t) < w.next &&
+    if (tail < pumps.length &&
       pumpInputs[tail].some(input => input.t >= w.start && input.t < w.end)) w.lastPump = tail;
   }
   const admitted = [];
@@ -171,7 +175,7 @@ export function analyzeMovementTrace(trace) {
     for (let i = w.firstPump; i <= w.lastPump; i++) {
       if (admittedPumps.has(i)) continue;
       admittedPumps.add(i);
-      admitted.push(pumpInputs[i].filter(input => !keyed || (input.t >= w.start && input.t < w.end)).length);
+      admitted.push(pumpInputs[i].filter(input => measuredInputs.has(input)).length);
       const a = pumps[i - 1]?.pose, b = pumps[i].pose;
       if (i === w.firstPump || !segments.has(pumps[i]) || !segments.has(pumps[i - 1]) ||
         segments.get(pumps[i]) !== segments.get(pumps[i - 1])) continue;
