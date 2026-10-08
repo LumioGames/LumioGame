@@ -1828,3 +1828,13 @@ Scene33仍在18103/18333/18402服务，新[60秒只读节拍收据](../../../../
 另已确认Game持键setInterval(50)与Session截止时间setTimeout是独立调度；输入先排队、Session后续Tick才准入，因此旧的一输入一pump探针没有覆盖可能的空pump/双输入分批。该放大因素的现场发生频次尚未量化，未认定是全部卡顿的根因。Game隔离探针消费未改Runtime轨迹并执行真实ViewRuntime.updateDolls、Doll、CameraRig，120Hz稳定相位出现3次活动期回拉，方向逆转且朝向偏离约25–36度；抖动场景4次、最大约38度。它支持用户持续W角色反转症状；镜头实际位置没有活动期倒退，不混写为镜头反转。
 
 新Runtime工作树Runtime32CorrectionContinuity从5edf9b46创建，分支fix/101-owner-correction-continuity；[Task9明确范围](../../../../.run/20261007-runtime-movement-repair-01/task-9-correction-continuity-brief.md)只修真实纠偏丢失有效前探，先新测试RED再最小实现，不改旧断言、不改到期期限/频率/容量/协议、不重启现场。尚未RED/GREEN/提交或独审。整体到期回退与本轮私有表现断言相冲突，另向Owner提交是否改为已完成本地预测插帧及其一逻辑步显示延迟取舍；未获回复前不实现依赖该选择的变更。ADR142、发布/schema门和保护旧scratch均保持。
+
+### 移动手感排障：checkpoint104，Runtime纠偏连续性修复RED/GREEN及独审通过；按Owner要求先交开发预览（2026-10-08）
+
+[Runtime Task9](../../../../.run/20261007-runtime-movement-repair-01/task-9-correction-continuity-report.md)已提交`8752a69997292ebfce0ffca1ec77debb10a20f2c`，相对5edf9b46仅一生产文件和两新增测试文件，clean。真实ECS RED为9例5失败4通过；修正仅新增TP夹具的controller名后，真实Native RED为8例4失败4通过，原第一次夹具失败保留。最小实现从同一原期限公式计算当前有效前探，在真实权威纠偏清除轨迹前仅一次转入显示误差，保留正常新后缀即时位移。没有更改旧断言、频率、额度、协议或硬到期规则。GREEN新ECS9/9、生产Native8/8，旧ECS owner9/9、GAS owner26/26、phase8/8、clock23/23，共83/83、零跳过。[独审](../../../../.run/20261007-runtime-movement-repair-01/task-9-correction-preview-review.md)PASS限范围修复与开发预览组成；未把全ECS/GAS或浏览器手感写成通过。
+
+用户补充「啥意思 我建议优先考虑本地手感」「Runtime不是可以热更吗，你直接热更先让我看效果，测试」已保存在[第二份原话](../../../../.run/live-preview-33phase01/foreground-observation-02.json)。据此先提供新版开发预览，不等待完整正式整包；不是自动批准保护断言例外或50→100ms。架构开发热更文档及实际Host确认正式AOT关闭agent，不能原位应用开发增量；这次使用独立Release优化解释执行网页快速重建，不声称完成热更。完整正式交付仍待后续。
+
+Game34开发派生预览从Game33字节冻结，私有复制官方31 portable/web，只替换已审Runtime Ecs DLL/PDB；原正式包与旧封件未修改。[身份收据](../../../../.run/game34-runtime-correction-dev-preview-01/runtime32-identity.json)绑定DLL94f00e56、PDB4741ac48、源码8752；实际导出API语义3047项无差异、PDB GUID及修改源码校验一致。第一版按元数据原始token及编译器私有类型比较得到假差异、第二版PowerShell反射字符串转换失败，脚本保留，第三版语义比较成功。网页publish于00:46:05 UTC raw0，非AOT/非裁剪；[实际网页库审计](../../../../.run/game34-runtime-correction-dev-preview-01/published-runtime-audit.json)确认宿主引用DLL精确SHA、新MVID和三个实际方法IL均在WebCIL，gzip/br解压一致及boot资源引用匹配。不是仅看DLL文件名宣称新版。
+
+第一次隐藏独立pwsh启动在任何账号/DS/页面变更前被旧Scene33校验器拒绝：原运行副本多出hostentry_fault.log，307文件对预期306；保全该日志、旧启动及失败，不删除日志或放宽封件校验，准备从官方31构造全新运行副本。预览尚未SERVING/未向用户冒称可玩。全ECS/GAS暂缓至试玩窗口后，避免本任务重测试干扰前台；相关保护scratch、到期回拉、输入双定时器、初选错误与死亡链仍未关闭。Game朝向设计检查另确认位移纠偏不应替代已有Facing决策，未在当前仅Runtime预览偷偷修改玩法朝向。
