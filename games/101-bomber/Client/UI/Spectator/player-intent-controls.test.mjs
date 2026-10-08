@@ -405,3 +405,47 @@ test('lifecycle assistive begin destroy prevents the following release callback'
   f.bomb.emit('click', { detail: 0 });
   assert.deepEqual(calls, ['begin', 'cancel', 'clear', 'destroy-return']); assertDetached(f);
 });
+
+for (const [action, mode, cancelError, clearError] of [
+  ['clear', 'finally', new Error('cancel failed'), new Error('nested clear failed')],
+  ['destroy', 'finally', new Error('cancel failed'), new Error('clear failed')],
+  ['clear', 'propagate', null, new Error('nested clear failed')],
+  ['destroy', 'propagate', null, new Error('clear failed')],
+  ['clear', 'catch', new Error('cancel failed after catch'), new Error('nested clear failed')],
+  ['clear', 'finally', undefined, new Error('nested clear failed')],
+  ['clear', 'finally', new Error('cancel failed'), undefined],
+  ['clear', 'propagate', null, undefined],
+]) {
+  test(`nested cleanup ${action} retains ${mode} errors (cancel ${String(cancelError)}, clear ${String(clearError)})`, () => {
+    let f;
+    const calls = [];
+    f = fixture({ setBombIntent: phase => {
+      calls.push(phase);
+      if (phase !== 'cancel') return;
+      if (mode === 'finally') {
+        try { f.controls.destroy(); } finally { throw cancelError; }
+      }
+      if (mode === 'catch') {
+        try { f.controls.destroy(); } catch (error) { assert.equal(error, clearError); }
+        throw cancelError;
+      }
+      f.controls.destroy();
+    }, clearIntent: () => { calls.push('clear'); throw clearError; } });
+    f.key('keydown', 'KeyD'); f.controls.setBombPressed(true);
+    let threw = false, failure;
+    try { f.controls[action](); } catch (error) { threw = true; failure = error; }
+    assert.equal(threw, true);
+    assert.deepEqual(calls, ['begin', 'cancel', 'clear']);
+    if (mode === 'propagate') assert.equal(failure, clearError);
+    else {
+      assert.ok(failure instanceof AggregateError);
+      assert.equal(failure.errors.length, 2);
+      assert.equal(failure.errors[0], cancelError); assert.equal(failure.errors[1], clearError);
+    }
+    assertDetached(f);
+    f.controls.destroy(); f.controls.clear(); f.controls.setTouchDirection(1);
+    f.controls.setBombPressed(true); f.key('keydown', 'KeyS'); f.skill.emit('click');
+    assert.deepEqual(calls, ['begin', 'cancel', 'clear']);
+    assert.equal(f.moves.length, 1); assert.equal(f.skills, 0);
+  });
+}

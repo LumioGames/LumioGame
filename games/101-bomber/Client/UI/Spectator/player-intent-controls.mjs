@@ -19,7 +19,10 @@ export function createPlayerIntentControls({ setMoveIntent, setBombIntent, latch
   function clearManaged() {
     if (cleanup.clearStarted) return;
     cleanup.clearStarted = true;
-    clearIntent();
+    try { clearIntent(); } catch (error) {
+      cleanup.errors.push(error);
+      throw error;
+    }
   }
   function reset() {
     if (cleanup) {
@@ -27,15 +30,19 @@ export function createPlayerIntentControls({ setMoveIntent, setBombIntent, latch
       if (disposed) clearManaged();
       return;
     }
-    cleanup = { clearStarted: false };
+    cleanup = { clearStarted: false, errors: [] };
     held.clear();
     touch = [0, 0];
     const cancelBomb = bombSources.size > 0;
     bombSources.clear();
-    const errors = [];
+    const errors = cleanup.errors;
     try {
-      try { if (cancelBomb) setBombIntent('cancel'); } catch (error) { errors.push(error); }
-      try { clearManaged(); } catch (error) { errors.push(error); }
+      try { if (cancelBomb) setBombIntent('cancel'); } catch (error) {
+        if (!errors.includes(error)) errors.unshift(error);
+      }
+      try { clearManaged(); } catch (error) {
+        if (!errors.includes(error)) errors.push(error);
+      }
     } finally { cleanup = null; }
     if (errors.length === 1) throw errors[0];
     if (errors.length === 2) throw new AggregateError(errors, 'Intent cleanup failed');
