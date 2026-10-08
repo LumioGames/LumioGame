@@ -24,7 +24,7 @@
 
 ## 后果
 
-- **`design.md` 修订:** 上游行;§4 局时;§4.1(改名为「四分钟封顶的节奏与终局」,时刻表整体前移:0:00–0:45 / 0:45–1:30 / 1:30–1:45 / 1:45–2:05 / 触发–+115 s,整局最晚 4:00);§4.2 触发、时长两行与设计意图段;§5 再生停止时刻;§11 会话流程与 §11.1 的「≤ 4 分钟」;§15「局时封顶」「软砖 65% + 再生速率」两行;§16 Stage 4;§17.3 帽王戏剧、决胜两行。`product-direction.md` ① 局时、`risks-and-engine-asks.md` ① 掉线行、引擎开工提示词 [`.spec/plans/2026-09-27-101-bomber-engine-build-prompt.md`](../plans/2026-09-27-101-bomber-engine-build-prompt.md) 同步。§11 的局末锁入 ≤ 115 秒不变。
+- **`design.md` 修订:** 上游行;§4 局时;§4.1(改名为「四分钟封顶的节奏与终局」,时刻表整体前移:0:00–0:45 / 0:45–1:30 / 1:30–1:45 / 1:45–2:05 / 触发–+115 s,整局最晚 4:00);§4.2 触发、时长两行与设计意图段;§5 再生停止时刻;§11 会话流程与 §11.1 的「≤ 4 分钟」;§15「局时封顶」「软砖 65% + 再生速率」两行;§16 Stage 4;§17.3 帽王戏剧、决胜两行。`product-direction.md` ① 局时、`risks-and-engine-asks.md` ① 掉线行、引擎开工提示词 [`.spec/archive/plans/2026-09-27-101-bomber-engine-build-prompt.md`](../archive/plans/2026-09-27-101-bomber-engine-build-prompt.md) 同步。§11 的局末锁入 ≤ 115 秒不变。
 - **契约影响(本 ADR 不改契约):** 契约 §5 `matchDurationMs` 默认值仍是 360000。0031 登记的修订方向 420000 改为 **240000**(A/B 300000)。原型用 `ProtoRules.matchCapMs = 240000` 经 `protoConfig()` 覆盖,`regenStopBeforeFinalMs = 20000`,两者一律标 NON-CONTRACT。
 - **原型改动:** `src/contract/config.ts` 改两个值;`?match=` 缺省值 420 → 240(`src/app/params.ts`);相关测试(`tests/spec-sync.test.ts`、`tests/contract-tables.test.ts` 时间触发 Tick 6100 → 2500、`src/sim/__tests__/final-circle.test.ts`、验收 E 的封顶断言改读 `DEFAULT_RULES.matchCapMs`)同步。
 - **代价:**

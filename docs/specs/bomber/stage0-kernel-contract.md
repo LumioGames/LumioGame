@@ -2,7 +2,7 @@
 
 > **状态**：设计中，v3.0.0 草案；接口尚未冻结。
 > **适用范围**：101 上引擎的 A 内核、B 决赛圈与材质、C 可关闭角色技能、D 只读浏览器旁观；12 人/23×23为默认，16 人/27×27为对照，8 人/19×19为迁移回归。输入来自真实 C# 客户端/Bot。
-> **上游**：[`design.md`](design.md)、[`0045 · 引擎工作区`](../../../.spec/decisions/0045-101-bomber-engine-workspace.md)、[`开工计划 §3–5`](../../../.spec/plans/2026-09-27-101-bomber-engine-build-prompt.md)。公共语义仅消费架构仓 `LumioGameEngine` 的 `bomber-slice.md`、`ecs.md`、`tick.md`、`movement.md`、`gas.md` M2–M10、`voxel.md` M6–M8 与 ADR-064。
+> **上游**：[`design.md`](design.md)、[`0045 · 引擎工作区`](../../../.spec/decisions/0045-101-bomber-engine-workspace.md)、[`开工计划 §3–5`](../../../.spec/archive/plans/2026-09-27-101-bomber-engine-build-prompt.md)。公共语义仅消费架构仓 `LumioGameEngine` 的 `bomber-slice.md`、`ecs.md`、`tick.md`、`movement.md`、`gas.md` M2–M10、`voxel.md` M6–M8 与 ADR-064。
 > **冻结门**：按[最新收敛计划](../../../games/101-bomber/.spec/plans/2026-09-28-prototype-convergence.md)重对三档接口、身份、配表、底图与完整生产预算；真实 SDK 编译、DS restore、各档真实客户端准入及 §9 未决项收口后，经 PR 合入 main 并登记冻结清单。旧8 Bot登录仅为骨架回归证据。本文不沿用旧壳的 v2 哈希，不把 API 存在或草案写完当作验收；freezeEligible 仍为 false。
 
 ## 0. 范围与生效依据

@@ -3,7 +3,7 @@
 - 日期：2026-09-27
 - 状态：生效（工作区与范围决策）；接口 v3 尚未冻结，须通过真实骨架门。
 - 后续范围：玩法默认档、角色与 M2 设计以 ADR 0034–0044 和 [最新收敛计划](../../games/101-bomber/.spec/plans/2026-09-28-prototype-convergence.md) 为准；本 ADR 的 19×19/8 人、7 分钟、四角色/三槽仅记录开工时的迁移基线，不代表当前正式完成标准。
-- 依据：Owner 的[四轮开工计划](../plans/2026-09-27-101-bomber-engine-build-prompt.md) §3.2/4/5.1；沿用 [0024](0024-per-game-directories-and-101-web-prototype.md) 的按游戏分目录与原型隔离。
+- 依据：Owner 的[四轮开工计划](../archive/plans/2026-09-27-101-bomber-engine-build-prompt.md) §3.2/4/5.1；沿用 [0024](0024-per-game-directories-and-101-web-prototype.md) 的按游戏分目录与原型隔离。
 
 ## 背景
 

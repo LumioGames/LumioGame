@@ -2,7 +2,7 @@
 
 > **状态**：设计中，v3.0.0 草案；下面是验收要求，不是已通过结果。
 > **适用范围**：12 人/23×23默认、16 人/27×27对照、8 人/19×19迁移回归；A 内核、B 成长/决赛圈/材质/补给、C 可关闭角色技与特殊炸弹、D 只读浏览器旁观，输入由真实 C# 客户端/Bot提交。
-> **上游**：[`stage0-kernel-contract.md`](stage0-kernel-contract.md)、[`design.md`](design.md)、[ADR0047](../../../.spec/decisions/0047-bomber-m2-six-bombs-and-fixed-skill-values.md)、[最新收敛计划](../../../games/101-bomber/.spec/plans/2026-09-28-prototype-convergence.md)、[`四轮计划`](../../../.spec/plans/2026-09-27-101-bomber-engine-build-prompt.md)。重叠规则按最新ADR，所有数值引用这些来源且仍属推断待验证；矩阵写全、原型已有或旧19/8通过均不等于M2生产验收。
+> **上游**：[`stage0-kernel-contract.md`](stage0-kernel-contract.md)、[`design.md`](design.md)、[ADR0047](../../../.spec/decisions/0047-bomber-m2-six-bombs-and-fixed-skill-values.md)、[最新收敛计划](../../../games/101-bomber/.spec/plans/2026-09-28-prototype-convergence.md)、[`四轮计划`](../../../.spec/archive/plans/2026-09-27-101-bomber-engine-build-prompt.md)。重叠规则按最新ADR，所有数值引用这些来源且仍属推断待验证；矩阵写全、原型已有或旧19/8通过均不等于M2生产验收。
 
 每条在实现单先Red再Green，证据登记到对应线上单；本矩阵不臆造卡号。单元=本仓确定性规则测试，SDK=真实Engine运行的集成测试，端到端=Platform→DS→真实Bot/旁观。声明存在、替身通过、空集合或零测试不代替SDK证据。依赖缺失必须BLOCKED_ENV/exit2，不跳过假绿。
 

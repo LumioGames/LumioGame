@@ -2,7 +2,7 @@
 
 101 是 LumioGame 内的独立游戏工作区，目录与引擎消费方式对照 LumioSample。玩法真值是仓根的 [design.md](../../../docs/specs/bomber/design.md)、[stage0-kernel-contract.md](../../../docs/specs/bomber/stage0-kernel-contract.md) 和相关 ADR；浏览器 prototype/ 只提供手感与表现参考。
 
-先读父仓[项目中心文档](../../../.spec/AGENTS.md)、父仓[知识导航](../../../.spec/knowledge/README.md)，再读本工作区[知识导航](knowledge/README.md)。四轮流程以父仓[开工提示词](../../../.spec/plans/2026-09-27-101-bomber-engine-build-prompt.md) 为准；2026-09-28 Owner要求的最新原型与正式范围修订见[对齐计划](plans/2026-09-28-prototype-convergence.md)，其较新范围与授权优先；[执行账本](plans/2026-09-27-engine-build-progress.md) 只记录实际断点。
+先读父仓[项目中心文档](../../../.spec/AGENTS.md)、父仓[知识导航](../../../.spec/knowledge/README.md)，再读本工作区[知识导航](knowledge/README.md)。四轮流程以父仓[开工提示词](../../../.spec/archive/plans/2026-09-27-101-bomber-engine-build-prompt.md) 为准；2026-09-28 Owner要求的最新原型与正式范围修订见[对齐计划](plans/2026-09-28-prototype-convergence.md)，其较新范围与授权优先；[执行账本](plans/2026-09-27-engine-build-progress.md) 只记录实际断点。
 
 ## 所有权与目录
 
