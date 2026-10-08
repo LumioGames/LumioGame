@@ -1856,3 +1856,11 @@ attempt03在00:58:59 UTC发生DS watchdog owner failed or stopped progressing，
 [05独审](../../../../.run/20261007-runtime-movement-repair-01/task-11-preview-startup-rereview-05.md)确认04→05仅编号/证据路径变化；隐藏独立pwsh PID35192于01:06:19 UTC启动，同Runtime8752网页、原Game/Server、六Bot两人、新八账号排除02/03身份、新DS store。实际验证SERVING，六Bot均入场，[新就绪收据](../../../../.run/game34-runtime-correction-dev-preview-01/root-readiness-05.json)确认A/B/health200、网页Runtime SHA仍2952cb2b2f1af9e5a988968052b4f0fe7c89ede939bdbb35a502eab0976d85b8，账号[prefix收据](../../../../.run/game34-runtime-correction-dev-preview-01/prefix-receipt-05.json)无密码。已交用户18104 A/B入口并提示关闭旧标签后重开。此次是应用户要求恢复复测，不是移动/Server根因修复；前台通过仍PENDING，暂停重构建避免干扰试玩。
 
 用户要求的真实热更继续待实现。[架构与实际接线核查](../../../../.run/20261007-runtime-movement-repair-01/task-13-hot-reload-feasibility.md)确认非AOT不等于启用热更：需要一次Debug/非优化/portable PDB精确工作集基线及浏览器开发agent、玩家路由、安全点协调；现P34仍是非AOT且hotReload=false，未声称已接通。正式整包、全套回归、原到期/朝向/初选缺陷与Owner门保持。知识同步豁免：本段仅既有模式恢复与证据追加，未修改规范或玩法源码。
+
+### 移动手感排障：checkpoint107，恢复后前台仍卡顿FAIL；Owner允许修订无意义的到期断言，Runtime连续到期修复开工（2026-10-08）
+
+用户对attempt05继续反馈「还是不对 移动一卡一卡的」，[逐字登记及裁定上下文](../../../../.run/game34-runtime-correction-dev-preview-01/foreground-observation-04.json)明确新版前台仍FAIL。上一版8752只修权威纠偏遗漏有效前探，不解决已经隔离复现的tau+h瞬间清零。Root针对该确切规则提出保持一步空间上限、h后连续收回且2h清零、修订原矛盾断言的裁定问题；用户回复「不一定要保护」「没意义的东西就干掉」。据此到期表现规则和矛盾测试可修订，原失败/历史源码证据保留，不把许可扩大成其他Owner门自动通过。
+
+[Task14执行计划](../../../../.run/20261007-runtime-movement-repair-01/task-14-owner-expiry-continuity-brief.md)已交唯一Runtime实现者，从8752新建隔离工作树，先RED再最小修复。重点保留首次延迟完成无新前探、same-ordinal/ACK不续期、真实校准误差独立、TP/生命周期清理；明确真实延迟仍可能连续回退，正常新目标立即生效，不能宣称消除全部转向/受阻跳变。允许更新矛盾exact-h期望，不放宽逻辑频率、空间/内存额度、协议和人数，不动旧scratch或ADR142。尚未RED/GREEN/独审或部署，不把开工等同修复完成。
+
+真实热更接线仍在准备，当前现场非AOT但hotReload=false。为避免热更基础设施阻挡已确定的手感修复，唯一重编译槽优先交Task14；未对用户现场注入实验或再次重启。实际浏览器帧级量化尚无新证据，不以Native轨迹冒充用户浏览器采样。知识同步豁免：本段为事实/授权与执行进度追加，技术知识待实际修复后同步。
