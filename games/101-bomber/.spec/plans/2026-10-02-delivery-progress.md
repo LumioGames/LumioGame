@@ -1999,3 +1999,15 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 已在本机安装的 Chrome154.0.8037.98、独立可见窗口启动 main405 的原始 movement-beat-probe.html，经 18110 loopback 静态服务；初始 document.visibilityState=visible、document.hasFocus()=true。源 SHA256 为 99d6b07792dd40d40bd15aeaa13a3d0cf0934468e41ff0a54ff58c92c17bf11b，按 Mac 同配置 4 档、每档 25 次 × 2s，结果尚待导出。它只证明本机计时行为，不能代替真实 WASM/DS 或用户手感验收。预览按旧已审 6 Bot + A/B 两玩家 = 8 的容量保持，不增减数量或放宽守卫。
 
 本段未改生产源码、包或页面正式发布物；移动手感继续 FAIL，F3 仍候选，ADR142、18085、生产 schema 等 Owner 门 OPEN。知识同步豁免：现场与取证事实，无新公共契约或产品裁定。
+
+### 移动手感排障：checkpoint116，真实 Native 原版对照完成；浏览器控制被 URL 安全守卫停止（2026-10-08）
+
+两个独立 Runtime 工作树以 Engine4bf8d283 编译依赖、既有带 HFSM/voxel 测试支持的 win-x64 Native 验证同一 84 项 Owner/PredictionClock 聚焦集合。原始 attempt01 基线 83/84、F3 47/84，共同一项缺 LUMIO_VOXEL_PREDICTION_TEST_PATH 的环境失败单独保留；只补测试支持路径、不改源码的 attempt02 为基线 84/84（raw0）、原版 F3 48/84（raw2、36失败），零跳过。原始日志在 [gas-native](../../../../.run/20261008-movement-windows-01/gas-native/)，不得把 F3 改后的断言通过回写成原版通过，后续逐例判定新后缀/前探租期语义与独立失败。
+
+精确 f69 与 98a9 原版 portable Ecs 已构建封存：基线 DLL SHA256 3ddd4278a32e66c5fbb1222c1b51982adeb9da1a72888cd1304dfeb1ba06368d、Owner blob d047f9b3a28e6e410a02b0055d8c6362873067f0；F3 DLL aab8a11a69a00768b81dd67badb7972687c679aead44e925f5575fd7f0c6ef33、Owner blob 8d62eed55b0d49d48a4b7aed60a61e73601cb5fa。只供本次私有实验，未批准 F3 或正式 complete。
+
+计时探针在 visible/focused Chrome 启动后，Computer Use get_window_state 被安全守卫停止，原始信息为“could not determine the current browser URL on Windows with enough confidence to enforce policy”。本轮停止进一步浏览器控制，未绕过；[停止收据](../../../../.run/20261008-movement-windows-01/probe/browser-guard-stop.json)保留初始身份与最后 running 状态。尚未保存 window.__probe 完成结果，四组真实浏览器对照未执行，无本机指标表或新用户手感裁定。
+
+只读埋点复核：Owner pose 经 game-view.mjs 注入 readLocalPose，源码链完整，仍须实际页核实 frames>0、hiddenFrames=0、dx/tx 非空。分析器 admission.movesPerHeldPump 按已发布请求的时刻归泵，不能证明 GAS 准入成功或“2次实际走动”；150ms 输入间隔分窗会漏统计长卡顿的0泵，转向/死亡/TP及最后输入与keyup差异也会污染混合窗口。后续单向按键区间与起停、转向、贴墙、双窗口须分段核验，不能凭空或长窗口平均 FPS 裁定 F3。
+
+新预览准备已从不可变 Game405 git archive 冻结，Presentation 现编成功。旧 Game35 副本多出的 hostentry_fault.log（1647 bytes，SHA256 7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7）原路径保留；新副本逐 complete31 manifest 复制305 payload+manifest=306项。第一次工作树HEAD守卫因checkpoint115提交使HEAD变化而正确阻断，失败输出保留，未削弱精确源码检查；改用精确405 archive。发布/IL/WebCIL/现场收据尚在准备，不能写成已 SERVING。移动手感仍 FAIL；所有 Owner 门 OPEN。知识同步豁免：取证与实验事实。
