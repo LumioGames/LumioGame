@@ -30,4 +30,5 @@
     <Reference Include="Lumio.Client.Log" HintPath="$(LumioClientReplicaRoot)Lumio.Client.Log.dll" />
     <Reference Include="Lumio.Client.Network.Connection" HintPath="$(LumioClientReplicaRoot)Lumio.Client.Network.Connection.dll" />
   </ItemGroup>
+  <Import Project="../../eng/EngineTestRelease.targets" />
 </Project>
