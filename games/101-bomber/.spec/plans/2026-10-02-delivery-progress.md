@@ -2011,3 +2011,15 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 只读埋点复核：Owner pose 经 game-view.mjs 注入 readLocalPose，源码链完整，仍须实际页核实 frames>0、hiddenFrames=0、dx/tx 非空。分析器 admission.movesPerHeldPump 按已发布请求的时刻归泵，不能证明 GAS 准入成功或“2次实际走动”；150ms 输入间隔分窗会漏统计长卡顿的0泵，转向/死亡/TP及最后输入与keyup差异也会污染混合窗口。后续单向按键区间与起停、转向、贴墙、双窗口须分段核验，不能凭空或长窗口平均 FPS 裁定 F3。
 
 新预览准备已从不可变 Game405 git archive 冻结，Presentation 现编成功。旧 Game35 副本多出的 hostentry_fault.log（1647 bytes，SHA256 7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7）原路径保留；新副本逐 complete31 manifest 复制305 payload+manifest=306项。第一次工作树HEAD守卫因checkpoint115提交使HEAD变化而正确阻断，失败输出保留，未削弱精确源码检查；改用精确405 archive。发布/IL/WebCIL/现场收据尚在准备，不能写成已 SERVING。移动手感仍 FAIL；所有 Owner 门 OPEN。知识同步豁免：取证与实验事实。
+
+### 移动手感排障：checkpoint117，两套精确私有网页封存，隐藏启动/guard/prefix 收据就绪但未启动（2026-10-08）
+
+预览总收据 [launch-preparation.json](../../../../.run/20261008-movement-windows-01/preview/launch-preparation.json) 为 READY_NOT_STARTED。Game 精确40556477683e46a9e248812119fb3e6bd76c07c1 的不可变 archive 冻结4446个文件；两份 Release 网页 publish raw0，Presentation 现编 raw0。两套 main.js SHA256 同为49345f3d098e6ba4536b5ea0dfe9af41d4f4feb0cf9146c1803389f7effa78f7，包含 readMovementFlags/__lumioMovementTrace；presentation.js 同为c395c77b1638acae9b840e3bc556a5d4a9f5d7087204cbc71177825ff72f235f，包含 onFrame/debugLocal。此处是封存文件身份，实际 HTTP 服务响应尚未验证。
+
+基线 f69e2c9 的 WebCIL 为 Lumio.GameRuntime.Ecs.8hqr3ehmpl.wasm，SHA256 cc290c2ec235073474e9324a9c187c380aaebcf139b181df48f23375f692a683、MVID e36b921c-28f4-4d77-8529-a49524bd7484；F3 精确98a9f69 的 WebCIL 为 Lumio.GameRuntime.Ecs.1ix15y4i65.wasm，SHA256 27f3bd79e22f65158d39366356a18d33eaee5e3b0534e87d3e31ad6e4cd24287、MVID 366aed41-1bd9-46df-b37d-d9450595d44a。各自 [published-runtime-audit.json](../../../../.run/20261008-movement-windows-01/preview/baseline/published-runtime-audit.json) 与 [F3审计](../../../../.run/20261008-movement-windows-01/preview/f3/published-runtime-audit.json) 核实 exact DLL/PDB、编译 Owner 源、对应方法 IL、WebCIL、br/gz 与 boot 引用；未换 Server/Client 正式组成，非官方 complete，hotReload=false。
+
+旧 fault 原样保留，新运行副本 closure 守卫305 payload+manifest=306项通过。新 [prefix收据](../../../../.run/20261008-movement-windows-01/preview/prefix-receipt.json) 登记计划 WinMove/WinHuman2026100803325899608b，accountsRegistered=false、passwordGenerated=false、passwordPersisted=false；仅真正执行 launcher 时在内存产生密码。拓扑保留6 Bot+A/B两玩家。18108/18333 仍空闲，18402与受保护18097仍PID10680；未操作受保护端口或他人 Runner。
+
+隐藏独立 pwsh 的 start-detached-preview-01.ps1、launch/guard、保留旧junction的变体切换与实际HTTP字节收据入口已备齐，脚本解析检查通过。因本轮浏览器安全守卫已停止控制，未启动DS/HTTP，不让新现场无人采样空跑；下轮无需新许可，重新guard后直接隐藏启动，同DS/Platform下关闭采样会话、切换变体、冷加载并核实服务字节。只读 [trace-review.md](../../../../.run/20261008-movement-windows-01/trace-review.md) 给出按键/生命周期分段和指标有效分母要求；既有分析器5/5局部通过，不是实际浏览器证据。
+
+Game [PR54](https://github.com/LumioGames/LumioGame/pull/54) 已建，账本只追加；本段未进行四组浏览器实验、未选最佳变体或取得用户原话，F3仍未定案。Runtime PR280保持draft，不得合并；移动手感验收FAIL，ADR142、18085、生产schema等Owner门OPEN。知识同步豁免：私有实验准备与证据身份，无新增公共规则。
