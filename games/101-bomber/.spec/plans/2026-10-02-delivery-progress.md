@@ -1989,3 +1989,13 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 - 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
 
 下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。
+
+### 移动手感排障：checkpoint115，Windows 重新核实远端与现场，启动 Native 联合验证和前台计时探针（2026-10-08）
+
+接手后先 fetch；Game origin/main 精确为 40556477683e46a9e248812119fb3e6bd76c07c1（PR52），包含浏览器埋点和 F2 开关。Runtime PR280 读回 OPEN、draft，分支 exp/101-owner-interpolation、头 98a9f69bdb61cb5cd5cb8f6dc4eefb67fb35deb4；f69e2c9445fd5cf39b005c0857308cd96da1f04d 与候选均已获取，未合并或转正式。根工作树停在 f14bd50，原 .sdd 修改、未跟踪草稿、.zcodeignore 与 pelican-cycling.svg 全部保留；新 managed 工作树基于精确 Game405，分支 codex/101-movement-windows。
+
+现场重新查监听：旧 18105 网页和 18333 DS 已停止，18402 平台与受保护 18097 同属 PID10680，未操作该进程或受保护端口。新证据根为 [20261008-movement-windows-01](../../../../.run/20261008-movement-windows-01/)；Native 联合验证与私有预览准备并行，原始输出和旧 fault 保留，不继承旧 SERVING 状态。
+
+已在本机安装的 Chrome154.0.8037.98、独立可见窗口启动 main405 的原始 movement-beat-probe.html，经 18110 loopback 静态服务；初始 document.visibilityState=visible、document.hasFocus()=true。源 SHA256 为 99d6b07792dd40d40bd15aeaa13a3d0cf0934468e41ff0a54ff58c92c17bf11b，按 Mac 同配置 4 档、每档 25 次 × 2s，结果尚待导出。它只证明本机计时行为，不能代替真实 WASM/DS 或用户手感验收。预览按旧已审 6 Bot + A/B 两玩家 = 8 的容量保持，不增减数量或放宽守卫。
+
+本段未改生产源码、包或页面正式发布物；移动手感继续 FAIL，F3 仍候选，ADR142、18085、生产 schema 等 Owner 门 OPEN。知识同步豁免：现场与取证事实，无新公共契约或产品裁定。
