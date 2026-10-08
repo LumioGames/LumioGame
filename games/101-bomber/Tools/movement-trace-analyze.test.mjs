@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeMovementTrace } from './movement-trace-analyze.mjs';
+import { createMovementTrace } from '../Client/UI/Spectator/movement-trace.mjs';
 
 const STEP = 0.2;
 const H = 50;
@@ -222,13 +223,72 @@ test('analysis preserves every raw event and reports legacy hold inference expli
   assert.match(summary.admission.source, /not GAS/);
 });
 
-test('post-Tick pump observations break continuity at tickAt rather than the earlier pump start', () => {
+test('legacy pump observations infer ordering at tickAt and report unavailable actual observation times', () => {
   const trace = recorded({ keys: [[0, 'keydown']], inputs: [1] });
   trace.events.push({ k: 'pump', t: 2, tickAt: 10, vis: 'visible', pose: observed(10, 50, { entity: 'other-life' }) },
     { k: 'frame', ...observed(5, 0) }, { k: 'frame', ...observed(15, .2) });
   const summary = analyzeMovementTrace(trace);
   assert.equal(summary.display.heldFrames, 0);
   assert.equal(summary.facing.heldFrames, 0);
+  assert.deepEqual(summary.diagnostics.observationTiming, {
+    actualCallbackFrames: 0, legacyOrUnknownFrames: 2, observedPumps: 0, inferredPumpOrder: 1,
+  });
+  assert.ok(summary.diagnostics.limitations.some(value => /exact callback observation times are unavailable/.test(value)));
+  assert.equal(summary.timing.rafToObservationMs.n, 0);
+});
+
+test('completed pump observation time preserves earlier frames and breaks identity continuity only when observed', () => {
+  const trace = recorded({ keys: [[0, 'keydown']], inputs: [1] });
+  trace.events.push({ k: 'frame', ...observed(5, 0), rafAt: 4 }, { k: 'frame', ...observed(7, .2), rafAt: 6 },
+    { k: 'pump', t: 2, tickAt: 3, observedAt: 10, vis: 'visible', pose: observed(10, 50, { entity: 'other-life' }) },
+    { k: 'frame', ...observed(15, .4), rafAt: 14 });
+  const original = JSON.stringify(trace);
+  const summary = analyzeMovementTrace(trace);
+  assert.equal(summary.display.heldFrames, 1);
+  assert.equal(summary.facing.heldFrames, 1);
+  assert.equal(summary.diagnostics.excludedObservations.identityChange, 2);
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 1 }, 'request admission still uses Tick start');
+  assert.equal(JSON.stringify(trace), original);
+});
+
+test('a blocked Tick keeps the real callback gap and excludes a stale-RAF callback after keyup from held display metrics', () => {
+  let clock = 0;
+  const trace = createMovementTrace({ now: () => clock, doc: { visibilityState: 'visible', hasFocus: () => true } });
+  const pose = (tick, x) => ({ ...identity, publicationSequence: String(tick), executionTick: String(tick), cause: 'InputPublication',
+    target: { position: { x, z: 0 } }, model: { position: { x, z: 0 } } });
+  trace.key('keydown', 'KeyW');
+  clock = 5;
+  trace.input('move', true, [1, 0, false]);
+  clock = 11;
+  trace.pump({ startedAt: 10, tickAt: 10, tickMs: 1, totalMs: 1, state: 'active', pose: pose(1, 0) });
+  clock = 12;
+  trace.frame({ now: 12, localPose: pose(1, 0), local: { x: 0, z: 0, yaw: Math.PI / 2 } });
+  clock = 55;
+  trace.input('move', true, [1, 0, false]);
+  clock = 3660;
+  trace.pump({ startedAt: 60, tickAt: 60, tickMs: 3590, totalMs: 3600, state: 'active', pose: pose(2, .2) });
+  clock = 3661;
+  trace.frame({ now: 50, localPose: pose(2, .2), local: { x: .2, z: 0, yaw: Math.PI / 2 } });
+  clock = 3700;
+  trace.key('keyup', 'KeyW');
+  clock = 3701;
+  trace.frame({ now: 60, localPose: pose(3, .4), local: { x: -.1, z: 0, yaw: -Math.PI / 2 } });
+  const exported = trace.export();
+  const original = JSON.stringify(exported);
+  const summary = analyzeMovementTrace(exported);
+  assert.equal(summary.display.heldFrames, 1);
+  assert.equal(summary.display.backwardFrames, 0);
+  assert.equal(summary.facing.over90deg, 0);
+  assert.equal(summary.timing.frameIntervalMs.max, 3649);
+  assert.equal(summary.timing.framesOver50ms, 1);
+  assert.equal(summary.timing.rafToObservationMs.max, 3641);
+  assert.equal(summary.timing.pumpIntervalMs.max, 50);
+  assert.equal(summary.timing.tickMs.max, 3590);
+  assert.deepEqual(summary.diagnostics.observationTiming, {
+    actualCallbackFrames: 3, legacyOrUnknownFrames: 0, observedPumps: 2, inferredPumpOrder: 0,
+  });
+  assert.deepEqual(summary.admission.movesPerHeldPump, { 1: 2 });
+  assert.equal(JSON.stringify(exported), original);
 });
 
 test('a request published before release retains its later admitting pump without counting released empty pumps', () => {

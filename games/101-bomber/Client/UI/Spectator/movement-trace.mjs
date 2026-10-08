@@ -31,15 +31,17 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility(), focused: focus() }); },
     input(kind, accepted, args = []) { push({ k: 'input', t: now(), kind, accepted, args }); },
     // Inputs published before tickAt are admitted by this pump's Session Tick; pose is the owner
-    // publication read right after that Tick.
+    // publication read right after that Tick. observedAt is the trace call after the pump's tail work.
     pump({ startedAt, tickAt, tickMs, totalMs, state, pose = null }) {
-      push({ k: 'pump', t: startedAt, tickAt, tickMs, totalMs, state, vis: visibility(), focused: focus(), pose: publication(pose) });
+      push({ k: 'pump', t: startedAt, tickAt, observedAt: now(), tickMs, totalMs, state, vis: visibility(), focused: focus(), pose: publication(pose) });
     },
     frame({ now: frameNow, dt, renderTick, localPose, local }) {
+      // RAF's supplied timestamp can predate a blocking Tick; pose and focus are observed in this callback.
+      const observedAt = now();
       const target = localPose?.target?.position;
       const model = localPose?.model?.position;
       push({
-        k: 'frame', t: frameNow, dt, vis: visibility(), focused: focus(), rt: number(renderTick),
+        k: 'frame', t: observedAt, rafAt: frameNow, dt, vis: visibility(), focused: focus(), rt: number(renderTick),
         sessionGeneration: text(localPose?.sessionGeneration), entity: text(localPose?.entity), connectionGeneration: text(localPose?.connectionGeneration),
         seq: text(localPose?.publicationSequence), step: text(localPose?.localStepOrdinal),
         tick: text(localPose?.executionTick), inputSeq: text(localPose?.inputSequence), cause: text(localPose?.cause),

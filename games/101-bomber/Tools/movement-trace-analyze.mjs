@@ -48,13 +48,18 @@ function holdWindows(inputs) {
   return windows;
 }
 
+function observationTime(event) {
+  if (event.k !== 'pump') return event.t;
+  return Number.isFinite(event.observedAt) ? event.observedAt : event.tickAt ?? event.t;
+}
+
 function keyHoldWindows(events) {
   const windows = [];
   const held = new Set();
   let current = null;
   for (const event of events) {
     if ((event.vis !== undefined && event.vis !== 'visible') || event.focused === false) {
-      if (current) { current.end = event.k === 'pump' ? event.tickAt ?? event.t : event.t; current = null; }
+      if (current) { current.end = observationTime(event); current = null; }
       held.clear();
       continue;
     }
@@ -126,7 +131,8 @@ export function analyzeMovementTrace(trace) {
   const inputs = events.filter(e => e.k === 'input' && e.kind === 'move' && e.accepted);
   const frames = events.filter(e => e.k === 'frame');
   const longTasks = events.filter(e => e.k === 'longtask');
-  const observations = [...events].sort((a, b) => (a.k === 'pump' ? a.tickAt ?? a.t : a.t) - (b.k === 'pump' ? b.tickAt ?? b.t : b.t));
+  // Pump start admits requests; its completed publication is observed later. Equal observation times keep raw order.
+  const observations = [...trace.events].sort((a, b) => observationTime(a) - observationTime(b));
   const { segments, identified, excluded, causes } = observationSegments(observations);
   const keyed = events.some(e => e.k === 'key' && DIRECTION_KEYS.has(e.code));
   const windows = keyed ? keyHoldWindows(observations) : holdWindows(inputs);
@@ -266,6 +272,8 @@ export function analyzeMovementTrace(trace) {
   const longTaskCapability = notes.filter(n => /^longtask=/.test(n)).at(-1);
   const longTasksAvailable = longTaskCapability === 'longtask=supported' || longTasks.length > 0 ? true :
     longTaskCapability === 'longtask=unsupported' ? false : null;
+  const actualCallbackFrames = frames.filter(f => Number.isFinite(f.rafAt) && Number.isFinite(f.t));
+  const observedPumps = pumps.filter(p => Number.isFinite(p.observedAt)).length;
 
   return {
     version: trace.version ?? null, truncated: Boolean(trace.truncated), notes,
@@ -281,10 +289,13 @@ export function analyzeMovementTrace(trace) {
         'A tap with no physical pump is outside held metrics; a final pre-release request may retain its later positive admitting pump.'] :
         ['Trace has no direction key edges; 150 ms accepted-request gaps infer holds and stops, not physical releases.'] },
     diagnostics: { identitySource: identified ? 'DTO identity strings' : 'legacy identity unavailable', excludedObservations: excluded,
+      observationTiming: { actualCallbackFrames: actualCallbackFrames.length, legacyOrUnknownFrames: frames.length - actualCallbackFrames.length,
+        observedPumps, inferredPumpOrder: pumps.length - observedPumps },
       unknownFocusObservations: [...frames, ...pumps].filter(e => typeof e.focused !== 'boolean').length,
       publicationCauses: causes, limitations: ['DTO does not expose teleport identity; a teleport inside a normal publication cannot be identified automatically.',
         'Initial, AuthorityCorrection and unknown causes break straight-motion comparisons; their raw events and counts remain in the trace.',
-        'Target-step direction and final post-Tick publication are proxies, not actual GAS execution or a simulation receipt.'] },
+        'Target-step direction and final post-Tick publication are proxies, not actual GAS execution or a simulation receipt.',
+        'Without frame rafAt or pump observedAt, exact callback observation times are unavailable; legacy frame t and pump tickAt/start only infer ordering.'] },
     execution: { tickAdvancePerHeldPump: histogram(tickAdvance), tickAdvanceSamples: tickAdvance.length, targetStepPerHeldPumpM: stats(targetStep),
       scope: 'Consecutive final post-Tick publications in one observation segment; not GAS execution success.',
       heldPumpsWithUnchangedTarget: unchangedTarget },
@@ -304,7 +315,8 @@ export function analyzeMovementTrace(trace) {
     facing: { heldFrames: facing.length, over30deg: facing.filter(a => degrees(a) > 30).length,
       scope: 'Same normal observation and hold scope as display; target-direction changes exclude 250 ms of settling.',
       over90deg: facing.filter(a => degrees(a) > 90).length, deviationDeg: stats(facing.map(degrees)) },
-    timing: { frameIntervalMs: stats(frameIntervals), framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
+    timing: { frameIntervalMs: stats(frameIntervals), rafToObservationMs: stats(actualCallbackFrames.map(f => f.t - f.rafAt)),
+      framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
       framesOver50ms: frameIntervals.filter(v => v > 50).length, pumpIntervalMs: stats(pumpIntervals),
       tickMs: stats(pumps.map(p => p.tickMs)), pumpTotalMs: stats(pumps.map(p => p.totalMs)),
       longTasksAvailable, longTasks: longTasksAvailable === true ? longTasks.length : null, longTaskMs: stats(longTasks.map(l => l.duration)) },
