@@ -1864,3 +1864,15 @@ attempt03在00:58:59 UTC发生DS watchdog owner failed or stopped progressing，
 [Task14执行计划](../../../../.run/20261007-runtime-movement-repair-01/task-14-owner-expiry-continuity-brief.md)已交唯一Runtime实现者，从8752新建隔离工作树，先RED再最小修复。重点保留首次延迟完成无新前探、same-ordinal/ACK不续期、真实校准误差独立、TP/生命周期清理；明确真实延迟仍可能连续回退，正常新目标立即生效，不能宣称消除全部转向/受阻跳变。允许更新矛盾exact-h期望，不放宽逻辑频率、空间/内存额度、协议和人数，不动旧scratch或ADR142。尚未RED/GREEN/独审或部署，不把开工等同修复完成。
 
 真实热更接线仍在准备，当前现场非AOT但hotReload=false。为避免热更基础设施阻挡已确定的手感修复，唯一重编译槽优先交Task14；未对用户现场注入实验或再次重启。实际浏览器帧级量化尚无新证据，不以Native轨迹冒充用户浏览器采样。知识同步豁免：本段为事实/授权与执行进度追加，技术知识待实际修复后同步。
+
+### 移动手感排障：checkpoint108，Runtime到期连续性修复119项GREEN及独审通过，真实Client四轨迹活动期零回跳（2026-10-08）
+
+[Task14报告](../../../../.run/20261007-runtime-movement-repair-01/task-14-owner-expiry-continuity-report.md)交付新Runtime33工作树clean提交7fa253ce9f1d383c81129a4fd5188f2d83c77a78，base8752；八文件仅一生产文件改变。有效ECS RED17例中9失败8通过，真实Native有效RED19例中13失败6通过；首次Native等待夹具5项未建立可恢复读依赖的失败单独保留，修正仅新夹具后再取有效RED。最小实现复用已有速度状态限定轨迹须在原h期限前完成才有推进资格；有效推进到h后连续收回、2h清零，过期才完成的输入不复活前探。没有新增字段、API或计费，也不在Render模拟。按Owner许可修订五份原有到期/校准相关测试的矛盾期望，原文件快照/hash保留。新ECS17、新Native19，连同既有ECS18、Native owner/phase/correction合计61（含新19）、clock23，共119独立例GREEN/零跳过。[独审](../../../../.run/20261007-runtime-movement-repair-01/task-14-owner-expiry-review.md)PASS，无P0/P1；不是全套或前台通过。
+
+Native显式边界矩阵中，timely60/120及两种pump/render次序均零活动期退步；+7ms真实迟到仍2/3次连续退步，总约0.014m，不把三角收回宣称为全局单调或Game朝向已修。Root执行[真实Client组合探针](../../../../.run/20261007-runtime-movement-repair-01/task-14-client-probe-01/receipt.json)：冻结旧Client17的239文件闭包逐项hash，仅私有替换新net10 Ecs DLL/PDB，生产Native b812，四条原诊断4/4 raw0/零跳过。[独立轨迹判据](../../../../.run/20261007-runtime-movement-repair-01/task-14-client-probe-01/behavior-assessment.json)在这四条采样中stable60/120及jitter60/120活动期backsteps均0；旧120stable3/jitter4。采样时序不同，不能覆盖或抹去上述Native显式边界退步。不是浏览器帧级测量或官方消费构建。
+
+Release portable编译raw0，Game35私有预览工具已准备；[库身份](../../../../.run/game35-owner-expiry-dev-preview-01/runtime33-identity.json)核对DLL c4c5f4ce、PDB12346926、3047项导出API无变化、PDB与改动源码一致，并提取实际方法IL。网页未构建/未启动，未将此版本说成用户已经看到。当前重编译槽串行，受其他线程内存压力影响时保留预检失败，不杀他人进程。
+
+Game34 attempt05于01:14:25 UTC再次同型死亡意图fatal，最后CP15/Game tick9224/Host tick9225；[保全收据](../../../../.run/game34-runtime-correction-dev-preview-01/prior-failure-05/failure-receipt.json)记录9份文件原始前后hash，DS35484 exit2、launcherexit1，不重启充当修复。旧runtime副本新增fault日志至307文件，后续必须使用新副本而非删日志或绕过count守卫。其此前最新一分钟只读tick样本1200间隔p50=48/p95=64/p99=67/max72ms、无cadence_lag；不同于用户操作窗口，不能证明全程无抖动。
+
+长期scratch唯一失败已由[只读历史分解](../../../../.run/20261007-runtime-movement-repair-01/task-17-scratch-failure-readonly.md)解释：旧Transform重复文本捕获1480字节变为单次typed844字节，差636正好对应12706→12070。Root按用户「不一定要保护」「没意义的东西就干掉」允许独立Task17修订这一已证实过期oracle；保留8192预算在8384结构预留处预拒、used0、无突变及完整undo，生产计费/额度不改。旧保护源于笼统assertion freeze，并非独立架构Owner裁定门；ADR142/18085/schema仍Pending。Task17及最终combined full尚未完成。真实热更最小四文件接线计划Task15已成文未实施。知识同步豁免：进度和证据追加，完整技术知识随实际最终交付沉淀。
