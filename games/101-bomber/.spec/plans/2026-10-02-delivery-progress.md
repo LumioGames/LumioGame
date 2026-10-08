@@ -1989,3 +1989,26 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 - 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
 
 下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。
+
+### 移动手感排障：checkpoint119，接收固定版本Review、验证195原版Native并完成Windows前台计时探针（2026-10-08）
+
+用户提供 [008eb62固定报告](https://github.com/LumioGames/LumioGame/blob/008eb62e75005e572759acb5d2db021d88e18626/games/101-bomber/.spec/archive/reviews/2026-10-08-movement-code-review-local-validation.md)并要求继续优化。报告主体固定f69基线，其F1–F7不等同交接里的F1–F4。重新fetch确认Game main342c170已含PR55（发布trace模块、部分短按及统计修订），Runtime main仍f69、PR280仍OPEN/draft/head1955239325ba9651a89a9c8c26d3f798c068b378。此前Windows checkpoint115–118仍在未合入的[PR54](https://github.com/LumioGames/LumioGame/pull/54)，不删改；本段新证据根为 [movement-review-02](../../../../.run/20261008-movement-review-02/)，复用managed Game工作树的新隔离分支codex/101-movement-review，原根他人脏文件保留。
+
+195原版在新独立Runtime工作树、Engine4bf编译依赖与既有真实Native7db3ef...bd239下构建0警告/错误，GAS聚焦84项为40通过/44失败/0跳过，raw2；[原始输出](../../../../.run/20261008-movement-review-02/gas-native/195-original-01/test-gas-owner-clock.log) SHA256 d7c1d2afe5ba949c4597ecf768d232b5297dca00391edda60e113a00ab281248。[逐项分类](../../../../.run/20261008-movement-review-02/gas-native/195-original-analysis.md)确认旧98a的36个失败全部重合，新增8个发生在旧指数残差期望；22个PredictionClock与额外预算case通过。没有改期望消红，首失败后的检查不能冒称通过。195已移除报告的三角前探/租期路径及98a独立纠偏残差；仍使用缓存pump起点作为滑行起点，慢完成成本需实际Client时间轴验证。195不是Native全绿或已裁定语义，PR280未推送、转正式或合并。精确原195 portable DLL/PDB已另封，DLL SHA256 543dd42abadba01a2d17842ca5cf3b79ff8aca83006808a63253591832dd3d46、MVID479c603a-47aa-4ec4-a776-a7b78a302371；不替换旧98a封件。
+
+Windows安装的Chrome154.0.8037.98通过用户要求的Playwright在可见、有焦点的独立前台页完成原计时探针；04:13:22.964–04:17:17.877 UTC，原Native构建/测试已于04:11:32结束，后续portable构建等探针结束才执行。页面18110、源Game405 probe SHA25699d6b07792dd40d40bd15aeaa13a3d0cf0934468e41ff0a54ff58c92c17bf11b；[window.__probe原始结果](../../../../.run/20261008-movement-review-02/probe/window-probe-01.json) SHA256604207763130907b0f391c969d24671ea9dd013676ac3d1a96ab47aa9f38e6d0，[浏览器收据](../../../../.run/20261008-movement-review-02/probe/probe-receipt-01.json)记录初/中/末visible/focused观测，各档hiddenPumps=0。以下是合成计时器探针，不是WASM/DS表现结果：
+
+| 机器/负载pump/帧ms | 每pump输入0/1/2 | 中招按住 | 步号前进0/1/2 | pump间隔p50/p95ms | 帧间隔p50/p95ms |
+|---|---|---|---|---|---|
+| Mac 0/0（checkpoint114） | 1/1000/0 | 1/25 | 未列/1001/0 | 50/51.4 | 16.7/17.6 |
+| Windows 0/0 | 4/1000/0 | 4/25 | 218/568/218 | 49/61.8 | 31.2/31.6 |
+| Mac 10/6 | 10/982/9 | 2/25 | 未列/1001/0 | 50/51.1 | 16.7/17.6 |
+| Windows 10/6 | 69/878/60 | 15/25 | 170/667/170 | 49.4/62.4 | 31.3/31.6 |
+| Mac 25/10 | 18/996/0 | 14/25 | 未列/1014/0 | 45.1/59.9 | 16.7/33.4 |
+| Windows 25/10 | 160/861/0 | 21/25 | 0/1021/0 | 48.3/62.8 | 31.3/31.6 |
+| Mac 40/14 | 134/801/0 | 25/25 | 未列/849/86 | 54/54.3 | 50/66.7 |
+| Windows 40/14 | 194/703/0 | 25/25 | 0/772/125 | 54.3/68.7 | 62.2/62.8 |
+
+以数据修正推断：本机轻载也存在floor步号0/2交替，不仅重载晚泵才出现2；两个机器的帧/泵间隔及中招比例不能继承。探针nonOneInputPumpRatio按两位小数舍入会把4/1004记0，判读使用完整histogram，不能由舍入0宣称无空拍。真实Game是否同型仍待新网页采样。
+
+[本轮只读工具复核](../../../../.run/20261008-movement-review-02/trace-review-origin-main-342c170.md)复现三个统计问题：多hold首泵累加历史请求、超过150ms请求gap误拆hold并漏0泵、未keyup却被计停步；TDD修复正在新分支，尚不宣称交付。PR55仍未解决所有多短按/技能命令顺序，核心直线与副场景须分列。上轮preview审计只核主文件hook而漏动态模块闭包，Game405发布页缺movement-trace.mjs；旧READY_NOT_STARTED仅构建封存，不能称可测，旧字节保留。本轮新副本/prefix/隐藏启动脚本只完成轻准备，等待最终GameSHA、现编Presentation与新195 DLL的发布/HTTP完整闭包验证，未启动DS或注册账号。四组真实网页对照、最佳变体用户原话及前台通过仍未完成；持续意图与朝向未实施，所有Owner门保持OPEN。知识同步豁免：排障与候选证据，不新增正式公共表现规则。
