@@ -2024,3 +2024,22 @@ Windows安装的Chrome154.0.8037.98通过用户要求的Playwright在可见、�
 指标边界已同步活交接：display/facing仅正常InputPublication/ClockAdvance同身份样本，AuthorityCorrection/Initial/未知cause断段但原始事件保留；正常范围0不能证明全部活动期0。转向250ms排除及有效分母公开，stop需300ms同段完整且终点target稳定，否则n=0/null。DTO不暴露TP标识，正常cause内TP不能自动识别；JS accepted请求不是GAS成功，最终postTick publication不是完整时钟或执行收据。当前候选7cbd与44e仅Tools analyzer/test不同，实际网页构建字节身份须以新封件收据为准，不能伪称已构建或已前台测得。
 
 本段无DS启动/账号注册/服务页面测量，无官方complete交付或用户裁定。F1持续意图与F4朝向未实施，Runtime PR280仍draft且不得合并，移动手感仍FAIL_PENDING_USER，所有Owner门保持OPEN。知识同步豁免：既有取证工具bug修复，无正式公共表现规则变更；旧账本只追加保留。
+
+### 移动手感排障：checkpoint121，新候选字节封存、GAS授权修订仍红；首次启动被地图路径守卫拦截（2026-10-08）
+
+[Game PR58](https://github.com/LumioGames/LumioGame/pull/58)已创建，head e9295959ee845ba91bdb938742b1fb885212dd75，未合入。四项CI失败均经[实际main基线日志对照](../../../../.run/20261008-movement-review-02/game-pr58-ci-analysis.md)核实既有：三项SDK版本错位、一项ServerWorldBoot的Create/hfsm编译接缝；未把被跳过的测试记为通过，未改pin/schema或绕过保护。
+
+[新私有封件](../../../../.run/20261008-movement-review-02/preview-candidate-02/launch-preparation.json)封存诊断源7cbd631、实际网页构建源44e921f。4449个源文件逐项对比，4447相同，仅Tools analyzer/test两项不同；[等价收据](../../../../.run/20261008-movement-review-02/preview-candidate-02/source-equivalence.json)明确复用44e的成功构建及现编Presentation，未伪称7cbd重新构建。Runtime官方31新副本305payload+manifest，manifest SHA8cc8df282a920af72de5168b2a134a98e4605a5d26f8b4be80325b3747d16fd9；旧fault/封件保留。两网页模块闭包各32资源/36引用，8个计算式import仍待浏览器实际验证。
+
+| 封件 | Ecs DLL SHA256 | MVID | WebCIL SHA256 |
+|---|---|---|---|
+| f69基线 | 3ddd4278a32e66c5fbb1222c1b51982adeb9da1a72888cd1304dfeb1ba06368d | e36b921c-28f4-4d77-8529-a49524bd7484 | cc290c2ec235073474e9324a9c187c380aaebcf139b181df48f23375f692a683 |
+| exact195 F3 | 543dd42abadba01a2d17842ca5cf3b79ff8aca83006808a63253591832dd3d46 | 479c603a-47aa-4ec4-a776-a7b78a302371 | e257b3dd3dfb4ae5b12a27bd63d2e3eee0c644e925f3baffb9287e96bf12084d |
+
+两边main.js SHA7ff2bd4162a337aa809f839ef397260a55aae84900d96767d20c8fd8590f1e86，Presentation SHA c395c77b1638acae9b840e3bc556a5d4a9f5d7087204cbc71177825ff72f235f；DLL/PDB、四方法IL、WebCIL MVID/IL、压缩副本与Boot引用均逐项通过。以上为发布目录的字节，尚不是实际服务HTTP或前台Game采样证据。
+
+新隔离Runtime测试提交0f07d11e6072e5ace99dabad0de9761de586ae7b、理由提交a5e8d9706c0f9665f4124655aff22fce63bcdbbd原样移植旧已审c7的22方法，仅授权新后缀/租期显示期望，完整Pose精度与非表现检查保持。Native重编0警告/错误，完整84项为66通过/18失败/0skip，raw2；[原始测试输出](../../../../.run/20261008-movement-review-02/gas-native/195-lease-scope-01/test-gas-owner-clock.log) SHA11fe856a1165c7df097fe81d23d513903e4e3eb0bff7e0d75b9aa864d5d2d664。[逐项理由与分类](../../../../.run/20261008-movement-review-02/gas-native/195-lease-scope-01/revision-reasons.md)明确18=原195新增8项原检查+22方法里新到达的10个保留残差检查，不能声称仅8项或全绿。Clock22及额外额度1通过；18首失败均为显示位置，首次失败之后未知。87生成文件只有EOL变化，已审计并恢复。root范围独审通过，远端推送前复审尚在进行；本时点未推PR280。
+
+首次隐藏独立pwsh启动PID39752于04:48:50 UTC进入launcher，WinReview/WinHuman20261008044244dddc43前缀及非秘密收据已先写。生产地图守卫在step02返回AUTHOR_ONLY_MAP_SNAPSHOT，[verification](../../../../.run/20261008-movement-review-02/preview-candidate-02/scene-01/verification.json)为FAIL而进程raw0，不能以raw0称启动成功。根因是新game-input作launcher root，却传旧Scene33配置，其base_map_path仍指旧目录；真实guard同时要求内容hash和selectedPath等于新root的冻结bomber.voxel。内存密码已生成但未落盘，注册/loginAndLaunch、DS与Bot启动均未到达；39752已退出，18108/18333仍空，18402/受保护18097仍10680。原失败日志/config/scene01全部保留，下一尝试只在新私有配置修正等内容地图路径、换新prefix与scene收据，不能放宽守卫。
+
+原Native工作已结束；两个Chrome154真实窗口已并排准备，但均为空白，没有冒称Game frames或完成四组。实际HTTP完整闭包、每组持续W/起停/转向/贴墙/A-B、Bot/远端观察与用户前台原话仍待。移动手感FAIL_PENDING_USER，Runtime PR280仍draft不得合并，F1/F4未实施，Owner门全OPEN。知识同步豁免：证据、既有工具与私有现场路径修正，无正式公共规则采纳。
