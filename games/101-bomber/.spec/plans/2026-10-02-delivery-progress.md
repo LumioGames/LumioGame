@@ -2071,3 +2071,23 @@ Game诊断修订c46c4aa8ff96dd48f202a7274d1882d86a30bb13已推PR58，只改recor
 Scene02在05:29:03.871 UTC退出：verification由历史SERVING转FAIL，Process4436 raw2；DS/网页/6Bot及launcher自有清理后均不存活。新hostentry_fault.log 1647bytes SHA7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7，与旧死亡链错误相同：ProcessorPlan / Death structure intent no longer identifies its live old body，BomberEffectBusiness.Server.cs133。Defender无相关事件。新clock字节集03的同Scene守卫因此拒绝（raw1），部分payload/准备失败日志保留，不伪称READY、不绕过SERVING guard。Scene02所有原日志/fault/prefix/raw/video及旧封件保留。
 
 下一次新现场只用于修正clock后的四组取证，复用已验证生产主体、使用新运行副本/新prefix/严格地图和身份guard/隐藏独立pwsh，不把重建称为死亡链修复。Owner ADR142死亡语义未自行批准，RuntimePR280仍OPEN/draft、未合并，M8/F3裁定与正式complete未到达。持续意图F1及F4未实施；移动手感仍FAIL_PENDING_USER，受保护端口与生产schema等Owner门OPEN。知识同步豁免：工具bug修复与排障证据，无正式公共规则变更。
+
+### 移动手感排障：checkpoint124，新时钟现场部分对照与切换误标撤销；再次死亡退出后转内部耗时定位（2026-10-08）
+
+现场先重新核实：Game main 342c170f4394c536bc352e2cd26f4c2bbb3aaf28 包含4055647；PR58 OPEN/head d643126，Runtime PR280 OPEN/draft/head a5e8d9706c0f9665f4124655aff22fce63bcdbbd，不转正式、不合并。固定008eb62 Review已通过Git对象读取，其源码推导与待执行反例不当作本次浏览器结果，F1/F4及Owner规则保持原边界。
+
+Scene03使用全新4449文件源副本、官方31的306文件运行副本和冻结地图；c46仅新增静态trace时钟字节，实际网页主体仍为44e构建、Presentation c395c77b。第一次prefix WinClockHuman超账号32字符限制，在注册/启动前被独审阻断；旧封件保留。第二封件launch-preparation-scene03-02.json SHA6ffd26dafb6ea0fb5c559d94eee309f32fa543d3875e34c22ae3a6f8d8836b88，8脚本/17输入hash全部通过；WinClock2026100805414973eb26 / WinHuman2026100805414973eb26的八账号各29字符，非秘密prefix收据先写，密码仅launcher内存。05:46:03.495 UTC隐藏独立pwsh37696启动，DS9732/18333、网页21804/18108、六Bot实际SERVING。实际HTTP32资源200与f69 WebCIL cc290c2e匹配；Git LF trace SHA3da17e59与archive CRLF经过归一化对比，不冒称字面字节相同。
+
+[逐操作部分对照表](../../../../.run/20261008-movement-review-02/browser/scene03-partial-comparison-per-physical-01.md) SHA19f4e5f73ea36ed86ec8d9b34fe2706b851d1768ba1c9a8b843c28f41c58d4b7，包含baseline/F2各五次W10s、十次起停、四方向、贴墙和A/B原始导出/边沿。baseline A raw SHA2e7ef1a19ece5353ac38d8f5900a2372bd771bc2b281781356b1dd71aae2d129，F2 A raw SHAf325390eafd3e2b2146277f615d2bd7be7a77218ada468709624d976ffac4e8a。生命周期缺self、无accepted请求或静态墙段逐行标无效/部分，不以其零指标判通过。CDP keyDown/up没有OS按键重复，生命周期清键后不会自动补按，保留这项驱动限制。A/B均headful可见，但OS前台查询返回0，无法证明OS前台状态；document可见/焦点另记。历史两组没有单独保存浏览器ResourceEntries，仅实际HTTP与未成功切换的连续字节链证明基线，身份缺口明确披露，下一场必须先保存浏览器实际WebCIL basename再按键。
+
+有效baseline W1/2/3/5 held Tick p50约344.5/190.2/150.9/169.2ms，p95约618.8/372.9/226.7/241.5ms；有效F2 W2/4为189.9/237.3ms，F2 W3部分生命窗口不能用55.1ms的混合中位数判改善，其正常正请求pump p50为181.6ms。请求准入只代表JS返回true，publication步号只是最终发布代理。固定物理W方向的补充原始投影在baseline W2/W5发现3/4次倒退、最大0.329/0.334m；F2 W2/W3为6/4次、最大0.325/0.341m，同时目标反向。c46分析器的正常cause与250ms目标转向排除会遮住这些片段，其scoped backward=0不代表玩家未见倒退，也不能把此处归因为外推。官方统计与ALLcause/normal物理投影分别保留，stop n=0不可用，朝向分母同时披露。
+
+移动A同段Tick通常150–345ms且占pump约95–97%，B自身Tick p50约12–15ms/p95约32–43ms。session_drain原日志A每约2秒仅4–6次Tick、drained41–43/max9–13，B约40–41次Tick、max1–2；drained不是GAS执行计数，trace没有Bot/远端逐帧字段，不能由B自身时钟宣称所有远端流畅。当前修正诊断为同步Tick耗时边界主导严重卡顿，内部阶段仍待测；原话「我刚玩了一下 超级卡」仍对应基线、正式F3裁定为空。
+
+第一次F3切换脚本02将Where-Object LocalPort -eq18108拼成无空格参数，实际raw1且在junction改变前失败。root未先核对退出码就继续浏览器驱动，误把仍为f69的一次W标为F3；已明确纠正。[标签纠正](../../../../.run/20261008-movement-review-02/browser/scene03-F3-label-correction-01.json)及独立audit纠正保留，浏览器实际资源8hqr/cc290c2e证明其为额外baseline，禁止引用其零指标判F3。旧脚本/封件未覆盖，新03只修一处空格，SHA6efad8a4874dc68a267d3d94e5ef32042e03a06cf5861abd4bcf3b0dd391adce；addendum SHAe9d002630fb20bfc398b99b2b05223a557a67258c881522a3530dddb1b7d79f9，37hashrefs及真实语义RED/GREEN独审通过。03切换raw0后，独立实际HTTP32资源确认F3 WebCIL e257b3dd；但真正F3 cold-02随后ERR_CONNECTION_REFUSED，[失败收据](../../../../.run/20261008-movement-review-02/browser/scene03-F3-cold-02-start-failure.json)明确f3BrowserSamples=0。没有F3/F2+F3有效组，尚不能判最佳变体。
+
+Scene03于06:05:58.576 UTC/tick23696/CP39再次Death structure intent no longer identifies its live old body，DS raw2、同BomberEffectBusiness.Server.cs133错误族；DS/网页/六Bot由自有launcher清理，18108/18333已不监听，旧fault完整保留。两个自有浏览器context已关闭，矩阵暂停后才授权隔离托管诊断测试/构建，避免混入负载。不是循环重启消错，不启动ADR142死亡链候选。下一场必须有具体内部耗时诊断或修复新字节及新封件，不能继承本场存活/四组合格假设。
+
+Game-only perf诊断计划game-runtime-perf-diagnostic-plan-01.md已记录现有GAS SelectiveRebuild EventSource四阶段与公开Session/GAS计数；独立codex/101-movement-perf从c46隔离开展，JS87/87，C#生产当时尚未修改、行为RED待执行。诊断opt-in、bounded/drop显式、64位保真、生命周期跨换代delta不可用，禁止把无事件当零耗时。新perf页面不会混作四组原始指标。移动手感仍FAIL_PENDING_USER；Runtime280/正式M8/complete/消费/前台门未到达，F1/F4未实施，ADR142/18085/生产schema及受保护端口保持OPEN。知识同步豁免：既有排障工具与私有证据，不采纳产品/公共规则。
+
+时间精确化补充：detached-launch-scene03-02-receipt记录独立pwsh37696的启动为05:45:54.6615396 UTC；上文05:46:03.495 UTC是launcher的runStartedUtc窗口起点，不是pwsh创建时间。两原始收据均保留。
