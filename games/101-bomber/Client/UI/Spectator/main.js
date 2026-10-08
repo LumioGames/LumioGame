@@ -35,6 +35,9 @@ window.__lumioSpectator = spectator;
 const PLAYER_MODE = Boolean(window.__lumioPlayerConfig);
 const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0, lastInput: null, replica: null };
 let playerInput;
+// Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
+let inputDriver = 'interval';
+let movementTrace = null;
 let selectedCharacter = null;
 let initialSelectionPending = false;
 let initialSelectionSent = false;
@@ -473,6 +476,7 @@ function updateGamePresentation() {
         onBombButton: (pressed, cancelled, surface) => playerInput?.setBombPressed(pressed, cancelled, surface),
         onUseSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
+        onFrame: globalThis.__lumioMovementTrace ? frame => globalThis.__lumioMovementTrace.frame(frame) : undefined,
       } : {});
       gameView = ownerView;
       gameViewLoading = null;
@@ -626,6 +630,13 @@ function requireGameSlug() {
 // viewer can type (R-00710 removed the unused `allowLoopback` query parameter).
 const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
+// Movement experiments and traces stay on loopback pages and the development bridge.
+function readMovementFlags() {
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false };
+  const params = new URLSearchParams(location.search);
+  return { inputDriver: params.get('input') === 'pump' ? 'pump' : 'interval', trace: params.get('trace') === 'movement' };
+}
+
 function pageAllowsLoopback() {
   return typeof location !== "undefined" && LOOPBACK_HOSTS.includes(location.hostname);
 }
@@ -729,7 +740,11 @@ function failLaunch(error) {
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
   try {
+    const pumpStartedAt = performance.now();
+    if (inputDriver === 'pump') playerInput?.pump();
+    const tickStartedAt = performance.now();
     csharp.tick();
+    const tickMs = performance.now() - tickStartedAt;
     const state = JSON.parse(csharp.sessionState());
     currentSessionGeneration = state.generation ?? null;
     spectator.notServingCloses = state.notServingCloses ?? 0;
@@ -749,6 +764,8 @@ function pumpSession(attempt) {
     spectator.selfId = spectator.positions.find(position => position.self)?.id ?? null;
     spectator.voxel.sections = voxelGrid.sections().length;
     if (displayed) setStatus(state.state);
+    movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
+      totalMs: performance.now() - pumpStartedAt, state: state.state });
     const period = 1000 / csharp.tickRateHz();
     const now = performance.now();
     nextPumpAt += period;
@@ -894,11 +911,27 @@ async function initializePage() {
     document.getElementById('player-info').hidden = false;
     document.getElementById('enter').textContent = 'Reconnect';
     canvas.width = canvas.height = 760;
+    const flags = readMovementFlags();
+    inputDriver = flags.inputDriver;
+    if (flags.trace) {
+      const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
+      movementTrace = createMovementTrace();
+      movementTrace.note(`input=${inputDriver}`);
+      window.__lumioMovementTrace = movementTrace;
+      observeLongTasks(movementTrace);
+      for (const type of ['keydown', 'keyup'])
+        window.addEventListener(type, event => movementTrace.key(type, event.code, event.repeat), { capture: true });
+    }
     const { createPlayerInput } = await import('./player-controls.mjs');
     playerInput = createPlayerInput({
+      driver: inputDriver,
       panel: document.getElementById('player-controls'),
       ready: () => active && !initialSelectionPending && player.replica?.inputOpen === true && !gameView?.inputBlocked(),
-      sendMove: (primary, secondary, turn) => sendPlayerCommand('move', () => csharp.sendMove(primary, secondary, turn)),
+      sendMove: (primary, secondary, turn) => {
+        const accepted = sendPlayerCommand('move', () => csharp.sendMove(primary, secondary, turn));
+        movementTrace?.input('move', accepted, [primary, secondary, turn]);
+        return accepted;
+      },
       placeBomb: () => sendPlayerCommand('bomb', () => csharp.placeBomb()),
       bombButton: phase => sendPlayerCommand('bomb', () => csharp.bombButton(({ begin: 1, held: 2, end: 3, cancel: 4 })[phase])),
       useSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),

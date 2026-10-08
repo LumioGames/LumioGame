@@ -1,13 +1,27 @@
 const DIRECTIONS = { ArrowUp: 1, KeyW: 1, ArrowRight: 2, KeyD: 2, ArrowDown: 3, KeyS: 3, ArrowLeft: 4, KeyA: 4 };
 
+// driver 'interval': held pulses run on their own timer (the shipped default).
+// driver 'pump': the Session pump calls pump() right before each Tick, so exactly one held
+// pulse reaches every admission; presses only latch until that pulse publishes them.
 export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, ready, target = window, panel,
-  schedule = setInterval, cancel = clearInterval, intervalMs = 50 }) {
+  schedule = setInterval, cancel = clearInterval, intervalMs = 50, driver = 'interval' }) {
+  const pumped = driver === 'pump';
+  let pumpPulse = () => {};
+  if (pumped) {
+    let pulse = null;
+    schedule = callback => { pulse = callback; return 1; };
+    cancel = () => { pulse = null; };
+    pumpPulse = () => pulse?.();
+  }
   const held = new Map();
   const bombSources = new Set();
   let timer;
   let focused = true;
   let touch = [0, 0];
   let disposed = false;
+  // Pump driver only: a press waits for the next pump; a tap released before it still moves once.
+  let turnPending = false;
+  let tapDirection = 0;
   const UI_FOCUS = 'button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]';
   function blocked() {
     const active = target.document?.activeElement;
@@ -18,21 +32,35 @@ export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, r
     if (disposed || !ready() || blocked()) { clear(); return; }
     const directions = touch[0] ? touch : [...new Set(held.values())].reverse();
     if (directions.length) sendMove(directions[0], directions[1] ?? 0, turn);
+    else if (tapDirection) sendMove(tapDirection, 0, true);
+  }
+  function latch(direction) {
+    turnPending = true;
+    tapDirection = direction;
   }
   function press(key, direction) {
     if (disposed || !ready() || blocked() || held.has(key)) return;
     held.set(key, direction);
-    move(true);
+    if (pumped) latch(direction);
+    else move(true);
     updateTimer();
   }
   function release(key) {
     held.delete(key);
     updateTimer();
   }
+  function pulse() {
+    const turn = turnPending;
+    move(turn);
+    turnPending = false;
+    tapDirection = 0;
+    if (bombSources.size) bombButton('held');
+    if (pumped) updateTimer();
+  }
   function updateTimer() {
-    if ((held.size || touch[0] || bombSources.size) && timer === undefined)
-      timer = schedule(() => { move(); if (bombSources.size) bombButton('held'); }, intervalMs);
-    if (!held.size && !touch[0] && !bombSources.size && timer !== undefined) {
+    if ((held.size || touch[0] || bombSources.size || tapDirection) && timer === undefined)
+      timer = schedule(pulse, intervalMs);
+    if (!held.size && !touch[0] && !bombSources.size && !tapDirection && timer !== undefined) {
       cancel(timer); timer = undefined;
     }
   }
@@ -57,12 +85,15 @@ export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, r
   function setTouchDirection(primary, secondary = 0) {
     if (disposed || !ready() || blocked()) { clear(); return; }
     touch = primary ? [primary, secondary] : [0, 0];
-    move(true);
+    if (!pumped) move(true);
+    else if (primary) latch(primary);
     updateTimer();
   }
   function clear() {
     held.clear();
     touch = [0, 0];
+    turnPending = false;
+    tapDirection = 0;
     if (bombSources.size) {
       bombSources.clear();
       bombButton('cancel');
@@ -119,5 +150,5 @@ export function createPlayerInput({ sendMove, placeBomb, bombButton, useSkill, r
   }
   const skill = panel?.querySelector('[data-skill]');
   if (skill) listen(skill, 'click', () => { if (ready() && !blocked()) useSkill?.(); });
-  return { clear, setTouchDirection, setBombPressed, destroy() { disposed = true; clear(); for (const remove of listeners) remove(); } };
+  return { clear, setTouchDirection, setBombPressed, pump() { if (!disposed) pumpPulse(); }, destroy() { disposed = true; clear(); for (const remove of listeners) remove(); } };
 }

@@ -1932,3 +1932,60 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 公开发布库refs止于v0.0.4；Game默认pin702f9d9 manifest为0.0.4-main.ecece8a，仅win-x64，与要求0.0.5-main.0e2fc74不符。complete31/Game35只取得既有账本路径与hash标识，没有对应payload或可控现场；检查的Engine最近完成构建未提供该整包。因此本轮没有发新补丁让用户试，也没有用旧SDK凑网页运行。下段需要能访问原运行资产的本地执行环境或可验证完整包/依赖环境，恢复新A/B后按同角色统一时间轴采输入、pump、准入/执行、Logic/Model、ACK、Doll/镜头与逐帧性能，再按证据RED/最小修复/独审。
 
 本段为源码Review和实验归档，未改生产源码/页面字节、未部署、未启用热更。移动手感验收继续FAIL；A/B真实浏览器证据、官方complete/消费/新现场和用户前台通过仍待完成。ADR142、18085、生产schema与其他Owner门保持OPEN。过程材料按根规则归archive，唯一账本只追加，旧checkpoint原始字节保留；知识同步豁免：未新增产品或公共契约。
+
+### 移动手感排障：checkpoint114，Mac 离线定位「外推 × 准入节拍」，交付浏览器埋点、pump 输入开关与插值候选（2026-10-08）
+
+与 checkpoint113 并行，本段在 Mac（Apple M5；dotnet 测试宿主为 x64/Rosetta，不是原生 arm64 的结论）按[交接提示词](2026-10-08-movement-browser-debug-handoff.md)先 Review 再取证。`.run/` 现场与 Windows launcher 不在本机，浏览器全链路实测仍待 Windows。用户在本段明确：F3「先测再定」；先在 Mac 做能离线的部分。
+
+**Review 结论**
+- Runtime 8752（纠偏保留已显示前探）方向对。
+- 7fa 只把 h 到期的瞬间回跳换成以速度 v 连续倒退。外推仍要求每步恰好隔 h 准入，根因没动。
+- Runtime f43/de5 与手感无关。
+- Game b07 读本地 Model 是对的，但 Doll 朝向仍由显示位移差推导（`inst > 0.3` 即转），倒退直接被画成转身。
+- 旧离线探针都是「一输入一 pump、固定相位」，恰好绕开了下面的节拍问题。
+
+**机制链**
+1. MoveAbility 一条输入走一整步，没有持续意图。没输入的 tick 不动；同一 tick 的第二次激活被 GAS `Tick+1` 冷却拒绝（与 checkpoint113 读回一致，本段在 `AbilityComponent.cs:537/584` 复核），所以每条丢失或被拒的输入都是真实漏步。
+2. 持键 `setInterval(50)` 与 pump `setTimeout` 各自独立。期间排队的输入在 pump 时一次性准入同一 cursor tick。
+3. 预测时钟步号按墙钟取整，pump 晚到时一次前进 2 步。
+4. 外推 `v·min(e, 2h−e)` 把任何准入偏差或漏步画成「先倒退、再前跳」。停步时也必先冲过一整步再收回。
+5. 远端走固定延迟插值、不外推，所以别人看自己正常。
+6. 对照：原型是 rAF 累加器单时钟 + 每 tick 消费持续意图 + 落后一帧插值。
+
+**真实浏览器计时探针**（Claude 内置浏览器 Chrome 152，前台 visible；复刻两个定时器与 floor 步号；每组 25 次按住 × 2s，负载为每 pump / 每帧的合成忙等）：
+
+| 负载 pump/帧 ms | 每 pump 输入 0/1/2 | 中招按住 | 步号前进 1/2 | pump 间隔 p50/p95 | 帧间隔 p50/p95 |
+|---|---|---|---|---|---|
+| 0/0 | 1/1000/0 | 1/25 | 1001/0 | 50/51.4 | 16.7/17.6 |
+| 10/6 | 10/982/9 | 2/25 | 1001/0 | 50/51.1 | 16.7/17.6 |
+| 25/10 | 18/996/0 | 14/25 | 1014/0 | 45.1/59.9 | 16.7/33.4 |
+| 40/14 | 134/801/0 | 25/25 | 849/86 | 54/54.3 | 50/66.7 |
+
+轻载下拍频罕见。负载上升后，`setInterval` 直接丢拍、不补发，pump 抖动 ±10–15ms，重载时步号成对跳。用户 Windows 现场是 .NET WASM 解释执行，主线程成本必须用下述埋点实测，不推定。
+
+**Runtime 实验分支 `exp/101-owner-interpolation`**（draft，不合入）
+- `d53c26b` 新增 `OwnerHeldCadenceTests`：场景为随机迟到 0–12ms、每 6 次 pump 漏一步、一次 40ms 卡顿，各在 60/120/144Hz 下跑。在 f69e2c9 上 RED 17/36：
+  - 漏步：2s 内 16–45 个倒退帧，累计约 1.2m。
+  - 单次卡顿：8–20 个倒退帧，单帧最大 0.067m。
+  - 随机迟到：120/144Hz 下 8–10 个倒退帧。
+  - 停步：其余 9 个场景越过终点 0.19–0.2m。
+- `98a9f69` F3 候选，只改 `ModelTransform.Owner.cs`：新目标从当前显示在一步内线性滑到，不外推、不收回，迟到或漏步时就停在目标上；纠偏残差的 50ms 半衰减与 TP 直跳保留。
+  - 新测试 36/36 GREEN；纯托管 Owner 套件 64/64。
+  - 删除 7fa 的到期租期测试文件（这个概念已不存在），仍有意义的意图移入 `OwnerInterpolationTests`。
+  - 8752 纠偏与 OwnerModel 共 7 例，期望由「立即 / 外推值」改为滑行值；原文件在 f69e2c9 可查。
+  - Ecs 全量：f69e2c9 与候选的失败集合逐项一致（207 个，均为本机缺 native）。
+- GAS 联合 Owner 用例**未执行**：本机 rustc 1.94 低于 native 要求的 1.98，未改全局工具链。其中多例显式断言「新后缀立即生效 / 租期」。F3 若采纳，须在 Windows 带 native 逐例修订，并先在 LumioGameEngine 补 movement M8 自角色表现规则的 ADR。
+
+**Game**（本分支）
+- 埋点 `?trace=movement`：按键、移动输入、pump 起止与 Tick 耗时、每帧自角色 target / Model / 玩偶 / 朝向 / 镜头、longtask，用 `__lumioMovementTrace.export()` 导出。
+- A/B 开关 `?input=pump`：持键输入改在 pump 内、Tick 前恰好发一条。默认仍为原定时器；两个开关只在 loopback 或开发桥生效。
+- 工具：`Tools/movement-trace-analyze.mjs` 与 `Tools/movement-beat-probe.html`。
+- 验证：
+  - player-controls 15/15。
+  - Spectator 全部 JS 在临时 Engine web 根（取 LumioClient main 的 voxel 三模块）下改前 109/110、改后 113/114，唯一失败是临时根缺 manifest；默认 pin 下 voxel-grid 5/5。
+  - Presentation tsc 通过，vitest 710/710。
+  - Tools 全量 29 个环境失败，改前改后集合一致；新分析脚本 5/5。
+  - 未执行：Game dotnet 构建、网页 publish、真实 DS 浏览器全链路。
+- 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
+
+下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。

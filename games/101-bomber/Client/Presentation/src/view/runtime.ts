@@ -27,7 +27,7 @@ import { buildDecor } from './geo/decor'
 import { ExplosionFx } from './fx/explosion'
 import { HatFlyFx, type DropTarget } from './fx/hat-fly'
 import { ParticlePool } from './fx/particles'
-import type { PodiumAnchor, ScreenPoint, ViewOptions } from './index'
+import type { LocalViewDebug, PodiumAnchor, ScreenPoint, ViewOptions } from './index'
 import { LabelLayer, type FloatKind, type PlayerTagState } from './labels'
 import { chainHitstopMs, chainShakeAmplitude, CAMERA } from './logic/camera-math'
 import { CELL_GROW_MS, computeChainDelays, type ChainBomb } from './logic/chain-stagger'
@@ -519,6 +519,13 @@ export class ViewRuntime {
     if (!ceremony) this.updateLabels(curr, now)
     this.labels.end()
     this.host.renderer.render(this.rig.scene, cam)
+  }
+
+  debugLocal(): LocalViewDebug | null {
+    const doll = this.dolls.get(this.opts.localPlayerId)
+    if (!doll) return null
+    const camera = this.cam.camera.position
+    return { x: doll.x, z: doll.z, yaw: doll.yaw, speed: doll.speed, cameraX: camera.x, cameraZ: camera.z }
   }
 
   // ---------------------------------------------------------------- 快照 diff

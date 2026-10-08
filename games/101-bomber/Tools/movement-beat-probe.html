@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat Probe</title>
+<style>
+  :root { --bg: #fff; --fg: #111; --muted: #666; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111; --fg: #eee; --muted: #999; } }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.5 ui-monospace, Menlo, monospace; margin: 16px; }
+  pre { white-space: pre-wrap; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>101 输入/pump 拍频探针</h1>
+<p class="muted">复刻 player-controls.mjs 的 setInterval(50) 持键发送，与 main.js pumpSession 的 setTimeout 补偿 pump；
+另按 ClientSession.PredictionClock 的 floor(elapsed×20) 计算每次 pump 的步号前进。每次「按下」随机相位重启 setInterval。</p>
+<pre id="out">running…</pre>
+<script>
+'use strict';
+const HZ = 20, PERIOD = 1000 / HZ, INPUT_MS = 50;
+const params = new URLSearchParams(location.search);
+const HOLD_MS = Number(params.get('hold') ?? 2000);
+const HOLDS = Number(params.get('holds') ?? 25);
+// [pump busy ms (csharp.tick + dumps), rAF busy ms (presentationState + render)]
+const CONFIGS = JSON.parse(params.get('configs') ?? '[[0,0],[10,6],[25,10],[40,14]]');
+
+function busy(ms) { const end = performance.now() + ms; while (performance.now() < end) {} }
+function hist(values) { const h = {}; for (const v of values) h[v] = (h[v] ?? 0) + 1; return h; }
+function pct(sorted, p) { return sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : null; }
+function stats(xs) { const s = [...xs].sort((a, b) => a - b); return { n: s.length, p50: pct(s, .5), p95: pct(s, .95), p99: pct(s, .99), max: s.at(-1) }; }
+const round = x => Math.round(x * 100) / 100;
+
+function runConfig([pumpBusy, frameBusy]) {
+  return new Promise(resolve => {
+    const result = { pumpBusy, frameBusy, inputsPerPump: [], stepAdvancePerPump: [], pumpIntervals: [], inputIntervals: [],
+      frameIntervals: [], hidden: 0, holdsWithZeroOrTwo: 0 };
+    let held = false, sent = 0, lastInput = null, timer, holdIndex = 0, holdZeroTwo = false;
+    // Prediction clock: anchor at a random phase relative to pumps (InitializePredictionClock).
+    const clockAnchor = performance.now() - Math.random() * PERIOD;
+    let lastStep = Math.floor((performance.now() - clockAnchor) * HZ / 1000);
+    let nextPumpAt = performance.now(), lastPump = null, pumpTimer, done = false;
+
+    function pump() {
+      if (done) return;
+      const now0 = performance.now();
+      if (lastPump !== null) result.pumpIntervals.push(now0 - lastPump);
+      lastPump = now0;
+      if (document.visibilityState !== 'visible') result.hidden++;
+      const step = Math.floor((now0 - clockAnchor) * HZ / 1000);
+      if (held) {
+        result.inputsPerPump.push(sent);
+        result.stepAdvancePerPump.push(step - lastStep);
+        if (sent !== 1) holdZeroTwo = true;
+      }
+      lastStep = step;
+      sent = 0;
+      busy(pumpBusy);                          // csharp.tick() + sessionState + applyDump
+      const now = performance.now();           // main.js reads time after the work
+      nextPumpAt += PERIOD;
+      if (nextPumpAt <= now) nextPumpAt = now;
+      pumpTimer = setTimeout(pump, nextPumpAt - now);
+    }
+    let lastFrame = null;
+    function frame(t) {
+      if (done) return;
+      if (lastFrame !== null && held) result.frameIntervals.push(t - lastFrame);
+      lastFrame = t;
+      busy(frameBusy);                         // presentationState JSON + three.js render
+      requestAnimationFrame(frame);
+    }
+    function sendMove() {
+      const t = performance.now();
+      if (lastInput !== null) result.inputIntervals.push(t - lastInput);
+      lastInput = t;
+      sent++;
+    }
+    function press() {
+      held = true; holdZeroTwo = false; lastInput = null;
+      sendMove();                              // press(): move(true) immediately
+      timer = setInterval(sendMove, INPUT_MS); // updateTimer(): schedule(…, 50)
+      setTimeout(release, HOLD_MS);
+    }
+    function release() {
+      clearInterval(timer); held = false;
+      if (holdZeroTwo) result.holdsWithZeroOrTwo++;
+      if (++holdIndex >= HOLDS) { finish(); return; }
+      setTimeout(press, 150 + Math.random() * 350); // new keydown → new random phase
+    }
+    function finish() {
+      done = true; clearTimeout(pumpTimer);
+      resolve({
+        pumpBusyMs: pumpBusy, frameBusyMs: frameBusy, holds: HOLDS, holdMs: HOLD_MS,
+        inputsPerPump: hist(result.inputsPerPump),
+        stepAdvancePerPump: hist(result.stepAdvancePerPump),
+        nonOneInputPumpRatio: round(result.inputsPerPump.filter(v => v !== 1).length / result.inputsPerPump.length),
+        nonOneStepPumpRatio: round(result.stepAdvancePerPump.filter(v => v !== 1).length / result.stepAdvancePerPump.length),
+        holdsWithZeroOrTwoInputPump: result.holdsWithZeroOrTwo,
+        pumpIntervalMs: Object.fromEntries(Object.entries(stats(result.pumpIntervals)).map(([k, v]) => [k, v === null ? v : round(v)])),
+        inputIntervalMs: Object.fromEntries(Object.entries(stats(result.inputIntervals)).map(([k, v]) => [k, v === null ? v : round(v)])),
+        frameIntervalMs: Object.fromEntries(Object.entries(stats(result.frameIntervals)).map(([k, v]) => [k, v === null ? v : round(v)])),
+        hiddenPumps: result.hidden,
+      });
+    }
+    pump();
+    requestAnimationFrame(frame);
+    setTimeout(press, 300);
+  });
+}
+
+(async () => {
+  const out = document.getElementById('out');
+  const results = [];
+  window.__probe = { status: 'running', results, userAgent: navigator.userAgent, startedAt: new Date().toISOString() };
+  for (const config of CONFIGS) {
+    out.textContent = `running config ${JSON.stringify(config)} (${results.length + 1}/${CONFIGS.length})…`;
+    results.push(await runConfig(config));
+  }
+  window.__probe.status = 'done';
+  window.__probe.finishedAt = new Date().toISOString();
+  out.textContent = JSON.stringify(window.__probe, null, 2);
+})();
+</script>
+</body>
+</html>
