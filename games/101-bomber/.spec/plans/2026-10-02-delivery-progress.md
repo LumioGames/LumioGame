@@ -3281,3 +3281,25 @@ baseline新run movement-f1-baseline-71397fcb-a3bf3f8e9d7e1e9e，在hidden独立p
 - 根因是 Root 私有 allocation 误用了 `lumio.mvp.v0`，而当前客户端 `SpectatorReplicaHost.TransportOptions` 必须 successor；仓库正常 compose 的精确值是 `lumio.successor-binding-receipts-parts.v1`。这不是移动语义失败，不放宽安全门。attempt04 candidate/config 同步修正仅这个配置；源码、SDK、Native、WebCIL与网页 bytes不变。旧配置/seals/guard拒绝原输出全部保留。两arm normal verify raw0，证据 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-final-private-preview-01/attempt-04/configuration-correction-01.json`。
 - attempt03 正常 owned stop：pg-stop raw0、protected-after[]；exec85395 raw0。Root 准备 helper 的 EEXIST 与错误传入源码字符串导致 verify MODULE_NOT_FOUND 都保留原始输出，均在服务/account前失败，已改显式目录和正确脚本路径。
 - 实际 A/B+6Bot移动矩阵仍 NOT_RUN，handfeel FAIL_PENDING_USER；Owner/ADR142/18085/schema OPEN，ADR159 Draft，PR280 NEVER_MERGE。
+
+
+## checkpoint234 — 真实双玩家已入场；私有诊断面板遮挡修复候选并重开正常现场（2026-10-09）
+
+- attempt04正常配置已实际消除launch_successor_profile_required，A/B通过角色选择进入同一8人world，6 official Bot admission、DS20Hz/runtime+voxel保持。浏览器为visible Codex IAB tab3；截图 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-final-private-preview-01/attempt-04/both-active-panel-hidden-01.png` 和 `root-live-boundary-readback-01.json` 保留。两次normal UI export分别30s/10s未取得download，诊断控件被presentation-mode CSS隐藏；不读取私有heap，不冒报有效trace或手感。
+- `965fcfc6bd79795dfca3a6e90aace6fd1a894532`已regularpush draft PR59：仅PLAYER+allowed dev/loopback+exactscene+trace页增加privateclass及高z小诊断panel/topExport，不改ordinarygame UI、移动、协议、朝向。实际六gate单项RED→GREEN1/1/skip0/raw0，独立SPEC PASS_SCOPED/QUALITY APPROVE_SCOPED。Root完整patch已读。
+- consumer copy03 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-final-p-actual-execution-01/consumer-root-copy-03/{baseline,f3}/wwwroot`：Root逐一对比每arm198 compiled文件与copy02 exactbytes；每arm299resources中仅main/CSS改动、其余297hash不变，compiledHEAD826、Native180/P04保持。main52547B SHAa51579fc16053b6a15dfedd61d3b0f72afb718029faa57614010882e8925051b，CSS6761B SHA09537b196ac69d6c038d5c5d408c0b4bc657c1c7dec3927df55ae42c53e71ebb。baseline manifest93660B SHA1ce3bd4143c1762099fa73f71f9eda11ce4addabab98a2d0463aedca16fcb0d3；f3 manifest93654B SHA3353a6304fb60ddd90ccef3add494fbd413c1c6842238c9f8bf4899483f8e3b9。
+- 首次copy03 sealer因config-dependent exclusion仍绑定旧mainSHA而真实拒绝；旧失败保留，新expected-input仅绑定actualmain builderSHA，既有runMain调用链及loaderSHA未变；两arm normal seal-02 raw0。证据 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-private-preview-panel-fix-01`，没有.NET重编或WebCIL重提取/全static重复。attempt05每arm1307file绑定并normalverify0；Root实际读回 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-final-private-preview-01/attempt-05/root-copy03-readback-01.json`。
+- attempt04 owned正常cleanup：exec84691/raw0、pg-stop0/protectedafter[]；旧页已关闭释放资源。attempt05开始正常hidden launcher，新prefix由launcher生成并先写receipt，实际矩阵仍待有效导出。
+- docs-only PR60基于main新managed W，仅迁账本，不带旧实验Tools；main521169B为Root账本逐字前缀。spec lint0；完整追加diffcheck发现历史checkpoint149标题一个尾空格，为只追加约束保留并已写PR说明，不伪报格式全绿。
+- 指标更正：F1 admission.movesPerHeldPump不可用，另报correlation.samplesPerPump实际0…5与MoveAbility requests；executionTick差不冒充服务端执行次数。主动反向/贴墙/queuedcarry与显示倒退/过冲分别分析。handfeel FAIL_PENDING_USER，Owner OPEN/ADR159 Draft/PR280 NEVER_MERGE。
+
+
+## checkpoint235 — 真实双页/单页联机已完成；浏览器控制超时使移动矩阵 UNKNOWN，正常清理后启用最小原始取证恢复（2026-10-09）
+
+- 实际源码 Game `965fcfc6bd79795dfca3a6e90aace6fd1a894532`（draft PR59），C#消费构建固定 `826e122be2041a4d25ee76b84bee1533f7f10750`；copy03原始compiled198×2逐字节匹配已在checkpoint234记录，不重新构建或重新审616。
+- attempt05 baseline正常launcher：prefix `MoveLab-4965c6cba0c4e135`、8账号、6/6 official Bot Hosts；compare A/B及随后单A页都进入真实world，页面显示complete=true、finite pose=true，private panel/Export可见。
+- 实际after-world CUA点击在双iframe及单页均多次Page.getFrameTree/Runtime.evaluate超时，download超时；没有取得原始trace，矩阵NOT_RUN，admission/display/facing/timing指标UNKNOWN。不得用界面event计数充当counts.frames或hiddenFrames证明；sentInputs含F1零方向请求，不能推断有人持键。
+- 保全 `C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-final-private-preview-01/attempt-05/root-browser-control-boundary-01.json`、`single-active-before-stop-01.png`与AX原文；旧日志/故障/封件全部保留。随后在本owned config目录wx写stop.flag，exec92061真实raw0；本run pg-stop raw0，13:59:40.411Z ports-after protected=[]。只关闭本次自有tabs4/5，未触碰受保护端口或其他进程。
+- 源码只读调查没有发现JS调度无界while/递归；待实测边界为managedTick与pump同步后处理、RAF的3D/view与重复preview refresh。现有totalMs在尾部控件刷新前截止，不能称完整pump耗时；tickAdvance仅owner预测时钟读差，accepted仅transport，不伪称server执行。
+- Root授权私有evidenceDir同源保存正常UI同份trace/witness JSON并给bytes/SHA回执；明确capture=diagnostic私有opt-in只在ready后做一次可见5s有界取证，支持Stop/hidden/focusloss取消并保留原始失败。此步无自动移动、额外Tick、强制focus或吞错；独立review后仅替换JS/manifest/hash封件，普通页面与compiled826不变。点击验收仍UNKNOWN，不因自动保存标UIclick PASS。
+- PR280 NEVER_MERGE；ADR142/18085/schema Owner门OPEN、ADR159 Draft、F4 NOT_OPENED；手感FAIL_PENDING_USER，原型一致性与左右移动仍须有效轨迹及用户前台确认。
