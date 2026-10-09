@@ -106,3 +106,48 @@ test('facing deviation and hidden frames are reported separately', () => {
 test('a trace without events is rejected', () => {
   assert.throws(() => analyzeMovementTrace({}), /movement_trace_events_missing/);
 });
+
+test('v2 reports causal sample/request/accepted sequences and legal 0/2/5 pump counts', () => {
+  const events = [];
+  let t = 0;
+  for (const count of [0, 2, 5]) {
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const id = String(++t);
+      rows.push({ k: 'sample', sampleId: id, primary: 2, stamp: String(t) });
+      rows.push({ k: 'request', sampleId: id, ability: 'MoveAbility', sender: 'self', wireGeneration: '9',
+        sequence: id, stamp: String(t + 1) });
+      rows.push({ k: 'accepted', sampleId: id, sender: 'self', wireGeneration: '9', sequence: id,
+        stamp: String(t + 2), encodedLength: 3, encodedSha256: 'abc' });
+    }
+    events.push({ k: 'managedTrace', t: t + 10, pumpBracket: { startedAt: t, endedAt: t + 10 },
+      batch: { hostLifetime: 'host-a', clockFrequency: '1000', complete: true, pending: count === 2 ? 2 : 0,
+        eventLoss: '0', pendingLoss: '0', unmatched: '0', diagnosticFailures: '0', events: rows } });
+  }
+  events.push({ k: 'frame', t: 50, rafT: 40, vis: 'visible', dx: 1, tx: 1 });
+  const summary = analyzeMovementTrace({ version: 2, timeBasis: 'performance.now',
+    frameTimeBasis: 'observer-invocation', truncated: false, events });
+  assert.deepEqual(summary.counts.samples, 7);
+  assert.deepEqual(summary.counts.requests, 7);
+  assert.deepEqual(summary.counts.transportAccepted, 7);
+  assert.deepEqual(summary.correlation.samplesPerPump, { 0: 1, 2: 1, 5: 1 });
+  assert.deepEqual(summary.correlation.heldMoveRequestsPerSample, { 1: 7 });
+  assert.equal(summary.correlation.status, 'PASS');
+  assert.equal(summary.correlation.transportObserverAfterRequestMs.max, 1);
+  assert.equal(summary.foregroundGate, 'PASS');
+});
+
+test('overflow, unmatched acceptance and legacy capture provenance cannot certify correlation', () => {
+  const events = [{ k: 'managedTrace', t: 20, pumpBracket: { startedAt: 10, endedAt: 20 },
+    batch: { hostLifetime: 'host-a', clockFrequency: '1000', complete: false, pending: 0,
+      eventLoss: '1', pendingLoss: '0', unmatched: '1', diagnosticFailures: '0',
+      events: [{ k: 'accepted', sampleId: null, sender: 'other', wireGeneration: '10', sequence: '1', stamp: '9' }] } },
+    { k: 'frame', t: 25, vis: 'visible', dx: 1, tx: 1 }];
+  const v2 = analyzeMovementTrace({ version: 2, timeBasis: 'performance.now',
+    frameTimeBasis: 'observer-invocation', truncated: false, events });
+  assert.equal(v2.correlation.status, 'UNPROVEN');
+  assert.equal(v2.correlation.unmatchedAccepted, 1);
+  const legacy = analyzeMovementTrace({ version: 1, truncated: false, events });
+  assert.equal(legacy.captureProvenance, 'uncertified-legacy-v1');
+  assert.equal(legacy.foregroundGate, 'UNPROVEN');
+});

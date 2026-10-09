@@ -55,11 +55,53 @@ function admittingPump(pumps, t) {
 
 export function analyzeMovementTrace(trace) {
   if (!trace || !Array.isArray(trace.events)) throw new Error('movement_trace_events_missing');
+  const certifiedCapture = trace.version >= 2 && trace.timeBasis === 'performance.now' &&
+    trace.frameTimeBasis === 'observer-invocation';
   const events = [...trace.events].sort((a, b) => a.t - b.t);
   const pumps = events.filter(e => e.k === 'pump');
   const inputs = events.filter(e => e.k === 'input' && e.kind === 'move' && e.accepted);
   const frames = events.filter(e => e.k === 'frame');
   const longTasks = events.filter(e => e.k === 'longtask');
+  const managedReceipts = events.filter(e => e.k === 'managedTrace' && e.batch);
+  const managedBatches = managedReceipts.map(e => e.batch);
+  const pumpStepCounts = managedReceipts.filter(e => e.pumpBracket).map(e =>
+    (e.batch.events ?? []).filter(row => row.k === 'sample').length);
+  const managed = managedBatches.flatMap(batch => (batch.events ?? []).map(event => ({ ...event, hostLifetime: batch.hostLifetime, batch })));
+  const samples = managed.filter(e => e.k === 'sample');
+  const requests = managed.filter(e => e.k === 'request');
+  const accepted = managed.filter(e => e.k === 'accepted');
+  const sampleKey = e => `${e.hostLifetime}:${e.sampleId}`;
+  const requestsBySample = new Map();
+  for (const request of requests) {
+    const key = sampleKey(request);
+    requestsBySample.set(key, [...(requestsBySample.get(key) ?? []), request]);
+  }
+  const heldMoveCounts = samples.filter(s => Number(s.primary) !== 0).map(sample =>
+    (requestsBySample.get(sampleKey(sample)) ?? []).filter(r => r.ability === 'MoveAbility').length);
+  const transportObservationMs = [];
+  const requestKey = e => `${e.hostLifetime}:${e.sender}:${e.wireGeneration}:${e.sequence}`;
+  const requestLookup = new Map();
+  for (const request of requests) {
+    const key = requestKey(request);
+    requestLookup.set(key, [...(requestLookup.get(key) ?? []), request]);
+  }
+  const matchingRequest = row => (requestLookup.get(requestKey(row)) ?? []).find(r => r.sampleId === row.sampleId);
+  for (const row of accepted) {
+    const prior = matchingRequest(row);
+    const frequency = Number(row.batch.clockFrequency);
+    if (prior && prior.sampleId === row.sampleId && typeof prior.stamp === 'string' &&
+      typeof row.stamp === 'string' && Number.isFinite(frequency) && frequency > 0) {
+      const delta = Number(BigInt(row.stamp) - BigInt(prior.stamp)) * 1000 / frequency;
+      if (delta >= 0) transportObservationMs.push(delta);
+    }
+  }
+  const incompleteManaged = managedBatches.some(batch => !batch.complete || Number(batch.eventLoss) > 0 ||
+    Number(batch.pendingLoss) > 0 || Number(batch.unmatched) > 0 || Number(batch.diagnosticFailures) > 0);
+  const unmatchedAccepted = accepted.filter(e => !e.sampleId || !matchingRequest(e)).length;
+  const latestByHost = new Map(managedBatches.map(batch => [batch.hostLifetime, batch]));
+  const exactCorrelation = managedBatches.length > 0 && samples.length > 0 && !incompleteManaged &&
+    [...latestByHost.values()].every(batch => batch.pending === 0) && unmatchedAccepted === 0 &&
+    heldMoveCounts.every(count => count === 1);
   const windows = holdWindows(inputs);
 
   // A held window spans the pumps from the one admitting its first input to the one admitting its last,
@@ -144,16 +186,58 @@ export function analyzeMovementTrace(trace) {
 
   const frameIntervals = [];
   for (let i = 1; i < frames.length; i++) frameIntervals.push(frames[i].t - frames[i - 1].t);
+  const rafIntervals = [];
+  for (let i = 1; i < frames.length; i++)
+    if (Number.isFinite(frames[i].rafT) && Number.isFinite(frames[i - 1].rafT))
+      rafIntervals.push(frames[i].rafT - frames[i - 1].rafT);
   const pumpIntervals = [];
   for (let i = 1; i < pumps.length; i++) pumpIntervals.push(pumps[i].t - pumps[i - 1].t);
   const degrees = value => (value * 180) / Math.PI;
   const notes = events.filter(e => e.k === 'note').map(e => e.message);
+  const stops = events.filter(e => e.k === 'key' && e.type === 'keyup');
+  const postStopFrameIndices = new Set();
+  const firstFrameAfter = t => {
+    let low = 0, high = frames.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (frames[middle].t <= t) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  };
+  const stopTails = stops.map(stop => {
+    let count = 0, last = null;
+    for (let i = firstFrameAfter(stop.t); i < frames.length && frames[i].t <= stop.t + STOP_WINDOW_MS; i++) {
+      postStopFrameIndices.add(i); count++; last = frames[i];
+    }
+    return { stoppedAt: stop.t, frames: count, lastPublicationSequence: last?.seq ?? null,
+      lastDisplayedX: last?.dx ?? null, lastTargetX: last?.tx ?? null };
+  });
+  const framesAfterStop = postStopFrameIndices.size;
+  const foreground = certifiedCapture && frames.length > 0 && frames.every(f => f.vis === 'visible') &&
+    frames.every(f => Number.isFinite(f.t)) && frames.some(f => Number.isFinite(f.dx) && Number.isFinite(f.tx));
 
   return {
     version: trace.version ?? null, truncated: Boolean(trace.truncated), notes,
-    counts: { events: events.length, pumps: pumps.length, acceptedMoves: inputs.length, frames: frames.length,
+    captureProvenance: certifiedCapture ? 'certified' : 'uncertified-legacy-v1',
+    foregroundGate: foreground ? 'PASS' : 'UNPROVEN',
+    legacyInputAcceptedMeans: 'local-publication-only',
+    stopTails,
+    counts: { events: events.length, pumps: pumps.length, acceptedMoves: inputs.length,
+      legacyPublishedMoves: inputs.length, frames: frames.length,
       holdWindows: windows.length, hiddenFrames: frames.filter(f => f.vis !== 'visible').length,
-      hiddenPumps: pumps.filter(p => p.vis !== 'visible').length },
+      hiddenPumps: pumps.filter(p => p.vis !== 'visible').length, framesAfterStop,
+      samples: samples.length, requests: requests.length, transportAccepted: accepted.length,
+      outsideStepAccepted: managed.filter(e => e.k === 'outside-step-accepted').length },
+    correlation: { status: trace.truncated || !certifiedCapture || !exactCorrelation ? 'UNPROVEN' : 'PASS',
+      heldMoveRequestsPerSample: histogram(heldMoveCounts), samplesPerPump: histogram(pumpStepCounts),
+      unmatchedAccepted, incompleteManaged,
+      requestSequences: requests.map(r => ({ hostLifetime: r.hostLifetime, sender: r.sender,
+        generation: r.wireGeneration, sequence: r.sequence, sampleId: r.sampleId })),
+      acceptedSequences: accepted.map(r => ({ hostLifetime: r.hostLifetime, sender: r.sender,
+        generation: r.wireGeneration, sequence: r.sequence, sampleId: r.sampleId })),
+      transportObserverAfterRequestMs: stats(transportObservationMs),
+      latencyNote: 'C# Stopwatch request-to-observer only; JS pump bracket is observation bound, not exact latency' },
     admission: { movesPerHeldPump: histogram(admitted),
       nonOneRatio: admitted.length ? admitted.filter(v => v !== 1).length / admitted.length : null },
     execution: { tickAdvancePerHeldPump: histogram(tickAdvance), targetStepPerHeldPumpM: stats(targetStep),
@@ -170,7 +254,8 @@ export function analyzeMovementTrace(trace) {
     },
     facing: { heldFrames: facing.length, over30deg: facing.filter(a => degrees(a) > 30).length,
       over90deg: facing.filter(a => degrees(a) > 90).length, deviationDeg: stats(facing.map(degrees)) },
-    timing: { frameIntervalMs: stats(frameIntervals), framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
+    timing: { frameIntervalMs: stats(frameIntervals), rafIntervalMs: stats(rafIntervals),
+      framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
       framesOver50ms: frameIntervals.filter(v => v > 50).length, pumpIntervalMs: stats(pumpIntervals),
       tickMs: stats(pumps.map(p => p.tickMs)), pumpTotalMs: stats(pumps.map(p => p.totalMs)),
       longTasks: longTasks.length, longTaskMs: stats(longTasks.map(l => l.duration)) },

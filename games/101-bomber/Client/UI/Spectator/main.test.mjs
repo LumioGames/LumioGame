@@ -355,6 +355,40 @@ test('Game page contains neither authority parsing, transport retry nor a second
   assert.doesNotMatch(code,/params\.get\(["']allowLoopback/);assert.doesNotMatch(code,/\/api\/games\/[A-Za-z0-9]/);
 });
 
+test('managed trace drains only after the synchronous Tick with a pump observation bracket', async () => {
+  const calls = [], clock = { value: 0 };
+  const p = await runPage({ clock, exports: {
+    Tick() { calls.push('tick'); clock.value += 20; },
+    DrainInputTrace() { calls.push('drain'); return JSON.stringify([{ version: 1, enabled: true, events: [] }]); },
+  } });
+  p.evalInPage(`globalThis.__traceBatches=[]; movementTrace={
+    managed(batch, bracket){__traceBatches.push({batch,bracket})}, pump(){}, note(){}
+  }`);
+  await p.tick();
+  assert.deepEqual(calls.slice(-2), ['tick', 'drain']);
+  const receipt = JSON.parse(p.evalInPage('JSON.stringify(__traceBatches)'));
+  assert.equal(receipt.length, 1);
+  assert.equal(receipt[0].batch.enabled, true);
+  assert.equal(receipt[0].bracket.endedAt - receipt[0].bracket.startedAt, 20);
+});
+
+test('managed final trace drains after Close before the client reference is lost', async () => {
+  const order = [];
+  const p = await runPage({ exports: {
+    async Close() { order.push('close'); },
+    DrainInputTrace() { order.push('drain'); return JSON.stringify([{ version: 1, enabled: true,
+      events: [{ k: 'accepted', sequence: '7' }] }]); },
+  } });
+  p.evalInPage(`globalThis.__finalTrace=[]; movementTrace={
+    managed(batch, bracket){__finalTrace.push({batch,bracket})}, pump(){}, note(){}
+  }`);
+  await p.evalInPage("finish('closed')");
+  assert.deepEqual(order, ['close', 'drain']);
+  const receipt = JSON.parse(p.evalInPage('JSON.stringify(__finalTrace)'));
+  assert.equal(receipt[0].batch.events[0].sequence, '7');
+  assert.equal(receipt[0].bracket, null);
+});
+
 test('step input observes opaque identity and clears retained sources before a fresh physical edge', () => {
   const listeners = new Map();
   const surface = { addEventListener(name, callback) { const rows = listeners.get(name) ?? []; rows.push(callback); listeners.set(name, rows); },

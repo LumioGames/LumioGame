@@ -528,6 +528,9 @@ function bindExports(api) {
   csharp.worldInstanceId = () => api.WorldInstanceId();
   csharp.presentationState = () => api.PresentationState();
   csharp.ownerPresentation = typeof api.OwnerPresentation === 'function' ? () => api.OwnerPresentation() : undefined;
+  if (PLAYER_MODE && inputDriver === 'step' && movementTrace && typeof api.DrainInputTrace !== 'function')
+    throw new Error('Player trace export missing: DrainInputTrace');
+  csharp.drainInputTrace = typeof api.DrainInputTrace === 'function' ? () => api.DrainInputTrace() : undefined;
   if (PLAYER_MODE) {
       for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig'])
       if (typeof api[name] !== 'function') throw new Error('Player input export missing: ' + name);
@@ -737,7 +740,7 @@ function releaseReplica() {
     // The managed exports own one static Session. Finish its Boot before Close,
     // and keep the owner retryable when cleanup still retains resources.
     closing = booting.then(() => csharp.close(), () => csharp.close())
-      .then(() => { runtimeClosed = true; })
+      .then(() => { runtimeClosed = true; drainManagedTrace(null); })
       .finally(() => { closePending = false; });
   }
   return closing;
@@ -760,6 +763,27 @@ function failLaunch(error) {
   void finish('failed').catch(error => console.error('[lumio-session] close failed', error));
   setStatus('failed', spectator.lastError);
   console.error('[lumio-session]', spectator.lastError);
+}
+
+function drainManagedTrace(pumpBracket) {
+  if (!movementTrace || !csharp.drainInputTrace) return;
+  try {
+    for (const batch of JSON.parse(csharp.drainInputTrace())) movementTrace.managed(batch, pumpBracket);
+  } catch (error) {
+    try { movementTrace.note(`managed trace drain failed: ${String(error?.message ?? error)}`); }
+    catch { /* Diagnostics must not fail the Session pump. */ }
+  }
+}
+
+function exportMovementTrace() {
+  drainManagedTrace(null);
+  const blob = new Blob([JSON.stringify(movementTrace.export())], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `lumio-movement-trace-${Date.now()}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function refreshStepInput() {
@@ -792,7 +816,9 @@ function pumpSession(attempt) {
     if (inputDriver === 'step') refreshStepInput();
     const tickStartedAt = performance.now();
     csharp.tick();
-    const tickMs = performance.now() - tickStartedAt;
+    const tickEndedAt = performance.now();
+    const tickMs = tickEndedAt - tickStartedAt;
+    drainManagedTrace({ startedAt: tickStartedAt, endedAt: tickEndedAt });
     // Trace only: the owner publication this Tick left behind (executed step, not render sampling).
     const tracedPose = movementTrace && csharp.ownerPresentation ? JSON.parse(csharp.ownerPresentation()) : null;
     const state = JSON.parse(csharp.sessionState());
@@ -975,6 +1001,8 @@ async function initializePage() {
       movementTrace.note(`input=${inputDriver}`);
       window.__lumioMovementTrace = movementTrace;
       observeLongTasks(movementTrace);
+      const exportButton = document.getElementById('export-movement-trace');
+      if (exportButton) { exportButton.hidden = false; exportButton.addEventListener('click', exportMovementTrace); }
       for (const type of ['keydown', 'keyup'])
         window.addEventListener(type, event => movementTrace.key(type, event.code, event.repeat), { capture: true });
     }

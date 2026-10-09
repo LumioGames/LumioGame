@@ -3,7 +3,7 @@
 // per-frame displacement can be lined up with the admission that caused it.
 // Export with `__lumioMovementTrace.export()` and analyze with tools/movement-trace-analyze.mjs.
 
-export const MOVEMENT_TRACE_VERSION = 1;
+export const MOVEMENT_TRACE_VERSION = 2;
 
 export function createMovementTrace({ now = () => performance.now(), capacity = 300000, doc = globalThis.document,
   userAgent = globalThis.navigator?.userAgent ?? '' } = {}) {
@@ -34,7 +34,7 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
       const target = localPose?.target?.position;
       const model = localPose?.model?.position;
       push({
-        k: 'frame', t: frameNow, dt, vis: visibility(), rt: number(renderTick),
+        k: 'frame', t: now(), rafT: number(frameNow), dt, vis: visibility(), rt: number(renderTick),
         seq: text(localPose?.publicationSequence), step: text(localPose?.localStepOrdinal),
         tick: text(localPose?.executionTick), inputSeq: text(localPose?.inputSequence), cause: text(localPose?.cause),
         tx: number(target?.x), tz: number(target?.z), mx: number(model?.x), mz: number(model?.z),
@@ -43,9 +43,15 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
       });
     },
     longTask(entry) { push({ k: 'longtask', t: entry.startTime, duration: entry.duration }); },
+    // Drain is an observation after the synchronous managed Tick, never a managed occurrence timestamp.
+    managed(batch, pumpBracket) {
+      if (!batch || typeof batch !== 'object') return;
+      push({ k: 'managedTrace', t: now(), pumpBracket, batch });
+    },
     note(message) { push({ k: 'note', t: now(), message: String(message) }); },
     export() {
-      return { version: MOVEMENT_TRACE_VERSION, startedAt, exportedAt: new Date().toISOString(), userAgent,
+      return { version: MOVEMENT_TRACE_VERSION, timeBasis: 'performance.now', frameTimeBasis: 'observer-invocation',
+        managedTimeBasis: 'raw-Stopwatch-unanchored', startedAt, exportedAt: new Date().toISOString(), userAgent,
         truncated, capacity, events: events.slice() };
     },
     clear() { events.length = 0; truncated = false; },

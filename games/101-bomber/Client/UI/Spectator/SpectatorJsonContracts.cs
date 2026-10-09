@@ -8,6 +8,53 @@ using Lumio.Config.Generated.Client;
 
 namespace Lumio.Bomber.Client.Spectator;
 
+// Trace fields are display-only. Every ulong is formatted as an invariant decimal string.
+internal sealed class InputTraceBatchDto
+{
+    public required int version { get; init; }
+    public required bool enabled { get; init; }
+    public required string hostLifetime { get; init; }
+    public required string clockDomain { get; init; }
+    public required string clockFrequency { get; init; }
+    public required bool complete { get; init; }
+    public required string eventLoss { get; init; }
+    public required string pendingLoss { get; init; }
+    public required string unmatched { get; init; }
+    public required string diagnosticFailures { get; init; }
+    public required int pending { get; init; }
+    public InputTraceEventDto? traceOverflow { get; init; }
+    public required List<InputTraceEventDto> events { get; init; }
+}
+
+internal sealed class InputTraceEventDto
+{
+    public required string k { get; init; }
+    public required string stamp { get; init; }
+    public string? sampleId { get; init; }
+    public string? managerId { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? bindingGeneration { get; init; }
+    public string? self { get; init; }
+    public string? matchId { get; init; }
+    public string? ordinal { get; init; }
+    public int? primary { get; init; }
+    public int? secondary { get; init; }
+    public bool? turn { get; init; }
+    public int? bombPress { get; init; }
+    public int? bombRelease { get; init; }
+    public bool? skill { get; init; }
+    public string? ability { get; init; }
+    public string? sender { get; init; }
+    public string? wireGeneration { get; init; }
+    public string? sequence { get; init; }
+    public int? commandCount { get; init; }
+    public string? mappingId { get; init; }
+    public string[]? commandMappingIds { get; init; }
+    public int? encodedLength { get; init; }
+    public string? encodedSha256 { get; init; }
+    public string? reason { get; init; }
+}
+
 internal sealed class OwnerPresentationDto
 {
     public required string sessionGeneration { get; init; }

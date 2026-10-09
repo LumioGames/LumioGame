@@ -46,6 +46,7 @@
     <Compile Include="..\SpectatorReplicaHost.cs" Link="SpectatorReplicaHost.cs" />
     <Compile Include="..\BomberPlayerIntent.cs" Link="BomberPlayerIntent.cs" />
     <Compile Include="..\BomberPlayerStepOptions.cs" Link="BomberPlayerStepOptions.cs" />
+    <Compile Include="..\BomberInputTrace.cs" Link="BomberInputTrace.cs" />
   </ItemGroup>
   <!--
     The page is the deliverable, so it has to be in the publish output. It lives

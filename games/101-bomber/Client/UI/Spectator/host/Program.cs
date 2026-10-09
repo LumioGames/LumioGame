@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
@@ -22,6 +23,8 @@ public static partial class SpectatorExports
     private static BomberClientConfig? s_configuration;
     private static string s_inputMode = "interval";
     private static bool s_inputTrace;
+    private static readonly Queue<string> s_closedTraces = new();
+    private static bool s_closedTraceLoss;
 
     [JSExport]
     public static void ConfigureInputMode(string mode, bool trace)
@@ -83,6 +86,12 @@ public static partial class SpectatorExports
                 if (Environment.TickCount64 - start > 10000) throw new TimeoutException("client_close_pending_resources_retained");
                 await Task.Delay(1);
             }
+            s_client.RetireInputTrace();
+            if (s_inputTrace)
+            {
+                if (s_closedTraces.Count == 8) { s_closedTraces.Dequeue(); s_closedTraceLoss = true; }
+                s_closedTraces.Enqueue(s_client.DrainInputTrace());
+            }
             s_client = null;
         }
         s_engine?.Dispose();
@@ -90,6 +99,18 @@ public static partial class SpectatorExports
     }
 
     [JSExport] public static void Tick() => s_client?.Tick();
+    [JSExport] public static string DrainInputTrace()
+    {
+        var batches = new List<string>();
+        if (s_closedTraceLoss)
+        {
+            batches.Add("{\"version\":1,\"enabled\":true,\"complete\":false,\"events\":[],\"closeRetentionLoss\":true}");
+            s_closedTraceLoss = false;
+        }
+        while (s_closedTraces.Count != 0) batches.Add(s_closedTraces.Dequeue());
+        if (s_client is not null) batches.Add(s_client.DrainInputTrace());
+        return "[" + string.Join(",", batches) + "]";
+    }
     [JSExport] public static int TickRateHz() => checked((int)SpectatorReplicaHost.TickRateHz);
     [JSExport] public static string SessionState() => s_client?.SessionState() ?? "{\"state\":\"closed\",\"closed\":true}";
     [JSExport] public static string ConnectionState() => s_client?.ConnectionState ?? "closed";

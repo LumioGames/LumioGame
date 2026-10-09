@@ -32,10 +32,12 @@ public sealed class SpectatorReplicaHost : IDisposable
     private readonly IClientSession _session;
     private readonly RuntimeJointPrediction _joint;
     private readonly SentObserver _sent = new();
+    private readonly BomberInputTrace? _inputTrace;
     private readonly BomberPlayerIntent _intent = new();
     private readonly BomberPlayerStepOptions? _stepOptions;
     private readonly string _intentLifetime = Guid.NewGuid().ToString("N");
     private InputIdentity? _inputIdentity;
+    private InputIdentity? _lastTraceIdentity;
     private ulong _intentResetVersion;
     private bool _intentEnabled;
     private bool _closing;
@@ -47,6 +49,8 @@ public sealed class SpectatorReplicaHost : IDisposable
         BomberPlayerStepOptions? stepOptions = null)
     {
         _stepOptions = stepOptions;
+        _inputTrace = stepOptions?.TraceEnabled == true ? new BomberInputTrace() : null;
+        _sent.Trace = _inputTrace;
         var launch = ReadLaunch(launchJson);
         var config = configuration ?? SpectatorDump.LoadEmbeddedClientConfig();
         var input = new InputSampleIngress(16);
@@ -132,6 +136,8 @@ public sealed class SpectatorReplicaHost : IDisposable
         notServingCloses = _session.GetSnapshot().NotServingCloses,
         sentInputs = _sent.Count, lastError = LastApplyError,
     }, SpectatorJsonContext.Default.SessionStateDto);
+    public string DrainInputTrace() => _inputTrace?.Drain() ?? BomberInputTrace.DisabledBatch;
+    public void RetireInputTrace() => _inputTrace?.RetirePending();
     private ulong AuthorityTick
     {
         get
@@ -186,7 +192,10 @@ public sealed class SpectatorReplicaHost : IDisposable
     {
         var observation = ReconcileInputIdentity();
         if (phase == 1 && (!_intentEnabled || !observation.Ready)) throw new InvalidOperationException("player_input_not_ready");
-        return _intent.SetBombIntent(phase);
+        int before = _intent.BombIntentRefusalCount;
+        string result = _intent.SetBombIntent(phase);
+        if (_intent.BombIntentRefusalCount > before) _inputTrace?.IntentOverflow(result);
+        return result;
     }
     public void LatchSkillIntent() { RequirePhysicalInput(); _intent.LatchSkillIntent(); }
     public void SetInputIntentEnabled(bool enabled)
@@ -218,6 +227,14 @@ public sealed class SpectatorReplicaHost : IDisposable
     {
         if (_stepOptions is null) return default;
         InputObservation current = ObserveInputIdentity();
+        if (current.Identity is { } nextTrace)
+        {
+            if (_lastTraceIdentity is { } priorTrace &&
+                (!ReferenceEquals(priorTrace.Manager, nextTrace.Manager) ||
+                 priorTrace.SessionGeneration != nextTrace.SessionGeneration))
+                _inputTrace?.RetirePending(reason: "session-retired", newSession: true);
+            _lastTraceIdentity = nextTrace;
+        }
         if (!Equals(_inputIdentity, current.Identity))
         {
             _intent.Invalidate();
@@ -266,34 +283,35 @@ public sealed class SpectatorReplicaHost : IDisposable
             context.ConnectionGeneration != context.Manager.ClientPredictionClockGeneration) return;
         bool enabled = _intentEnabled && observed.Ready;
         BomberIntentSample sample = _intent.PeekSample(enabled);
+        string? sampleId = RecordInputSample(identity, context, sample);
         if (enabled)
         {
             var move = new MoveAbility.Input { PrimaryDirection = (BomberDirection)sample.Primary,
                 SecondaryDirection = (BomberDirection)sample.Secondary, TurnPressed = sample.TurnPressed };
-            if (!PublishStepInput<MoveAbility, MoveAbility.Input>(identity, false, in move)) return;
+            if (!PublishStepInput<MoveAbility, MoveAbility.Input>(identity, false, in move, sampleId)) return;
             _intent.CommitMove(sample.Primary);
         }
         if (sample.BombPressPhase != 0)
         {
             var press = new BombButtonAbility.Input { Phase = sample.BombPressPhase };
-            if (!PublishStepInput<BombButtonAbility, BombButtonAbility.Input>(identity, false, in press)) return;
+            if (!PublishStepInput<BombButtonAbility, BombButtonAbility.Input>(identity, false, in press, sampleId)) return;
             _intent.CommitBomb(sample.BombPressPhase);
         }
         if (sample.BombReleasePhase != 0)
         {
             var release = new BombButtonReleaseAbility.Input { Phase = sample.BombReleasePhase };
             if (!PublishStepInput<BombButtonReleaseAbility, BombButtonReleaseAbility.Input>(identity,
-                sample.BombReleasePhase == 4, in release)) return;
+                sample.BombReleasePhase == 4, in release, sampleId)) return;
             _intent.CommitBomb(sample.BombReleasePhase);
         }
         if (sample.Skill)
         {
             var skill = new UseActiveSkillAbility.Input();
-            if (PublishStepInput<UseActiveSkillAbility, UseActiveSkillAbility.Input>(identity, false, in skill)) _intent.CommitSkill();
+            if (PublishStepInput<UseActiveSkillAbility, UseActiveSkillAbility.Input>(identity, false, in skill, sampleId)) _intent.CommitSkill();
         }
     }
 
-    private bool PublishStepInput<TAbility, TInput>(InputIdentity identity, bool allowDisabled, in TInput input)
+    private bool PublishStepInput<TAbility, TInput>(InputIdentity identity, bool allowDisabled, in TInput input, string? sampleId)
         where TAbility : AbilityType<TInput>, new() where TInput : struct, IAbilityInput
     {
         InputObservation current = ReconcileInputIdentity();
@@ -308,7 +326,27 @@ public sealed class SpectatorReplicaHost : IDisposable
             after.ServerWorldInstanceId != before.ServerWorldInstanceId ||
             after.NextSequence != checked(before.NextSequence + 1))
             throw new InvalidOperationException("player_intent_publication_continuity_lost");
+        RecordInputRequest(sampleId, typeof(TAbility).Name, before.Sender, before.ConnectionGeneration,
+            before.NextSequence, identity.SessionGeneration);
         return true;
+    }
+
+    private string? RecordInputSample(InputIdentity identity, ClientPredictionStepContext context, BomberIntentSample sample)
+    {
+        if (_inputTrace is null) return null;
+        try { return _inputTrace.Sample(identity.Manager, identity.SessionGeneration,
+            identity.WireGeneration, identity.Self.ToHex(), identity.MatchId, context.LocalStepOrdinal,
+            sample.Primary, sample.Secondary, sample.TurnPressed, sample.BombPressPhase,
+            sample.BombReleasePhase, sample.Skill); }
+        catch { _inputTrace.Failure(); return null; }
+    }
+
+    private void RecordInputRequest(string? sampleId, string ability, NetEntityId sender, ulong generation,
+        ulong sequence, ulong sessionGeneration)
+    {
+        if (_inputTrace is null) return;
+        try { _inputTrace.Request(sampleId, ability, sender.ToHex(), generation, sequence, sessionGeneration); }
+        catch { _inputTrace.Failure(); }
     }
     public bool PlaceBomb() { var input = new PlaceBombAbility.Input(); return Activate<PlaceBombAbility, PlaceBombAbility.Input>(in input); }
     public bool BombButton(int phase)
@@ -386,7 +424,12 @@ public sealed class SpectatorReplicaHost : IDisposable
     private sealed class SentObserver : IClientOutboundMessageObserver
     {
         public ulong Count { get; private set; }
-        public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes) => Count++;
+        public BomberInputTrace? Trace { get; set; }
+        public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes)
+        {
+            if (Count < ulong.MaxValue) Count++;
+            Trace?.Accepted(message, encodedBytes);
+        }
     }
     // A synchronous host sink retains no queue or payload. Console delivery failures propagate.
     private sealed class BrowserEvents(Action<string> write, Action<string> failure) : IClientEventWriter
