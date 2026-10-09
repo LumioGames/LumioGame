@@ -123,6 +123,22 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
         sha(Buffer.from(source.slice(unreachable.nodeGuardStart,match.se)))===unreachable.guardSliceSha256){
         excludedBranches.push({from:resource.url,url:specifier,reason:'exact inspected native Node-only createRequire branch; browser unreachable',loaderSha256:resource.sha256,...unreachable});continue;
       }
+      if(dotnetContract&&['process','module'].includes(specifier)&&unreachable&&unreachable.statement===source.slice(match.ss,match.se)&&
+        Number.isSafeInteger(unreachable.guardStart)&&Number.isSafeInteger(unreachable.guardEnd)&&unreachable.guardStart>=0&&unreachable.guardStart<=match.ss&&unreachable.guardEnd>=match.se&&unreachable.guardEnd<=source.length){
+        const guard=source.slice(unreachable.guardStart,unreachable.guardEnd),definition=unreachable.environmentDefinition;
+        const nodeDefinition=definition&&['Se','tt'].includes(definition.token)&&Number.isSafeInteger(definition.start)&&Number.isSafeInteger(definition.end)&&definition.start>=0&&definition.end>definition.start&&definition.end<=source.length?
+          source.slice(definition.start,definition.end):null;
+        const nodeGuard=unreachable.kind==='node-environment'&&nodeDefinition&&sha(Buffer.from(nodeDefinition))===definition.sha256&&
+          nodeDefinition.replace(/^const /,'')===`${definition.token}="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node`&&
+          (guard.includes(`if(${definition.token})`)||guard.includes(`${definition.token}?`));
+        const builder=inventory.get('main.js'),builderSource=await fs.readFile(path.join(root,'main.js'),'utf8');
+        const configGuard=unreachable.kind==='selected-async-flush-disabled'&&specifier==='process'&&!config.asyncFlushOnExit&&
+          guard.includes('if(Pe.config&&Pe.config.asyncFlushOnExit&&0===t)')&&builder.sha256===unreachable.builderSha256&&
+          !/withAsyncFlushOnExit|asyncFlushOnExit|runMainAndExit/.test(builderSource);
+        if(sha(Buffer.from(guard))===unreachable.guardSliceSha256&&(nodeGuard||configGuard)){
+          excludedBranches.push({from:resource.url,url:specifier,reason:nodeGuard?'exact inspected standard Node predicate; false in browser':'config-dependent: actual boot asyncFlushOnExit disabled and current hashed builder does not enable or call exit',loaderSha256:resource.sha256,...unreachable});continue;
+        }
+      }
       edges.push({from:resource.url,to:resolveImport(resource.url,specifier),dynamic:match.d>=0});
     }
     const computed=imports.filter(match=>match.d>=0&&match.n===undefined);

@@ -59,6 +59,26 @@ test('an inspected native Node-only import requires matching byte and branch rec
   const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[file]}},out});
   assert.ok(manifest.excludedBranches.some(branch=>branch.url==='module'&&branch.loaderSha256===file.sha256));
 });
+test('exact Node and disabled async-flush contracts preserve their distinct conditions',async t=>{
+  const digest=value=>createHash('sha256').update(value).digest('hex');
+  for(const kind of ['node-environment','selected-async-flush-disabled']){
+    const root=await fixture(t),node=kind==='node-environment';
+    const definition='tt="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node';
+    const guard=node?'if(tt){await import(/*! webpackIgnore: true */"process");}':'if(Pe.config&&Pe.config.asyncFlushOnExit&&0===t){await import(/*! webpackIgnore: true */"process");}';
+    const source=(node?'const '+definition+';':'const Pe={config:{}},t=0;')+guard;
+    const fileName=node?'_framework/dotnet.runtime.hash.js':'_framework/dotnet.hash.js';await writeFile(path.join(root,fileName),source);
+    if(node)await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}],"jsModuleRuntime":[{"name":"dotnet.runtime.hash.js"}]}};');
+    const statement='import(/*! webpackIgnore: true */"process")',statementStart=source.indexOf(statement),guardStart=source.indexOf(guard);
+    const branch={kind,specifier:'process',statementStart,statementEnd:statementStart+statement.length,statement,guardStart,guardEnd:guardStart+guard.length,guardSliceSha256:digest(guard)};
+    if(node)branch.environmentDefinition={token:'tt',start:source.indexOf(definition),end:source.indexOf(definition)+definition.length,sha256:digest(definition)};
+    else branch.builderSha256=digest(await readFile(path.join(root,'main.js')));
+    const expectedInput={arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[{file:fileName,sha256:digest(source),browserUnreachableImports:[branch]}]}};
+    const out=path.join(root,'browser-resource-manifest.json');
+    if(!node){await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"asyncFlushOnExit":true,"resources":{"assembly":[{"name":"a.wasm"}]}};');await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput,out}),/resource_import_missing/);await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}]}};');}
+    const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput,out});
+    assert.ok(manifest.excludedBranches.some(branch=>branch.kind===kind));
+  }
+});
 test('required boot membership missing and path escape fail before any seal output',async t=>{
   const root=await fixture(t);await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"missing.wasm"}]}};');
   await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}),/missing/);
