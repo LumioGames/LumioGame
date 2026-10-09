@@ -3363,3 +3363,25 @@ baseline新run movement-f1-baseline-71397fcb-a3bf3f8e9d7e1e9e，在hidden独立p
 - 实际red-01 PID 26764 / started 2026-10-09T15:56:50.939Z，5例2PASS3FAIL raw1；green-final-01 PID 34000 / started 2026-10-09T15:59:10.904Z，5PASS0FAIL0skip raw0；均owned30s bound/noTimeout，原输出及进程收据保留。typecheck-01为新增测试this缺注解TS2683两处，补this类型后typecheck-02 raw0，未删断言。Presentation build raw0/135模块，新JS1155631B SHA256 da9628486a2f24b4451f89a90049f6002735f787bcd86d52f634765c0f861c6a；CSS48920B SHA256 509541efd146058d3cb4615fc83352fb29744c58ea086f2e006dd75eb358b03f。
 - f1-whole-raf-timing-integration-01/report.md SHA25617bcd9ae66a4340f23f6190d7502bacad71ba5653c2dd81bc57e63fb61792281；inputs.json精确列4source+35验证refs+2包叶。源码尚未提交，等待独立review与C# lane explicit commit后Root只提交此4文件；产物未服务，未跑新现场或移动矩阵，不能宣称性能改善。
 - C# lane仅新W局部RED→GREEN继续；禁止碰原GameW7脏文件、旧117全suite、协议/额度/20Hz/玩家Bot/体素不变。新Host publish/PE/PDB/WebCIL/完整newcopy seal仍PENDING。Owner门OPEN，PR280 NEVER_MERGE，handfeel FAIL_PENDING_USER。
+
+
+## checkpoint242 — 2026-10-10 C# façade 测量已审/提交、原脏文件保全与新Host构建修订
+
+- C#9文件本地提交8c04ea554d86ab02f5fea17078cda16b5bd051e0（409+/3-），Root4个wholeRAF文件随后提交785930c91f8d19fa09c5bbe028b5dbac96691136；13文件均诊断，不改变20Hz/原型solver/协议/额度/玩家Bot/体素。只将既有codex/101-movement-sync本地快进至785并正常推送draft PR59；没有main合入。Root在快进前后逐字复核原7生成脏文件，0变化，新facadeW3个测试生成脏文件未提交。
+- f1-managed-facade-timing-integration-01/report.md 3328B SHA256 d2fdf6dc7636d3e6fc95cfef79db60d50c136d53912cd60f10f5596f292c8cd4；实际C# meaningful RED03为10例9FAIL1PASS0skip raw2，GREEN02 10PASS0skip raw0；Node GREEN02 13/13 raw0。所有零用例配置失败、初次GREEN01 fixture路径/采集时点失败与Node字段缺失均保留。Native实际PID33484/start16:12:05.4910183Z，180e8e65c08c25c769ec9a596e901e4b1acf78f760585a2161170edc129d8027，linked测试程序集MVID cfef802a-98d7-4463-992e-db28477dc9b5；不冒称浏览器Host已实测。
+- C#独立窄审report5704B SHA256 bd9df80adab9d3ce3262c1e0b823e14e82a849f28d7b40303b6fb5b3a02ca490，SPEC PASS_SCOPED/QUALITY APPROVE_SCOPED，无P0/P1；Root全文读+重算93引用0 mismatch。wholeRAF独立审查4441B SHA25622d3ecebc9a0eb723b0ee93f6d72b8780f08153e4c51971f26da97bfecd4fdff，Root41引用0 mismatch。
+- 非阻塞P2边界说明修正：checked OwnerTick参数成功形成在preIdentity，sessionTick紧贴实际原一次_session.Tick调用后才计时；保留truthful sessionInvoked实现，不能说checked参数在session段。普通TraceEnabled=false新增0读钟/DTO；C#门不是URL私有门。每Host一个pending保留第一+loss，Program旧保留最多9snapshot/10batch仅源码核对，未伪称Nativefixture已压力跑Program。已观察数据不等于完整窗口或纯CPU/GC归因。
+- Root完整读构建/封件脚本，绑定新源码785和原826Gameplay/server/Bot+SDK25d，仅采纳私有可逆Host构建；AOT=false/trim=false。原E01 baseline真实PID12100/start16:27:21.4759492Z，11.798s raw1/noTimeout/inputs0/sourceMatchestrue；CS2021来自诊断生成目录参数末尾分隔符。原日志/plan/partial产物全保留。
+- 新独立E02与Artifacts02仅去掉CompilerGeneratedFilesOutputPath末尾分隔符，其余flags/源/包不变，复用首轮已成功restore的独占HOST cache，不冒称第二轮cache仍absent。baseline真实PID31092/start16:32:00.2844351Z，49.9057462s raw0/300s bound/noTimeout/inputs0/sourceMatchestrue。F3实际已启动PID3836/start2026-10-09T16:34:42.2124971Z，当前尚未在此checkpoint宣称完成。newHost PE/PDB/MVID/WebCIL delta、copy07 normal seal与新场景仍PENDING。
+- 既有ReceiveTurn诊断默认阈值>=10000ms，只在下一轮接收开始前有coarse日志；缺日志不能排除307/1544ms未测长任务。保持UNKNOWN，后续先看actual新三段/wholeRAF数据。Owner/ADR142/18085/schema OPEN，ADR159 Draft，PR280 NEVER_MERGE，F4 NOT_OPENED；handfeel FAIL_PENDING_USER。
+
+
+## checkpoint243 — 2026-10-10 00:47（Asia/Shanghai）新 Host 双变体发布与 copy07 资源实际封存；性能/手感仍未通过
+
+- 源码仍为 Game 私有 draft #59 的 785930c91f8d19fa09c5bbe028b5dbac96691136；Owner / ADR142 / 18085 / schema 门 OPEN，Runtime #280 NEVER_MERGE。
+- E02 F3 publish 实际 raw0：PID3836 / start2026-10-09T16:34:42.2124971Z / 45.0238962s，300s限时内无超时，输入差异0、sourceMatches=true。baseline E02 raw0 已记录在 checkpoint242；E01 baseline CS2021失败和部分产物保留。
+- copy07 使用 E02 新 browser Host、现编 Presentation；两组各198份实际发布编译文件复制、195个非Host托管依赖与同臂旧P04字节一致，各100个生成源码文件绑定。旧P04在原路径保留，只做新Host delta，不宣称重新完成全量P。
+- 四份 Host PE/WebCIL identity extract 均实际 raw0，PE/PDB/source/IL进一步独立 delta审计尚在进行。新Host baseline PE756736B SHA10eaf7a737640df03cde885a18d4d9e2006e6830e7127ea2021600691360d005、WebCIL756501B SHAc214a50b65d05f6f1e26999d2c080004cbf2dbdc5d9c114551d9d24aa9ed4154；F3 PE756736B SHAfae4c99bda6585a06048498479fb87cceb585378d189b820d526efcd24781c7b、WebCIL756501B SHA7945924ffd5d4748f856a4949e6337414c1e44cebfc621853250a0e14b66f55f。
+- 两组正常 resource-seal-copy07 各raw0。finalizer生成 complete final-seal 后，Root错误把绝对label传给收据封装器，导致stdout落盘ENOENT；该child原始退出值/输出未保留，记UNAVAILABLE，不能称finalizer raw0。错误收据 E02/finalize-wrapper-path-error-01.json。Root另行独立回读1040身份项（包括602resources、396compiled、index/manifest/compression/overlays）0差异：E02/root-copy07-resource-byte-readback-01.json。
+- copy07两组各301资源；baseline manifest94421B SHA664e3e74220369c8f3b265f062727fccfc303f749bd8d13be8b8634ce8ecdcaa；F3 manifest94415B SHA0c639dcdd0094e417c142f0e3de66b6b0a81150e04406f6baf5f506491645f00。main58971B SHA804f950b3230b1aaa0a52365bd4b39760ee1bc3f8241d7e817ea7fe14a9593ed；Presentation1155631B SHAda9628486a2f24b4451f89a90049f6002735f787bcd86d52f634765c0f861c6a。这些是静态文件实际身份，未服务/未浏览器运行。
+- 新 attempt09 绑定工具已准备未执行；新的托管Tick三阶段与整帧观测将先解释 attempt08 的秒级停顿。运动矩阵NOT_RUN，手感FAIL_PENDING_USER；没有降低tick、减Bot/玩家或关闭体素，没有触碰保护端口或清理旧故障。
