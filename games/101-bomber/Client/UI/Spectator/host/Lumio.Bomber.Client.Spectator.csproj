@@ -69,6 +69,8 @@
     <Content Include="..\player-controls.mjs" Link="wwwroot\player-controls.mjs" />
     <Content Include="..\player-intent-controls.mjs" Link="wwwroot\player-intent-controls.mjs" />
     <Content Include="..\movement-trace.mjs" Link="wwwroot\movement-trace.mjs" />
+    <Content Include="..\movement-preview-controls.mjs" Link="wwwroot\movement-preview-controls.mjs" />
+    <Content Include="..\loaded-resource-witness.mjs" Link="wwwroot\loaded-resource-witness.mjs" />
     <Content Include="..\game-view.mjs" Link="wwwroot\game-view.mjs" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.js" Link="wwwroot\presentation\presentation.js" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.css" Link="wwwroot\presentation\presentation.css" />

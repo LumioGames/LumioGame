@@ -53,3 +53,7 @@ body.presentation-mode { margin: 0; padding: 0; max-width: none; overflow: hidde
 .presentation-mode .sel-sub { display: none; }
 .presentation-mode .terrain-pending #game-stage { visibility: hidden; }
 @media (pointer: fine) { .presentation-mode #player-controls { display: none; } }
+/* The private exercise stays inside the existing input focus panel. */
+#movement-preview-controls { max-width: 48rem; padding: .75rem; border: 1px solid currentColor; }
+#movement-preview-controls button[aria-pressed="true"] { outline: 3px solid #53d0f0; }
+#movement-preview-controls [data-movement-status] { overflow-wrap: anywhere; }

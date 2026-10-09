@@ -42,6 +42,10 @@ let stepInputObserving = false;
 // Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
 let inputDriver = 'interval';
 let movementTrace = null;
+let movementPreviewControls = null;
+let resourceWitness = null;
+let previewFinitePose = 'UNAVAILABLE';
+let lastTraceCompleteness = 'UNAVAILABLE';
 let selectedCharacter = null;
 let initialSelectionPending = false;
 let initialSelectionSent = false;
@@ -323,6 +327,7 @@ async function loadCatalog(signal) {
   if (!response || response.ok === false) {
     throw new Error(`catalog_fetch_failed:${response ? response.status : "no_response"}`);
   }
+  if (resourceWitness) await resourceWitness.verifyDataResponse(response, CATALOG_URL);
   catalogText = await response.text();
   if (PLAYER_MODE) blockAssets = new Map(JSON.parse(catalogText).rows.map(row => [row.blockType, row.assetRef]));
   return catalogText;
@@ -435,7 +440,7 @@ function applyDump(raw) {
       const self = spectator.positions.find(p => p.self);
       const selfEl = document.getElementById('player-self');
       if (selfEl) selfEl.textContent = self ? `${self.name ?? 'You'} | ${Number(self.x).toFixed(2)}, ${Number(self.z).toFixed(2)}` : 'Joining room';
-      document.querySelectorAll('#player-controls button').forEach(button => {
+      document.querySelectorAll('#player-controls button:not([data-movement-record]):not([data-movement-export]):not(#export-resource-witness)').forEach(button => {
         button.disabled = !active || !player.replica.inputOpen;
       });
     }
@@ -454,6 +459,7 @@ function updateGamePresentation() {
     if (gameViewLoading) return;
     const generation = gameViewGeneration;
     gameViewLoading = import('./game-view.mjs').then(({ createGameView }) => {
+      resourceWitness?.noteImport('./game-view.mjs');
       if (generation !== gameViewGeneration) return;
       const attempt = csharp.ownerPresentation ? connectionAttempt : null;
       if (csharp.ownerPresentation) gameViewOwnerGeneration = generation;
@@ -484,9 +490,15 @@ function updateGamePresentation() {
           ? (refreshStepInput() && csharp.latchSkillIntent())
           : sendPlayerCommand('skill', () => csharp.useActiveSkill()),
         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
-        onFrame: globalThis.__lumioMovementTrace ? frame => globalThis.__lumioMovementTrace.frame(frame) : undefined,
+        onFrame: globalThis.__lumioMovementTrace ? frame => {
+          globalThis.__lumioMovementTrace.frame(frame);
+          const local = frame.local;
+          previewFinitePose = local ? [local.x, local.z, local.yaw].every(Number.isFinite) : 'UNAVAILABLE';
+          movementPreviewControls?.refresh();
+        } : undefined,
       } : {});
       gameView = ownerView;
+      resourceWitness?.noteStage('Presentation-created');
       gameViewLoading = null;
       updateGamePresentation();
     }).catch(error => {
@@ -562,6 +574,7 @@ async function loadWasmExports() {
   if (managedLoaded) return true;
   const injected = window.__lumioExports;
   if (injected && typeof injected === "object") {
+    if (resourceWitness) throw new Error('resource_witness_rejects_export_stub');
     engineInvoke = window.__lumioEngine;
     bindExports(injected);
     managedLoaded = true;
@@ -571,14 +584,21 @@ async function loadWasmExports() {
 
   try {
     const { dotnet } = await import("./_framework/dotnet.js");
-    const { loadEngineWasm } = await import('./engine-wasm.mjs');
-    engineInvoke = await loadEngineWasm(new URL('.', location.href));
-    const { getAssemblyExports, getConfig, runMain, setModuleImports } = await dotnet.create();
+    resourceWitness?.noteImport('./_framework/dotnet.js');
+    if (resourceWitness) engineInvoke = await resourceWitness.initializeNative(new URL('.', location.href));
+    else {
+      const { loadEngineWasm } = await import('./engine-wasm.mjs');
+      engineInvoke = await loadEngineWasm(new URL('.', location.href));
+    }
+    const builder = resourceWitness ? dotnet.withResourceLoader(resourceWitness.loadBootResource) : dotnet;
+    const { getAssemblyExports, getConfig, runMain, setModuleImports } = await builder.create();
+    if (resourceWitness) { await resourceWitness.assertBootCoverage(); resourceWitness.noteStage('dotnet-created'); }
     setModuleImports('bomber-engine', { invoke: engineInvoke });
     setModuleImports('bomber-platform', { renewLaunch: async () => JSON.stringify(await launchFromPlatform()) });
     const config = getConfig();
     const exports = await getAssemblyExports(config.mainAssemblyName);
     await runMain();
+    resourceWitness?.noteStage('runMain-completed');
     const api = exports?.Lumio?.Bomber?.Client?.Spectator?.SpectatorExports;
     if (!api || typeof api.DumpPositions !== "function" || typeof api.Tick !== "function") {
       setStatus("failed", "exports missing");
@@ -593,6 +613,7 @@ async function loadWasmExports() {
         sdk: agentExports.Microsoft.DotNet.HotReload.WebAssembly.Browser.WebAssemblyHotReload });
     }
     bindExports(api);
+    resourceWitness?.noteStage('real-exports-bound');
     managedLoaded = true;
     setStatus("wasm-ready");
     return true;
@@ -667,6 +688,25 @@ function pageAllowsLoopback() {
   return typeof location !== "undefined" && LOOPBACK_HOSTS.includes(location.hostname);
 }
 
+function movementPreviewEnabled() {
+  return (pageAllowsLoopback() || globalThis.__lumioDevelopment) &&
+    new URLSearchParams(location.search).get('scene') === 'movement-sync-preview';
+}
+
+async function initializeResourceWitness() {
+  if (!movementPreviewEnabled()) return;
+  const bootstrap = globalThis.__lumioResourceBootstrap;
+  if (!bootstrap) throw new Error('resource_witness_sealed_bootstrap_missing');
+  const { createLoadedResourceWitness } = await import('./loaded-resource-witness.mjs');
+  resourceWitness = createLoadedResourceWitness({ ...bootstrap, base: new URL('.', location.href).href });
+  await resourceWitness.ready;
+  resourceWitness.noteImport('./main.js');
+  resourceWitness.noteImport('./loaded-resource-witness.mjs');
+  resourceWitness.noteStyles(document);
+  const button = document.getElementById('export-resource-witness');
+  if (button) { button.hidden = false; resourceWitness.bindExport(button); }
+}
+
 // Local test mode, the one explicit entry that bypasses the Platform: whoever loads
 // the page (node tests, a Playwright probe, a local harness) injects the launch as
 // `window.__lumioLaunch` before main.js runs. It needs no /games/<slug>/ path; `?ws=`
@@ -727,6 +767,7 @@ let booting = Promise.resolve();
 let launchAbort = null;
 
 function releaseReplica() {
+  movementPreviewControls?.invalidate();
   playerInput?.clear();
   stepInputToken = null;
   stepInputReady = false;
@@ -785,7 +826,9 @@ function drainManagedTrace(pumpBracket) {
 
 function exportMovementTrace() {
   drainManagedTrace(null);
-  const blob = new Blob([JSON.stringify(movementTrace.export())], { type: 'application/json' });
+  const exportedTrace = movementTrace.export();
+  lastTraceCompleteness = !exportedTrace.truncated && exportedTrace.diagnosticFailures === 0;
+  const blob = new Blob([JSON.stringify(exportedTrace)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -855,6 +898,9 @@ function pumpSession(attempt) {
     if (displayed) setStatus(state.state);
     movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
       totalMs: performance.now() - pumpStartedAt, state: state.state, pose: tracedPose });
+    movementPreviewControls?.refresh();
+    if (resourceWitness?.status().complete) resourceWitness.noteStage('required-import-completed');
+    if (resourceWitness && state.state === 'active') resourceWitness.noteStage('real-session-admitted');
     const period = 1000 / csharp.tickRateHz();
     const now = performance.now();
     nextPumpAt += period;
@@ -892,6 +938,7 @@ async function loadSelectedConfig(signal) {
   if (selectedConfigLoaded) return;
   const response = await fetch('/api/game/config', { signal, cache: 'no-store', credentials: 'same-origin' });
   if (!response.ok) throw new Error('selected_client_config_unavailable');
+  if (resourceWitness) await resourceWitness.verifyDataResponse(response, '/api/game/config');
   const bundle = await response.text();
   signal.throwIfAborted();
   csharp.configureConfig(bundle);
@@ -939,6 +986,7 @@ async function chooseFirstCharacter() {
   const abort = new AbortController();
   selectionAbort = abort;
   const { chooseEntryCharacter } = await import('./presentation/presentation.js');
+  resourceWitness?.noteImport('./presentation/presentation.js');
   abort.signal.throwIfAborted();
   const root = document.getElementById('presentation');
   root.hidden = false;
@@ -991,6 +1039,7 @@ function sendPlayerCommand(kind, publishRequest) {
 }
 
 async function initializePage() {
+  await initializeResourceWitness();
   if (PLAYER_MODE) {
     document.body.classList.add('player-page');
     const label = window.__lumioPlayerConfig.label;
@@ -1003,12 +1052,14 @@ async function initializePage() {
     canvas.width = canvas.height = 760;
     const flags = readMovementFlags();
     inputDriver = flags.inputDriver;
-    if (flags.trace) {
+    if (flags.trace || movementPreviewEnabled()) {
       const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
+      resourceWitness?.noteImport('./movement-trace.mjs');
       movementTrace = createMovementTrace();
       movementTrace.note(`input=${inputDriver}`);
       window.__lumioMovementTrace = movementTrace;
       observeLongTasks(movementTrace);
+      resourceWitness?.noteStage('trace-created');
       const exportButton = document.getElementById('export-movement-trace');
       if (exportButton) { exportButton.hidden = false; exportButton.addEventListener('click', exportMovementTrace); }
       for (const type of ['keydown', 'keyup'])
@@ -1017,6 +1068,7 @@ async function initializePage() {
     const { createPlayerInput } = inputDriver === 'step'
       ? await import('./player-intent-controls.mjs').then(({ createPlayerIntentControls }) => ({ createPlayerInput: createPlayerIntentControls }))
       : await import('./player-controls.mjs');
+    resourceWitness?.noteImport(inputDriver === 'step' ? './player-intent-controls.mjs' : './player-controls.mjs');
     playerInput = createPlayerInput(inputDriver === 'step' ? {
       panel: document.getElementById('player-controls'),
       ready: () => refreshStepInput(),
@@ -1033,6 +1085,7 @@ async function initializePage() {
       },
       latchSkillIntent: () => csharp.latchSkillIntent(),
       clearIntent: () => { if (managedLoaded && !runtimeClosed) {
+        movementPreviewControls?.invalidate();
         csharp.clearPlayerIntent();
         try { movementTrace?.intentReset(); }
         catch { try { movementTrace?.diagnosticFailure('intent-reset-record'); } catch { /* Diagnostic only. */ } }
@@ -1050,8 +1103,34 @@ async function initializePage() {
       bombButton: phase => sendPlayerCommand('bomb', () => csharp.bombButton(({ begin: 1, held: 2, end: 3, cancel: 4 })[phase])),
       useSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
     });
+    resourceWitness?.noteStage('controls-created');
+    if (movementPreviewEnabled()) {
+      const { createMovementPreviewControls } = await import('./movement-preview-controls.mjs');
+      resourceWitness?.noteImport('./movement-preview-controls.mjs');
+      const panel = document.getElementById('movement-preview-controls');
+      panel.hidden = false;
+      movementPreviewControls = createMovementPreviewControls({ panel, input: playerInput,
+        state: () => {
+          const identity=resourceWitness?.status();
+          const focused = document.activeElement;
+          const focusBlocked = focused?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]') &&
+            !document.getElementById('player-controls')?.contains?.(focused);
+          return { ready: inputDriver === 'step' ? refreshStepInput() :
+          active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true && !gameView?.inputBlocked() &&
+          !document.hidden && document.hasFocus?.() !== false && !focusBlocked,
+          resetToken: stepInputToken, inputMode: inputDriver, composition: '2 humans + 6 official Bot Hosts (admission UNVERIFIED)',
+          version: `Game ${identity?.sourceHead ?? 'UNAVAILABLE'} / SDK ${identity?.sdkVersion ?? 'UNAVAILABLE'}`,
+          identity: identity ? `${identity.arm}/${identity.pageRunId}` : 'UNAVAILABLE',
+          complete: identity?.complete ?? false, finitePose: previewFinitePose,
+          traceComplete:lastTraceCompleteness,inputsSent:player.inputsSent };
+        },
+        trace: () => movementTrace, exportTrace: exportMovementTrace });
+      const originalClear = playerInput.clear;
+      playerInput.clear = () => { movementPreviewControls.invalidate(); return originalClear(); };
+      window.addEventListener('pagehide', () => movementPreviewControls.destroy(), {once:true});
+    }
   }
   document.getElementById('enter')?.addEventListener('click', () => { void start(); });
   await start();
 }
-void initializePage();
+void initializePage().catch(failLaunch);

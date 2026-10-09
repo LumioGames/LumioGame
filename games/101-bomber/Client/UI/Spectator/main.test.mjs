@@ -15,6 +15,17 @@ const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
 const replica = await import(pathToFileURL(path.join(WEB, 'replica-voxel-grid.mjs')));
 const MAIN_SOURCE = fs.readFileSync(new URL('./main.js', import.meta.url), 'utf8');
 const CREDENTIAL = 'test-admission-credential-do-not-leak';
+test('closed input keeps private record and export buttons available in the real applyDump integration', () => {
+  const direction = {disabled:false}, record = {disabled:false}, exp = {disabled:false}, identity = {disabled:false};
+  const sandbox = { PLAYER_MODE:true, active:false, GAME_VIEW:false, player:{replica:null},
+    spectator:{positions:[]}, parseDump:()=>[],paint(){},commitInitialSelection(){},
+    csharp:{playerState:()=>'{"inputOpen":false}'},
+    document:{getElementById:()=>null,querySelectorAll:selector=>selector.includes(':not')?[direction]:[direction,record,exp,identity]} };
+  const context = vm.createContext(sandbox);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function applyDump(raw)'),MAIN_SOURCE.indexOf('function updateGamePresentation()')),context);
+  assert.equal(sandbox.applyDump('[]'),true); assert.equal(direction.disabled,true);
+  assert.equal(record.disabled,false); assert.equal(exp.disabled,false); assert.equal(identity.disabled,false);
+});
 const LAUNCH = { wsUrl: 'wss://edge.example/play/session-abc', subprotocol: 'lumio.successor-binding-receipts-parts.v1', admissionCredential: CREDENTIAL, roomId: 'room-from-platform' };
 const settle = async predicate => { for (let i = 0; i < 50 && !predicate(); i++) await new Promise(resolve => setImmediate(resolve)); assert.ok(predicate(), 'asynchronous composition settled'); };
 const drain = async () => { for (let i = 0; i < 10; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -511,6 +522,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
   let callbacks;
   const sandbox = {
     JSON, Date,
+    resourceWitness:null, movementPreviewControls:null, previewFinitePose:'UNAVAILABLE',
     blocked: false, touch: [], bombEdges: [],
     api: {
       ConfigureConfig() {}, ConfigureInputMode() {}, Boot() {}, Close() {}, Tick() {}, TickRateHz() { return 30; }, SessionState() {}, WorldHandleBytes() {}, ReadBox() {}, WorldInstanceId() {}, LastApplyError() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},

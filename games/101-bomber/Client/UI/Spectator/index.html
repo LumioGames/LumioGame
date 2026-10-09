@@ -42,6 +42,17 @@
     </div>
     <button type="button" data-bomb disabled>Place bomb</button>
     <button type="button" data-skill title="Use active skill" disabled>Skill</button>
+    <section id="movement-preview-controls" hidden aria-label="Private movement exercise">
+      <p data-movement-status role="status">Identity and admission UNVERIFIED</p>
+      <button type="button" data-movement-direction="1">W</button>
+      <button type="button" data-movement-direction="4">A</button>
+      <button type="button" data-movement-direction="3">S</button>
+      <button type="button" data-movement-direction="2">D</button>
+      <button type="button" data-movement-direction="0">Stop touch latch</button>
+      <button type="button" data-movement-record>Start recording</button>
+      <button type="button" data-movement-export>Export trace</button>
+      <button id="export-resource-witness" type="button" hidden>Export resource identity</button>
+    </section>
   </div>
   <!-- Block id -> swatch, built at runtime from the ids actually on screen. -->
   <div id="legend"></div>
