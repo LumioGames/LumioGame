@@ -314,7 +314,9 @@ public sealed class MovementNativeParityTests
             WriteIpc(Path.Combine(ipc, "client-loaded-identity.json"), JsonSerializer.Serialize(
                 CaptureLoadedIdentity("client", native, replica.Manager.GetType().Assembly,
                     typeof(AbilityComponent).Assembly, typeof(MoveAbility).Assembly,
-                    instance.GetType().Assembly, typeof(MovementNativeParityTests).Assembly), EvidenceJsonOptions));
+                    instance.GetType().Assembly, instance.Session.GetType().Assembly,
+                    typeof(ClientJointPrediction).Assembly, typeof(GasJointPrediction).Assembly,
+                    typeof(MovementNativeParityTests).Assembly), EvidenceJsonOptions));
             Lumio.Bomber.Tests.MovementNativeParityFixture.AssertReadback(
                 NativeWorldVoxelResources.Require(replica.Manager).Voxel, scenario.Map);
             Assert.Equal(new Vector3(scenario.Start[0] + 0.5f, 1.5f, scenario.Start[1] + 0.5f),
@@ -621,12 +623,12 @@ public sealed class MovementNativeParityTests
                 else Assert.Equal(0UL, release.ExecutionTick);
                 Assert.NotEqual(0, beforeRelease.Memory.LastMoveDirection);
                 Assert.Equal(0UL, beforeRelease.Memory.LastAssistTick);
-                float remainingCorrectionBefore = Math.Abs(beforeRelease.X -
+                float centreOffsetBefore = Math.Abs(beforeRelease.X -
                     (MathF.Floor(beforeRelease.X) + 0.5f));
-                float remainingCorrectionAfter = Math.Abs(release.X -
+                float centreOffsetAfter = Math.Abs(release.X -
                     (MathF.Floor(release.X) + 0.5f));
-                Assert.InRange(remainingCorrectionBefore, 0.0001f, 0.5f);
-                Assert.InRange(remainingCorrectionAfter, 0.0001f, 0.5f);
+                Assert.InRange(centreOffsetBefore, 0.0001f, 0.5f);
+                Assert.InRange(centreOffsetAfter, 0.0001f, 0.5f);
                 Assert.Equal(beforeRelease.Memory.PendingTurnDirection,
                     release.Memory.PendingTurnDirection);
                 if (idleAt == 8)
@@ -884,12 +886,22 @@ public sealed class MovementNativeParityTests
         {
             using (var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
             {
+                string retryReceipt = path + ".read-retries.jsonl";
+                var wall = Stopwatch.StartNew();
                 var release = Task.Run(async () => {
-                    await Task.Delay(30, TestContext.Current.CancellationToken);
-                    held.Dispose();
+                    try
+                    {
+                        while (!File.Exists(retryReceipt) || new FileInfo(retryReceipt).Length == 0)
+                        {
+                            if (wall.Elapsed >= TimeSpan.FromSeconds(1))
+                                throw new TimeoutException("Real sharing retry receipt deadline.");
+                            await Task.Delay(2, TestContext.Current.CancellationToken);
+                        }
+                    }
+                    finally { held.Dispose(); }
                 }, TestContext.Current.CancellationToken);
-                Assert.Equal("actual-file-lock", WaitReadIpc(path, child, TimeSpan.FromSeconds(1)));
-                await release;
+                try { Assert.Equal("actual-file-lock", WaitReadIpc(path, child, TimeSpan.FromSeconds(1))); }
+                finally { await release; }
             }
             Assert.True(File.Exists(path + ".read-retries.jsonl"));
             Assert.NotEmpty(File.ReadAllLines(path + ".read-retries.jsonl"));
