@@ -86,7 +86,95 @@ public sealed class MovementNativeParityTests
     public Task AbsentMoveAdvancesActualStepWithoutMoveAdmission() => RunCase("P1", 3, absentAt: 1);
 
     [Fact]
+    public Task BlockedPendingTurnContinuesOnTypedIdle()
+        => RunCase("P6", 9, idleAt: 2);
+
+    [Fact]
+    public Task BlockedPendingTurnExpiresAcrossAbsentMove()
+        => RunCase("P6", 9, absentAt: 2);
+
+    [Fact]
+    public Task ReleaseAfterAcceptedAssistUsesTypedIdleMemory()
+        => RunCase("P9", 13, idleAt: 11);
+
+    [Fact]
+    public Task ReleaseAfterAcceptedAssistWithoutMoveKeepsPriorMemory()
+        => RunCase("P9", 13, absentAt: 11);
+
+    [Fact]
+    public Task P10DryToWaterBoundaryUsesCrossedCellSpeed() => RunCase("P10", 5);
+
+    [Fact]
+    public Task WetInitialCellUsesWaterSpeedFromSameP10Start()
+        => RunCase("P10", 5, scenarioVariant: "water-start");
+
+    [Fact]
+    public Task WaterToDryBoundaryUsesRemainingTimeInCrossedCell()
+        => RunCase("P10", 9, scenarioVariant: "water-exit");
+
+    [Fact]
+    public Task FullyWaterControlFromSameExitStartRemainsAtWaterSpeed()
+        => RunCase("P10", 9, scenarioVariant: "water-exit-control");
+
+    [Fact]
+    public Task SafeStartRefusesDangerousFallback()
+        => RunCase("P5", 3, scenarioVariant: "danger-safe-fallback");
+
+    [Fact]
+    public Task AlreadyDangerousStartMayUseFallback()
+        => RunCase("P5", 3, scenarioVariant: "danger-already-start");
+
+    [Fact]
+    public Task DirectInputUsesSameTimedDangerAsControl()
+        => RunCase("P5", 3, scenarioVariant: "danger-direct");
+
+    [Fact]
     public Task StaleClientLifeIsRejectedByActualAuthority() => RunCase("P1", 2, identityInvalidAt: 1);
+
+    [Fact]
+    public void NonliveParticipantFieldCannotAdvanceNativeWorld()
+    {
+        string root = Lumio.Bomber.Tests.MovementNativeParityFixture.FindGameRoot();
+        var scenario = Lumio.Bomber.Tests.MovementNativeParityFixture.Load().Cases.Single(row => row.Id == "P1");
+        byte[] catalog = File.ReadAllBytes(Path.Combine(root, "Server/Assets/Maps/official-catalog.json"));
+        string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")!;
+        var budget = new KernelConfig { MaxNativeBytes = 256UL << 20, MaxHandles = 65536,
+            MaxJobsQueued = 1024, MaxJobsRunning = 64, MaxCompletionItems = 1024,
+            LogMailboxCapacity = 4096, MaxContexts = 64 };
+        using var authority = new Authority(root, native, budget, catalog, scenario, null);
+        Vector3 before = authority.Position;
+        authority.InvalidateIdentity("nonlive-participant");
+        Assert.False(authority.Identity.PlayerParticipantLive);
+        var error = Assert.Throws<InvalidOperationException>(() => authority.Manager.Tick());
+        Assert.Contains("Player life is already assigned to another participant", error.ToString(),
+            StringComparison.Ordinal);
+        Assert.Equal(before, authority.Position);
+        WriteEvidence("nonlive-participant-world-invariant", new {
+            outcome = "ProcessorPlan-rejection-before-terminal-Move",
+            authority.Identity, error = error.ToString(),
+            loaded = CaptureLoadedIdentity("authority", native, authority.Manager.GetType().Assembly,
+                authority.ServerGameplayAssembly) });
+    }
+
+    [Fact]
+    public Task ZeroPlayerGenerationIsRejectedByActualAuthority()
+        => RunCase("P1", 2, identityInvalidAt: 1, identityVariant: "zero-player-generation");
+
+    [Fact]
+    public Task MismatchedPlayerGenerationIsRejectedByActualAuthority()
+        => RunCase("P1", 2, identityInvalidAt: 1, identityVariant: "mismatched-player-generation");
+
+    [Fact]
+    public Task ZeroParticipantGenerationIsRejectedByActualAuthority()
+        => RunCase("P1", 2, identityInvalidAt: 1, identityVariant: "zero-participant-generation");
+
+    [Fact]
+    public Task MismatchedParticipantGenerationIsRejectedByActualAuthority()
+        => RunCase("P1", 2, identityInvalidAt: 1, identityVariant: "mismatched-participant-generation");
+
+    [Fact]
+    public Task MismatchedParticipantMatchIsRejectedByActualAuthority()
+        => RunCase("P1", 2, identityInvalidAt: 1, identityVariant: "mismatched-participant-match");
 
     [Fact]
     public Task CurrentLifeCanExitItsOwnFuseBomb() => RunCase("P1", 1, bombVariant: "own");
@@ -94,18 +182,58 @@ public sealed class MovementNativeParityTests
     [Fact]
     public Task WrongSourceGenerationDeniesOwnBombExit() => RunCase("P1", 1, bombVariant: "wrong-generation");
 
+    [Fact]
+    public Task WrongOwnerDeniesOwnBombExit() => RunCase("P1", 1, bombVariant: "wrong-owner");
+
+    [Fact]
+    public Task WrongSourceLifeDeniesOwnBombExit() => RunCase("P1", 1, bombVariant: "wrong-source");
+
+    [Fact]
+    public Task KickStartDeniesOwnBombExit() => RunCase("P1", 1, bombVariant: "kicked-start");
+
+    [Fact]
+    public void KickDirectionBeforeHfsmInitializationIsRejected()
+        => AssertInvalidBombWorld("kick-direction-before-hfsm",
+            "Only a new stationary bomb may initialize its HFSM");
+
+    [Fact]
+    public void KickDirectionFieldOnlyDisagreesWithNativeHfsm()
+        => AssertInvalidBombWorld("kick-direction-after-hfsm",
+            "Bomb projection disagrees with its Native HFSM");
+
+    private static void AssertInvalidBombWorld(string variant, string expected)
+    {
+        string root = Lumio.Bomber.Tests.MovementNativeParityFixture.FindGameRoot();
+        var scenario = Lumio.Bomber.Tests.MovementNativeParityFixture.Load().Cases.Single(row => row.Id == "P1");
+        byte[] catalog = File.ReadAllBytes(Path.Combine(root, "Server/Assets/Maps/official-catalog.json"));
+        string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")!;
+        var budget = new KernelConfig { MaxNativeBytes = 256UL << 20, MaxHandles = 65536,
+            MaxJobsQueued = 1024, MaxJobsRunning = 64, MaxCompletionItems = 1024,
+            LogMailboxCapacity = 4096, MaxContexts = 64 };
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new Authority(root, native, budget, catalog, scenario, variant));
+        Assert.Contains(expected, error.ToString(), StringComparison.Ordinal);
+        WriteEvidence("bomb-" + variant, new { outcome = "Native-HFSM-invariant-rejection-before-Move",
+            variant, expected, error = error.ToString(),
+            nativeSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(native))) });
+    }
+
+
     private static async Task RunCase(string caseId, int count, int idleAt = -1,
-        int absentAt = -1, int identityInvalidAt = -1, string? bombVariant = null)
+        int absentAt = -1, int identityInvalidAt = -1, string? bombVariant = null,
+        string? identityVariant = null, string? scenarioVariant = null)
     {
         string? childDirectory = Environment.GetEnvironmentVariable("MOVEMENT_NATIVE_AUTHORITY_CHILD");
         if (childDirectory is not null)
         {
-            RunAuthorityChild(childDirectory, caseId, count, absentAt, identityInvalidAt, bombVariant);
+            RunAuthorityChild(childDirectory, caseId, count, absentAt, identityInvalidAt,
+                bombVariant, identityVariant, scenarioVariant);
             return;
         }
-        var scenario = Lumio.Bomber.Tests.MovementNativeParityFixture.Load().Cases.Single(row => row.Id == caseId);
+        var scenario = SelectScenario(caseId, scenarioVariant);
         string root = Lumio.Bomber.Tests.MovementNativeParityFixture.FindGameRoot();
         byte[] catalog = File.ReadAllBytes(Path.Combine(root, "Server/Assets/Maps/official-catalog.json"));
+        Lumio.Bomber.Tests.MovementNativeParityFixture.AssertCatalogBytes(catalog);
         string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")
             ?? throw new InvalidOperationException("Selected production Native path is required.");
         var budget = new KernelConfig { MaxNativeBytes = 256UL << 20, MaxHandles = 65536,
@@ -114,7 +242,7 @@ public sealed class MovementNativeParityTests
         string ipc = Path.Combine(Path.GetTempPath(), "lumio-movement-ipc-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(ipc);
         using var server = StartAuthorityChild(ipc, caseId, count, idleAt, absentAt,
-            identityInvalidAt, bombVariant);
+            identityInvalidAt, bombVariant, identityVariant, scenarioVariant);
         var ready = JsonSerializer.Deserialize<ServerReady>(
             WaitReadIpc(Path.Combine(ipc, "ready.json"), server, TimeSpan.FromSeconds(30)))!;
         NetEntityId life = NetEntityId.Parse(ready.Life);
@@ -130,7 +258,8 @@ public sealed class MovementNativeParityTests
         ClientInstance? instance = null;
         try
         {
-            var ledger = new ClientLedger(life, scenario.SampledControls.Take(count).ToArray(), idleAt, absentAt);
+            var ledger = new ClientLedger(life, ready.WorldIncarnation,
+                scenario.SampledControls.Take(count).ToArray(), idleAt, absentAt);
             var options = new ClientInstanceOptions {
                 Registry = BomberClientApplication.Registry,
                 ConfigDirectory = Path.Combine(root, "Client/Config/Tables"),
@@ -174,6 +303,10 @@ public sealed class MovementNativeParityTests
             Assert.True(instance.JointPredictionAttached);
             Assert.True(instance.Session.TryGetReplicaWorld(out var replica));
             Assert.True(replica.InputEnabled);
+            WriteIpc(Path.Combine(ipc, "client-loaded-identity.json"), JsonSerializer.Serialize(
+                CaptureLoadedIdentity("client", native, replica.Manager.GetType().Assembly,
+                    typeof(AbilityComponent).Assembly, typeof(MoveAbility).Assembly,
+                    instance.GetType().Assembly, typeof(MovementNativeParityTests).Assembly), EvidenceJsonOptions));
             Lumio.Bomber.Tests.MovementNativeParityFixture.AssertReadback(
                 NativeWorldVoxelResources.Require(replica.Manager).Voxel, scenario.Map);
             Assert.Equal(new Vector3(scenario.Start[0] + 0.5f, 1.5f, scenario.Start[1] + 0.5f),
@@ -182,10 +315,23 @@ public sealed class MovementNativeParityTests
             {
                 NetEntityId bombId = NetEntityId.Parse(ready.Bomb!);
                 var bomb = replica.Manager.ConfirmedWorld.Get<BomberBombState>(bombId);
-                Assert.Equal(NetEntityId.Parse(ready.Participant), bomb.Owner.Value);
-                Assert.Equal(life, bomb.SourceLife.Value);
-                Assert.Equal(bombVariant == "own" ? 1UL : 2UL, bomb.SourceLifeGeneration.Value);
+                Assert.Equal(bombVariant == "wrong-owner" ? new NetEntityId(7, 99)
+                    : NetEntityId.Parse(ready.Participant), bomb.Owner.Value);
+                Assert.Equal(bombVariant == "wrong-source" ? new NetEntityId(7, 98) : life,
+                    bomb.SourceLife.Value);
+                Assert.Equal(bombVariant == "wrong-generation" ? 2UL : 1UL,
+                    bomb.SourceLifeGeneration.Value);
                 Assert.Equal((int)BomberBombPhase.Fuse, bomb.Phase.Value);
+            }
+
+            // Exercise a real public pump with no due prediction step while the
+            // same session and outbound observer are active.
+            for (int probe = 0; probe < 16 && ledger.ZeroDuePumps == 0; probe++)
+            {
+                int prior = ledger.Rows.Count;
+                host.Tick();
+                if (ledger.Rows.Count == prior) ledger.ZeroDuePumps++;
+                ledger.FinalizeAfterHostTick();
             }
 
             var serverRows = new List<ServerRow>();
@@ -195,17 +341,21 @@ public sealed class MovementNativeParityTests
                 int requests = i == absentAt ? 0 : 1 + scenario.SampledControls[i].Actions.Length;
                 while (ledger.Rows.Count <= i || ledger.Accepted.Count < requestOffset + requests ||
                     transport.ReceivedCount < requestOffset + requests
-                    || !ledger.Rows[i].Published)
+                    || !ledger.Rows[i].Certified)
                 {
                     Thread.Sleep(1);
+                    int priorRows = ledger.Rows.Count;
                     host.Tick();
+                    if (ledger.Rows.Count == priorRows) ledger.ZeroDuePumps++;
                     ledger.FinalizeAfterHostTick();
                     if (ledger.WallElapsed > TimeSpan.FromSeconds(12))
                         throw new TimeoutException($"Real Session movement publications did not complete: " +
                             $"index={i} requests={requests} rows={ledger.Rows.Count} accepted={ledger.Accepted.Count} " +
-                            $"received={transport.ReceivedCount} published={(ledger.Rows.Count > i && ledger.Rows[i].Published)} " +
+                            $"received={transport.ReceivedCount} row={(ledger.Rows.Count > i ? ledger.Rows[i].Diagnostic : "missing")} " +
                             $"state={instance.GetSnapshot().State} prediction={instance.JointPredictionAttached}.");
                 }
+                Assert.Equal(requestOffset, ledger.Rows[i].RequestStartOrdinal);
+                Assert.Equal(requests, ledger.Rows[i].ExpectedRequests);
                 for (int part = 0; part < requests; part++)
                 {
                     int ordinal = requestOffset + part;
@@ -214,6 +364,7 @@ public sealed class MovementNativeParityTests
                     Assert.Equal(ledger.Accepted[ordinal].ByteLength, received.Length);
                     Assert.Equal(ledger.Accepted[ordinal].Sha256,
                         Convert.ToHexStringLower(SHA256.HashData(received)));
+                    Assert.Equal(part, ledger.Accepted[ordinal].RequestPart);
                     WriteIpc(Path.Combine(ipc, $"input-{i}-{part}.json"),
                         JsonSerializer.Serialize(Convert.ToBase64String(received)));
                 }
@@ -243,14 +394,21 @@ public sealed class MovementNativeParityTests
                     else Assert.Equal(OperationOutcomeKind.Succeeded.ToString(), step.Row.Outcome);
                 }
                 Assert.Equal(requests, step.Operations.Length);
+                Assert.Equal(requests, step.DecodedInputs.Length);
+                if (i == identityInvalidAt)
+                    AssertInvalidIdentitySnapshot(identityVariant ?? "current-life", step.Identity,
+                        life, ready.Participant);
                 if (bombVariant is not null)
                 {
                     Assert.NotNull(step.Bomb);
-                    Assert.Equal(ready.Participant, step.Bomb.Owner);
-                    Assert.Equal(life.ToHex(), step.Bomb.SourceLife);
-                    Assert.Equal(bombVariant == "own" ? 1UL : 2UL, step.Bomb.SourceLifeGeneration);
+                    Assert.Equal(bombVariant == "wrong-owner" ? new NetEntityId(7, 99).ToHex() : ready.Participant,
+                        step.Bomb.Owner);
+                    Assert.Equal(bombVariant == "wrong-source" ? new NetEntityId(7, 98).ToHex() : life.ToHex(),
+                        step.Bomb.SourceLife);
+                    Assert.Equal(bombVariant == "wrong-generation" ? 2UL : 1UL,
+                        step.Bomb.SourceLifeGeneration);
                     Assert.Equal("Fuse", step.Bomb.Phase);
-                    Assert.Equal(0UL, step.Bomb.KickStartTick);
+                    Assert.Equal(bombVariant == "kicked-start" ? 1UL : 0UL, step.Bomb.KickStartTick);
                     Assert.Equal(0, step.Bomb.KickDirection);
                     if (bombVariant == "own")
                         Assert.InRange(step.Row.X - step.Row.BeforeX, 0.17499f, 0.17501f);
@@ -263,6 +421,13 @@ public sealed class MovementNativeParityTests
                 for (int part = 0; part < requests; part++)
                 {
                     Assert.Equal(ledger.Accepted[requestOffset + part].Sequence, step.Operations[part].Sequence);
+                    Assert.Equal(ledger.Accepted[requestOffset + part].MappingId, step.Operations[part].MappingId);
+                    Assert.Equal(ledger.Accepted[requestOffset + part].Sequence, step.DecodedInputs[part].Sequence);
+                    Assert.Equal(ledger.Accepted[requestOffset + part].Sender, step.DecodedInputs[part].Sender);
+                    Assert.Equal(LoopbackTransport.ConnectionId, step.DecodedInputs[part].Connection);
+                    Assert.Equal(ledger.Rows[i].ConnectionGeneration, step.DecodedInputs[part].ConnectionGeneration);
+                    Assert.Equal(ready.WorldIncarnation, step.DecodedInputs[part].WorldIncarnation);
+                    Assert.Equal(ledger.Accepted[requestOffset + part].Sha256, step.DecodedInputs[part].Sha256);
                     if (i == identityInvalidAt)
                     {
                         Assert.Equal(OperationOutcomeKind.BusinessReject.ToString(), step.Operations[part].Outcome);
@@ -272,17 +437,28 @@ public sealed class MovementNativeParityTests
                     else Assert.Equal(OperationOutcomeKind.Succeeded.ToString(), step.Operations[part].Outcome);
                 }
                 File.WriteAllText(Path.Combine(ipc, $"pair-{i}.json"), JsonSerializer.Serialize(new {
-                    caseId, sampleIndex = i, clientPose = new[] { ledger.Rows[i].Pose.X,
+                    caseId, sampleIndex = i, clientWorldIncarnation = ledger.Rows[i].WorldIncarnation,
+                    authorityWorldIncarnation = ready.WorldIncarnation,
+                    clientPose = new[] { ledger.Rows[i].Pose.X,
                         ledger.Rows[i].Pose.Y, ledger.Rows[i].Pose.Z },
                     ledger.Rows[i].PredictionExecutionTick, ledger.Rows[i].PredictionInputSequence,
-                    ledger.Rows[i].Memory, server = step.Row,
-                }));
+                    ledger.Rows[i].Memory, ledger.Rows[i].OwnerStamp,
+                    ledger.Rows[i].BoundaryPredictedTick, ledger.Rows[i].BoundaryConfirmedTick,
+                    acceptedRequests = ledger.Rows[i].Requests, server = step.Row,
+                    bomb = step.Bomb, identity = step.Identity,
+                }, EvidenceJsonOptions));
                 if (i != identityInvalidAt)
                     Assert.InRange(Vector3.Distance(ledger.Rows[i].Pose,
                         new Vector3(step.Row.X, step.Row.Y, step.Row.Z)), 0, 0.00001f);
                 if (i == idleAt)
                 {
-                    Assert.Equal(step.Row.BeforeX, step.Row.X);
+                    if (caseId == "P6")
+                    {
+                        Assert.InRange(step.Row.X - step.Row.BeforeX, 0.17499f, 0.17501f);
+                        Assert.Equal(serverRows[i - 1].Memory.PendingTurnDirection,
+                            step.Row.Memory.PendingTurnDirection);
+                    }
+                    else Assert.Equal(step.Row.BeforeX, step.Row.X);
                     Assert.True(step.Row.Memory.LastMoveTick > serverRows[i - 1].Memory.LastMoveTick);
                 }
                 if (i == absentAt)
@@ -304,7 +480,48 @@ public sealed class MovementNativeParityTests
             }
             Assert.Equal(count, ledger.Rows.Count);
             Assert.Equal(requestOffset, ledger.Accepted.Count);
-            Assert.All(ledger.Rows, row => Assert.True(row.Published));
+            Assert.All(ledger.Rows, row => Assert.True(row.Certified, row.Diagnostic));
+            if (caseId == "P6" && (idleAt == 2 || absentAt == 2))
+            {
+                Assert.NotEqual(0, serverRows[1].Memory.PendingTurnDirection);
+                Assert.True(serverRows[1].Memory.PendingTurnUntilTick > serverRows[1].Memory.LastMoveTick);
+                if (absentAt == 2)
+                {
+                    Assert.Equal(serverRows[1].Memory.LastMoveTick, serverRows[2].Memory.LastMoveTick);
+                    Assert.Equal(serverRows[1].X, serverRows[2].X);
+                    Assert.Equal("ClockAdvance", ledger.Rows[2].OwnerStamp?.Cause);
+                }
+                Assert.True(serverRows[3].Memory.LastMoveTick > serverRows[2].Memory.LastMoveTick);
+                Assert.Equal(serverRows[1].Memory.PendingTurnUntilTick,
+                    serverRows[6].Memory.PendingTurnUntilTick);
+                Assert.Equal(0, serverRows[7].Memory.PendingTurnDirection);
+                Assert.Equal(0UL, serverRows[7].Memory.PendingTurnUntilTick);
+                Assert.True(serverRows[7].ExecutionTick > serverRows[1].Memory.PendingTurnUntilTick);
+            }
+            if (caseId == "P9" && (idleAt == 11 || absentAt == 11))
+            {
+                Assert.True(serverRows[10].Memory.LastAssistTick > 0);
+                Assert.Equal(500, serverRows[10].Memory.AssistToleranceMilli);
+                Assert.Equal(serverRows[10].Memory.Facing, serverRows[11].Memory.Facing);
+                Assert.Equal(serverRows[10].X, serverRows[11].X);
+                Assert.Equal(serverRows[10].Z, serverRows[11].Z);
+                if (idleAt == 11)
+                    Assert.True(serverRows[11].Memory.LastMoveTick > serverRows[10].Memory.LastMoveTick);
+                else Assert.Equal(serverRows[10].Memory.LastMoveTick, serverRows[11].Memory.LastMoveTick);
+            }
+            if (caseId == "P9")
+            {
+                ClientRow first = ledger.Rows[0];
+                Assert.Equal(2, first.ExpectedRequests);
+                Assert.Equal(1UL, first.Requests[0].Sequence);
+                Assert.Equal(2UL, first.Requests[1].Sequence);
+                Assert.Equal(2UL, first.OwnerStamp?.InputSequence);
+                Assert.Equal(first.LocalStepOrdinal, first.OwnerStamp?.LocalStepOrdinal);
+                Assert.True(ledger.ZeroDuePumps > 0);
+                Assert.Equal(first.LocalStepOrdinal, ledger.Rows[1].BeforeActivationStamp?.LocalStepOrdinal);
+                Assert.NotEqual(ledger.Rows[1].LocalStepOrdinal,
+                    ledger.Rows[1].BeforeActivationStamp?.LocalStepOrdinal);
+            }
             var result = JsonSerializer.Deserialize<ServerResult>(
                 WaitReadIpc(Path.Combine(ipc, "result.json"), server, TimeSpan.FromSeconds(10)))!;
             Assert.Equal(count, result.Rows.Length);
@@ -325,7 +542,36 @@ public sealed class MovementNativeParityTests
                     Assert.InRange(Vector3.Distance(ledger.Rows[i].Pose,
                         new Vector3(result.Rows[i].X, result.Rows[i].Y, result.Rows[i].Z)), 0, 0.00001f);
             }
-            if (caseId == "P5") Assert.InRange(result.Rows[4].X - 1.5f, 0.87499f, 0.87501f);
+            if (caseId == "P5" && count >= 5 && scenarioVariant is null)
+                Assert.InRange(result.Rows[4].X - 1.5f, 0.87499f, 0.87501f);
+            if (caseId == "P10" && count == 5 && scenarioVariant is null)
+            {
+                Assert.InRange(serverRows[0].X - serverRows[0].BeforeX, 0.17499f, 0.17501f);
+                Assert.True(serverRows[2].BeforeX < 2 && serverRows[2].X >= 2);
+                Assert.InRange(serverRows[3].X - serverRows[3].BeforeX, 0.12249f, 0.12251f);
+            }
+            if (scenarioVariant == "water-start")
+                Assert.InRange(serverRows[0].X - serverRows[0].BeforeX, 0.12249f, 0.12251f);
+            if (scenarioVariant is "water-exit" or "water-exit-control")
+            {
+                int exit = serverRows.FindIndex(row => row.BeforeX >= 2 && row.X < 2);
+                Assert.InRange(exit, 1, count - 2);
+                float nextDisplacement = serverRows[exit + 1].BeforeX - serverRows[exit + 1].X;
+                if (scenarioVariant == "water-exit")
+                    Assert.InRange(nextDisplacement, 0.17499f, 0.17501f);
+                else Assert.InRange(nextDisplacement, 0.12249f, 0.12251f);
+            }
+            if (scenarioVariant?.StartsWith("danger-", StringComparison.Ordinal) == true)
+            {
+                Assert.InRange(serverRows[0].X, 1.67499f, 1.67501f);
+                Assert.InRange(serverRows[1].X, 1.84999f, 1.85001f);
+                BombRow hazard = result.Steps[2].Bomb!;
+                Assert.Equal("Fuse", hazard.Phase);
+                Assert.True(hazard.FuseEndTick > result.Steps[2].Row.ExecutionTick);
+                if (scenarioVariant == "danger-safe-fallback")
+                    Assert.Equal(serverRows[2].BeforeX, serverRows[2].X);
+                else Assert.InRange(serverRows[2].X - serverRows[2].BeforeX, 0.17499f, 0.17501f);
+            }
             using Process process = Process.GetCurrentProcess();
             string actualNative = Assert.Single(process.Modules.Cast<ProcessModule>(),
                 module => module.ModuleName == Path.GetFileName(native)).FileName;
@@ -333,10 +579,13 @@ public sealed class MovementNativeParityTests
                 Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(actualNative))));
             Assert.True(server.WaitForExit(10000), "Authority child did not exit after its actual steps.");
             Assert.Equal(0, server.ExitCode);
-            string variant = idleAt >= 0 ? "-idle" : absentAt >= 0 ? "-absent"
-                : identityInvalidAt >= 0 ? "-stale-life" : bombVariant is null ? "" : "-" + bombVariant;
+            string variant = scenarioVariant is not null ? "-" + scenarioVariant
+                : idleAt >= 0 ? "-idle" : absentAt >= 0 ? "-absent"
+                : identityInvalidAt >= 0 ? "-" + (identityVariant ?? "stale-life")
+                : bombVariant is null ? "" : "-" + bombVariant;
             WriteEvidence(caseId + "-" + count + variant, new { status = "ACTUAL_HOST_SESSION_AUTHORITY", caseId, count,
-                idleAt, absentAt, identityInvalidAt, bombVariant,
+                idleAt, absentAt, identityInvalidAt, identityVariant, bombVariant, scenarioVariant,
+                ledger.ZeroDuePumps,
                 clientNativePath = actualNative,
                 authorityWorldIncarnation = ready.WorldIncarnation,
                 clientRows = ledger.Rows, accepted = ledger.Accepted,
@@ -376,6 +625,47 @@ public sealed class MovementNativeParityTests
         }
     }
 
+    private static Lumio.Bomber.Tests.MovementNativeParityFixture.Case SelectScenario(
+        string caseId, string? variant)
+    {
+        var fixture = Lumio.Bomber.Tests.MovementNativeParityFixture.Load();
+        var source = fixture.Cases.Single(row => row.Id == caseId);
+        if (variant is null) return source;
+        Assert.True(variant is "water-start" or "water-exit" or "water-exit-control"
+            or "danger-safe-fallback" or "danger-already-start" or "danger-direct");
+        var ground = source.Map.Ground.ToArray();
+        int[] start = source.Start.ToArray();
+        var controls = source.SampledControls;
+        if (variant.StartsWith("danger-", StringComparison.Ordinal))
+        {
+            Assert.Equal("P5", caseId);
+            controls = source.SampledControls.Select((sample, index) => index == 2 &&
+                (variant is "danger-safe-fallback" or "danger-already-start")
+                ? new Lumio.Bomber.Tests.MovementNativeParityFixture.Sample {
+                    StepIndex = sample.StepIndex, SourceTickBefore = sample.SourceTickBefore,
+                    SourceTickAfter = sample.SourceTickAfter, EventIds = sample.EventIds,
+                    Move = new Lumio.Bomber.Tests.MovementNativeParityFixture.Move {
+                        Kind = "typed", Primary = "up", Secondary = "right", TurnPressed = true,
+                    }, Actions = sample.Actions,
+                } : sample).ToArray();
+        }
+        else if (variant == "water-start") ground[1 * source.Map.Size + 1] = "water";
+        else
+        {
+            Assert.Equal("P10", caseId);
+            start = [2, 1];
+            controls = fixture.Cases.Single(row => row.Id == "P2").SampledControls;
+            if (variant == "water-exit-control") ground[1 * source.Map.Size + 1] = "water";
+        }
+        return new Lumio.Bomber.Tests.MovementNativeParityFixture.Case {
+            Id = source.Id, Start = start, Goal = source.Goal.ToArray(),
+            Map = new Lumio.Bomber.Tests.MovementNativeParityFixture.Map {
+                Size = source.Map.Size, Ground = ground, Obstacle = source.Map.Obstacle.ToArray(),
+            },
+            SampledControls = controls,
+        };
+    }
+
     private static void PumpUntil(ClientHost host, Func<bool> done)
     {
         var start = Stopwatch.StartNew();
@@ -388,7 +678,8 @@ public sealed class MovementNativeParityTests
     }
 
     private static Process StartAuthorityChild(string directory, string caseId, int count,
-        int idleAt, int absentAt, int identityInvalidAt, string? bombVariant)
+        int idleAt, int absentAt, int identityInvalidAt, string? bombVariant,
+        string? identityVariant, string? scenarioVariant)
     {
         var start = new ProcessStartInfo(Path.ChangeExtension(typeof(MovementNativeParityTests).Assembly.Location, ".exe")) {
             WorkingDirectory = Environment.CurrentDirectory,
@@ -398,11 +689,30 @@ public sealed class MovementNativeParityTests
             RedirectStandardError = true,
         };
         start.ArgumentList.Add("--filter-method");
-        string method = absentAt >= 0 ? nameof(AbsentMoveAdvancesActualStepWithoutMoveAdmission)
+        string method = caseId == "P9" && idleAt == 11 ? nameof(ReleaseAfterAcceptedAssistUsesTypedIdleMemory)
+            : caseId == "P9" && absentAt == 11 ? nameof(ReleaseAfterAcceptedAssistWithoutMoveKeepsPriorMemory)
+            : scenarioVariant == "danger-safe-fallback" ? nameof(SafeStartRefusesDangerousFallback)
+            : scenarioVariant == "danger-already-start" ? nameof(AlreadyDangerousStartMayUseFallback)
+            : scenarioVariant == "danger-direct" ? nameof(DirectInputUsesSameTimedDangerAsControl)
+            : scenarioVariant == "water-start" ? nameof(WetInitialCellUsesWaterSpeedFromSameP10Start)
+            : scenarioVariant == "water-exit" ? nameof(WaterToDryBoundaryUsesRemainingTimeInCrossedCell)
+            : scenarioVariant == "water-exit-control" ? nameof(FullyWaterControlFromSameExitStartRemainsAtWaterSpeed)
+            : caseId == "P10" && count == 5 ? nameof(P10DryToWaterBoundaryUsesCrossedCellSpeed)
+            : caseId == "P6" && absentAt == 2 ? nameof(BlockedPendingTurnExpiresAcrossAbsentMove)
+            : caseId == "P6" && idleAt == 2 ? nameof(BlockedPendingTurnContinuesOnTypedIdle)
+            : absentAt >= 0 ? nameof(AbsentMoveAdvancesActualStepWithoutMoveAdmission)
             : idleAt >= 0 ? nameof(TypedIdleAdvancesActualMoveMemoryWithoutPosition)
+            : identityVariant == "zero-player-generation" ? nameof(ZeroPlayerGenerationIsRejectedByActualAuthority)
+            : identityVariant == "mismatched-player-generation" ? nameof(MismatchedPlayerGenerationIsRejectedByActualAuthority)
+            : identityVariant == "zero-participant-generation" ? nameof(ZeroParticipantGenerationIsRejectedByActualAuthority)
+            : identityVariant == "mismatched-participant-generation" ? nameof(MismatchedParticipantGenerationIsRejectedByActualAuthority)
+            : identityVariant == "mismatched-participant-match" ? nameof(MismatchedParticipantMatchIsRejectedByActualAuthority)
             : identityInvalidAt >= 0 ? nameof(StaleClientLifeIsRejectedByActualAuthority)
             : bombVariant == "own" ? nameof(CurrentLifeCanExitItsOwnFuseBomb)
             : bombVariant == "wrong-generation" ? nameof(WrongSourceGenerationDeniesOwnBombExit)
+            : bombVariant == "wrong-owner" ? nameof(WrongOwnerDeniesOwnBombExit)
+            : bombVariant == "wrong-source" ? nameof(WrongSourceLifeDeniesOwnBombExit)
+            : bombVariant == "kicked-start" ? nameof(KickStartDeniesOwnBombExit)
             : caseId == "P5" && count == 5
                 ? nameof(P5DrySampledMovesUseTypedHostSessionAuthenticatedBytesAndDeferredNativeAuthority)
                 : caseId + "SharedInputParity";
@@ -415,6 +725,8 @@ public sealed class MovementNativeParityTests
         start.Environment["MOVEMENT_NATIVE_AUTHORITY_ABSENT_AT"] = absentAt.ToString(System.Globalization.CultureInfo.InvariantCulture);
         start.Environment["MOVEMENT_NATIVE_AUTHORITY_IDENTITY_INVALID_AT"] =
             identityInvalidAt.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        start.Environment["MOVEMENT_NATIVE_AUTHORITY_IDENTITY_VARIANT"] = identityVariant ?? "current-life";
+        start.Environment["MOVEMENT_NATIVE_AUTHORITY_SCENARIO_VARIANT"] = scenarioVariant ?? "none";
         start.Environment["MOVEMENT_NATIVE_AUTHORITY_BOMB_VARIANT"] = bombVariant ?? "none";
         Process child = Process.Start(start)!;
         File.WriteAllText(Path.Combine(directory, "child-process.json"), JsonSerializer.Serialize(new {
@@ -453,18 +765,27 @@ public sealed class MovementNativeParityTests
     }
 
     private static void RunAuthorityChild(string directory, string caseId, int count,
-        int absentAt, int identityInvalidAt, string? bombVariant)
+        int absentAt, int identityInvalidAt, string? bombVariant, string? identityVariant,
+        string? scenarioVariant)
     {
         Assert.Equal(count.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Environment.GetEnvironmentVariable("MOVEMENT_NATIVE_AUTHORITY_COUNT"));
-        var scenario = Lumio.Bomber.Tests.MovementNativeParityFixture.Load().Cases.Single(row => row.Id == caseId);
+        var scenario = SelectScenario(caseId, scenarioVariant);
         string root = Lumio.Bomber.Tests.MovementNativeParityFixture.FindGameRoot();
         byte[] catalog = File.ReadAllBytes(Path.Combine(root, "Server/Assets/Maps/official-catalog.json"));
+        Lumio.Bomber.Tests.MovementNativeParityFixture.AssertCatalogBytes(catalog);
         string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")!;
         var budget = new KernelConfig { MaxNativeBytes = 256UL << 20, MaxHandles = 65536,
             MaxJobsQueued = 1024, MaxJobsRunning = 64, MaxCompletionItems = 1024,
             LogMailboxCapacity = 4096, MaxContexts = 64 };
-        using var authority = new Authority(root, native, budget, catalog, scenario, bombVariant);
+        using var authority = new Authority(root, native, budget, catalog, scenario,
+            bombVariant, scenarioVariant);
+        WriteIpc(Path.Combine(directory, "server-config-reader.json"),
+            JsonSerializer.Serialize(authority.ConfigEvidence, EvidenceJsonOptions));
+        WriteIpc(Path.Combine(directory, "authority-loaded-identity.json"), JsonSerializer.Serialize(
+            CaptureLoadedIdentity("authority", native, authority.Manager.GetType().Assembly,
+                typeof(AbilityComponent).Assembly, authority.ServerGameplayAssembly,
+                typeof(MovementNativeParityTests).Assembly), EvidenceJsonOptions));
         var authorization = new SuccessorAuthorization("SuccessorAuthorization", "initial",
             WebSocketTransportOptions.SuccessorBindingPartsSubProtocol, new NetEntityId(7, 90).ToHex(),
             LoopbackTransport.ConnectionId, "1", "1", 7, authority.Manager.WorldIncarnation.ToHex(),
@@ -495,21 +816,44 @@ public sealed class MovementNativeParityTests
         var steps = new List<ServerStep>();
         for (int i = 0; i < count; i++)
         {
-            if (i == identityInvalidAt) authority.InvalidateCurrentLife();
+            if (i == identityInvalidAt) authority.InvalidateIdentity(identityVariant ?? "current-life");
             int requests = i == absentAt ? 0 : 1 + scenario.SampledControls[i].Actions.Length;
             var inputs = new List<InputCommandMessage>();
+            var encodedInputs = new List<byte[]>();
+            IdentityRow identity = authority.Identity;
             Vector3 before = authority.Position;
             for (int part = 0; part < requests; part++)
             {
                 string inputPath = Path.Combine(directory, $"input-{i}-{part}.json");
                 var wall = Stopwatch.StartNew();
-                while (!File.Exists(inputPath))
+                string? encodedText = null;
+                int sharingRetries = 0;
+                int? firstSharingHResult = null;
+                while (encodedText is null)
                 {
+                    if (File.Exists(inputPath))
+                    {
+                        try { encodedText = File.ReadAllText(inputPath); }
+                        catch (IOException error) when (
+                            (uint)error.HResult is 0x80070020u or 0x80070021u &&
+                            wall.Elapsed <= TimeSpan.FromSeconds(12))
+                        {
+                            firstSharingHResult ??= error.HResult;
+                            sharingRetries++;
+                        }
+                    }
+                    if (encodedText is not null) break;
                     if (wall.Elapsed > TimeSpan.FromSeconds(12)) throw new TimeoutException("Captured client input deadline.");
                     Thread.Sleep(2);
                 }
-                string encoded = JsonSerializer.Deserialize<string>(File.ReadAllText(inputPath))!;
-                var received = WireCodec.DecodeAuthenticatedInput(Convert.FromBase64String(encoded),
+                if (sharingRetries > 0)
+                    WriteIpc(Path.Combine(directory, $"input-{i}-{part}-read-retries.json"),
+                        JsonSerializer.Serialize(new { path = inputPath, retryCount = sharingRetries,
+                            firstHResult = firstSharingHResult }));
+                string encoded = JsonSerializer.Deserialize<string>(encodedText)!;
+                byte[] encodedBytes = Convert.FromBase64String(encoded);
+                encodedInputs.Add(encodedBytes);
+                var received = WireCodec.DecodeAuthenticatedInput(encodedBytes,
                     WireProfile.SuccessorBindingPartsV1, authority.Life, 1,
                     LoopbackTransport.ConnectionId, authority.Manager.WorldIncarnation);
                 inputs.Add(received);
@@ -557,7 +901,11 @@ public sealed class MovementNativeParityTests
                 }).ToArray();
             Assert.NotEmpty(frames);
             var step = new ServerStep(row, operationRows, authority.BombMemory, frames,
-                rawHashes.ToArray(), carrierHashes.ToArray(), revisions);
+                rawHashes.ToArray(), carrierHashes.ToArray(), revisions,
+                inputs.Select((input, part) => new DecodedInputRow(input.Sequence,
+                    input.Sender.ToHex(), input.Connection, input.ConnectionGeneration,
+                    input.WorldIncarnation.ToHex(), input.MappingId,
+                    Convert.ToHexStringLower(SHA256.HashData(encodedInputs[part])))).ToArray(), identity);
             steps.Add(step);
             WriteIpc(Path.Combine(directory, $"output-{i}.json"), JsonSerializer.Serialize(step));
         }
@@ -582,10 +930,37 @@ public sealed class MovementNativeParityTests
         int LastMoveDirection, ulong LastMoveTick, ulong LastAssistTick, int AssistToleranceMilli);
     private sealed record SectionRevisionEvidence(string Key, ulong BaselineRevision,
         ulong CurrentRevision, string Presence);
+    private sealed record DecodedInputRow(ulong Sequence, string Sender, string? Connection,
+        ulong? ConnectionGeneration, string WorldIncarnation, string MappingId, string Sha256);
+    private sealed record IdentityRow(string PlayerParticipant, ulong PlayerGeneration,
+        string SeatCurrentLife, ulong SeatGeneration, ulong SeatMatch,
+        ulong ActiveMatch, bool PlayerParticipantLive);
     private sealed record ServerStep(ServerRow Row, ServerOperationRow[] Operations, BombRow? Bomb,
         string[] Frames, string[] RawWorldChangeSha256,
-        string[] CarrierSha256, SectionRevisionEvidence[] Sections);
+        string[] CarrierSha256, SectionRevisionEvidence[] Sections, DecodedInputRow[] DecodedInputs,
+        IdentityRow Identity);
     private sealed record ServerResult(ServerRow[] Rows, ServerStep[] Steps, string ActualNative, string NativeSha256);
+
+    private static void AssertInvalidIdentitySnapshot(string variant, IdentityRow identity,
+        NetEntityId life, string participant)
+    {
+        Assert.Equal(55UL, identity.ActiveMatch);
+        switch (variant)
+        {
+            case "current-life": Assert.Equal(default(NetEntityId).ToHex(), identity.SeatCurrentLife); break;
+            case "nonlive-participant":
+                Assert.Equal(new NetEntityId(7, 99).ToHex(), identity.PlayerParticipant);
+                Assert.False(identity.PlayerParticipantLive); break;
+            case "zero-player-generation": Assert.Equal(0UL, identity.PlayerGeneration); break;
+            case "mismatched-player-generation": Assert.Equal(2UL, identity.PlayerGeneration); break;
+            case "zero-participant-generation": Assert.Equal(0UL, identity.SeatGeneration); break;
+            case "mismatched-participant-generation": Assert.Equal(2UL, identity.SeatGeneration); break;
+            case "mismatched-participant-match": Assert.Equal(56UL, identity.SeatMatch); break;
+            default: throw new InvalidDataException("Unknown identity variant: " + variant);
+        }
+        if (variant != "nonlive-participant") Assert.Equal(participant, identity.PlayerParticipant);
+        if (variant != "current-life") Assert.Equal(life.ToHex(), identity.SeatCurrentLife);
+    }
 
     private static byte[] SectionFrame(ulong tick, Lumio.Bomber.Tests.MovementNativeParityFixture.Section section)
         => JsonSerializer.SerializeToUtf8Bytes(new {
@@ -607,6 +982,26 @@ public sealed class MovementNativeParityTests
         }
     }
 
+    private static object CaptureLoadedIdentity(string role, string native, params Assembly[] selected)
+    {
+        using Process process = Process.GetCurrentProcess();
+        string[] names = selected.Select(assembly => assembly.GetName().Name!).Distinct().ToArray();
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => names.Contains(assembly.GetName().Name, StringComparer.Ordinal))
+            .Select(assembly => new {
+                assembly.FullName, assembly.Location, assembly.ManifestModule.ModuleVersionId,
+                sha256 = File.Exists(assembly.Location)
+                    ? Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly.Location))) : null,
+                loadContext = AssemblyLoadContext.GetLoadContext(assembly)?.Name,
+            }).ToArray();
+        var nativeModules = process.Modules.Cast<ProcessModule>()
+            .Where(module => module.ModuleName == Path.GetFileName(native))
+            .Select(module => new { module.FileName,
+                sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(module.FileName))) }).ToArray();
+        return new { role, pid = process.Id, startUtc = process.StartTime.ToUniversalTime(),
+            executable = process.MainModule?.FileName, assemblies, nativeModules };
+    }
+
     private sealed class NoSampleMapper : IGameInputMapper
     {
         public bool TryMap(in SequencedInputSample sample, in InputDrainContext context,
@@ -614,7 +1009,8 @@ public sealed class MovementNativeParityTests
         { candidate = default; return false; }
     }
 
-    private sealed class ClientLedger(NetEntityId life, Lumio.Bomber.Tests.MovementNativeParityFixture.Sample[] samples,
+    private sealed class ClientLedger(NetEntityId life, string authorityWorldIncarnation,
+        Lumio.Bomber.Tests.MovementNativeParityFixture.Sample[] samples,
         int idleAt, int absentAt)
         : IClientOutboundMessageObserver
     {
@@ -623,6 +1019,7 @@ public sealed class MovementNativeParityTests
         public TimeSpan WallElapsed => wall.Elapsed;
         public List<ClientRow> Rows { get; } = new();
         public List<AcceptedRow> Accepted { get; } = new();
+        public int ZeroDuePumps { get; set; }
         public void BeforeStep(ClientPredictionStepContext context)
         {
             manager = context.Manager;
@@ -633,8 +1030,14 @@ public sealed class MovementNativeParityTests
             Assert.Equal(Rows.Count, sample.StepIndex);
             Assert.Equal("typed", sample.Move.Kind);
             bool hasMove = sample.StepIndex != absentAt;
+            OwnerStamp? before = context.Manager.TryReadOwnerPresentation(out var currentStamp)
+                ? OwnerStamp.From(currentStamp) : null;
+            int requestStart = Rows.Count == 0 ? 0 : Rows[^1].RequestStartOrdinal + Rows[^1].ExpectedRequests;
             Rows.Add(new ClientRow(sample.StepIndex, context.ConnectionGeneration,
-                context.LocalStepOrdinal, hasMove));
+                context.LocalStepOrdinal, hasMove, requestStart,
+                hasMove ? 1 + sample.Actions.Length : 0, before,
+                context.Manager.WorldIncarnation.ToHex(), sample.Move.Primary,
+                sample.Move.Secondary, sample.Move.TurnPressed, sample.Actions.ToArray()));
             if (!hasMove) return;
             var input = new MoveAbility.Input {
                 PrimaryDirection = sample.StepIndex == idleAt ? BomberDirection.None : Direction(sample.Move.Primary),
@@ -657,21 +1060,31 @@ public sealed class MovementNativeParityTests
         }
         private void FinalizePrevious(WorldManager current)
         {
-            if (Rows.Count == 0 || Rows[^1].Published) return;
+            if (Rows.Count == 0 || Rows[^1].BoundaryCaptured) return;
             if (current.PredictedWorld is not World predicted || !predicted.IsLive(life)) return;
-            if (Rows[^1].HasMove && !current.TryReadOwnerPresentation(out _)) return;
-            Rows[^1].Pose = predicted.Get<LogicTransform>(life).LocalPosition;
-            if (Rows[^1].HasMove && current.TryReadOwnerPresentation(out var pose))
+            ClientRow row = Rows[^1];
+            OwnerStamp? stamp = current.TryReadOwnerPresentation(out var pose)
+                ? OwnerStamp.From(pose) : null;
+            if (row.HasMove)
             {
-                Rows[^1].PredictionExecutionTick = pose.ExecutionTick;
-                Rows[^1].PredictionInputSequence = pose.InputSequence;
+                if (stamp is null || stamp.Entity != life.ToHex()
+                    || stamp.ConnectionGeneration != row.ConnectionGeneration
+                    || stamp.LocalStepOrdinal != row.LocalStepOrdinal
+                    || stamp.Cause != "InputPublication"
+                    || stamp.PublicationSequence <= (row.BeforeActivationStamp?.PublicationSequence ?? 0))
+                    return;
             }
+            row.OwnerStamp = stamp;
+            row.BoundaryPredictedTick = predicted.Tick;
+            row.BoundaryConfirmedTick = current.ConfirmedWorld.Tick;
+            row.Pose = predicted.Get<LogicTransform>(life).LocalPosition;
             var memory = predicted.Get<BomberPlayerState>(life);
-            Rows[^1].Memory = new MemoryRow(memory.Facing.Value,
+            row.Memory = new MemoryRow(memory.Facing.Value,
                 memory.PendingTurnDirection.Value, memory.PendingTurnUntilTick.Value,
                 memory.LastMoveDirection.Value, memory.LastMoveTick.Value,
                 memory.LastAssistTick.Value, memory.AssistToleranceMilli.Value);
-            Rows[^1].Published = true;
+            row.BoundaryCaptured = true;
+            TryCertify(row);
         }
         public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes)
         {
@@ -686,8 +1099,49 @@ public sealed class MovementNativeParityTests
             }
             Assert.True(index < Rows.Count);
             Assert.Equal(life, message.Sender);
-            Accepted.Add(new AcceptedRow(index, message.Sequence,
-                Convert.ToHexStringLower(SHA256.HashData(encodedBytes.Span)), encodedBytes.Length));
+            ClientRow row = Rows[index];
+            int part = ordinal - row.RequestStartOrdinal;
+            Assert.InRange(part, 0, row.ExpectedRequests - 1);
+            // The observer sees the message before host transport binding; the
+            // authenticated decode below supplies the final wire connection.
+            if (message.Connection is not null)
+                Assert.Equal(LoopbackTransport.ConnectionId, message.Connection);
+            if (message.ConnectionGeneration is not null)
+                Assert.Equal(row.ConnectionGeneration, message.ConnectionGeneration);
+            if (!message.WorldIncarnation.IsDefault)
+                Assert.Equal(authorityWorldIncarnation, message.WorldIncarnation.ToHex());
+            if (ordinal > 0) Assert.Equal(checked(Accepted[^1].Sequence + 1), message.Sequence);
+            var accepted = new AcceptedRow(index, part, message.Sequence, message.MappingId,
+                message.Sender.ToHex(), message.Connection, message.ConnectionGeneration,
+                message.WorldIncarnation.ToHex(), message.Commands.Count,
+                Convert.ToHexStringLower(SHA256.HashData(encodedBytes.Span)), encodedBytes.Length);
+            Accepted.Add(accepted);
+            row.Requests.Add(accepted);
+            // The public outbound observer runs after this step's prediction tick and
+            // before the next due step can replace its latest owner publication.
+            if (row.Requests.Count == row.ExpectedRequests && ReferenceEquals(row, Rows[^1])
+                && manager is not null)
+                FinalizePrevious(manager);
+            TryCertify(row);
+        }
+        private static void TryCertify(ClientRow row)
+        {
+            if (!row.BoundaryCaptured || row.Requests.Count != row.ExpectedRequests) return;
+            if (!row.HasMove)
+            {
+                Assert.Empty(row.Requests);
+                row.Certified = true;
+                return;
+            }
+            if (row.OwnerStamp is null || row.Requests.Count == 0) return;
+            Assert.Equal(row.Requests[^1].Sequence, row.OwnerStamp.InputSequence);
+            Assert.Equal(row.LocalStepOrdinal, row.OwnerStamp.LocalStepOrdinal);
+            Assert.Equal(row.ConnectionGeneration, row.OwnerStamp.ConnectionGeneration);
+            Assert.Equal("InputPublication", row.OwnerStamp.Cause);
+            Assert.InRange(Vector3.Distance(row.Pose, row.OwnerStamp.TargetPosition), 0, 0.00001f);
+            row.PredictionExecutionTick = row.OwnerStamp.ExecutionTick;
+            row.PredictionInputSequence = row.OwnerStamp.InputSequence;
+            row.Certified = true;
         }
         private static BomberDirection Direction(string name) => name switch {
             "none" => BomberDirection.None, "up" => BomberDirection.Up,
@@ -696,25 +1150,56 @@ public sealed class MovementNativeParityTests
         };
     }
 
-    private sealed class ClientRow(int sampleIndex, ulong connectionGeneration, ulong localStepOrdinal, bool hasMove)
+    private sealed class ClientRow(int sampleIndex, ulong connectionGeneration, ulong localStepOrdinal,
+        bool hasMove, int requestStartOrdinal, int expectedRequests, OwnerStamp? beforeActivationStamp,
+        string worldIncarnation, string primary, string secondary, bool turnPressed, string[] actions)
     {
         public int SampleIndex { get; } = sampleIndex;
         public ulong ConnectionGeneration { get; } = connectionGeneration;
         public ulong LocalStepOrdinal { get; } = localStepOrdinal;
         public bool HasMove { get; } = hasMove;
+        public string WorldIncarnation { get; } = worldIncarnation;
+        public string Primary { get; } = primary;
+        public string Secondary { get; } = secondary;
+        public bool TurnPressed { get; } = turnPressed;
+        public string[] Actions { get; } = actions;
+        public int RequestStartOrdinal { get; } = requestStartOrdinal;
+        public int ExpectedRequests { get; } = expectedRequests;
+        public OwnerStamp? BeforeActivationStamp { get; } = beforeActivationStamp;
+        public OwnerStamp? OwnerStamp { get; set; }
+        public ulong? BoundaryPredictedTick { get; set; }
+        public ulong? BoundaryConfirmedTick { get; set; }
+        public List<AcceptedRow> Requests { get; } = new();
         public ulong? PredictionExecutionTick { get; set; }
         public ulong? PredictionInputSequence { get; set; }
         public Vector3 Pose { get; set; }
         public MemoryRow? Memory { get; set; }
-        public bool Published { get; set; }
+        public bool BoundaryCaptured { get; set; }
+        public bool Certified { get; set; }
+        public string Diagnostic => $"sample={SampleIndex} boundary={BoundaryCaptured} certified={Certified} " +
+            $"requests={Requests.Count}/{ExpectedRequests} stamp={JsonSerializer.Serialize(OwnerStamp)}";
     }
-    private sealed record AcceptedRow(int SampleIndex, ulong Sequence, string Sha256, int ByteLength);
+    private sealed record AcceptedRow(int SampleIndex, int RequestPart, ulong Sequence,
+        string MappingId, string Sender, string? Connection, ulong? ConnectionGeneration,
+        string WorldIncarnation, int CommandCount, string Sha256, int ByteLength);
+    private sealed record OwnerStamp(string Entity, ulong ConnectionGeneration, ulong PublicationSequence,
+        ulong LocalStepOrdinal, ulong ExecutionTick, ulong InputSequence, string Cause,
+        Vector3 TargetPosition, Vector3 ModelPosition)
+    {
+        public static OwnerStamp From(OwnerPresentationPose pose) => new(pose.Entity.ToHex(),
+            pose.ConnectionGeneration, pose.PublicationSequence, pose.LocalStepOrdinal,
+            pose.ExecutionTick, pose.InputSequence, pose.Cause.ToString(),
+            pose.Target.Position, pose.Model.Position);
+    }
 
     private sealed class Authority : IDisposable
     {
+        private static readonly string[] ConfigHashTables = ["movement", "attributes", "speed_tiers", "blocks"];
         private readonly LumioEngine engine;
         private readonly AssemblyLoadContext context;
         public WorldManager Manager { get; }
+        public Assembly ServerGameplayAssembly { get; }
+        public object ConfigEvidence { get; }
         public NetEntityId Life { get; }
         public NetEntityId Participant { get; }
         public NetEntityId Bomb { get; }
@@ -741,13 +1226,43 @@ public sealed class MovementNativeParityTests
                     Read<int>(bomb, nameof(BomberBombState.KickDirection)));
             }
         }
-        public void InvalidateCurrentLife()
+        public IdentityRow Identity
+        {
+            get
+            {
+                Component seat = Manager.World.NamedComponent(Participant, nameof(BomberParticipantState))!;
+                Component player = Manager.World.NamedComponent(Life, nameof(BomberPlayerState))!;
+                Component match = Manager.World.NamedComponent(new NetEntityId(7, 1), nameof(BomberMatchState))!;
+                static T Read<T>(Component component, string fieldName)
+                {
+                    object member = component.GetType().GetField(fieldName)!.GetValue(component)!;
+                    return (T)member.GetType().GetProperty("Value")!.GetValue(member)!;
+                }
+                NetEntityId playerParticipant = Read<NetEntityId>(player, nameof(BomberPlayerState.Participant));
+                return new IdentityRow(playerParticipant.ToHex(),
+                    Read<ulong>(player, nameof(BomberPlayerState.LifeGeneration)),
+                    Read<NetEntityId>(seat, nameof(BomberParticipantState.CurrentLife)).ToHex(),
+                    Read<ulong>(seat, nameof(BomberParticipantState.LifeGeneration)),
+                    Read<ulong>(seat, nameof(BomberParticipantState.MatchId)),
+                    Read<ulong>(match, nameof(BomberMatchState.MatchId)),
+                    Manager.World.IsLive(playerParticipant));
+            }
+        }
+        public void InvalidateIdentity(string variant)
         {
             Component seat = Manager.World.NamedComponent(Participant, nameof(BomberParticipantState))!;
-            Assert.Equal(Life, (NetEntityId)seat.GetType().GetField(nameof(BomberParticipantState.CurrentLife))!
-                .GetValue(seat)!.GetType().GetProperty("Value")!.GetValue(
-                    seat.GetType().GetField(nameof(BomberParticipantState.CurrentLife))!.GetValue(seat)!)!);
-            Set(seat, nameof(BomberParticipantState.CurrentLife), default(NetEntityId));
+            Component player = Manager.World.NamedComponent(Life, nameof(BomberPlayerState))!;
+            switch (variant)
+            {
+                case "current-life": Set(seat, nameof(BomberParticipantState.CurrentLife), default(NetEntityId)); break;
+                case "nonlive-participant": Set(player, nameof(BomberPlayerState.Participant), new NetEntityId(7, 99)); break;
+                case "zero-player-generation": Set(player, nameof(BomberPlayerState.LifeGeneration), 0UL); break;
+                case "mismatched-player-generation": Set(player, nameof(BomberPlayerState.LifeGeneration), 2UL); break;
+                case "zero-participant-generation": Set(seat, nameof(BomberParticipantState.LifeGeneration), 0UL); break;
+                case "mismatched-participant-generation": Set(seat, nameof(BomberParticipantState.LifeGeneration), 2UL); break;
+                case "mismatched-participant-match": Set(seat, nameof(BomberParticipantState.MatchId), 56UL); break;
+                default: throw new InvalidDataException("Unknown identity variant: " + variant);
+            }
         }
         public MemoryRow Memory
         {
@@ -769,7 +1284,8 @@ public sealed class MovementNativeParityTests
         }
 
         public Authority(string root, string native, KernelConfig budget, byte[] catalog,
-            Lumio.Bomber.Tests.MovementNativeParityFixture.Case scenario, string? bombVariant)
+            Lumio.Bomber.Tests.MovementNativeParityFixture.Case scenario, string? bombVariant,
+            string? scenarioVariant = null)
         {
             string assemblyPath = Environment.GetEnvironmentVariable("LUMIO_BOMBER_SERVER_GAMEPLAY_PATH")
                 ?? throw new InvalidOperationException("Produced server Gameplay assembly path is required.");
@@ -777,6 +1293,7 @@ public sealed class MovementNativeParityTests
             context.Resolving += (_, name) => AssemblyLoadContext.Default.Assemblies
                 .SingleOrDefault(assembly => assembly.GetName().Name == name.Name);
             Assembly assembly = context.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
+            ServerGameplayAssembly = assembly;
             var registry = (EcsRegistry)assembly.GetType("Lumio.Bomber.Gameplay.GeneratedRegistry", true)!
                 .GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)!.GetValue(null)!;
             Assert.Equal(RegistrySide.Server, registry.Side);
@@ -795,6 +1312,54 @@ public sealed class MovementNativeParityTests
             Manager.AttachControlAdapter(new FixtureBinding(this));
             Manager.Tick();
             Manager.DrainOutbox();
+            // Resolve the activated Reader from the server Gameplay assembly loaded in
+            // its dedicated ALC; the test assembly's client Gameplay type is distinct.
+            Type binding = ServerGameplayAssembly.GetType(typeof(BomberConfigBinding).FullName!, true)!;
+            object config = binding.GetMethod("For", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, [Manager.World])!;
+            static object Read(object value, string name) => value.GetType()
+                .GetProperty(name, BindingFlags.Public | BindingFlags.Instance)!.GetValue(value)!;
+            object Attribute(string name) => config.GetType().GetMethod("Attribute")!.Invoke(config, [name])!;
+            object SpeedTier(long tier) => config.GetType().GetMethod("SpeedTier")!.Invoke(config, [tier])!;
+            long Number(object value, string name) => Convert.ToInt64(Read(value, name),
+                System.Globalization.CultureInfo.InvariantCulture);
+            object game = Read(config, "Game");
+            object movement = Read(config, "Movement");
+            var blockRows = ((System.Collections.IEnumerable)Read(Read(Read(config, "Tables"), "Blocks"), "Rows"))
+                .Cast<object>().Where(row => Lumio.Bomber.Tests.MovementNativeParityFixture.Blocks
+                    .ContainsKey((string)Read(row, "Name"))).ToArray();
+            Lumio.Bomber.Tests.MovementNativeParityFixture.AssertCatalogBytes(catalog);
+            foreach (var (alias, state) in Lumio.Bomber.Tests.MovementNativeParityFixture.Blocks)
+            {
+                object row = Assert.Single(blockRows, value => (string)Read(value, "Name") == alias);
+                Assert.Equal((long)(state >> 8), Number(row, "BlockType"));
+                Assert.True((bool)Read(row, "Enabled"));
+                Assert.Equal(alias is "air" or "floor" or "water", (bool)Read(row, "Walkable"));
+            }
+            long initialSpeed = Number(Attribute(BomberAttributeNames.MovementSpeedMilli), "Initial");
+            long initialTier = Number(Attribute(BomberAttributeNames.SpeedTier), "Initial");
+            Assert.Equal(3500L, initialSpeed);
+            Assert.Equal(initialSpeed, Number(SpeedTier(initialTier), "SpeedMilli"));
+            ConfigEvidence = new {
+                phase = "generated-reader-before-initial-speed-write",
+                catalogSha256 = Lumio.Bomber.Tests.MovementNativeParityFixture.CatalogSha256,
+                readerAssembly = ServerGameplayAssembly.Location,
+                gameTickRateHz = Number(game, "TickRateHz"),
+                movement = new { WaterSpeedPermille = Number(movement, "WaterSpeedPermille"),
+                    CornerAssistMilli = Number(movement, "CornerAssistMilli"),
+                    RepeatAssistMilli = Number(movement, "RepeatAssistMilli"),
+                    TurnBufferTicks = Number(movement, "TurnBufferTicks") },
+                movementSpeed = new { Name = (string)Read(Attribute(BomberAttributeNames.MovementSpeedMilli), "Name"),
+                    Initial = initialSpeed },
+                speedTier = new { Initial = initialTier,
+                    SpeedMilli = Number(SpeedTier(initialTier), "SpeedMilli") },
+                blocks = blockRows.Select(row => new { Name = Read(row, "Name"),
+                    BlockType = Read(row, "BlockType"), Enabled = Read(row, "Enabled"),
+                    Walkable = Read(row, "Walkable") }).ToArray(),
+                tableHashes = ConfigHashTables
+                    .ToDictionary(name => name, name => Convert.ToHexStringLower(SHA256.HashData(
+                        File.ReadAllBytes(Path.Combine(root, "Server/Config/Tables/server", name + ".json")))))
+            };
             Component match = Manager.World.NamedComponent(new NetEntityId(7, 1), nameof(BomberMatchState))!;
             Assert.NotNull(match);
             Set(match, nameof(BomberMatchState.MatchId), 55UL);
@@ -818,30 +1383,53 @@ public sealed class MovementNativeParityTests
             Set(player, nameof(BomberPlayerState.LifeGeneration), 1UL);
             Set(player, nameof(BomberPlayerState.LifePhase), (int)BomberLifePhase.Vulnerable);
             Set(player, nameof(BomberPlayerState.InputMemoryMatchId), 55UL);
-            Manager.World.Get<AttributeComponent>(Life).SetCurrentValue(BomberAttributeNames.MovementSpeedMilli, 3500);
+            var speed = Manager.World.Get<AttributeComponent>(Life);
+            Assert.Equal(initialSpeed, speed.GetBaseValue(BomberAttributeNames.MovementSpeedMilli));
+            Assert.Equal(initialSpeed, speed.GetCurrentValue(BomberAttributeNames.MovementSpeedMilli));
+            speed.SetCurrentValue(BomberAttributeNames.MovementSpeedMilli, initialSpeed);
+            Assert.Equal(initialSpeed, speed.GetCurrentValue(BomberAttributeNames.MovementSpeedMilli));
             var transform = Manager.World.Get<LogicTransform>(Life);
             using (transform.BeginWrite(Manager.World.RegisterTransformController(Life, nameof(MoveAbility))))
                 transform.SetLocalPosition(new Vector3(scenario.Start[0] + 0.5f, 1.5f, scenario.Start[1] + 0.5f));
             Sections = Lumio.Bomber.Tests.MovementNativeParityFixture.AuthorAndReadback(
                 NativeWorldVoxelResources.Require(Manager).Voxel, scenario.Map);
-            if (bombVariant is not null)
+            if (bombVariant is not null || scenarioVariant?.StartsWith("danger-", StringComparison.Ordinal) == true)
             {
-                Assert.True(bombVariant is "own" or "wrong-generation");
+                if (bombVariant is not null)
+                    Assert.True(bombVariant is "own" or "wrong-generation" or "wrong-owner"
+                        or "wrong-source" or "kicked-start" or "kick-direction-before-hfsm"
+                        or "kick-direction-after-hfsm");
                 Assert.True(registry.TryResolveEntityType("bomberBomb", out Type bombType));
                 var bombOrder = Manager.World.Commands.CreateFor(bombType);
                 Manager.Tick();
                 Manager.DrainOutbox();
                 Bomb = bombOrder.AssignedId;
                 Component bomb = Manager.World.NamedComponent(Bomb, nameof(BomberBombState))!;
-                Set(bomb, nameof(BomberBombState.Owner), Participant);
-                Set(bomb, nameof(BomberBombState.SourceLife), Life);
-                Set(bomb, nameof(BomberBombState.SourceLifeGeneration), bombVariant == "own" ? 1UL : 2UL);
+                Set(bomb, nameof(BomberBombState.Owner), bombVariant == "wrong-owner"
+                    ? new NetEntityId(7, 99) : Participant);
+                Set(bomb, nameof(BomberBombState.SourceLife), bombVariant == "wrong-source"
+                    ? new NetEntityId(7, 98) : Life);
+                Set(bomb, nameof(BomberBombState.SourceLifeGeneration),
+                    bombVariant == "wrong-generation" ? 2UL : 1UL);
                 Set(bomb, nameof(BomberBombState.Phase), (int)BomberBombPhase.Fuse);
-                Set(bomb, nameof(BomberBombState.FuseEndTick), checked(Manager.World.Tick + 60UL));
-                Set(bomb, nameof(BomberBombState.Power), 1);
+                Set(bomb, nameof(BomberBombState.FuseEndTick),
+                    checked(Manager.World.Tick + (scenarioVariant?.StartsWith("danger-", StringComparison.Ordinal) == true
+                        ? 8UL : 60UL)));
+                Set(bomb, nameof(BomberBombState.Power), scenarioVariant == "danger-already-start" ? 2 : 1);
+                Set(bomb, nameof(BomberBombState.KickStartTick),
+                    bombVariant == "kicked-start" ? 1UL : 0UL);
+                if (bombVariant == "kick-direction-before-hfsm")
+                    Set(bomb, nameof(BomberBombState.KickDirection), 1);
                 var bombTransform = Manager.World.Get<LogicTransform>(Bomb);
                 using (bombTransform.BeginWrite(Manager.World.RegisterTransformController(Bomb, nameof(MoveAbility))))
-                    bombTransform.SetLocalPosition(transform.LocalPosition);
+                    bombTransform.SetLocalPosition(scenarioVariant?.StartsWith("danger-", StringComparison.Ordinal) == true
+                        ? new Vector3(3.5f, 1.5f, 1.5f) : transform.LocalPosition);
+                if (bombVariant == "kick-direction-after-hfsm")
+                {
+                    Manager.Tick();
+                    Manager.DrainOutbox();
+                    Set(bomb, nameof(BomberBombState.KickDirection), 1);
+                }
             }
             var observer = Manager.World.Get<ObserverComponent>(Life);
             observer.Connected = true;

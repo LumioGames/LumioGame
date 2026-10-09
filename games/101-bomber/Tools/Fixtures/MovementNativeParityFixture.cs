@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Lumio.Bomber.Gameplay.Config;
 using Lumio.Engine.SDK;
 
 namespace Lumio.Bomber.Tests;
@@ -66,15 +67,65 @@ internal static class MovementNativeParityFixture
     internal sealed record Section(VoxelSectionKey Key, ulong Revision, VoxelSectionEncoding Encoding,
         byte[] Payload, string Sha256);
 
-    internal static readonly IReadOnlyDictionary<string, uint> Blocks = new Dictionary<string, uint>(StringComparer.Ordinal)
+    private static readonly byte[] CatalogBytes = File.ReadAllBytes(Path.Combine(
+        FindGameRoot(), "Server", "Assets", "Maps", "official-catalog.json"));
+    internal static readonly string CatalogSha256 = Convert.ToHexStringLower(SHA256.HashData(CatalogBytes));
+    private static readonly IReadOnlyDictionary<string, (string Name, uint Type, string Material, string Behavior)> ExpectedCatalog =
+        new Dictionary<string, (string, uint, string, string)>(StringComparer.Ordinal)
     {
-        ["air"] = 0,
-        ["floor"] = 1022u << 8,
-        ["iron"] = 1023u << 8,
-        ["hardPillar"] = 1024u << 8,
-        ["softBrick"] = 1025u << 8,
-        ["water"] = 1027u << 8,
+        ["floor"] = ("lumio.bomber.floor", 1022, "Solid", "FullCube"),
+        ["iron"] = ("lumio.bomber.iron", 1023, "Solid", "FullCube"),
+        ["hardPillar"] = ("lumio.bomber.hard_pillar", 1024, "Solid", "FullCube"),
+        ["softBrick"] = ("lumio.bomber.soft_brick", 1025, "Solid", "FullCube"),
+        ["water"] = ("lumio.bomber.water", 1027, "Liquid", "Liquid"),
     };
+    internal static readonly IReadOnlyDictionary<string, uint> Blocks = ResolveCatalog(CatalogBytes);
+
+    internal static void AssertCatalogBytes(byte[] loaded)
+    {
+        if (!loaded.AsSpan().SequenceEqual(CatalogBytes))
+            throw new InvalidDataException("Loaded Native catalog bytes differ from resolved fixture catalog: " +
+                Convert.ToHexStringLower(SHA256.HashData(loaded)) + " != " + CatalogSha256);
+    }
+
+    internal static void AssertConfigBlocks(IBomberConfig config)
+    {
+        foreach (string alias in Blocks.Keys)
+        {
+            var rows = config.Tables.Blocks.Rows.Where(row => row.Name == alias).ToArray();
+            if (rows.Length != 1 || !rows[0].Enabled ||
+                rows[0].BlockType != (Blocks[alias] >> 8) ||
+                rows[0].Walkable != (alias is "air" or "floor" or "water"))
+                throw new InvalidDataException("Generated Reader block mapping changed: " + alias);
+        }
+    }
+
+    private static Dictionary<string, uint> ResolveCatalog(byte[] bytes)
+    {
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        JsonElement root = document.RootElement;
+        var rows = root.GetProperty("rows").EnumerateArray().ToArray();
+        var retired = root.GetProperty("retiredNames").EnumerateArray()
+            .Select(value => value.GetString()).ToHashSet(StringComparer.Ordinal);
+        var result = new Dictionary<string, uint>(StringComparer.Ordinal) { ["air"] = 0 };
+        foreach (var (alias, expected) in ExpectedCatalog)
+        {
+            if (retired.Contains(expected.Name))
+                throw new InvalidDataException("Movement catalog name retired: " + expected.Name);
+            JsonElement[] matches = rows.Where(row => row.GetProperty("name").GetString() == expected.Name).ToArray();
+            if (matches.Length != 1)
+                throw new InvalidDataException("Movement catalog name is absent or duplicated: " + expected.Name);
+            JsonElement row = matches[0];
+            uint type = row.GetProperty("blockType").GetUInt32();
+            string material = row.GetProperty("materialClass").GetString()!;
+            string behavior = row.GetProperty("behaviorTemplate").GetString()!;
+            if (type != expected.Type || material != expected.Material || behavior != expected.Behavior ||
+                rows.Count(other => other.GetProperty("blockType").GetUInt32() == type) != 1)
+                throw new InvalidDataException("Movement catalog mapping changed: " + alias);
+            result.Add(alias, checked(type << 8));
+        }
+        return result;
+    }
 
     internal static Document Load()
     {
