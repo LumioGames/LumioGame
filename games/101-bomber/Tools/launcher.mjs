@@ -703,9 +703,15 @@ export function resolvePlayerBotScenario({ root = ROOT, scenarioDll } = {}) {
   return path;
 }
 
-export function botScenarioSelection({ player = false, admissionOnly = false, index, scenarioDll, ticks }) {
+export function botScenarioSelection({ player = false, admissionOnly = false, index, scenarioDll, ticks, playerBotScenario }) {
+  if (playerBotScenario != null && playerBotScenario !== 'movement-sync-preview')
+    throw new UsageError('Unknown playerBotScenario.');
+  if (playerBotScenario === 'movement-sync-preview' && (!player || admissionOnly))
+    throw new UsageError('movement-sync-preview playerBotScenario requires player mode.');
   if (!scenarioDll) return {};
   if (admissionOnly) return { scenarioDll, scenarioName: ADMISSION_SCENARIO, ticks: DEFAULT_ADMISSION_TICKS };
+  if (playerBotScenario === 'movement-sync-preview')
+    return { scenarioDll, scenarioName: 'Lumio.Bomber.Bots.MovementSyncPreviewScenario' };
   if (player) return { scenarioDll, scenarioName: 'Lumio.Bomber.Bots.BomberPlayScenario' };
   return index === 0
     ? { scenarioDll, scenarioName: TOUR_SCENARIO, ticks }
@@ -1093,6 +1099,12 @@ function usage() {
 
 export async function runLauncher(options = {}) {
   rejectOfflineInputs(options, options.env ?? process.env);
+  if (options.playerBotScenario != null) {
+    if (options.playerBotScenario !== 'movement-sync-preview') throw new UsageError('Unknown playerBotScenario.');
+    if (!options.player || options.playerCount !== 2 || options.bots !== 6 || (options.fleetPerProcess ?? 1) !== 1
+        || options.admissionOnly || options.spectator || options.spectatorUrl)
+      throw new UsageError('movement-sync-preview playerBotScenario requires player:true, playerCount:2, bots:6, fleetPerProcess:1, without admission or spectator mode.');
+  }
   const expectedGameReleaseId = options.expectedGameReleaseId ?? (options.env ?? process.env).LUMIO_EXPECTED_GAME_RELEASE_ID;
   validateExpectedGameReleaseId(expectedGameReleaseId);
   const seed = options.seed ?? Number((options.env ?? process.env).LUMIO_GAME_SEED ?? 1);
@@ -1116,7 +1128,9 @@ export async function runLauncher(options = {}) {
   const report = {
     version: 1,
     status: 'RUNNING',
-    scope: options.player ? 'bomber-browser-player' : options.admissionOnly ? 'bomber-admission-only' : 'bomber-launcher',
+    scope: options.playerBotScenario === 'movement-sync-preview' ? 'bomber-movement-sync-preview'
+      : options.player ? 'bomber-browser-player' : options.admissionOnly ? 'bomber-admission-only' : 'bomber-launcher',
+    playerBotScenario: options.playerBotScenario ?? null,
     evidence,
     steps: [],
     seed,
@@ -1411,7 +1425,8 @@ export async function runLauncher(options = {}) {
     let scenarioDll = playerScenario;
     let tourBlocked = null;
     if (options.player) {
-      report.botScenario = 'Lumio.Bomber.Bots.BomberPlayScenario';
+      report.botScenario = options.playerBotScenario === 'movement-sync-preview'
+        ? 'Lumio.Bomber.Bots.MovementSyncPreviewScenario' : 'Lumio.Bomber.Bots.BomberPlayScenario';
     } else if (options.admissionOnly) {
       const candidate = resolve(root, DEFAULT_ADMISSION_DLL);
       if (!existsSync(candidate)) {
@@ -1457,7 +1472,7 @@ export async function runLauncher(options = {}) {
         gameplay,
         voxelConfig,
         ...botScenarioSelection({ player: options.player, admissionOnly: options.admissionOnly,
-          index, scenarioDll, ticks: tourBudget?.ticks }),
+          index, scenarioDll, ticks: tourBudget?.ticks, playerBotScenario: options.playerBotScenario }),
       });
       log(`$ ${JSON.stringify([dotnet, ...redactArgs(args, session.launch.admissionCredential)])}`);
       const bot = tools.startLogged(dotnet, args, {
