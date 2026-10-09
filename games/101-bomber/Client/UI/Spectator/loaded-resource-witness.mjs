@@ -86,10 +86,6 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
   function noteStage(stage, detail = {}) {
     if (!STAGES.has(stage) || (stage === 'real-session-admitted' && mode === 'static-qualification'))
       fail('resource_stage_invalid_static_or_unknown');
-    if(stage==='dotnet-created') {
-      if(expected.bootModule)noteImport(expected.bootModule);
-      for(const url of expected.bootModules??[]) noteImport(url);
-    }
     if (!stages.some(row=>row.stage===stage&&row.url===detail.url)) stages.push({stage,...detail});
   }
   function loadBootResource(type, name, defaultUri, integrity, behavior) {
@@ -108,6 +104,13 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
   async function assertBootCoverage() {
     await ready;
     if ([...bootRequired].some(url => !bootSeen.has(url))) fail('resource_missing_boot_coverage');
+    // create() may swallow initializer import failures; confirm each required protected URL.
+    for (const value of new Set([expected.bootModule,...expected.bootModules??[]].filter(Boolean))) {
+      const resource=entry(value);
+      if (!resource.required) continue;
+      await importModule(resource.resolvedUrl);
+      noteImport(resource.resolvedUrl);
+    }
   }
   let nativeStarted = false;
   async function initializeNative(nativeBase = base) {
@@ -130,7 +133,7 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
     if (typeof glue.default !== 'function' || typeof createEngineBridge !== 'function') fail('resource_native_exports');
     const wasmExports = await glue.default({module_or_path:binary.bytes});
     mark(glueResource.resolvedUrl,{status:'IMPORTED',exactQueryUrl:glueUrl.href,sha256:glueResource.sha256,mechanism:'browser-query-import-map-integrity'});
-    mark(bridgeResource.resolvedUrl,{status:'IMPORTED',sha256:bridgeResource.sha256,mechanism:'browser-import-map-integrity'});
+    noteImport(bridgeResource.resolvedUrl);
     noteStage('Native-initialized',{pageRunId,queryUrl:glueUrl.href,sha256:binaryResource.sha256,bytes:binary.bytes.byteLength,buffer:'same-verified-ArrayBuffer'});
     return createEngineBridge(wasmExports);
   }

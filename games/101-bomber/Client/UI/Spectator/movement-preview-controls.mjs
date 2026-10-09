@@ -10,6 +10,8 @@ export function createMovementPreviewControls({ panel, input, state, trace, expo
     element.addEventListener(name, callback);
     listeners.push(() => element.removeEventListener(name, callback));
   }
+  // Pointer activation keeps keyboard movement focused on the game; Tab focus stays normal.
+  for (const button of panel.querySelectorAll('button')) listen(button, 'pointerdown', event => event.preventDefault());
   function invalidate() { latched = 0; }
   function refresh() {
     if (disposed) return false;

@@ -14,6 +14,7 @@ function fixture(extra={}) {
     {url:'./lumio_engine_wasm.js',sha256:digest('glue'),bytes:4,category:'js',required:true},
     {url:'./engine-wasm.mjs',sha256:digest('bridge'),bytes:6,category:'js',required:true},
     {url:'./optional.mjs',sha256:digest('opt'),bytes:3,category:'js',required:false}],bootResources:['./_framework/a.wasm'],jsEdges:[]};
+  extra.expectedTransform?.(expected);
   const calls=[],responses=[],imports=[];let handed;
   const text=JSON.stringify(expected);
   const witness=module.createLoadedResourceWitness({expected,expectedText:text,manifestDigest:digest(text),pageRunId:'test-run',arm:'f3',mode:'static-qualification',base,
@@ -80,4 +81,36 @@ test('visible export button downloads the actual complete JSON snapshot',async()
   f.witness.bindExport(button,{document:{createElement:()=>({click(){download=this.download;}})},URL:{createObjectURL:value=>{blob=value;return 'blob:actual';},revokeObjectURL(){}}});
   button.dispatchEvent(new Event('click'));const exported=JSON.parse(await blob.text());
   assert.equal(exported.pageRunId,'test-run');assert.equal(exported.resources.length,f.expected.resources.length);assert.match(download,/test-run/);
+});
+
+test('dotnet create stage cannot claim failed required initializer or unconsumed optional module',async()=>{
+  const bytes=Buffer.from('boot bytes');
+  const expected={schema:'lumio.browser-resources.v1',arm:'f3',resources:[
+    {url:'./_framework/a.wasm',sha256:digest(bytes),bytes:bytes.length,category:'dotnet',required:true},
+    {url:'./_framework/required.js',sha256:digest('required'),bytes:8,category:'js',required:true},
+    {url:'./_framework/optional.js',sha256:digest('optional'),bytes:8,category:'js',required:false}],
+    bootResources:['./_framework/a.wasm'],bootModules:['./_framework/required.js','./_framework/optional.js'],jsEdges:[]};
+  const text=JSON.stringify(expected),error=new Error('actual protected initializer import failed'),imports=[];
+  const make = rejected => module.createLoadedResourceWitness({expected,expectedText:text,manifestDigest:digest(text),pageRunId:'initializer-run',arm:'f3',mode:'static-qualification',base,crypto:webcrypto,
+    fetch:async()=>new Response(bytes),importModule:async url=>{imports.push(url);if(rejected)throw error;return {};}});
+  const failed=make(true);await failed.loadBootResource('assembly','a','./_framework/a.wasm','','assembly');
+  failed.noteStage('dotnet-created');
+  assert.equal(failed.snapshot().resources.find(row=>row.url.endsWith('required.js')).status,'UNLOADED');
+  assert.equal(failed.status().complete,false,'create success is insufficient');
+  await assert.rejects(failed.assertBootCoverage(),caught=>caught===error);
+  assert.equal(failed.snapshot().resources.find(row=>row.url.endsWith('optional.js')).status,'UNLOADED');
+  const success=make(false);await success.loadBootResource('assembly','a','./_framework/a.wasm','','assembly');await success.assertBootCoverage();
+  assert.equal(success.status().complete,true);
+  assert.equal(success.snapshot().resources.find(row=>row.url.endsWith('optional.js')).status,'UNLOADED');
+  assert.ok(imports.every(url=>url===base+'_framework/required.js'));
+});
+
+test('successful Native bridge import records its actual static binding descendant',async()=>{
+  const f=fixture({expectedTransform:expected=>{
+    expected.resources.push({url:'./bindings.mjs',sha256:digest('bindings'),bytes:8,category:'js',required:true});
+    expected.jsEdges.push({from:'./engine-wasm.mjs',to:'./bindings.mjs',dynamic:false});
+  }});
+  await f.witness.initializeNative(base);
+  assert.equal(f.witness.snapshot().resources.find(row=>row.url==='./bindings.mjs').status,'IMPORTED');
+  assert.equal(f.witness.snapshot().resources.find(row=>row.url==='./lumio_engine_wasm.js').exactQueryUrl,base+'lumio_engine_wasm.js?lumioPageRun=test-run');
 });
