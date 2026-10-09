@@ -91,6 +91,18 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
     }
   }
   collectBoot(config.resources);collectBoot(config.assets);
+  const bootAlternativeGroups=[];
+  if(config.globalizationMode==='sharded'){
+    const icu=config.resources?.icu,paths=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'];
+    if(!Array.isArray(icu)||icu.length!==3||new Set(icu.map(row=>row.virtualPath)).size!==3||
+      new Set(icu.map(row=>row.name)).size!==3||icu.some(row=>!paths.includes(row.virtualPath)||
+        typeof row.name!=='string'||!/^[\w.-]+\.dat$/.test(row.name)||row.isOptional===true||!inventory.has('_framework/'+row.name)))
+      throw new Error('resource_icu_alternative_group_invalid');
+    const members=icu.map(row=>({url:inventory.get('_framework/'+row.name).url,virtualPath:row.virtualPath}));
+    for(const member of members){inventory.get(member.url.slice(2)).required=false;
+      for(let i=bootResources.length-1;i>=0;i--)if(bootResources[i]===member.url)bootResources.splice(i,1);}
+    bootAlternativeGroups.push({id:'dotnet-icu-sharded-locale',kind:'dotnet-icu-sharded-locale',minimumVerified:1,members});
+  }
   if(!bootResources.length)throw new Error('resource_actual_boot_binaries_empty');
   const edges=[],excludedBranches=[{from:'./main.js',url:'./dev-hot-reload.mjs',reason:'witness rejects __lumioDevelopment before boot'}];
   const resolveImport=(from,specifier)=>{
@@ -163,7 +175,7 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
     inventory.set(data.url,{...local,url:data.url,required:true,category:'data'});
   }
   const manifest={schema:'lumio.browser-resources.v1',arm:expectedInput.arm,version:expectedInput.version,sourceHead:expectedInput.sourceHead,imports:sdkMap.imports??{},
-    bootModule:'./'+bootName,resources:[...inventory.values()],bootResources:[...new Set(bootResources)],bootModules:[...new Set(bootModules)],jsEdges:edges,
+    bootModule:'./'+bootName,resources:[...inventory.values()],bootResources:[...new Set(bootResources)],bootModules:[...new Set(bootModules)],bootAlternativeGroups,jsEdges:edges,
     excludedBranches};
   const manifestText=JSON.stringify(manifest,null,2)+'\n';const digest=sha(Buffer.from(manifestText));
   const integrity=Object.fromEntries(manifest.resources.filter(r=>r.category==='js').map(r=>[r.url,sri(r.sha256)]));

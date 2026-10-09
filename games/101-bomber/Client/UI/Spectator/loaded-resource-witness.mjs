@@ -51,6 +51,23 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
   }
   const bootRequired = new Set((expected.bootResources ?? []).map(urlOf));
   if (!bootRequired.size || [...bootRequired].some(url => !resources.has(url))) throw new Error('resource_manifest_missing_WebCIL');
+  const groups=expected.bootAlternativeGroups??[],groupByUrl=new Map();
+  let satisfiedGroups=0;
+  if(!Array.isArray(groups)||groups.length>1)throw new Error('resource_manifest_alternative_group_invalid');
+  const alternativeGroups=groups.map(group=>{
+    const paths=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'];
+    if(group.id!=='dotnet-icu-sharded-locale'||group.kind!==group.id||group.minimumVerified!==1||
+      !Array.isArray(group.members)||group.members.length!==3||new Set(group.members.map(row=>row.virtualPath)).size!==3)
+      throw new Error('resource_manifest_alternative_group_invalid');
+    const state={id:group.id,selected:new Set()};
+    for(const member of group.members){const url=urlOf(member.url),resource=resources.get(url);
+      if(!paths.includes(member.virtualPath)||!resource||resource.required||resource.category!=='data'||
+        !new URL(url).pathname.endsWith('.dat')||bootRequired.has(url)||groupByUrl.has(url))
+        throw new Error('resource_manifest_alternative_group_invalid');
+      groupByUrl.set(url,state);
+    }
+    return state;
+  });
   async function hash(bytes) {
     return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
   }
@@ -97,6 +114,8 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
     return (async () => {
       const {response} = await checkedResponse(await fetchResource(resource.resolvedUrl),resource);
       bootSeen.add(resource.resolvedUrl);
+      const group=groupByUrl.get(resource.resolvedUrl);
+      if(group){if(!group.selected.size)satisfiedGroups++;group.selected.add(resource.resolvedUrl);}
       noteStage('binary-returned',{url:resource.resolvedUrl,type,name,behavior});
       return response;
     })();
@@ -104,6 +123,7 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
   async function assertBootCoverage() {
     await ready;
     if ([...bootRequired].some(url => !bootSeen.has(url))) fail('resource_missing_boot_coverage');
+    if(satisfiedGroups!==alternativeGroups.length)fail('resource_missing_boot_alternative_coverage');
     // create() may swallow initializer import failures; confirm each required protected URL.
     for (const value of new Set([expected.bootModule,...expected.bootModules??[]].filter(Boolean))) {
       const resource=entry(value);
@@ -148,14 +168,14 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
     for (const edge of expected.jsEdges ?? []) if (!edge.dynamic && urlOf(edge.from) === resource.resolvedUrl) noteImport(edge.to,visited);
   }
   function status() {
-    return {arm,pageRunId,sdkVersion:expected.version,sourceHead:expected.sourceHead,expected:resources.size,required:requiredCount,
-      verified:verifiedCount,unloaded:unloadedCount,complete:manifestVerified&&failures.length===0&&requiredConsumed===requiredCount};
+    return {arm,pageRunId,sdkVersion:expected.version,sourceHead:expected.sourceHead,expected:resources.size,required:requiredCount+alternativeGroups.length,
+      verified:verifiedCount,unloaded:unloadedCount,complete:manifestVerified&&failures.length===0&&requiredConsumed===requiredCount&&satisfiedGroups===alternativeGroups.length};
   }
   function snapshot() {
     const rows=[...resources.values()].map(resource=>({...resource,...states.get(resource.resolvedUrl)}));
     const required=rows.filter(row=>row.required);
     return {version:1,mode,arm,pageRunId,manifestDigest,sdkVersion:expected.version,
-      resources:rows,stages:stages.slice(),failures:failures.slice(),coverage:{expected:rows.length,required:required.length,
+      resources:rows,bootAlternativeGroups:alternativeGroups.map(group=>({id:group.id,selected:[...group.selected]})),stages:stages.slice(),failures:failures.slice(),coverage:{expected:rows.length,required:required.length+alternativeGroups.length,
         verified:verifiedCount,unloaded:unloadedCount,complete:status().complete},
       trustBase:'reviewed document/bootstrap/application and browser SRI/Response implementation'};
   }

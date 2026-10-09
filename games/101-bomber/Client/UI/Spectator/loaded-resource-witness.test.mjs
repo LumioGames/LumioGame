@@ -114,3 +114,34 @@ test('successful Native bridge import records its actual static binding descenda
   assert.equal(f.witness.snapshot().resources.find(row=>row.url==='./bindings.mjs').status,'IMPORTED');
   assert.equal(f.witness.snapshot().resources.find(row=>row.url==='./lumio_engine_wasm.js').exactQueryUrl,base+'lumio_engine_wasm.js?lumioPageRun=test-run');
 });
+
+const icuPaths=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'];
+function icuFixture(alter=()=>{}) {
+  return fixture({expectedTransform:expected=>{
+    const members=icuPaths.map(virtualPath=>({url:'./_framework/'+virtualPath,virtualPath}));
+    for(const member of members)expected.resources.push({...member,sha256:digest('real binary'),bytes:11,category:'data',required:false});
+    expected.bootAlternativeGroups=[{id:'dotnet-icu-sharded-locale',kind:'dotnet-icu-sharded-locale',minimumVerified:1,members}];
+    alter(expected);
+  }});
+}
+test('sharded ICU coverage requires one normal checked boot callback and leaves other locales UNLOADED',async()=>{
+  const missing=icuFixture();await missing.witness.loadBootResource('assembly','a','./_framework/a.wasm','','assembly');
+  await missing.witness.initializeNative(base);
+  assert.equal(missing.witness.status().complete,false,'individual resources cannot hide an unsatisfied locale group');
+  await missing.witness.verifyDataResponse(new Response(missing.data),'./_framework/icudt_CJK.dat');
+  await assert.rejects(missing.witness.assertBootCoverage(),/missing_boot_alternative_coverage/,'a data verification is not a normal boot callback');
+  const selected=icuFixture();await selected.witness.loadBootResource('assembly','a','./_framework/a.wasm','','assembly');
+  await selected.witness.loadBootResource('globalization','icudt_CJK.dat','./_framework/icudt_CJK.dat','','icu');
+  await selected.witness.assertBootCoverage();await selected.witness.initializeNative(base);
+  assert.equal(selected.witness.status().complete,true);
+  const snapshot=selected.witness.snapshot();
+  assert.deepEqual(snapshot.bootAlternativeGroups[0].selected,[base+'_framework/icudt_CJK.dat']);
+  for(const name of icuPaths.slice(1))assert.equal(snapshot.resources.find(row=>row.url.endsWith(name)).status,'UNLOADED');
+  assert.equal(selected.calls.filter(url=>url.includes('icudt_')).length,1);
+});
+test('sharded ICU group rejects empty duplicate required or noncanonical membership',()=>{
+  for(const alter of [e=>e.bootAlternativeGroups[0].members=[],
+    e=>e.bootAlternativeGroups[0].members[1]=e.bootAlternativeGroups[0].members[0],
+    e=>e.resources.at(-1).required=true,e=>e.bootAlternativeGroups[0].members[0].virtualPath='other.dat'])
+    assert.throws(()=>icuFixture(alter),/alternative_group/);
+});

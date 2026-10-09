@@ -88,3 +88,25 @@ test('module lexer distinguishes comment imports from import-like text inside a 
   const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
   assert.ok(manifest.jsEdges.some(edge=>edge.to==='./static.mjs'));assert.ok(manifest.jsEdges.some(edge=>edge.to==='./dynamic.mjs'));
 });
+
+test('actual sharded ICU array seals one locale alternative group and preserves nonlocale requirements',async t=>{
+  const root=await fixture(t),paths=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'];
+  const icu=paths.map(virtualPath=>({virtualPath,name:virtualPath.replace('.dat','.fingerprint.dat')}));
+  for(const row of icu)await writeFile(path.join(root,'_framework',row.name),'locale bytes');
+  await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config='+JSON.stringify({globalizationMode:'sharded',resources:{assembly:[{name:'a.wasm'}],icu}})+';');
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
+  assert.deepEqual(manifest.bootAlternativeGroups,[{id:'dotnet-icu-sharded-locale',kind:'dotnet-icu-sharded-locale',minimumVerified:1,
+    members:icu.map(row=>({url:'./_framework/'+row.name,virtualPath:row.virtualPath}))}]);
+  assert.deepEqual(manifest.bootResources,['./_framework/a.wasm']);
+  assert.equal(manifest.resources.find(row=>row.url==='./_framework/a.wasm').required,true);
+  assert.ok(icu.every(row=>manifest.resources.find(resource=>resource.url==='./_framework/'+row.name).required===false));
+});
+test('sharded ICU malformed actual array fails instead of weakening boot coverage',async t=>{
+  for(const kind of ['empty','duplicate','missing']){
+    const root=await fixture(t),icu=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'].map(virtualPath=>({virtualPath,name:virtualPath}));
+    for(const row of icu)await writeFile(path.join(root,'_framework',row.name),'locale bytes');
+    if(kind==='empty')icu.length=0;if(kind==='duplicate')icu[1]={...icu[0]};if(kind==='missing')icu.pop();
+    await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config='+JSON.stringify({globalizationMode:'sharded',resources:{assembly:[{name:'a.wasm'}],icu}})+';');
+    await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}),/icu_alternative_group/);
+  }
+});
