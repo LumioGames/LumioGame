@@ -53,6 +53,20 @@ public sealed class BomberPlayerIntentTests
     }
 
     [Fact]
+    public void AllReleasedAfterTwoHeldDirectionsEmitsLastTapWithoutSecondaryOnce()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);  // W down
+        intent.SetMoveIntent(2, 1, true);  // D down while W is held
+        intent.SetMoveIntent(1, 0, false); // D up
+        intent.SetMoveIntent(0, 0, false); // W up before a sample
+
+        Assert.Equal(new BomberIntentSample(2, 0, true, 0, 0, false), intent.PeekSample(true));
+        intent.CommitMove(2);
+        Assert.Equal(default, intent.PeekSample(true));
+    }
+
+    [Fact]
     public void UnpolledLosingTapDoesNotRenewTurnAfterCommittedUp()
     {
         var intent = new BomberPlayerIntent();
