@@ -55,6 +55,19 @@ test('private diagnostic auto capture requires its explicit URL opt-in', async (
     assert.equal(classes.has('movement-diagnostic-capture'), expected, search);
   }
 });
+test('private diagnostic readiness respects the existing DOM UI focus gate', () => {
+  const start = MAIN_SOURCE.indexOf('privateDiagnosticCapture = createPrivateDiagnosticCapture(');
+  const setup = MAIN_SOURCE.slice(start, MAIN_SOURCE.indexOf("        window.addEventListener('pagehide', () => privateDiagnosticCapture.destroy()", start));
+  const focused = { closest: () => true };
+  const sandbox = { panel: {}, window: { __lumioPlayerConfig: { evidenceEndpoint: '/api/player/evidence?player=A' } },
+    diagnosticAuto: true, active: true, terminal: false, initialSelectionPending: false, player: { replica: { inputOpen: true } },
+    gameView: { inputBlocked: () => false }, inputDriver: 'interval', stepInputReady: true,
+    document: { activeElement: focused, getElementById: () => ({ contains: () => false }) },
+    createPrivateDiagnosticCapture: options => { sandbox.options = options; return {}; } };
+  vm.runInNewContext(setup, sandbox); assert.equal(sandbox.options.ready(), false);
+  sandbox.document.getElementById = () => ({ contains: () => true }); assert.equal(sandbox.options.ready(), true);
+  sandbox.inputDriver = 'step'; sandbox.stepInputReady = false; assert.equal(sandbox.options.ready(), false);
+});
 const CREDENTIAL = 'test-admission-credential-do-not-leak';
 test('closed input keeps private record and export buttons available in the real applyDump integration', () => {
   const direction = {disabled:false}, record = {disabled:false}, exp = {disabled:false}, identity = {disabled:false};

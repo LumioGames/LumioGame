@@ -1151,8 +1151,13 @@ async function initializePage() {
         resourceWitness?.noteImport('./private-diagnostic-capture.mjs');
         privateDiagnosticCapture = createPrivateDiagnosticCapture({ panel,
           endpoint: window.__lumioPlayerConfig.evidenceEndpoint, auto: diagnosticAuto,
-          ready: () => active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
-            !gameView?.inputBlocked() && (inputDriver !== 'step' || stepInputReady),
+          ready: () => {
+            const focused = document.activeElement;
+            const focusBlocked = focused?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]') &&
+              !document.getElementById('player-controls')?.contains?.(focused);
+            return !focusBlocked && active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
+              !gameView?.inputBlocked() && (inputDriver !== 'step' || stepInputReady);
+          },
           trace: () => { drainManagedTrace(null); return JSON.stringify(movementTrace.export()); },
           witness: () => JSON.stringify(resourceWitness.validateExport(resourceWitness.snapshot())),
           note: message => movementTrace.note(message) });
