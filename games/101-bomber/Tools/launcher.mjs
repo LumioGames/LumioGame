@@ -1597,6 +1597,7 @@ export async function runLauncher(options = {}) {
         configDir,
         port: options.spectatorStaticPort ?? 0,
         playerCount: browserCount,
+        evidenceDir: options.evidenceDir ? join(evidence, 'player-evidence') : undefined,
         getLaunch: async (index = 0) => {
           const expected = players[index];
           const session = await (options.loginAndLaunch ?? loginAndLaunch)({

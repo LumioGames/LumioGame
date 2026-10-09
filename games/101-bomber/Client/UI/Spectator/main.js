@@ -43,6 +43,7 @@ let stepInputObserving = false;
 let inputDriver = 'interval';
 let movementTrace = null;
 let movementPreviewControls = null;
+let privateDiagnosticCapture = null;
 let resourceWitness = null;
 let previewFinitePose = 'UNAVAILABLE';
 let lastTraceCompleteness = 'UNAVAILABLE';
@@ -704,7 +705,9 @@ async function initializeResourceWitness() {
   resourceWitness.noteImport('./loaded-resource-witness.mjs');
   resourceWitness.noteStyles(document);
   const button = document.getElementById('export-resource-witness');
-  if (button) { button.hidden = false; resourceWitness.bindExport(button); }
+  if (button) { button.hidden = false; resourceWitness.bindExport(button, {
+    onExport: raw => { void privateDiagnosticCapture?.save('resource-witness', raw).catch(reportDiagnosticError); },
+  }); }
 }
 
 // Local test mode, the one explicit entry that bypasses the Platform: whoever loads
@@ -828,13 +831,19 @@ function exportMovementTrace() {
   drainManagedTrace(null);
   const exportedTrace = movementTrace.export();
   lastTraceCompleteness = !exportedTrace.truncated && exportedTrace.diagnosticFailures === 0;
-  const blob = new Blob([JSON.stringify(exportedTrace)], { type: 'application/json' });
+  const raw = JSON.stringify(exportedTrace);
+  const blob = new Blob([raw], { type: 'application/json' });
+  void privateDiagnosticCapture?.save('movement-trace', raw).catch(reportDiagnosticError);
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = `lumio-movement-trace-${Date.now()}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function reportDiagnosticError(error) {
+  console.error('[lumio-diagnostic-capture]', String(error?.message ?? error));
 }
 
 function refreshStepInput() {
@@ -1053,6 +1062,9 @@ async function initializePage() {
     const flags = readMovementFlags();
     const privatePreview = movementPreviewEnabled() && flags.trace;
     if (privatePreview) document.body.classList.add('movement-private-preview');
+    const captureParams = new URLSearchParams(location.search);
+    const diagnosticAuto = privatePreview && captureParams.getAll('capture').length === 1 && captureParams.get('capture') === 'diagnostic';
+    if (diagnosticAuto) document.body.classList.add('movement-diagnostic-capture');
     inputDriver = flags.inputDriver;
     if (flags.trace || movementPreviewEnabled()) {
       const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
@@ -1134,6 +1146,18 @@ async function initializePage() {
       const originalClear = playerInput.clear;
       playerInput.clear = () => { movementPreviewControls.invalidate(); return originalClear(); };
       window.addEventListener('pagehide', () => movementPreviewControls.destroy(), {once:true});
+      if (privatePreview && window.__lumioPlayerConfig.evidenceEndpoint) {
+        const { createPrivateDiagnosticCapture } = await import('./private-diagnostic-capture.mjs');
+        resourceWitness?.noteImport('./private-diagnostic-capture.mjs');
+        privateDiagnosticCapture = createPrivateDiagnosticCapture({ panel,
+          endpoint: window.__lumioPlayerConfig.evidenceEndpoint, auto: diagnosticAuto,
+          ready: () => active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
+            !gameView?.inputBlocked() && (inputDriver !== 'step' || stepInputReady),
+          trace: () => { drainManagedTrace(null); return JSON.stringify(movementTrace.export()); },
+          witness: () => JSON.stringify(resourceWitness.validateExport(resourceWitness.snapshot())),
+          note: message => movementTrace.note(message) });
+        window.addEventListener('pagehide', () => privateDiagnosticCapture.destroy(), { once: true });
+      }
     }
   }
   document.getElementById('enter')?.addEventListener('click', () => { void start(); });

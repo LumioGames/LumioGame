@@ -36,6 +36,25 @@ test('private movement diagnostic layout requires the exact scene and trace on a
     assert.equal(classes.has('movement-private-preview'), expected, `${hostname}${search} player=${playerMode}`);
   }
 });
+test('private diagnostic auto capture requires its explicit URL opt-in', async () => {
+  const flags = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()'));
+  const initialize = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function initializePage()'), MAIN_SOURCE.indexOf('    inputDriver = flags.inputDriver;')) + '\n  }\n}';
+  for (const [search, expected] of [
+    ['?scene=movement-sync-preview&trace=movement&capture=diagnostic', true],
+    ['?scene=movement-sync-preview&trace=movement', false],
+    ['?scene=movement-sync-preview&capture=diagnostic', false],
+    ['?scene=ordinary&trace=movement&capture=diagnostic', false],
+    ['?scene=movement-sync-preview&trace=movement&capture=diagnostic&capture=diagnostic', false],
+  ]) {
+    const classes = new Set(), node = {};
+    const context = vm.createContext({ PLAYER_MODE: true, URLSearchParams,
+      location: { search, hostname: '127.0.0.1' }, LOOPBACK_HOSTS: ['127.0.0.1'],
+      window: { __lumioPlayerConfig: {} }, canvas: {}, initializeResourceWitness: async () => {},
+      document: { body: { classList: { add: name => classes.add(name) } }, getElementById: () => node, querySelector: () => node } });
+    vm.runInContext(flags + initialize, context); await context.initializePage();
+    assert.equal(classes.has('movement-diagnostic-capture'), expected, search);
+  }
+});
 const CREDENTIAL = 'test-admission-credential-do-not-leak';
 test('closed input keeps private record and export buttons available in the real applyDump integration', () => {
   const direction = {disabled:false}, record = {disabled:false}, exp = {disabled:false}, identity = {disabled:false};

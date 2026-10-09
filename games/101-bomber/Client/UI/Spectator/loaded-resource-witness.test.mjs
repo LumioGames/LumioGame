@@ -77,10 +77,11 @@ test('export validator rejects missing membership and cross-page or cross-arm re
   }
 });
 test('visible export button downloads the actual complete JSON snapshot',async()=>{
-  const f=fixture();const button=new EventTarget();let blob,download;
-  f.witness.bindExport(button,{document:{createElement:()=>({click(){download=this.download;}})},URL:{createObjectURL:value=>{blob=value;return 'blob:actual';},revokeObjectURL(){}}});
+  const f=fixture();const button=new EventTarget();let blob,download,saved;
+  f.witness.bindExport(button,{onExport:raw=>{saved=raw;},document:{createElement:()=>({click(){download=this.download;}})},URL:{createObjectURL:value=>{blob=value;return 'blob:actual';},revokeObjectURL(){}}});
   button.dispatchEvent(new Event('click'));const exported=JSON.parse(await blob.text());
   assert.equal(exported.pageRunId,'test-run');assert.equal(exported.resources.length,f.expected.resources.length);assert.match(download,/test-run/);
+  assert.equal(saved,await blob.text(),'host receives exactly the original download JSON');
 });
 
 test('dotnet create stage cannot claim failed required initializer or unconsumed optional module',async()=>{

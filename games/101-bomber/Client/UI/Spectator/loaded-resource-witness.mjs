@@ -200,9 +200,11 @@ export function createLoadedResourceWitness({ expected, expectedText, manifestDi
       mark(resource.resolvedUrl,{status:'APPLIED',sha256:resource.sha256,mechanism:'browser-stylesheet-SRI'});
     }
   }
-  function bindExport(button, {document = globalThis.document, URL = globalThis.URL} = {}) {
+  function bindExport(button, {document = globalThis.document, URL = globalThis.URL, onExport} = {}) {
     const click = () => {
-      const url=URL.createObjectURL(new Blob([JSON.stringify(validateExport(snapshot()))],{type:'application/json'}));
+      const raw=JSON.stringify(validateExport(snapshot()));
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
+      onExport?.(raw);
       const link=document.createElement('a');link.href=url;link.download=`lumio-resource-witness-${arm}-${pageRunId}.json`;link.click();
       setTimeout(()=>URL.revokeObjectURL(url),0);
     };
