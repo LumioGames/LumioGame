@@ -132,3 +132,27 @@ test('owned process adapter scrubs official ticket and refuses changed PID ident
   await adapter.forceCleanup(state);
   assert.equal(calls.includes('stop'), true);
 });
+
+test('only the official Bot retains its config directory while inherited secrets stay scrubbed', () => {
+  const bot = 'C:/release/Lumio.Client.Bot.Host.dll';
+  const calls = [];
+  const official = { startLogged(exe, args, options) {
+    calls.push({ exe, args, options });
+    return { child: { pid: 42 }, closed: false };
+  }, command() {}, assertAlive() {}, waitExit() {}, async forceCleanup() {} };
+  const adapter = createPreviewProcessTools(official, { officialBotHost: bot,
+    readIdentity: () => ({ pid: 42, startTime: '2026-10-09T00:00:00Z', exe: 'C:/dotnet.exe' }),
+    previewId: 'one' });
+  const env = { PATH: 'path', LumioBotConfigDirectory: 'C:/owned-config',
+    LumioBotAdmissionTicket: 'inherited-ticket', LUMIO_ACCOUNT_PASSWORD: 'inherited-password',
+    LUMIO_ACCOUNT_ADMISSION_PRIVATE_KEY_HEX: 'inherited-key', PLATFORM_TOKEN: 'inherited-platform' };
+  adapter.startLogged('C:/dotnet.exe', [bot, '--admission-ticket', 'current-ticket'], { env });
+  assert.equal(calls[0].options.env.LumioBotConfigDirectory, 'C:/owned-config');
+  assert.equal(calls[0].options.env.LumioBotAdmissionTicket, 'current-ticket');
+  assert.equal(calls[0].options.env.LUMIO_ACCOUNT_PASSWORD, undefined);
+  assert.equal(calls[0].options.env.LUMIO_ACCOUNT_ADMISSION_PRIVATE_KEY_HEX, undefined);
+  assert.equal(calls[0].options.env.PLATFORM_TOKEN, undefined);
+  adapter.startLogged('C:/dotnet.exe', ['C:/unrecognized.dll'], { env });
+  assert.equal(calls[1].options.env.LumioBotConfigDirectory, undefined);
+  assert.equal(calls[1].options.env.LumioBotAdmissionTicket, undefined);
+});

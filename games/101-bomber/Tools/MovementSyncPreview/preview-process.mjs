@@ -21,6 +21,11 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
       onTicket(scrubbed.env.LumioBotAdmissionTicket);
       publicArgs = scrubbed.args;
       environment = scrubbed.env;
+      if (Object.hasOwn(options.env ?? {}, 'LumioBotConfigDirectory')) {
+        assert(typeof options.env.LumioBotConfigDirectory === 'string'
+          && options.env.LumioBotConfigDirectory.length > 0, 'official Bot config directory required');
+        environment.LumioBotConfigDirectory = options.env.LumioBotConfigDirectory;
+      }
     }
     const state = official.startLogged(executable, publicArgs, { ...options, env: environment });
     const pid = state.child?.pid;
