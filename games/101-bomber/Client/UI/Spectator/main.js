@@ -768,8 +768,16 @@ function failLaunch(error) {
 function drainManagedTrace(pumpBracket) {
   if (!movementTrace || !csharp.drainInputTrace) return;
   try {
-    for (const batch of JSON.parse(csharp.drainInputTrace())) movementTrace.managed(batch, pumpBracket);
+    const batches = JSON.parse(csharp.drainInputTrace());
+    if (!Array.isArray(batches)) throw new Error('managed_trace_batches_invalid');
+    for (const batch of batches) {
+      if (!batch || typeof batch !== 'object' || !Array.isArray(batch.events))
+        throw new Error('managed_trace_batch_invalid');
+      movementTrace.managed(batch, pumpBracket);
+    }
   } catch (error) {
+    try { movementTrace.diagnosticFailure?.('managed-drain'); }
+    catch { /* Diagnostics must not fail the Session pump. */ }
     try { movementTrace.note(`managed trace drain failed: ${String(error?.message ?? error)}`); }
     catch { /* Diagnostics must not fail the Session pump. */ }
   }
@@ -1012,7 +1020,11 @@ async function initializePage() {
     playerInput = createPlayerInput(inputDriver === 'step' ? {
       panel: document.getElementById('player-controls'),
       ready: () => refreshStepInput(),
-      setMoveIntent: (primary, secondary, turn) => csharp.setMoveIntent(primary, secondary, turn),
+      setMoveIntent: (primary, secondary, turn) => {
+        csharp.setMoveIntent(primary, secondary, turn);
+        try { movementTrace?.moveIntent(primary, secondary, turn); }
+        catch { try { movementTrace?.diagnosticFailure('move-intent-record'); } catch { /* Diagnostic only. */ } }
+      },
       setBombIntent: phase => {
         if (!managedLoaded || runtimeClosed) return 'accepted';
         const code = csharp.setBombIntent(({ begin: 1, end: 3, cancel: 4 })[phase]);
@@ -1020,7 +1032,11 @@ async function initializePage() {
         return code;
       },
       latchSkillIntent: () => csharp.latchSkillIntent(),
-      clearIntent: () => { if (managedLoaded && !runtimeClosed) csharp.clearPlayerIntent(); },
+      clearIntent: () => { if (managedLoaded && !runtimeClosed) {
+        csharp.clearPlayerIntent();
+        try { movementTrace?.intentReset(); }
+        catch { try { movementTrace?.diagnosticFailure('intent-reset-record'); } catch { /* Diagnostic only. */ } }
+      } },
     } : {
       driver: inputDriver,
       panel: document.getElementById('player-controls'),

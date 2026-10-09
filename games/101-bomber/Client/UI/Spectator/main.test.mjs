@@ -7,6 +7,8 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createPlayerIntentControls } from './player-intent-controls.mjs';
+import { createMovementTrace } from './movement-trace.mjs';
+import { analyzeMovementTrace } from '../../../Tools/movement-trace-analyze.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const WEB = path.join(process.env.LUMIO_ENGINE_CANDIDATE_ROOT || path.join(ROOT, 'Engine'), 'web');
 const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
@@ -387,6 +389,74 @@ test('managed final trace drains after Close before the client reference is lost
   const receipt = JSON.parse(p.evalInPage('JSON.stringify(__finalTrace)'));
   assert.equal(receipt[0].batch.events[0].sequence, '7');
   assert.equal(receipt[0].bracket, null);
+});
+
+test('one failed managed drain makes a joined recording incomplete even after a later valid batch', async () => {
+  const clock = { value: 0 };
+  const first = { hostLifetime: 'host-a', clockFrequency: '1000', complete: true, pending: 0,
+    eventLoss: '0', pendingLoss: '0', unmatched: '0', diagnosticFailures: '0', events: [
+      { k: 'sample', sampleId: '1', primary: 2, stamp: '1' },
+      { k: 'request', sampleId: '1', ability: 'MoveAbility', sender: 'self', wireGeneration: '9', sequence: '7', stamp: '2' },
+      { k: 'accepted', sampleId: '1', sender: 'self', wireGeneration: '9', sequence: '7', stamp: '3', encodedLength: 3, encodedSha256: 'abc' },
+    ] };
+  let drains = 0;
+  const p = await runPage({ clock, exports: { DrainInputTrace() {
+    drains++;
+    if (drains === 2) throw new Error('actual drain failure');
+    return JSON.stringify([drains === 1 ? first : { ...first, events: [] }]);
+  } } });
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  p.win.__actualTrace = trace;
+  p.evalInPage('movementTrace = __actualTrace');
+  await p.tick(); await p.tick(); await p.tick();
+  assert.equal(drains, 3);
+  const exported = trace.export();
+  assert.equal(exported.events.filter(e => e.k === 'managedTrace').length, 2);
+  assert.ok(exported.diagnosticFailures > 0, 'the failed drain must survive later valid batches');
+  const summary = analyzeMovementTrace(exported);
+  assert.equal(summary.correlation.incompleteManaged, false, 'the gap is a JS drain failure, not a managed batch loss');
+  assert.equal(summary.correlation.diagnosticFailures, 1);
+  assert.equal(summary.correlation.status, 'UNPROVEN');
+});
+
+test('actual step setter path exposes a sustained hold, backward frame and post-release overshoot without legacy inputs', () => {
+  const clock = { value: 0 }, calls = [], listeners = new Map();
+  const target = { addEventListener(type, callback) { listeners.set(type, [...(listeners.get(type) ?? []), callback]); },
+    removeEventListener() {}, document: { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {} },
+    emit(type, code) { const event = { code, repeat: false, defaultPrevented: false, target: { closest: () => null }, preventDefault() {} };
+      for (const callback of listeners.get(type) ?? []) callback(event); } };
+  const panel = { contains: () => false, querySelectorAll: () => [], querySelector: () => null };
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  trace.note('input=step');
+  const context = vm.createContext({ csharp: { setMoveIntent(...args) { calls.push(args); } }, movementTrace: trace });
+  const binding = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('      setMoveIntent: (primary, secondary, turn) =>'),
+    MAIN_SOURCE.indexOf('\n      setBombIntent:', MAIN_SOURCE.indexOf('      setMoveIntent: (primary, secondary, turn) =>'))).trim().replace(/,\s*$/, '');
+  const setMoveIntent = vm.runInContext(`({ ${binding} }).setMoveIntent`, context);
+  const controls = createPlayerIntentControls({ setMoveIntent, setBombIntent: () => 'accepted',
+    latchSkillIntent() {}, clearIntent() {}, ready: () => true, target, panel });
+  const pose = z => ({ publicationSequence: String(Math.round(z * 10)), localStepOrdinal: '1', executionTick: '1',
+    target: { position: { x: 0, z } } });
+  const pump = (t, z) => trace.pump({ startedAt: t, tickAt: t + 1, tickMs: 1, totalMs: 2, state: 'active', pose: pose(z) });
+  const frame = (t, shown, targetZ) => { clock.value = t; trace.frame({ now: t - 2, dt: 16,
+    localPose: pose(targetZ), local: { x: 0, z: shown, yaw: 0, speed: 4 } }); };
+  clock.value = 1; target.emit('keydown', 'KeyW');
+  pump(10, 0); frame(20, 0, 0);
+  pump(60, .2); frame(70, .25, .2); frame(80, .15, .2);
+  pump(300, .4); frame(310, .45, .4); frame(350, .45, .4);
+  clock.value = 400; target.emit('keyup', 'KeyW');
+  frame(420, .6, .4); frame(440, .4, .4);
+  assert.deepEqual(calls.map(row => Array.from(row)), [[1, 0, true], [0, 0, false]]);
+  const summary = analyzeMovementTrace(trace.export());
+  assert.equal(summary.counts.legacyPublishedMoves, 0);
+  assert.equal(summary.counts.holdWindows, 1);
+  assert.ok(summary.display.heldFrames > 0);
+  assert.ok(summary.display.backwardFrames > 0);
+  assert.ok(summary.display.stopOvershootM.n > 0);
+  assert.ok(summary.display.stopOvershootM.max > .1);
+  assert.equal(summary.stopTails[0].frames, 2, 'tail frames occur after the setter-observed release');
+  assert.ok(summary.facing.heldFrames > 0);
+  assert.equal(summary.movementExposureGate, 'PASS');
+  controls.destroy();
 });
 
 test('step input observes opaque identity and clears retained sources before a fresh physical edge', () => {

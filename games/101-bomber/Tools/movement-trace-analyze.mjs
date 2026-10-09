@@ -45,6 +45,25 @@ function holdWindows(inputs) {
   return windows;
 }
 
+// Step input is retained state. Repeated physical setters are not required to keep it
+// held; only a zero-direction setter or a real clear closes the exposure window.
+function stepHoldWindows(events) {
+  const windows = [];
+  let held = null;
+  for (const event of events) {
+    if (event.k === 'moveIntent') {
+      const active = Number(event.primary) !== 0 || Number(event.secondary) !== 0;
+      if (active && !held) held = { start: event.t, end: Infinity, inputs: 0, closed: false };
+      if (active && held) held.inputs++;
+      if (!active && held) { held.end = event.t; held.closed = true; windows.push(held); held = null; }
+    } else if (event.k === 'intentReset' && held) {
+      held.end = event.t; held.closed = true; windows.push(held); held = null;
+    }
+  }
+  if (held) windows.push(held);
+  return windows;
+}
+
 const TURN_SETTLE_MS = 250;
 
 // The pump admitting an input is the first one whose Tick starts at or after it.
@@ -60,6 +79,7 @@ export function analyzeMovementTrace(trace) {
   const events = [...trace.events].sort((a, b) => a.t - b.t);
   const pumps = events.filter(e => e.k === 'pump');
   const inputs = events.filter(e => e.k === 'input' && e.kind === 'move' && e.accepted);
+  const stepDriver = events.some(e => e.k === 'moveIntent' || (e.k === 'note' && e.message === 'input=step'));
   const frames = events.filter(e => e.k === 'frame');
   const longTasks = events.filter(e => e.k === 'longtask');
   const managedReceipts = events.filter(e => e.k === 'managedTrace' && e.batch);
@@ -97,20 +117,30 @@ export function analyzeMovementTrace(trace) {
   }
   const incompleteManaged = managedBatches.some(batch => !batch.complete || Number(batch.eventLoss) > 0 ||
     Number(batch.pendingLoss) > 0 || Number(batch.unmatched) > 0 || Number(batch.diagnosticFailures) > 0);
+  const traceDiagnosticFailures = Math.max(Number(trace.diagnosticFailures) || 0,
+    events.filter(e => e.k === 'diagnosticFailure').length);
   const unmatchedAccepted = accepted.filter(e => !e.sampleId || !matchingRequest(e)).length;
   const latestByHost = new Map(managedBatches.map(batch => [batch.hostLifetime, batch]));
   const exactCorrelation = managedBatches.length > 0 && samples.length > 0 && !incompleteManaged &&
+    traceDiagnosticFailures === 0 &&
     [...latestByHost.values()].every(batch => batch.pending === 0) && unmatchedAccepted === 0 &&
     heldMoveCounts.every(count => count === 1);
-  const windows = holdWindows(inputs);
+  const windows = stepDriver ? stepHoldWindows(events) : holdWindows(inputs);
 
-  // A held window spans the pumps from the one admitting its first input to the one admitting its last,
-  // so released pumps never count as empty. In the pump driver every held pump publishes one move by
-  // construction; there the executed-step figures below are the meaningful ones.
+  // Legacy windows follow repeated publications. Step windows follow the actual retained setter
+  // state through release or clear, excluding a pump after release.
   for (const [i, w] of windows.entries()) {
-    w.firstPump = admittingPump(pumps, w.start);
-    w.lastPump = admittingPump(pumps, w.end);
-    w.heldUntil = w.lastPump === null ? w.end : (pumps[w.lastPump].tickAt ?? pumps[w.lastPump].t);
+    if (stepDriver) {
+      const heldPumps = pumps.map((pump, index) => ({ index, t: pump.tickAt ?? pump.t }))
+        .filter(pump => pump.t >= w.start && pump.t < w.end);
+      w.firstPump = heldPumps[0]?.index ?? null;
+      w.lastPump = heldPumps.at(-1)?.index ?? null;
+      w.heldUntil = w.end;
+    } else {
+      w.firstPump = admittingPump(pumps, w.start);
+      w.lastPump = admittingPump(pumps, w.end);
+      w.heldUntil = w.lastPump === null ? w.end : (pumps[w.lastPump].tickAt ?? pumps[w.lastPump].t);
+    }
     w.next = windows[i + 1]?.start ?? Infinity;
   }
   const admitted = [];
@@ -122,7 +152,7 @@ export function analyzeMovementTrace(trace) {
     for (let i = w.firstPump; i <= w.lastPump; i++) {
       const from = i === w.firstPump ? -Infinity : pumps[i - 1].tickAt ?? pumps[i - 1].t;
       const to = pumps[i].tickAt ?? pumps[i].t;
-      admitted.push(inputs.filter(input => input.t > from && input.t <= to).length);
+      if (!stepDriver) admitted.push(inputs.filter(input => input.t > from && input.t <= to).length);
       const a = pumps[i - 1]?.pose, b = pumps[i].pose;
       if (i === w.firstPump || !a || !b || a.tick === null || b.tick === null) continue;
       tickAdvance.push(Number(BigInt(b.tick) - BigInt(a.tick)));
@@ -170,6 +200,7 @@ export function analyzeMovementTrace(trace) {
   // observed until the next hold starts.
   const overshoot = [];
   for (const w of windows) {
+    if (stepDriver && !w.closed) continue;
     const before = displayed.filter(f => f.t >= w.start && f.t <= w.heldUntil);
     const after = displayed.filter(f => f.t > w.heldUntil && f.t <= Math.min(w.heldUntil + STOP_WINDOW_MS, w.next));
     if (!before.length || !after.length) continue;
@@ -194,7 +225,8 @@ export function analyzeMovementTrace(trace) {
   for (let i = 1; i < pumps.length; i++) pumpIntervals.push(pumps[i].t - pumps[i - 1].t);
   const degrees = value => (value * 180) / Math.PI;
   const notes = events.filter(e => e.k === 'note').map(e => e.message);
-  const stops = events.filter(e => e.k === 'key' && e.type === 'keyup');
+  const stops = stepDriver ? windows.filter(w => w.closed).map(w => ({ t: w.end }))
+    : events.filter(e => e.k === 'key' && e.type === 'keyup');
   const postStopFrameIndices = new Set();
   const firstFrameAfter = t => {
     let low = 0, high = frames.length;
@@ -221,24 +253,27 @@ export function analyzeMovementTrace(trace) {
     version: trace.version ?? null, truncated: Boolean(trace.truncated), notes,
     captureProvenance: certifiedCapture ? 'certified' : 'uncertified-legacy-v1',
     foregroundGate: foreground ? 'PASS' : 'UNPROVEN',
+    movementExposureGate: foreground && lead.length > 0 ? 'PASS' : 'UNPROVEN',
     legacyInputAcceptedMeans: 'local-publication-only',
     stopTails,
     counts: { events: events.length, pumps: pumps.length, acceptedMoves: inputs.length,
       legacyPublishedMoves: inputs.length, frames: frames.length,
       holdWindows: windows.length, hiddenFrames: frames.filter(f => f.vis !== 'visible').length,
+      stepIntentMoves: events.filter(e => e.k === 'moveIntent').length,
       hiddenPumps: pumps.filter(p => p.vis !== 'visible').length, framesAfterStop,
       samples: samples.length, requests: requests.length, transportAccepted: accepted.length,
       outsideStepAccepted: managed.filter(e => e.k === 'outside-step-accepted').length },
     correlation: { status: trace.truncated || !certifiedCapture || !exactCorrelation ? 'UNPROVEN' : 'PASS',
       heldMoveRequestsPerSample: histogram(heldMoveCounts), samplesPerPump: histogram(pumpStepCounts),
-      unmatchedAccepted, incompleteManaged,
+      unmatchedAccepted, incompleteManaged, diagnosticFailures: traceDiagnosticFailures,
       requestSequences: requests.map(r => ({ hostLifetime: r.hostLifetime, sender: r.sender,
         generation: r.wireGeneration, sequence: r.sequence, sampleId: r.sampleId })),
       acceptedSequences: accepted.map(r => ({ hostLifetime: r.hostLifetime, sender: r.sender,
         generation: r.wireGeneration, sequence: r.sequence, sampleId: r.sampleId })),
       transportObserverAfterRequestMs: stats(transportObservationMs),
       latencyNote: 'C# Stopwatch request-to-observer only; JS pump bracket is observation bound, not exact latency' },
-    admission: { movesPerHeldPump: histogram(admitted),
+    admission: { source: stepDriver ? 'unavailable-for-step-intent' : 'legacy-local-publication',
+      movesPerHeldPump: histogram(admitted),
       nonOneRatio: admitted.length ? admitted.filter(v => v !== 1).length / admitted.length : null },
     execution: { tickAdvancePerHeldPump: histogram(tickAdvance), targetStepPerHeldPumpM: stats(targetStep),
       heldPumpsWithUnchangedTarget: unchangedTarget },

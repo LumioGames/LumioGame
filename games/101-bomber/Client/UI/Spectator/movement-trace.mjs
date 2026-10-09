@@ -10,6 +10,7 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
   const events = [];
   const startedAt = new Date().toISOString();
   let truncated = false;
+  let diagnosticFailures = 0;
   function push(event) {
     if (events.length >= capacity) { truncated = true; return; }
     events.push(event);
@@ -25,6 +26,16 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
   return {
     key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility() }); },
     input(kind, accepted, args = []) { push({ k: 'input', t: now(), kind, accepted, args }); },
+    // Observed after the actual step-intent setter returns. This is a held physical intent,
+    // not a managed request, transport acceptance or server execution.
+    moveIntent(primary, secondary, turn) {
+      push({ k: 'moveIntent', t: now(), primary, secondary, turn, source: 'setter-return-observed' });
+    },
+    intentReset() { push({ k: 'intentReset', t: now(), source: 'clear-return-observed' }); },
+    diagnosticFailure(kind) {
+      if (diagnosticFailures < Number.MAX_SAFE_INTEGER) diagnosticFailures++;
+      push({ k: 'diagnosticFailure', t: now(), kind });
+    },
     // Inputs published before tickAt are admitted by this pump's Session Tick; pose is the owner
     // publication read right after that Tick.
     pump({ startedAt, tickAt, tickMs, totalMs, state, pose = null }) {
@@ -52,9 +63,9 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     export() {
       return { version: MOVEMENT_TRACE_VERSION, timeBasis: 'performance.now', frameTimeBasis: 'observer-invocation',
         managedTimeBasis: 'raw-Stopwatch-unanchored', startedAt, exportedAt: new Date().toISOString(), userAgent,
-        truncated, capacity, events: events.slice() };
+        truncated, diagnosticFailures, capacity, events: events.slice() };
     },
-    clear() { events.length = 0; truncated = false; },
+    clear() { events.length = 0; truncated = false; diagnosticFailures = 0; },
     get size() { return events.length; },
   };
 }

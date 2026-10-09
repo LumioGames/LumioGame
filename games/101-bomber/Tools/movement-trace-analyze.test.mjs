@@ -151,3 +151,17 @@ test('overflow, unmatched acceptance and legacy capture provenance cannot certif
   assert.equal(legacy.captureProvenance, 'uncertified-legacy-v1');
   assert.equal(legacy.foregroundGate, 'UNPROVEN');
 });
+
+test('visible step frames without an observed held movement remain unproven', () => {
+  const summary = analyzeMovementTrace({ version: 2, timeBasis: 'performance.now',
+    frameTimeBasis: 'observer-invocation', truncated: false, events: [
+      { k: 'note', t: 0, message: 'input=step' },
+      { k: 'frame', t: 10, rafT: 8, vis: 'visible', dx: 0, dz: 0, tx: 0, tz: 0, yaw: 0 },
+      { k: 'frame', t: 30, rafT: 24, vis: 'visible', dx: 0, dz: 0, tx: 0, tz: 0, yaw: 0 },
+    ] });
+  assert.equal(summary.foregroundGate, 'PASS');
+  assert.equal(summary.movementExposureGate, 'UNPROVEN');
+  assert.equal(summary.counts.holdWindows, 0);
+  assert.equal(summary.display.heldFrames, 0);
+  assert.equal(summary.display.stopOvershootM.n, 0);
+});

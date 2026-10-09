@@ -33,6 +33,19 @@ test('trace stops recording at capacity and reports truncation', () => {
   assert.equal(exported.truncated, true);
 });
 
+test('diagnostic failure remains visible when the bounded event list is already full', () => {
+  const trace = createMovementTrace({ now: () => 7, capacity: 1, doc: null });
+  trace.note('first');
+  trace.diagnosticFailure('managed-drain');
+  const exported = trace.export();
+  assert.equal(exported.events.length, 1);
+  assert.equal(exported.truncated, true);
+  assert.equal(exported.diagnosticFailures, 1);
+  assert.equal(analyzeMovementTrace(exported).correlation.status, 'UNPROVEN');
+  trace.clear();
+  assert.equal(trace.export().diagnosticFailures, 0);
+});
+
 test('delayed frame records observation after Stop while retaining its nominal rAF timestamp', () => {
   let clock = 10;
   const trace = createMovementTrace({ now: () => clock, doc: { visibilityState: 'visible' } });
