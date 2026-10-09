@@ -130,6 +130,10 @@ export async function launchPreview(configPath, { startInfrastructure } = {}) {
       save(join(run, 'cleanup-failure.json'), { at: new Date().toISOString(), error: redact(error) });
       firstFailure ??= error;
     }
+    try { await tools.cleanupRetained(); } catch (error) {
+      save(join(run, 'retained-cleanup-failure.json'), { at: new Date().toISOString(), error: redact(error) });
+      firstFailure ??= error;
+    }
     try {
       const after = protectedSnapshot(listeners(), []);
       save(join(run, 'ports-after.json'), { at: new Date().toISOString(), protected: after });
@@ -140,11 +144,63 @@ export async function launchPreview(configPath, { startInfrastructure } = {}) {
   return run;
 }
 
+export function createPostgresOwnership({ readPid, identify, expectedExe, stop, record = () => {}, previewId }) {
+  let started = false;
+  let stopped = false;
+  let expected;
+  let firstError;
+  const captureIdentity = (recovered = false) => {
+    const pid = readPid();
+    assert(Number.isInteger(pid) && pid > 0, 'PostgreSQL PID unavailable');
+    const identity = identify(pid);
+    assert(identity?.pid === pid && Number.isFinite(Date.parse(identity.startTime))
+      && typeof identity.exe === 'string' && identity.exe.length > 0
+      && (!expectedExe || resolve(identity.exe).toLowerCase() === resolve(expectedExe).toLowerCase()),
+    'PostgreSQL identity unavailable');
+    expected = { pid, startTime: identity.startTime, exe: identity.exe };
+    if (recovered) record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_IDENTITY_RECOVERED', previewId,
+      ...expected, firstError: String(firstError) });
+    return expected;
+  };
+  return {
+    markStarted() { started = true; record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_START_RETAINED', previewId }); },
+    captureIdentity() {
+      assert(started, 'PostgreSQL start not recorded');
+      try { return captureIdentity(); } catch (error) {
+        firstError ??= error;
+        record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_IDENTITY_UNAVAILABLE', previewId,
+          retainedOwnedStart: true, error: String(error) });
+        throw error;
+      }
+    },
+    async stop() {
+      if (!started || stopped) return;
+      try {
+        if (!expected) {
+          let lastError;
+          for (let attempt = 0; attempt < 3 && !expected; attempt++) {
+            try { captureIdentity(true); } catch (error) { lastError = error; }
+          }
+          if (!expected) throw new Error(`PostgreSQL identity unavailable; retained for recovery: ${lastError}`);
+        }
+        assert(sameIdentity(expected, identify(expected.pid)), 'PostgreSQL identity mismatch');
+        await stop();
+        stopped = true;
+      } catch (error) {
+        record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_CLEANUP_FAILED', previewId,
+          retainedOwnedStart: true, expected, firstError: String(firstError), error: String(error) });
+        throw error;
+      }
+    },
+  };
+}
+
 async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, signer, identify }) {
-  const command = (name, executable, args) => {
+  const command = (name, executable, args, onSuccess) => {
     const started = new Date().toISOString();
     const result = spawnSync(executable, args, { env: cleanEnv, cwd: run, encoding: 'utf8',
       windowsHide: true, timeout: 300000, maxBuffer: 32 * 1024 * 1024 });
+    if (!result.error && result.status === 0) onSuccess?.();
     writeFileSync(join(run, `${name}.stdout.txt`), result.stdout ?? '', { flag: 'wx' });
     writeFileSync(join(run, `${name}.stderr.txt`), result.stderr ?? '', { flag: 'wx' });
     save(join(run, `${name}.receipt.json`), { started, finished: new Date().toISOString(),
@@ -158,22 +214,25 @@ async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, sig
   const pglog = join(run, 'postgres.log');
   command('initdb', pg('initdb'), ['-D', pgdata, '-U', infra.pgRole,
     '--auth-local=trust', '--auth-host=trust', '--encoding=UTF8', '--no-locale']);
-  let postgresIdentity;
+  let pgOrdinal = 0;
+  const postgres = createPostgresOwnership({
+    readPid: () => Number(readFileSync(join(pgdata, 'postmaster.pid'), 'utf8').split(/\r?\n/)[0]),
+    expectedExe: pg('postgres'),
+    identify, stop: () => command('pg-stop', pg('pg_ctl'), ['-D', pgdata, '-m', 'fast', '-w', 'stop']),
+    previewId: seal.previewId,
+    record: value => save(join(run, `postgres-ownership-${String(++pgOrdinal).padStart(3, '0')}.json`), value),
+  });
   let platform;
   const stop = async () => {
     let failure;
     if (platform) try { await tools.forceCleanup(platform); } catch (error) { failure ??= error; }
-    if (postgresIdentity) try {
-      assert(sameIdentity(postgresIdentity, identify(postgresIdentity.pid)), 'PostgreSQL identity mismatch');
-      command('pg-stop', pg('pg_ctl'), ['-D', pgdata, '-m', 'fast', '-w', 'stop']);
-    } catch (error) { failure ??= error; }
+    try { await postgres.stop(); } catch (error) { failure ??= error; }
     if (failure) throw failure;
   };
   try {
     command('pg-start', pg('pg_ctl'), ['-D', pgdata, '-l', pglog, '-o',
-      `-h 127.0.0.1 -p ${infra.ports.postgres}`, '-w', 'start']);
-    const postgresPid = Number(readFileSync(join(pgdata, 'postmaster.pid'), 'utf8').split(/\r?\n/)[0]);
-    postgresIdentity = identify(postgresPid);
+      `-h 127.0.0.1 -p ${infra.ports.postgres}`, '-w', 'start'], () => postgres.markStarted());
+    const postgresIdentity = postgres.captureIdentity();
     save(join(run, 'postgres-identity.json'), { previewId: seal.previewId,
       ...postgresIdentity, pgdata, port: infra.ports.postgres });
     const psql = (name, database, sql) => command(name, pg('psql'), ['-h', '127.0.0.1',

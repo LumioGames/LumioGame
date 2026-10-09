@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import { childEnvironment, sameIdentity, scrubBotTicket } from './preview-contracts.mjs';
 
 export function createPreviewProcessTools(official, { officialBotHost, platformDll, readIdentity,
   previewId, record = () => {}, onTicket = () => {} }) {
   const owned = new WeakMap();
+  const retained = new Set();
+  const validIdentity = (pid, identity) => identity?.pid === pid
+    && Number.isFinite(Date.parse(identity.startTime)) && typeof identity.exe === 'string' && identity.exe.length > 0;
+  const capture = (ownership, recovered = false) => {
+    const identity = readIdentity(ownership.pid);
+    assert(validIdentity(ownership.pid, identity)
+      && resolve(identity.exe).toLowerCase() === resolve(ownership.executable).toLowerCase(),
+    'owned process identity unavailable');
+    ownership.expected = { pid: identity.pid, startTime: identity.startTime, exe: identity.exe };
+    if (recovered) record({ kind: 'MOVEMENT_PREVIEW_OWNED_PROCESS_IDENTITY_RECOVERED', previewId,
+      ...ownership.expected, firstError: String(ownership.firstError) });
+    return ownership.expected;
+  };
   const launch = (executable, args, options, { platform = false } = {}) => {
     let environment = childEnvironment(options.env ?? process.env,
       Object.fromEntries(Object.entries(options.env ?? {}).filter(([key]) =>
@@ -29,15 +43,20 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
     }
     const state = official.startLogged(executable, publicArgs, { ...options, env: environment });
     const pid = state.child?.pid;
-    assert(Number.isInteger(pid) && pid > 0, 'owned process PID missing');
+    const ownership = { pid, executable, expected: null, firstError: null };
+    owned.set(state, ownership);
+    retained.add(state);
     let identity;
-    try { identity = readIdentity(pid); } catch (error) {
+    try {
+      assert(Number.isInteger(pid) && pid > 0, 'owned process PID missing');
+      identity = capture(ownership);
+    } catch (error) {
+      ownership.firstError = error;
       record({ kind: 'MOVEMENT_PREVIEW_PROCESS_IDENTITY_UNAVAILABLE', previewId, pid,
-        cwd: options.cwd, args: publicArgs, log: options.log, at: new Date().toISOString(), error: String(error) });
+        cwd: options.cwd, args: publicArgs, log: options.log, at: new Date().toISOString(),
+        retainedOwnedStart: true, error: String(error) });
       throw error;
     }
-    assert(identity?.pid === pid && identity?.startTime && identity?.exe, 'owned process identity unavailable');
-    owned.set(state, identity);
     record({ kind: 'MOVEMENT_PREVIEW_OWNED_PROCESS_STARTED', previewId, pid,
       startTime: identity.startTime, exe: identity.exe, cwd: options.cwd,
       args: publicArgs, log: options.log, startedUtc: new Date().toISOString() });
@@ -52,12 +71,34 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
     assertAlive: official.assertAlive,
     waitExit: official.waitExit,
     async forceCleanup(state) {
-      const expected = owned.get(state);
-      assert(expected, 'unowned process cleanup refused');
-      if (state.closed) return;
-      const current = readIdentity(expected.pid);
-      assert(sameIdentity(expected, current), 'owned process identity mismatch');
-      await official.forceCleanup(state);
+      const ownership = owned.get(state);
+      assert(ownership, 'unowned process cleanup refused');
+      if (state.closed) { retained.delete(state); return; }
+      try {
+        if (!ownership.expected) {
+          let lastError;
+          for (let attempt = 0; attempt < 3 && !ownership.expected; attempt++) {
+            try { capture(ownership, true); } catch (error) { lastError = error; }
+          }
+          if (!ownership.expected) throw new Error(`owned process identity unavailable; retained for recovery: ${lastError}`);
+        }
+        const current = readIdentity(ownership.expected.pid);
+        assert(sameIdentity(ownership.expected, current), 'owned process identity mismatch');
+        await official.forceCleanup(state);
+        retained.delete(state);
+      } catch (error) {
+        record({ kind: 'MOVEMENT_PREVIEW_PROCESS_CLEANUP_FAILED', previewId, pid: ownership.pid,
+          retainedOwnedStart: true, expected: ownership.expected, firstError: String(ownership.firstError),
+          error: String(error) });
+        throw error;
+      }
+    },
+    async cleanupRetained() {
+      let failure;
+      for (const state of [...retained]) {
+        try { await this.forceCleanup(state); } catch (error) { failure ??= error; }
+      }
+      if (failure) throw failure;
     },
   };
 }

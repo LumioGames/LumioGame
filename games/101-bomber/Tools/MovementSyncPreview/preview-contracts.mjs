@@ -55,9 +55,12 @@ export function verifyFinalGate({ candidateSealPath, reviewReleasePath, expected
     'platform DLL outside platform root');
   assert(/^[a-z][a-z0-9_]*$/.test(infrastructure.pgRole)
     && /^[a-z][a-z0-9_]*$/.test(infrastructure.pgDatabase), 'PostgreSQL identity invalid');
-  assert(infrastructure.ports && Object.values(infrastructure.ports).length === 4
-    && Object.values(infrastructure.ports).every(port => Number.isInteger(port) && port > 1024 && port <= 65535)
-    && new Set(Object.values(infrastructure.ports)).size === 4, 'infrastructure ports invalid');
+  const portKeys = ['platform', 'postgres', 'ds', 'page'];
+  assert(infrastructure.ports && typeof infrastructure.ports === 'object'
+    && Object.keys(infrastructure.ports).sort().join(',') === [...portKeys].sort().join(',')
+    && portKeys.every(key => Number.isInteger(infrastructure.ports[key])
+      && infrastructure.ports[key] > 1024 && infrastructure.ports[key] <= 65535)
+    && new Set(portKeys.map(key => infrastructure.ports[key])).size === 4, 'infrastructure ports invalid');
   assert(!Object.values(infrastructure.ports).some(port => PROTECTED_PORTS.includes(port)), 'protected port selected');
   const fields = infrastructure.allocation?.fields;
   const bindingKeys = ['AllocationId', 'WsUrl', 'Subprotocol', 'ServerAudience', 'GameId',
