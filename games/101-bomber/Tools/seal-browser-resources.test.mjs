@@ -39,6 +39,26 @@ test('embedded actual SDK boot array binds initializer through an inspected load
   const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',version:'test',dotnetLoaderContract:{version:'10.0.12',files:[{file:'_framework/dotnet.hash.js',sha256:createHash('sha256').update(loader).digest('hex')}]}},out});
   assert.ok(manifest.bootModules.includes('./_framework/initializer.js'));assert.ok(manifest.jsEdges.some(e=>e.to==='./_framework/initializer.js'));
 });
+test('published json-start boot data is bounded and preserves actual array resources',async t=>{
+  const root=await fixture(t);await rm(path.join(root,'_framework/dotnet.boot.js'));
+  const loader='const ft={withConfig(){}};ft.withConfig(/*json-start*/{"resources":{"assembly":[{"name":"a.wasm","hash":"sha256-test"}]}}/*json-end*/);';
+  await writeFile(path.join(root,'_framework/dotnet.hash.js'),loader);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
+  assert.ok(manifest.bootResources.includes('./_framework/a.wasm'));
+});
+test('an inspected native Node-only import requires matching byte and branch receipts',async t=>{
+  const root=await fixture(t);
+  const native="const ENVIRONMENT_IS_NODE=false;\nif (ENVIRONMENT_IS_NODE) {\n  const { createRequire } = await import('module');\n}\n";
+  await writeFile(path.join(root,'_framework/dotnet.native.hash.js'),native);
+  await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}],"jsModuleNative":[{"name":"dotnet.native.hash.js"}]}};');
+  const statementStart=native.indexOf("import('module')"),statementEnd=statementStart+"import('module')".length,nodeGuardStart=native.indexOf('if (ENVIRONMENT_IS_NODE) {');
+  const file={file:'_framework/dotnet.native.hash.js',sha256:createHash('sha256').update(native).digest('hex'),browserUnreachableImports:[{specifier:'module',statementStart,statementEnd,nodeGuardStart,guardSliceSha256:createHash('sha256').update(native.slice(nodeGuardStart,statementEnd)).digest('hex')}]};
+  const out=path.join(root,'browser-resource-manifest.json');
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out}),/resource_import_missing/);
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[{...file,sha256:'0'.repeat(64)}]}},out}),/resource_import_missing/);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[file]}},out});
+  assert.ok(manifest.excludedBranches.some(branch=>branch.url==='module'&&branch.loaderSha256===file.sha256));
+});
 test('required boot membership missing and path escape fail before any seal output',async t=>{
   const root=await fixture(t);await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"missing.wasm"}]}};');
   await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}),/missing/);

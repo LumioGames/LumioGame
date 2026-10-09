@@ -27,6 +27,14 @@ function jsonObject(source,start) {
   throw new Error('resource_boot_config_truncated');
 }
 function bootConfig(source) {
+  const jsonStart='/*json-start*/',jsonEnd='/*json-end*/';
+  if(source.includes(jsonStart)){
+    const start=source.indexOf(jsonStart),end=source.indexOf(jsonEnd,start+jsonStart.length);
+    if(start!==source.lastIndexOf(jsonStart)||end<0||end!==source.lastIndexOf(jsonEnd))throw new Error('resource_boot_config_marker_ambiguous_or_truncated');
+    const config=JSON.parse(source.slice(start+jsonStart.length,end));
+    if(!config.resources&&!config.assets)throw new Error('resource_boot_config_missing_resources');
+    return config;
+  }
   const embedded=source.indexOf('/*! dotnetBootConfig */');
   const external=/^\s*export\s+const\s+config\s*=/.exec(source);
   const start=source.indexOf('{',embedded>=0?embedded:external?external[0].length:0);
@@ -58,7 +66,7 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
   let config;
   if(entryName&&inventory.has(entryName)){
     const source=await fs.readFile(path.join(root,entryName),'utf8');
-    if(source.includes('/*! dotnetBootConfig */')){
+    if(source.includes('/*! dotnetBootConfig */')||source.includes('/*json-start*/')){
       try{config=bootConfig(source);bootName=entryName;}catch(error){if(!bootName)throw error;}
     }
   }
@@ -84,7 +92,7 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
   }
   collectBoot(config.resources);collectBoot(config.assets);
   if(!bootResources.length)throw new Error('resource_actual_boot_binaries_empty');
-  const edges=[];
+  const edges=[],excludedBranches=[{from:'./main.js',url:'./dev-hot-reload.mjs',reason:'witness rejects __lumioDevelopment before boot'}];
   const resolveImport=(from,specifier)=>{
     const parent=new URL(from,'https://seal.invalid/');
     const absolute=new URL(specifier,parent).href;
@@ -108,6 +116,13 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
       if(match.d===-2||match.n===undefined)continue;
       const specifier=match.n;
       if(name==='main.js'&&specifier==='./dev-hot-reload.mjs'&&/if\s*\(globalThis\.__lumioDevelopment\)/.test(source))continue;
+      const unreachable=contract?.browserUnreachableImports?.find(branch=>branch.specifier===specifier&&branch.statementStart===match.ss&&branch.statementEnd===match.se);
+      if(dotnetContract&&/^_framework\/dotnet\.native\./.test(name)&&specifier==='module'&&unreachable&&
+        source.slice(match.ss,match.se)==="import('module')"&&unreachable.nodeGuardStart===source.indexOf('if (ENVIRONMENT_IS_NODE) {')&&
+        source.slice(unreachable.nodeGuardStart,match.ss).trimEnd().endsWith('const { createRequire } = await')&&
+        sha(Buffer.from(source.slice(unreachable.nodeGuardStart,match.se)))===unreachable.guardSliceSha256){
+        excludedBranches.push({from:resource.url,url:specifier,reason:'exact inspected native Node-only createRequire branch; browser unreachable',loaderSha256:resource.sha256,...unreachable});continue;
+      }
       edges.push({from:resource.url,to:resolveImport(resource.url,specifier),dynamic:match.d>=0});
     }
     const computed=imports.filter(match=>match.d>=0&&match.n===undefined);
@@ -133,7 +148,7 @@ export async function sealBrowserResources({ publishRoot, expectedInput, out }) 
   }
   const manifest={schema:'lumio.browser-resources.v1',arm:expectedInput.arm,version:expectedInput.version,sourceHead:expectedInput.sourceHead,imports:sdkMap.imports??{},
     bootModule:'./'+bootName,resources:[...inventory.values()],bootResources:[...new Set(bootResources)],bootModules:[...new Set(bootModules)],jsEdges:edges,
-    excludedBranches:[{from:'./main.js',url:'./dev-hot-reload.mjs',reason:'witness rejects __lumioDevelopment before boot'}]};
+    excludedBranches};
   const manifestText=JSON.stringify(manifest,null,2)+'\n';const digest=sha(Buffer.from(manifestText));
   const integrity=Object.fromEntries(manifest.resources.filter(r=>r.category==='js').map(r=>[r.url,sri(r.sha256)]));
   const bootstrap=`<script id="lumio-resource-bootstrap">\n(()=>{const preview=['127.0.0.1','localhost','[::1]'].includes(location.hostname)&&new URLSearchParams(location.search).get('scene')==='movement-sync-preview';\n`+
