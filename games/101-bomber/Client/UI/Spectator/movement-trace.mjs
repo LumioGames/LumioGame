@@ -23,7 +23,35 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     inputSeq: text(pose.inputSequence), cause: text(pose.cause),
     tx: number(pose.target?.position?.x), tz: number(pose.target?.position?.z),
   } : null);
+  function phaseTiming({ scope, startedAt, endedAt, spans, complete, failedPhase, error, context = null, tailStartedAt = null, rafT = null }) {
+    try {
+      push({ k: 'phaseTiming', t: now(), scope, startedAt: number(startedAt), endedAt: number(endedAt),
+        fullMs: number(endedAt - startedAt), tailMs: tailStartedAt === null ? null : number(endedAt - tailStartedAt),
+        spans: spans.map(span => ({ phase: span.phase, startedAt: number(span.startedAt), endedAt: number(span.endedAt), durationMs: number(span.durationMs) })),
+        complete: complete === true, failedPhase: text(failedPhase), rafT: number(rafT), context,
+        exception: error ? { name: text(error.name), message: text(error.message) } : null, vis: visibility() });
+    } catch {
+      if (diagnosticFailures < Number.MAX_SAFE_INTEGER) diagnosticFailures++;
+    }
+  }
   return {
+    phaseTiming,
+    // Only private trace callers create a bracket; no caller reads managed/native state here.
+    beginPhaseTiming(scope, startedAt = now()) {
+      const spans = [];
+      let phase = null, phaseStartedAt = startedAt;
+      return {
+        mark(next, at = now()) {
+          if (phase !== null) spans.push({ phase, startedAt: phaseStartedAt, endedAt: at, durationMs: at - phaseStartedAt });
+          phase = next; phaseStartedAt = at;
+        },
+        finish({ complete = true, error, context = null, tailStartedAt = null, rafT = null } = {}) {
+          const endedAt = now(), failedPhase = complete ? null : phase;
+          if (phase !== null) spans.push({ phase, startedAt: phaseStartedAt, endedAt, durationMs: endedAt - phaseStartedAt });
+          phaseTiming({ scope, startedAt, endedAt, spans, complete, failedPhase, error, context, tailStartedAt, rafT });
+        },
+      };
+    },
     key(type, code, repeat = false) { push({ k: 'key', t: now(), type, code, repeat, vis: visibility() }); },
     input(kind, accepted, args = []) { push({ k: 'input', t: now(), kind, accepted, args }); },
     // Observed after the actual step-intent setter returns. This is a held physical intent,

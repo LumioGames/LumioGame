@@ -293,6 +293,14 @@ export function analyzeMovementTrace(trace) {
       framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
       framesOver50ms: frameIntervals.filter(v => v > 50).length, pumpIntervalMs: stats(pumpIntervals),
       tickMs: stats(pumps.map(p => p.tickMs)), pumpTotalMs: stats(pumps.map(p => p.totalMs)),
+      phases: Object.fromEntries([...new Set(events.filter(e => e.k === 'phaseTiming').map(e => e.scope))].map(scope => {
+        const observations = events.filter(e => e.k === 'phaseTiming' && e.scope === scope);
+        const spans = observations.flatMap(e => e.spans ?? []);
+        return [scope, { observations: observations.length, incomplete: observations.filter(e => e.complete !== true).length,
+          fullMs: stats(observations.map(e => e.fullMs)), tailMs: stats(observations.map(e => e.tailMs)),
+          sections: Object.fromEntries([...new Set(spans.map(s => s.phase))].map(phase => [phase, stats(spans.filter(s => s.phase === phase).map(s => s.durationMs))])),
+          failures: observations.filter(e => e.complete !== true).map(e => ({ t: e.t, failedPhase: e.failedPhase, exception: e.exception, context: e.context })) }];
+      })),
       longTasks: longTasks.length, longTaskMs: stats(longTasks.map(l => l.duration)) },
   };
 }

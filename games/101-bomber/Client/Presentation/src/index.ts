@@ -26,6 +26,8 @@ export interface PresentationOptions {
   readLocalPose?(): LocalPresentationPose | null
   /** 开发期移动埋点：每个渲染帧在 view 更新后回调一次；不传则不取任何调试值。 */
   onFrame?(frame: PresentationFrameTrace): void
+  /** 私有预览可选观测；原始 observer performance.now，不使用 RAF 时间或 capped dt。 */
+  onFrameTiming?(timing: PresentationFrameTiming): void
   config?: BomberConfig
   rules?: ProtoRules
   callbacks?: {
@@ -44,6 +46,16 @@ export interface PresentationFrameTrace {
   renderTick: number
   localPose: LocalPresentationPose | null | undefined
   local: LocalViewDebug | null
+}
+
+export interface PresentationFrameTiming {
+  rafT: number
+  startedAt: number
+  endedAt: number
+  complete: boolean
+  failedPhase?: string
+  error?: unknown
+  spans: { phase: string; startedAt: number; endedAt: number; durationMs: number }[]
 }
 
 export interface Presentation {
@@ -116,9 +128,34 @@ export function createPresentation(options: PresentationOptions): Presentation {
     last = now
     const sample = feed.sample(now)
     if (sample) {
-      if (options.readLocalPose) sample.localPose = options.readLocalPose()
-      view.update(sample, dt)
-      options.onFrame?.({ now, dt, renderTick: sample.renderTick, localPose: sample.localPose, local: view.debugLocal() })
+      if (options.onFrameTiming) {
+        const startedAt = performance.now(), spans: PresentationFrameTiming['spans'] = []
+        let phase = 'ownerPose', phaseStartedAt = startedAt, complete = false, error: unknown
+        const mark = (next: string): void => {
+          const endedAt = performance.now()
+          spans.push({ phase, startedAt: phaseStartedAt, endedAt, durationMs: endedAt - phaseStartedAt })
+          phase = next; phaseStartedAt = endedAt
+        }
+        try {
+          if (options.readLocalPose) sample.localPose = options.readLocalPose()
+          mark('viewUpdate')
+          view.update(sample, dt)
+          mark('onFrame')
+          options.onFrame?.({ now, dt, renderTick: sample.renderTick, localPose: sample.localPose, local: view.debugLocal() })
+          complete = true
+        } catch (caught) { error = caught; throw caught }
+        finally {
+          const failedPhase = complete ? undefined : phase
+          mark('finished')
+          // Observation must never replace a business exception or stop the normal RAF schedule.
+          try { options.onFrameTiming({ rafT: now, startedAt, endedAt: phaseStartedAt, spans, complete, failedPhase, error }) }
+          catch (observationError) { console.error('[lumio-frame-timing]', observationError) }
+        }
+      } else {
+        if (options.readLocalPose) sample.localPose = options.readLocalPose()
+        view.update(sample, dt)
+        options.onFrame?.({ now, dt, renderTick: sample.renderTick, localPose: sample.localPose, local: view.debugLocal() })
+      }
       hud.update(sample, dt)
       touch?.setSkill(hud.skillButton())
       audio.update(sample, localPlayerId)

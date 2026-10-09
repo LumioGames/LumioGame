@@ -42,6 +42,7 @@ let stepInputObserving = false;
 // Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
 let inputDriver = 'interval';
 let movementTrace = null;
+let movementPhaseTimingEnabled = false;
 let movementPreviewControls = null;
 let privateDiagnosticCapture = null;
 let resourceWitness = null;
@@ -495,8 +496,13 @@ function updateGamePresentation() {
           globalThis.__lumioMovementTrace.frame(frame);
           const local = frame.local;
           previewFinitePose = local ? [local.x, local.z, local.yaw].every(Number.isFinite) : 'UNAVAILABLE';
-          movementPreviewControls?.refresh();
+          const timing = movementPhaseTimingEnabled ? movementTrace?.beginPhaseTiming('framePreviewRefresh') : null;
+          timing?.mark('previewRefresh');
+          try { movementPreviewControls?.refresh(); }
+          catch (error) { timing?.finish({ complete: false, error, rafT: frame.now }); throw error; }
+          timing?.finish({ rafT: frame.now });
         } : undefined,
+        onFrameTiming: movementPhaseTimingEnabled ? timing => movementTrace.phaseTiming({ scope: 'raf', ...timing }) : undefined,
       } : {});
       gameView = ownerView;
       resourceWitness?.noteStage('Presentation-created');
@@ -870,13 +876,19 @@ function refreshStepInput() {
 
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
+  let phaseTiming = null;
+  let pumpTailStartedAt = null;
   try {
     const pumpStartedAt = performance.now();
+    phaseTiming = movementPhaseTimingEnabled ? movementTrace?.beginPhaseTiming('pump', pumpStartedAt) : null;
+    phaseTiming?.mark('input', pumpStartedAt);
     if (inputDriver === 'pump') playerInput?.pump();
     if (inputDriver === 'step') refreshStepInput();
     const tickStartedAt = performance.now();
+    phaseTiming?.mark('managedTick', tickStartedAt);
     csharp.tick();
     const tickEndedAt = performance.now();
+    phaseTiming?.mark('postTickObservation', tickEndedAt);
     const tickMs = tickEndedAt - tickStartedAt;
     drainManagedTrace({ startedAt: tickStartedAt, endedAt: tickEndedAt });
     // Trace only: the owner publication this Tick left behind (executed step, not render sampling).
@@ -893,29 +905,43 @@ function pumpSession(attempt) {
     if (['faulted', 'closed', 'superseded'].includes(state.state)) {
       spectator.lastError = state.lastError || '';
       void finish(state.state === 'faulted' ? 'failed' : state.state).catch(error => console.error('[lumio-session] close failed', error));
+      phaseTiming?.finish({ complete: false, context: { state: state.state, phase: player.replica?.phase,
+        authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
       return;
     }
+    phaseTiming?.mark('refreshVoxelWorld');
     refreshVoxelWorld();
     let displayed = true;
     if (displayedWorldHandle) {
+      phaseTiming?.mark('configureMap');
       configureMap(csharp.mapDimensions());
+      phaseTiming?.mark('applyDump');
       displayed = applyDump(csharp.dumpPositions());
     } else paint([]);
+    phaseTiming?.mark('postDump');
     spectator.selfId = spectator.positions.find(position => position.self)?.id ?? null;
     spectator.voxel.sections = voxelGrid.sections().length;
     if (inputDriver === 'step') refreshStepInput();
     if (displayed) setStatus(state.state);
     movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
       totalMs: performance.now() - pumpStartedAt, state: state.state, pose: tracedPose });
+    if (phaseTiming) pumpTailStartedAt = performance.now();
+    phaseTiming?.mark('previewRefresh', pumpTailStartedAt);
     movementPreviewControls?.refresh();
+    phaseTiming?.mark('resourceWitness');
     if (resourceWitness?.status().complete) resourceWitness.noteStage('required-import-completed');
     if (resourceWitness && state.state === 'active') resourceWitness.noteStage('real-session-admitted');
+    phaseTiming?.mark('schedule');
     const period = 1000 / csharp.tickRateHz();
     const now = performance.now();
     nextPumpAt += period;
     if (nextPumpAt <= now) nextPumpAt = now;
     pumpTimer = setTimeout(() => pumpSession(attempt), nextPumpAt - now);
+    phaseTiming?.finish({ tailStartedAt: pumpTailStartedAt, context: { state: state.state, phase: player.replica?.phase,
+      authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
   } catch (error) {
+    phaseTiming?.finish({ complete: false, error, tailStartedAt: pumpTailStartedAt, context: { state: active ? 'active' : null,
+      phase: player.replica?.phase, authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
     noteApplyFault(error);
     failLaunch(error);
   }
@@ -1061,6 +1087,7 @@ async function initializePage() {
     canvas.width = canvas.height = 760;
     const flags = readMovementFlags();
     const privatePreview = movementPreviewEnabled() && flags.trace;
+    movementPhaseTimingEnabled = privatePreview;
     if (privatePreview) document.body.classList.add('movement-private-preview');
     const captureParams = new URLSearchParams(location.search);
     const diagnosticAuto = privatePreview && captureParams.getAll('capture').length === 1 && captureParams.get('capture') === 'diagnostic';
