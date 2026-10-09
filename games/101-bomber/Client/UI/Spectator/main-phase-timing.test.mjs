@@ -23,6 +23,8 @@ test('actual pump phase timing includes its full tail and preserves the throwing
       movementPreviewControls: { refresh() { calls.push('refresh'); clock += 10 } }, resourceWitness: null,
       nextPumpAt: 100, setTimeout(callback, delay) { calls.push('schedule'); timers.push({ callback, delay }); return 1 },
       noteApplyFault: caught => faults.push(caught), failLaunch: caught => failures.push(caught), console };
+    sandbox.prepareNativeInvokeTick = () => null;
+    sandbox.finishNativeInvokeTick = () => {};
     vm.runInNewContext(source, sandbox); sandbox.pumpSession(1);
     return { events: trace.export().events, summary: analyzeMovementTrace(trace.export()), calls, timers, faults, failures, error, clockReads };
   }

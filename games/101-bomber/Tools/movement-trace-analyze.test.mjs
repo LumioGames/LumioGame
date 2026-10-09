@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeMovementTrace } from './movement-trace-analyze.mjs';
 import { createMovementTrace } from '../Client/UI/Spectator/movement-trace.mjs';
+import { createNativeInvokeObserver } from '../Client/UI/Spectator/native-invoke-observer.mjs';
 
 const STEP = 0.2;
 const H = 50;
@@ -106,6 +107,37 @@ test('facing deviation and hidden frames are reported separately', () => {
 
 test('a trace without events is rejected', () => {
   assert.throws(() => analyzeMovementTrace({}), /movement_trace_events_missing/);
+});
+
+test('Native analysis aggregates fixed buckets, failed Ticks and unproven diagnostics without claiming pure Rust time', () => {
+  let clock = 10;
+  const originalError = new Error('Native failure');
+  const observer = createNativeInvokeObserver(operation => { clock += operation === 'clock_now' ? 2 : 5;
+    if (operation === 'hfsm_evaluate') throw originalError; }, { now: () => clock });
+  const window = (operations, returned) => {
+    observer.reset('managedTick'); observer.beginScope('managedTick'); const startedAt = clock;
+    for (const operation of operations) try { observer.invoke(operation, null); } catch (error) { assert.equal(error, originalError); }
+    return { k: 'nativeInvokeTiming', t: clock, startedAt, endedAt: clock, returned, snapshot: observer.snapshot('managedTick') };
+  };
+  const events = [window(['clock_now', 'unknown-one'], true), window(['clock_now', 'hfsm_evaluate'], false)];
+  const trace = { version: 2, timeBasis: 'performance.now', frameTimeBasis: 'observer-invocation', truncated: false, events };
+  const metrics = analyzeMovementTrace(trace).timing.nativeInvoke;
+  assert.ok(metrics, 'actual analyzer is missing Native window totals');
+  assert.equal(metrics.boundary, 'JS_NATIVE_BRIDGE_INCLUSIVE');
+  assert.match(metrics.note, /C#.*marshaling.*not pure Rust/);
+  assert.equal(metrics.windows, 2); assert.equal(metrics.failedTicks, 1);
+  assert.equal(metrics.count, 4); assert.equal(metrics.sumMs, 14); assert.equal(metrics.maxMs, 5); assert.equal(metrics.failed, 1);
+  assert.equal(metrics.tickMs.n, 2); assert.equal(metrics.tickMs.max, 7);
+  assert.equal(metrics.operations.length, 6);
+  assert.deepEqual(metrics.operations.find(row => row.operation === 'clock_now'), { operation: 'clock_now', count: 2, sumMs: 4, maxMs: 2, failed: 0 });
+  assert.equal(metrics.operations.find(row => row.operation === 'other').count, 1);
+  assert.equal(metrics.operations.find(row => row.operation === 'hfsm_evaluate').failed, 1);
+  assert.equal(metrics.status, 'OBSERVED');
+  events[0].snapshot.diagnosticFailure = 1;
+  assert.equal(analyzeMovementTrace(trace).timing.nativeInvoke.status, 'UNPROVEN');
+  events.push({ ...events[0], snapshot: { ...events[0].snapshot, operations: [] } });
+  assert.equal(analyzeMovementTrace(trace).timing.nativeInvoke.invalidWindows, 1);
+  assert.equal(analyzeMovementTrace({ ...trace, events: [] }).timing.nativeInvoke.status, 'NOT_OBSERVED');
 });
 
 test('v2 reports causal sample/request/accepted sequences and legal 0/2/5 pump counts', () => {

@@ -5,6 +5,7 @@
 // window into one FPS figure: spikes stay visible as counts and maxima.
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { NATIVE_OPERATIONS } from '../Client/UI/Spectator/native-invoke-observer.mjs';
 
 const HOLD_GAP_MS = 150;
 const BACKWARD_EPSILON_M = 1e-4;
@@ -70,6 +71,39 @@ const TURN_SETTLE_MS = 250;
 function admittingPump(pumps, t) {
   const index = pumps.findIndex(p => (p.tickAt ?? p.t) >= t);
   return index < 0 ? null : index;
+}
+
+function nativeInvokeTiming(events, trace) {
+  const empty = () => ({ count: 0, sumMs: 0, maxMs: 0, failed: 0 });
+  const totals = { ...empty(), windows: 0, failedTicks: 0, invalidWindows: 0, diagnosticFailure: 0 };
+  const operations = NATIVE_OPERATIONS.map(operation => ({ operation, ...empty() })), tickMs = [];
+  const validMetric = row => row && Number.isSafeInteger(row.count) && row.count >= 0 &&
+    Number.isSafeInteger(row.failed) && row.failed >= 0 && row.failed <= row.count &&
+    Number.isFinite(row.sumMs) && row.sumMs >= 0 && Number.isFinite(row.maxMs) && row.maxMs >= 0;
+  const merge = (target, row) => {
+    target.count += row.count; target.sumMs += row.sumMs; target.maxMs = Math.max(target.maxMs, row.maxMs); target.failed += row.failed;
+  };
+  for (const event of events.filter(event => event.k === 'nativeInvokeTiming')) {
+    const snapshot = event.snapshot;
+    if (!Number.isFinite(event.startedAt) || !Number.isFinite(event.endedAt) || event.endedAt < event.startedAt ||
+        typeof event.returned !== 'boolean' || snapshot?.version !== 1 || snapshot.scope !== 'managedTick' ||
+        snapshot.timing !== 'JS_NATIVE_BRIDGE_INCLUSIVE' || !validMetric(snapshot) ||
+        !Number.isSafeInteger(snapshot.diagnosticFailure) || snapshot.diagnosticFailure < 0 ||
+        !Array.isArray(snapshot.operations) || snapshot.operations.length !== NATIVE_OPERATIONS.length ||
+        !snapshot.operations.every((row, index) => row.operation === NATIVE_OPERATIONS[index] && validMetric(row))) {
+      totals.invalidWindows++; continue;
+    }
+    totals.windows++; if (!event.returned) totals.failedTicks++;
+    totals.diagnosticFailure += snapshot.diagnosticFailure; merge(totals, snapshot);
+    snapshot.operations.forEach((row, index) => merge(operations[index], row));
+    tickMs.push(event.endedAt - event.startedAt);
+  }
+  const unproven = Boolean(trace.truncated) || (trace.diagnosticFailures ?? 0) > 0 ||
+    totals.invalidWindows > 0 || totals.diagnosticFailure > 0;
+  return { boundary: 'JS_NATIVE_BRIDGE_INCLUSIVE',
+    note: 'Synchronous JS bridge and native call inclusive; C# serialization and marshaling excluded; not pure Rust time.',
+    status: unproven ? 'UNPROVEN' : totals.windows ? 'OBSERVED' : 'NOT_OBSERVED',
+    ...totals, operations, tickMs: stats(tickMs) };
 }
 
 export function analyzeMovementTrace(trace) {
@@ -293,6 +327,7 @@ export function analyzeMovementTrace(trace) {
       framesOver33ms: frameIntervals.filter(v => v > 33.4).length,
       framesOver50ms: frameIntervals.filter(v => v > 50).length, pumpIntervalMs: stats(pumpIntervals),
       tickMs: stats(pumps.map(p => p.tickMs)), pumpTotalMs: stats(pumps.map(p => p.totalMs)),
+      nativeInvoke: nativeInvokeTiming(events, trace),
       phases: Object.fromEntries([...new Set(events.filter(e => e.k === 'phaseTiming').map(e => e.scope))].map(scope => {
         const observations = events.filter(e => e.k === 'phaseTiming' && e.scope === scope);
         const spans = observations.flatMap(e => e.spans ?? []);

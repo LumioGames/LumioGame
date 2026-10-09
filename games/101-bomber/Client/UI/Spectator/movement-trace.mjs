@@ -2,6 +2,7 @@
 // Keys, published inputs, Session pumps and render frames share one clock so a
 // per-frame displacement can be lined up with the admission that caused it.
 // Export with `__lumioMovementTrace.export()` and analyze with tools/movement-trace-analyze.mjs.
+import { NATIVE_OPERATIONS } from './native-invoke-observer.mjs';
 
 export const MOVEMENT_TRACE_VERSION = 2;
 
@@ -36,6 +37,32 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
   }
   return {
     phaseTiming,
+    nativeInvokeTiming({ startedAt, endedAt, returned, snapshot }) {
+      try {
+        const metric = row => {
+          if (!Number.isSafeInteger(row.count) || row.count < 0 || !Number.isSafeInteger(row.failed) ||
+              row.failed < 0 || row.failed > row.count || !Number.isFinite(row.sumMs) || row.sumMs < 0 ||
+              !Number.isFinite(row.maxMs) || row.maxMs < 0) throw new Error('invalid_native_metric');
+          return { count: row.count, sumMs: row.sumMs, maxMs: row.maxMs, failed: row.failed };
+        };
+        if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt < startedAt ||
+            typeof returned !== 'boolean' || snapshot.version !== 1 || snapshot.scope !== 'managedTick' ||
+            snapshot.timing !== 'JS_NATIVE_BRIDGE_INCLUSIVE' || !Number.isSafeInteger(snapshot.diagnosticFailure) ||
+            snapshot.diagnosticFailure < 0 || !Array.isArray(snapshot.operations) ||
+            snapshot.operations.length !== NATIVE_OPERATIONS.length) throw new Error('invalid_native_window');
+        const operations = NATIVE_OPERATIONS.map((operation, index) => {
+          const row = snapshot.operations[index];
+          if (row.operation !== operation) throw new Error('invalid_native_operation');
+          return { operation, ...metric(row) };
+        });
+        const bounded = { version: 1, scope: 'managedTick', timing: 'JS_NATIVE_BRIDGE_INCLUSIVE',
+          diagnosticFailure: snapshot.diagnosticFailure, ...metric(snapshot), operations };
+        if (bounded.diagnosticFailure > 0 && diagnosticFailures < Number.MAX_SAFE_INTEGER) diagnosticFailures++;
+        push({ k: 'nativeInvokeTiming', t: now(), startedAt, endedAt, returned, snapshot: bounded });
+      } catch {
+        if (diagnosticFailures < Number.MAX_SAFE_INTEGER) diagnosticFailures++;
+      }
+    },
     // Only private trace callers create a bracket; no caller reads managed/native state here.
     beginPhaseTiming(scope, startedAt = now()) {
       const spans = [];

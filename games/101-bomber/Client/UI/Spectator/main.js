@@ -82,6 +82,7 @@ const ctx = canvas && typeof canvas.getContext === "function" ? canvas.getContex
 
 // The formal Engine WASM instance owns the Session's world and read-only renderer.
 let engineInvoke = null;
+let nativeInvokeObserver = null;
 let displayedWorldHandle = "";
 let displayedWorldId = null;
 // The game's official block catalog v2, published next to the page from
@@ -577,6 +578,19 @@ function bindExports(api) {
 }
 
 let managedLoaded = false;
+async function initializeNativeInvokeObservation() {
+  nativeInvokeObserver = null;
+  if (!PLAYER_MODE || !movementPreviewEnabled() || !readMovementFlags().trace) return;
+  try {
+    const { createNativeInvokeObserver } = await import('./native-invoke-observer.mjs');
+    resourceWitness?.noteImport('./native-invoke-observer.mjs');
+    nativeInvokeObserver = createNativeInvokeObserver(engineInvoke);
+  } catch {
+    // Diagnostic setup cannot turn an otherwise valid Session into a fault.
+    noteNativeInvokeFailure('native-invoke-initialize');
+  }
+}
+
 async function loadWasmExports() {
   if (managedLoaded) return true;
   const injected = window.__lumioExports;
@@ -600,7 +614,8 @@ async function loadWasmExports() {
     const builder = resourceWitness ? dotnet.withResourceLoader(resourceWitness.loadBootResource) : dotnet;
     const { getAssemblyExports, getConfig, runMain, setModuleImports } = await builder.create();
     if (resourceWitness) { await resourceWitness.assertBootCoverage(); resourceWitness.noteStage('dotnet-created'); }
-    setModuleImports('bomber-engine', { invoke: engineInvoke });
+    await initializeNativeInvokeObservation();
+    setModuleImports('bomber-engine', { invoke: nativeInvokeObserver ? nativeInvokeObserver.invoke : engineInvoke });
     setModuleImports('bomber-platform', { renewLaunch: async () => JSON.stringify(await launchFromPlatform()) });
     const config = getConfig();
     const exports = await getAssemblyExports(config.mainAssemblyName);
@@ -874,6 +889,33 @@ function refreshStepInput() {
   } finally { stepInputObserving = false; }
 }
 
+function noteNativeInvokeFailure(kind) {
+  try { movementTrace?.diagnosticFailure(kind); } catch { /* The trace counter survives a recording failure. */ }
+}
+
+function prepareNativeInvokeTick() {
+  const observer = nativeInvokeObserver;
+  if (!observer) return null;
+  try {
+    observer.reset('managedTick');
+    observer.beginScope('managedTick');
+    return observer;
+  } catch {
+    noteNativeInvokeFailure('native-invoke-prepare');
+    try { observer.beginScope('unscope'); } catch { noteNativeInvokeFailure('native-invoke-leave'); }
+    return null;
+  }
+}
+
+function finishNativeInvokeTick(observer, startedAt, endedAt, returned) {
+  if (!observer) return;
+  try { observer.beginScope('unscope'); }
+  catch { noteNativeInvokeFailure('native-invoke-leave'); return; }
+  try {
+    movementTrace?.nativeInvokeTiming({ startedAt, endedAt, returned, snapshot: observer.snapshot('managedTick') });
+  } catch { noteNativeInvokeFailure('native-invoke-record'); }
+}
+
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
   let phaseTiming = null;
@@ -884,10 +926,19 @@ function pumpSession(attempt) {
     phaseTiming?.mark('input', pumpStartedAt);
     if (inputDriver === 'pump') playerInput?.pump();
     if (inputDriver === 'step') refreshStepInput();
+    const nativeTickObserver = prepareNativeInvokeTick();
     const tickStartedAt = performance.now();
     phaseTiming?.mark('managedTick', tickStartedAt);
-    csharp.tick();
-    const tickEndedAt = performance.now();
+    let tickEndedAt, tickReturned = false;
+    try {
+      csharp.tick();
+      tickReturned = true;
+    } finally {
+      // Read the existing boundary clock before snapshot allocation or trace recording.
+      // Ordinary failed Ticks retain their previous clock reads.
+      if (tickReturned || nativeTickObserver) tickEndedAt = performance.now();
+      finishNativeInvokeTick(nativeTickObserver, tickStartedAt, tickEndedAt, tickReturned);
+    }
     phaseTiming?.mark('postTickObservation', tickEndedAt);
     const tickMs = tickEndedAt - tickStartedAt;
     drainManagedTrace({ startedAt: tickStartedAt, endedAt: tickEndedAt });
