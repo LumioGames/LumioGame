@@ -45,20 +45,20 @@ export function createPrivateDiagnosticCapture({ panel, endpoint, auto = false, 
   }
   function tick() {
     if (disposed || !['waiting-ready', 'capturing'].includes(phase)) return;
-    if (!visible()) { void finish(document.hidden ? 'cancelled-hidden' : 'cancelled-focus-loss'); return; }
     if (phase === 'waiting-ready') {
-      if (ready()) { started = now(); phase = 'capturing'; note('diagnostic capture started; requestedWindowMs=5000'); }
+      if (visible() && ready()) { started = now(); phase = 'capturing'; note('diagnostic capture started; requestedWindowMs=5000'); }
       else if (now() - armedAt >= 120000) { void finish('cancelled-ready-timeout'); return; }
     }
     if (phase === 'capturing') {
+      if (!visible()) { void finish(document.hidden ? 'cancelled-hidden' : 'cancelled-focus-loss'); return; }
       if (!ready()) { void finish('cancelled-not-ready'); return; }
       if (now() - started >= 5000) { void finish('completed-observation'); return; }
       render(`remaining ${Math.ceil((5000 - (now() - started)) / 1000)}s`);
     } else render('armed; waiting for normal input-ready; window 5s');
     timer = setTimer(tick, 250);
   }
-  const blur = () => { if (auto) void finish('cancelled-focus-loss'); };
-  const visibility = () => { if (auto && document.hidden) void finish('cancelled-hidden'); };
+  const blur = () => { if (phase === 'capturing') void finish('cancelled-focus-loss'); };
+  const visibility = () => { if (phase === 'capturing' && document.hidden) void finish('cancelled-hidden'); };
   stop.addEventListener('click', () => { void finish('cancelled-stop'); });
   target.addEventListener('blur', blur); document.addEventListener('visibilitychange', visibility);
   render(auto ? 'armed; waiting for normal input-ready; window 5s' : 'normal Export also saves original JSON here');

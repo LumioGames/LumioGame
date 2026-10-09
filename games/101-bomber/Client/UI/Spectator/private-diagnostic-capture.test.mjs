@@ -4,8 +4,8 @@ import { createHash } from 'node:crypto';
 import { createPrivateDiagnosticCapture } from './private-diagnostic-capture.mjs';
 
 function fixture(auto = true, status = 201) {
-  let time = 0, ready = false, next = 0; const timers = new Map(), saved = [], notes = [], nodes = [];
-  const document = Object.assign(new EventTarget(), { hidden: false, hasFocus: () => true,
+  let time = 0, ready = false, focused = true, next = 0; const timers = new Map(), saved = [], notes = [], nodes = [];
+  const document = Object.assign(new EventTarget(), { hidden: false, hasFocus: () => focused,
     createElement: () => Object.assign(new EventTarget(), { dataset: {}, setAttribute() {} }) });
   const target = Object.assign(new EventTarget(), { document, location: { href: 'http://127.0.0.1:19113/play/', hostname: '127.0.0.1' }, console: { error() {} } });
   const capture = createPrivateDiagnosticCapture({ panel: { append: (...elements) => nodes.push(...elements) },
@@ -16,7 +16,7 @@ function fixture(auto = true, status = 201) {
     fetch: async (address, options) => { saved.push({ address, raw: options.body }); return new Response(JSON.stringify({ version: 1, player: 'A',
       kind: new URL(address).searchParams.get('kind'), file: `A-${new URL(address).searchParams.get('kind')}-1234.json`,
       bytes: Buffer.byteLength(options.body), sha256: createHash('sha256').update(options.body).digest('hex') }), { status }); } });
-  return { capture, target, document, nodes, saved, notes, ready: value => { ready = value; },
+  return { capture, target, document, nodes, saved, notes, ready: value => { ready = value; }, focus: value => { focused = value; },
     async advance(value) { time = value; const [id, callback] = timers.entries().next().value ?? []; if (callback) { timers.delete(id); callback(); }
       for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); } };
 }
@@ -43,4 +43,11 @@ test('private diagnostic capture keeps save failures visible instead of claiming
   const f = fixture(true, 500); f.ready(true); await f.advance(0); await f.advance(5000);
   assert.equal(f.saved.length, 2); assert.equal(f.capture.snapshot().receipts.length, 0);
   assert.match(f.nodes[0].textContent, /ERROR diagnostic_save_http_500/); f.capture.destroy();
+});
+test('private diagnostic capture waits for normal focus before its ready observation window', async () => {
+  const f = fixture(); f.focus(false); await f.advance(0); f.target.dispatchEvent(new Event('blur')); await f.advance(1000);
+  assert.equal(f.capture.snapshot().phase, 'waiting-ready'); assert.equal(f.saved.length, 0);
+  f.ready(true); await f.advance(2000); assert.equal(f.capture.snapshot().phase, 'waiting-ready');
+  f.focus(true); await f.advance(3000); assert.equal(f.capture.snapshot().phase, 'capturing');
+  await f.advance(7999); assert.equal(f.saved.length, 0); await f.advance(8000); assert.equal(f.saved.length, 2); f.capture.destroy();
 });
