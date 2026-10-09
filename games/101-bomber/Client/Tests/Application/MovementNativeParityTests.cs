@@ -102,6 +102,14 @@ public sealed class MovementNativeParityTests
         => RunCase("P9", 13, absentAt: 11);
 
     [Fact]
+    public Task ReleaseWithEffectivePendingCarryContinuesOnTypedIdle()
+        => RunCase("P9", 10, idleAt: 8);
+
+    [Fact]
+    public Task ReleaseWithEffectivePendingCarryStopsOnAbsentMove()
+        => RunCase("P9", 10, absentAt: 8);
+
+    [Fact]
     public Task P10DryToWaterBoundaryUsesCrossedCellSpeed() => RunCase("P10", 5);
 
     [Fact]
@@ -452,7 +460,7 @@ public sealed class MovementNativeParityTests
                         new Vector3(step.Row.X, step.Row.Y, step.Row.Z)), 0, 0.00001f);
                 if (i == idleAt)
                 {
-                    if (caseId == "P6")
+                    if (caseId == "P6" || caseId == "P9" && idleAt == 8)
                     {
                         Assert.InRange(step.Row.X - step.Row.BeforeX, 0.17499f, 0.17501f);
                         Assert.Equal(serverRows[i - 1].Memory.PendingTurnDirection,
@@ -525,6 +533,22 @@ public sealed class MovementNativeParityTests
             var result = JsonSerializer.Deserialize<ServerResult>(
                 WaitReadIpc(Path.Combine(ipc, "result.json"), server, TimeSpan.FromSeconds(10)))!;
             Assert.Equal(count, result.Rows.Length);
+            bool originalPrototypeTrace = scenarioVariant is null && idleAt < 0 && absentAt < 0 &&
+                identityInvalidAt < 0 && bombVariant is null;
+            var frozenDocument = Lumio.Bomber.Tests.MovementNativeParityFixture.Load();
+            var policyPrototype = scenarioVariant is null ? null :
+                frozenDocument.PolicyVariants.Single(row => row.Id == scenarioVariant);
+            if (policyPrototype is not null)
+            {
+                Assert.Equal(caseId, policyPrototype.SourceCaseId);
+                Assert.Equal(scenario.Start, policyPrototype.Start);
+                Assert.Equal(scenario.Map.Ground, policyPrototype.Map.Ground);
+                Assert.Equal(scenario.Map.Obstacle, policyPrototype.Map.Obstacle);
+                Assert.Equal(JsonSerializer.Serialize(scenario.SampledControls.Take(count)),
+                    JsonSerializer.Serialize(policyPrototype.SampledControls));
+            }
+            bool waterPolicyDiverged = false;
+            double prototypeTolerance = frozenDocument.ConfigRequirements.EqualPolicyPrototypeToleranceMetres;
             for (int i = 0; i < count; i++)
             {
                 int firstRequest = i + (caseId == "P9" && i > 0 ? 1 : 0)
@@ -541,6 +565,84 @@ public sealed class MovementNativeParityTests
                 if (i != identityInvalidAt)
                     Assert.InRange(Vector3.Distance(ledger.Rows[i].Pose,
                         new Vector3(result.Rows[i].X, result.Rows[i].Y, result.Rows[i].Z)), 0, 0.00001f);
+                if (originalPrototypeTrace || policyPrototype is not null)
+                {
+                    int[][] prototypeTrace = policyPrototype?.PrototypePositionsMilli
+                        ?? scenario.PrototypePositionsMilli;
+                    int[] prototype = prototypeTrace[i];
+                    if (caseId == "P10" && scenarioVariant is null && i == 2)
+                    {
+                        Assert.Equal("floor", scenario.Map.Ground[1 * scenario.Map.Size + 1]);
+                        Assert.Equal("water", scenario.Map.Ground[1 * scenario.Map.Size + 2]);
+                        Assert.True(result.Rows[i].BeforeX < 2 && result.Rows[i].X >= 2);
+                        Assert.Equal(175, prototype[0] - prototypeTrace[i - 1][0]);
+                        Assert.InRange(result.Rows[i].X - result.Rows[i].BeforeX, 0.16749f, 0.16751f);
+                        waterPolicyDiverged = true;
+                    }
+                    if (scenarioVariant == "water-exit" && !waterPolicyDiverged &&
+                        result.Rows[i].BeforeX >= 2 && result.Rows[i].X < 2)
+                    {
+                        Assert.Equal("water", scenario.Map.Ground[1 * scenario.Map.Size + 2]);
+                        Assert.Equal("floor", scenario.Map.Ground[1 * scenario.Map.Size + 1]);
+                        waterPolicyDiverged = true;
+                    }
+                    double deltaX = result.Rows[i].X - prototype[0] / 1000d;
+                    double deltaZ = result.Rows[i].Z - prototype[1] / 1000d;
+                    double distance = Math.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
+                    File.WriteAllText(Path.Combine(ipc, $"prototype-comparison-{i}.json"),
+                        JsonSerializer.Serialize(new { caseId, stepIndex = i,
+                            formal = new[] { result.Rows[i].X, result.Rows[i].Z },
+                            prototypeMilli = prototype, distanceMetres = distance,
+                            toleranceMetres = prototypeTolerance,
+                            scenarioVariant, eligibility = waterPolicyDiverged
+                                ? "water-crossing-policy-delta-or-descendant"
+                                : "equal-policy" }, EvidenceJsonOptions));
+                    if (!waterPolicyDiverged)
+                        Assert.True(distance <= prototypeTolerance,
+                            $"Formal/prototype pose drift {caseId} step {i}: {distance:R}m > {prototypeTolerance:R}m");
+                }
+            }
+            if (caseId == "P9" && (idleAt == 8 || absentAt == 8))
+            {
+                ServerRow beforeRelease = serverRows[7];
+                ServerRow release = serverRows[8];
+                ulong releaseBusinessTick = release.BeforeWorldTick;
+                Assert.Equal(beforeRelease.X, release.BeforeX);
+                Assert.Equal(beforeRelease.Z, release.BeforeZ);
+                Assert.NotEqual(0, beforeRelease.Memory.PendingTurnDirection);
+                Assert.True(beforeRelease.Memory.PendingTurnUntilTick > releaseBusinessTick);
+                Assert.Equal(releaseBusinessTick - 1, beforeRelease.Memory.LastMoveTick);
+                Assert.Equal(releaseBusinessTick + 1, release.WorldTick);
+                if (idleAt == 8)
+                {
+                    Assert.Equal(releaseBusinessTick, release.Memory.LastMoveTick);
+                    Assert.Equal(release.WorldTick, release.ExecutionTick);
+                }
+                else Assert.Equal(0UL, release.ExecutionTick);
+                Assert.NotEqual(0, beforeRelease.Memory.LastMoveDirection);
+                Assert.Equal(0UL, beforeRelease.Memory.LastAssistTick);
+                float remainingCorrectionBefore = Math.Abs(beforeRelease.X -
+                    (MathF.Floor(beforeRelease.X) + 0.5f));
+                float remainingCorrectionAfter = Math.Abs(release.X -
+                    (MathF.Floor(release.X) + 0.5f));
+                Assert.InRange(remainingCorrectionBefore, 0.0001f, 0.5f);
+                Assert.InRange(remainingCorrectionAfter, 0.0001f, 0.5f);
+                Assert.Equal(beforeRelease.Memory.PendingTurnDirection,
+                    release.Memory.PendingTurnDirection);
+                if (idleAt == 8)
+                {
+                    Assert.InRange(release.X - release.BeforeX, 0.17499f, 0.17501f);
+                    Assert.Equal(beforeRelease.Memory.LastMoveDirection,
+                        release.Memory.LastMoveDirection);
+                }
+                else
+                {
+                    Assert.Equal(release.BeforeX, release.X);
+                    Assert.Equal(release.BeforeZ, release.Z);
+                    Assert.Equal(beforeRelease.Memory.LastMoveTick, release.Memory.LastMoveTick);
+                }
+                Assert.Equal(0, serverRows[9].Memory.PendingTurnDirection);
+                Assert.Equal(0UL, serverRows[9].Memory.PendingTurnUntilTick);
             }
             if (caseId == "P5" && count >= 5 && scenarioVariant is null)
                 Assert.InRange(result.Rows[4].X - 1.5f, 0.87499f, 0.87501f);
@@ -567,10 +669,31 @@ public sealed class MovementNativeParityTests
                 Assert.InRange(serverRows[1].X, 1.84999f, 1.85001f);
                 BombRow hazard = result.Steps[2].Bomb!;
                 Assert.Equal("Fuse", hazard.Phase);
+                Assert.Equal(3, hazard.CellX);
+                Assert.Equal(1, hazard.CellZ);
+                Assert.Equal(scenarioVariant == "danger-already-start" ? 2 : 1, hazard.Power);
+                Assert.Equal(8UL, hazard.DangerWindowTicks);
                 Assert.True(hazard.FuseEndTick > result.Steps[2].Row.ExecutionTick);
+                Assert.True(hazard.FuseEndTick - result.Steps[2].Row.ExecutionTick <= hazard.DangerWindowTicks);
+                Assert.Equal("floor", scenario.Map.Ground[1 * scenario.Map.Size + 1]);
+                Assert.Equal("floor", scenario.Map.Ground[1 * scenario.Map.Size + 2]);
+                Assert.Equal("air", scenario.Map.Obstacle[1 * scenario.Map.Size + 2]);
+                int[] prototypeFinal = Assert.Single(frozenDocument.PolicyVariants,
+                    row => row.Id == scenarioVariant).PrototypePositionsMilli[2];
                 if (scenarioVariant == "danger-safe-fallback")
+                {
                     Assert.Equal(serverRows[2].BeforeX, serverRows[2].X);
-                else Assert.InRange(serverRows[2].X - serverRows[2].BeforeX, 0.17499f, 0.17501f);
+                    Assert.Equal(serverRows[2].BeforeZ, serverRows[2].Z);
+                    Assert.Equal(1850, prototypeFinal[0]);
+                    Assert.Equal(1500, prototypeFinal[1]);
+                }
+                else
+                {
+                    Assert.InRange(serverRows[2].X - serverRows[2].BeforeX, 0.17499f, 0.17501f);
+                    Assert.Equal(serverRows[2].BeforeZ, serverRows[2].Z);
+                    Assert.Equal(2025, prototypeFinal[0]);
+                    Assert.Equal(1500, prototypeFinal[1]);
+                }
             }
             using Process process = Process.GetCurrentProcess();
             string actualNative = Assert.Single(process.Modules.Cast<ProcessModule>(),
@@ -689,7 +812,9 @@ public sealed class MovementNativeParityTests
             RedirectStandardError = true,
         };
         start.ArgumentList.Add("--filter-method");
-        string method = caseId == "P9" && idleAt == 11 ? nameof(ReleaseAfterAcceptedAssistUsesTypedIdleMemory)
+        string method = caseId == "P9" && idleAt == 8 ? nameof(ReleaseWithEffectivePendingCarryContinuesOnTypedIdle)
+            : caseId == "P9" && absentAt == 8 ? nameof(ReleaseWithEffectivePendingCarryStopsOnAbsentMove)
+            : caseId == "P9" && idleAt == 11 ? nameof(ReleaseAfterAcceptedAssistUsesTypedIdleMemory)
             : caseId == "P9" && absentAt == 11 ? nameof(ReleaseAfterAcceptedAssistWithoutMoveKeepsPriorMemory)
             : scenarioVariant == "danger-safe-fallback" ? nameof(SafeStartRefusesDangerousFallback)
             : scenarioVariant == "danger-already-start" ? nameof(AlreadyDangerousStartMayUseFallback)
@@ -740,15 +865,67 @@ public sealed class MovementNativeParityTests
         return child;
     }
 
+    private static bool IsSharingViolation(IOException error) =>
+        (uint)error.HResult is 0x80070020u or 0x80070021u;
+
+    [Fact]
+    public async Task IpcReadRetriesRealFileLockAndRejectsOtherIoErrors()
+    {
+        string missing = Path.Combine(Path.GetTempPath(), "movement-ipc-missing-" + Guid.NewGuid().ToString("N"));
+        IOException nonSharing = Assert.Throws<FileNotFoundException>(() => File.ReadAllText(missing));
+        Assert.False(IsSharingViolation(nonSharing));
+        Assert.False(IsSharingViolation(new PathTooLongException("long path")));
+        string directory = Path.Combine(Path.GetTempPath(), "movement-ipc-lock-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string path = Path.Combine(directory, "locked.json");
+        File.WriteAllText(path, "actual-file-lock");
+        using var child = Process.GetCurrentProcess();
+        try
+        {
+            using (var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                var release = Task.Run(async () => {
+                    await Task.Delay(30, TestContext.Current.CancellationToken);
+                    held.Dispose();
+                }, TestContext.Current.CancellationToken);
+                Assert.Equal("actual-file-lock", WaitReadIpc(path, child, TimeSpan.FromSeconds(1)));
+                await release;
+            }
+            Assert.True(File.Exists(path + ".read-retries.jsonl"));
+            Assert.NotEmpty(File.ReadAllLines(path + ".read-retries.jsonl"));
+            string? evidencePath = Environment.GetEnvironmentVariable("MOVEMENT_NATIVE_EVIDENCE_PATH");
+            if (evidencePath is not null)
+            {
+                Directory.CreateDirectory(evidencePath);
+                File.Copy(path + ".read-retries.jsonl",
+                    Path.Combine(evidencePath, "real-file-lock-read-retries-" + Path.GetFileName(directory) + ".jsonl"));
+            }
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     private static string WaitReadIpc(string path, Process child, TimeSpan limit)
     {
         var wall = Stopwatch.StartNew();
+        TimeSpan retryDeadline = limit < TimeSpan.FromSeconds(12) ? limit : TimeSpan.FromSeconds(12);
+        int sharingRetries = 0;
+        int? firstSharingHResult = null;
         while (true)
         {
             if (File.Exists(path))
             {
                 try { return File.ReadAllText(path); }
-                catch (IOException) when (wall.Elapsed < limit) { }
+                catch (IOException error) when (IsSharingViolation(error) && wall.Elapsed < retryDeadline)
+                {
+                    firstSharingHResult ??= error.HResult;
+                    sharingRetries++;
+                    File.AppendAllText(path + ".read-retries.jsonl", JsonSerializer.Serialize(new {
+                        path, retryCount = sharingRetries, firstHResult = firstSharingHResult,
+                        hResult = error.HResult, elapsedMs = wall.ElapsedMilliseconds,
+                        callerDeadlineMs = limit.TotalMilliseconds,
+                        retryDeadlineMs = retryDeadline.TotalMilliseconds,
+                    }) + Environment.NewLine);
+                }
             }
             if (child.HasExited && !File.Exists(path))
                 throw new InvalidOperationException($"Authority child exited {child.ExitCode} before {Path.GetFileName(path)}.");
@@ -822,6 +999,7 @@ public sealed class MovementNativeParityTests
             var encodedInputs = new List<byte[]>();
             IdentityRow identity = authority.Identity;
             Vector3 before = authority.Position;
+            ulong beforeWorldTick = authority.Manager.World.Tick;
             for (int part = 0; part < requests; part++)
             {
                 string inputPath = Path.Combine(directory, $"input-{i}-{part}.json");
@@ -834,12 +1012,15 @@ public sealed class MovementNativeParityTests
                     if (File.Exists(inputPath))
                     {
                         try { encodedText = File.ReadAllText(inputPath); }
-                        catch (IOException error) when (
-                            (uint)error.HResult is 0x80070020u or 0x80070021u &&
-                            wall.Elapsed <= TimeSpan.FromSeconds(12))
+                        catch (IOException error) when (IsSharingViolation(error) &&
+                            wall.Elapsed < TimeSpan.FromSeconds(12))
                         {
                             firstSharingHResult ??= error.HResult;
                             sharingRetries++;
+                            WriteIpc(Path.Combine(directory, $"input-{i}-{part}-read-retry-{sharingRetries}.json"),
+                                JsonSerializer.Serialize(new { path = inputPath, retryCount = sharingRetries,
+                                    firstHResult = firstSharingHResult, hResult = error.HResult,
+                                    elapsedMs = wall.ElapsedMilliseconds, deadlineMs = 12000 }));
                         }
                     }
                     if (encodedText is not null) break;
@@ -849,7 +1030,7 @@ public sealed class MovementNativeParityTests
                 if (sharingRetries > 0)
                     WriteIpc(Path.Combine(directory, $"input-{i}-{part}-read-retries.json"),
                         JsonSerializer.Serialize(new { path = inputPath, retryCount = sharingRetries,
-                            firstHResult = firstSharingHResult }));
+                            firstHResult = firstSharingHResult, deadlineMs = 12000 }));
                 string encoded = JsonSerializer.Deserialize<string>(encodedText)!;
                 byte[] encodedBytes = Convert.FromBase64String(encoded);
                 encodedInputs.Add(encodedBytes);
@@ -870,10 +1051,11 @@ public sealed class MovementNativeParityTests
             }).ToArray();
             Vector3 after = authority.Position;
             var row = requests == 0
-                ? new ServerRow("N/A", 0, "N/A", 0,
+                ? new ServerRow("N/A", 0, "N/A", 0, beforeWorldTick, authority.Manager.World.Tick,
                     before.X, before.Y, before.Z, after.X, after.Y, after.Z, authority.Memory)
                 : new ServerRow(inputs[0].Sender.ToHex(), inputs[0].Sequence,
                     outbox.Operations[0].Outcome.Kind.ToString(), outbox.Operations[0].ExecutionTick,
+                    beforeWorldTick, authority.Manager.World.Tick,
                     before.X, before.Y, before.Z, after.X, after.Y, after.Z, authority.Memory);
             rows.Add(row);
             var revisions = authority.Sections.Select(section => {
@@ -921,11 +1103,13 @@ public sealed class MovementNativeParityTests
         string WorldIncarnation, string Authorization,
         string Welcome, string Baseline, string[] Sections);
     private sealed record ServerRow(string Sender, ulong Sequence, string Outcome, ulong ExecutionTick,
+        ulong BeforeWorldTick, ulong WorldTick,
         float BeforeX, float BeforeY, float BeforeZ, float X, float Y, float Z, MemoryRow Memory);
     private sealed record ServerOperationRow(ulong Sequence, string MappingId, string Stage,
         string Outcome, string? Code, string CommitFact, ulong ExecutionTick);
     private sealed record BombRow(string Owner, string SourceLife, ulong SourceLifeGeneration,
-        string Phase, ulong FuseEndTick, ulong KickStartTick, int KickDirection);
+        string Phase, ulong FuseEndTick, ulong KickStartTick, int KickDirection,
+        int CellX, int CellZ, int Power, ulong DangerWindowTicks);
     private sealed record MemoryRow(int Facing, int PendingTurnDirection, ulong PendingTurnUntilTick,
         int LastMoveDirection, ulong LastMoveTick, ulong LastAssistTick, int AssistToleranceMilli);
     private sealed record SectionRevisionEvidence(string Key, ulong BaselineRevision,
@@ -1194,9 +1378,10 @@ public sealed class MovementNativeParityTests
 
     private sealed class Authority : IDisposable
     {
-        private static readonly string[] ConfigHashTables = ["movement", "attributes", "speed_tiers", "blocks"];
+        private static readonly string[] ConfigHashTables = ["game", "movement", "attributes", "speed_tiers", "blocks"];
         private readonly LumioEngine engine;
         private readonly AssemblyLoadContext context;
+        private readonly ulong dangerWindowTicks;
         public WorldManager Manager { get; }
         public Assembly ServerGameplayAssembly { get; }
         public object ConfigEvidence { get; }
@@ -1212,6 +1397,7 @@ public sealed class MovementNativeParityTests
             {
                 if (Bomb.IsDefault) return null;
                 Component bomb = Manager.World.NamedComponent(Bomb, nameof(BomberBombState))!;
+                Vector3 position = Manager.World.Get<LogicTransform>(Bomb).LocalPosition;
                 static T Read<T>(Component component, string fieldName)
                 {
                     object member = component.GetType().GetField(fieldName)!.GetValue(component)!;
@@ -1223,7 +1409,9 @@ public sealed class MovementNativeParityTests
                     ((BomberBombPhase)Read<int>(bomb, nameof(BomberBombState.Phase))).ToString(),
                     Read<ulong>(bomb, nameof(BomberBombState.FuseEndTick)),
                     Read<ulong>(bomb, nameof(BomberBombState.KickStartTick)),
-                    Read<int>(bomb, nameof(BomberBombState.KickDirection)));
+                    Read<int>(bomb, nameof(BomberBombState.KickDirection)),
+                    (int)MathF.Floor(position.X), (int)MathF.Floor(position.Z),
+                    Read<int>(bomb, nameof(BomberBombState.Power)), dangerWindowTicks);
             }
         }
         public IdentityRow Identity
@@ -1325,6 +1513,8 @@ public sealed class MovementNativeParityTests
                 System.Globalization.CultureInfo.InvariantCulture);
             object game = Read(config, "Game");
             object movement = Read(config, "Movement");
+            dangerWindowTicks = checked((ulong)(Number(Read(config, "Bomb"), "DangerMs") /
+                (1000L / Number(game, "TickRateHz"))));
             var blockRows = ((System.Collections.IEnumerable)Read(Read(Read(config, "Tables"), "Blocks"), "Rows"))
                 .Cast<object>().Where(row => Lumio.Bomber.Tests.MovementNativeParityFixture.Blocks
                     .ContainsKey((string)Read(row, "Name"))).ToArray();
@@ -1338,21 +1528,32 @@ public sealed class MovementNativeParityTests
             }
             long initialSpeed = Number(Attribute(BomberAttributeNames.MovementSpeedMilli), "Initial");
             long initialTier = Number(Attribute(BomberAttributeNames.SpeedTier), "Initial");
+            object tier0 = SpeedTier(0);
+            Assert.Equal(0L, initialTier);
             Assert.Equal(3500L, initialSpeed);
-            Assert.Equal(initialSpeed, Number(SpeedTier(initialTier), "SpeedMilli"));
+            Assert.Equal(3500L, Number(tier0, "SpeedMilli"));
+            Assert.Equal(initialSpeed, Number(tier0, "SpeedMilli"));
+            Assert.Equal(100001L, Number(game, "Id"));
+            Assert.Equal(103001L, Number(movement, "Id"));
+            Assert.Equal(101006L, Number(Attribute(BomberAttributeNames.MovementSpeedMilli), "Id"));
+            Assert.Equal(101005L, Number(Attribute(BomberAttributeNames.SpeedTier), "Id"));
+            Assert.Equal(102001L, Number(tier0, "Id"));
             ConfigEvidence = new {
                 phase = "generated-reader-before-initial-speed-write",
                 catalogSha256 = Lumio.Bomber.Tests.MovementNativeParityFixture.CatalogSha256,
                 readerAssembly = ServerGameplayAssembly.Location,
-                gameTickRateHz = Number(game, "TickRateHz"),
-                movement = new { WaterSpeedPermille = Number(movement, "WaterSpeedPermille"),
+                game = new { Id = Number(game, "Id"), TickRateHz = Number(game, "TickRateHz") },
+                movement = new { Id = Number(movement, "Id"),
+                    WaterSpeedPermille = Number(movement, "WaterSpeedPermille"),
                     CornerAssistMilli = Number(movement, "CornerAssistMilli"),
                     RepeatAssistMilli = Number(movement, "RepeatAssistMilli"),
                     TurnBufferTicks = Number(movement, "TurnBufferTicks") },
-                movementSpeed = new { Name = (string)Read(Attribute(BomberAttributeNames.MovementSpeedMilli), "Name"),
+                movementSpeed = new { Id = Number(Attribute(BomberAttributeNames.MovementSpeedMilli), "Id"),
+                    Name = (string)Read(Attribute(BomberAttributeNames.MovementSpeedMilli), "Name"),
                     Initial = initialSpeed },
-                speedTier = new { Initial = initialTier,
-                    SpeedMilli = Number(SpeedTier(initialTier), "SpeedMilli") },
+                speedTier = new { AttributeId = Number(Attribute(BomberAttributeNames.SpeedTier), "Id"),
+                    Initial = initialTier, RowId = Number(tier0, "Id"),
+                    Tier = Number(tier0, "Tier"), SpeedMilli = Number(tier0, "SpeedMilli") },
                 blocks = blockRows.Select(row => new { Name = Read(row, "Name"),
                     BlockType = Read(row, "BlockType"), Enabled = Read(row, "Enabled"),
                     Walkable = Read(row, "Walkable") }).ToArray(),

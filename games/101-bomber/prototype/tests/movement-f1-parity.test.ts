@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { BlockType, 方向, type AbilityActivation } from '../src/contract'
 import { InputState } from '../src/input/keyboard'
-import { makeWorld, put, setBrick, setGround } from '../src/sim/__tests__/helpers'
+import { addBomb, makeWorld, put, setBrick, setGround } from '../src/sim/__tests__/helpers'
 import { stepWorld } from '../src/sim/step'
 import type { SimPlayer, World } from '../src/sim/world'
 
@@ -44,7 +44,11 @@ type Captured = {
   sourceCapture: { eventId: string; stepIndex: number; preStepMilli: [number, number]; priorFalseStep: number | null }[]
   map: { size: number; ground: string[]; obstacle: string[] }
   sampledControls: Sample[]
+  prototypePositionsMilli: [number, number][]
 }
+type PolicyVariant = { id: string; sourceCaseId: string; start: [number, number];
+  map: Captured['map']; sampledControls: Sample[]; bomb: { cell: [number, number]; power: number; fuseIn: number } | null;
+  prototypePositionsMilli: [number, number][] }
 
 // Literal physical scripts from movement-paths.test.ts. Production InputState is the
 // only sampler; predicates are evaluated once, before poll and stepWorld.
@@ -111,6 +115,7 @@ function capture(c: MovementCase): Captured {
   const pending = [...c.sourceEvents]
   const sourceCapture: Captured['sourceCapture'] = []
   const sampledControls: Sample[] = []
+  const prototypePositionsMilli: [number, number][] = []
   for (let stepIndex = 0; stepIndex < c.budget; stepIndex++) {
     const eventIds: string[] = []
     for (let i = 0; i < pending.length;) {
@@ -130,6 +135,7 @@ function capture(c: MovementCase): Captured {
     const move = activations.find((a): a is Extract<AbilityActivation, { ability: '移动' }> => a.ability === '移动')!
     const before = world.t
     stepWorld(world, new Map([[2, activations]]))
+    prototypePositionsMilli.push([player.mx, player.my])
     sampledControls.push({
       stepIndex, sourceTickBefore: before, sourceTickAfter: world.t, eventIds,
       move: { kind: 'typed', primary: names[move.输入.方向],
@@ -144,7 +150,7 @@ function capture(c: MovementCase): Captured {
   expect(initial.ground).toHaveLength(361)
   expect(initial.obstacle).toHaveLength(361)
   return { id: c.id, start: c.start, goal: c.goal, initialState, sourceEvents: c.sourceEvents, sourceCapture,
-    map: initial, sampledControls }
+    map: initial, sampledControls, prototypePositionsMilli }
 }
 
 function replay(c: MovementCase, rows: readonly Sample[]): [number, number][] {
@@ -163,6 +169,32 @@ function replay(c: MovementCase, rows: readonly Sample[]): [number, number][] {
     positions.push([player.mx, player.my])
   }
   return positions
+}
+
+function captureVariant(source: MovementCase, id: string, controls: readonly Sample[]): PolicyVariant {
+  const start: [number, number] = id.startsWith('water-exit') ? [2, 1] : source.start
+  const { world, player } = board({ ...source, start })
+  if (id === 'water-start' || id === 'water-exit-control') setGround(world, 1, 1, BlockType.水)
+  const bomb = id.startsWith('danger-')
+    ? { cell: [3, 1] as [number, number], power: id === 'danger-already-start' ? 2 : 1, fuseIn: 8 }
+    : null
+  if (bomb) addBomb(world, 2, ...bomb.cell, bomb.fuseIn, bomb.power)
+  const map = { size: world.size,
+    ground: Array.from(world.ground, block => block === BlockType.水 ? 'water' : 'floor'),
+    obstacle: Array.from(world.brick, (block, index) => block === BlockType.Air ? 'air' :
+      block === BlockType.积木 ? 'softBrick' :
+        index % world.size === 0 || index % world.size === world.size - 1 ||
+        Math.floor(index / world.size) === 0 || Math.floor(index / world.size) === world.size - 1
+          ? 'iron' : 'hardPillar') }
+  const positions: [number, number][] = []
+  for (const row of controls) {
+    const acts: AbilityActivation[] = [{ ability: '移动', 输入: { 方向: values[row.move.primary],
+      副方向: values[row.move.secondary], 按了转弯: row.move.turnPressed } }]
+    stepWorld(world, new Map([[2, acts]]))
+    positions.push([player.mx, player.my])
+  }
+  return { id, sourceCaseId: source.id, start, map, sampledControls: [...controls], bomb,
+    prototypePositionsMilli: positions }
 }
 
 describe('movement F1 immutable prototype capture and replay', () => {
@@ -184,7 +216,17 @@ describe('movement F1 immutable prototype capture and replay', () => {
       repeatWindowTicks: 6, turnBufferTicks: 6,
       formalToleranceMetres: 0.00001, equalPolicyPrototypeToleranceMetres: 0.001,
       blockNames: { air: 0, floor: 1022, iron: 1023, hardPillar: 1024, softBrick: 1025, water: 1027 } },
-      cases: captured }
+      cases: captured,
+      policyVariants: [
+        captureVariant(cases[9], 'water-start', captured[9].sampledControls.slice(0, 5)),
+        captureVariant(cases[9], 'water-exit', captured[1].sampledControls.slice(0, 9)),
+        captureVariant(cases[9], 'water-exit-control', captured[1].sampledControls.slice(0, 9)),
+        ...(['danger-safe-fallback', 'danger-already-start', 'danger-direct'] as const).map(id =>
+          captureVariant(cases[4], id, captured[4].sampledControls.slice(0, 3).map((row, index) =>
+            index === 2 && id !== 'danger-direct' ? { ...row, move: {
+              kind: 'typed' as const, primary: 'up' as const, secondary: 'right' as const,
+              turnPressed: true } } : row))),
+      ] }
     if (process.env.MOVEMENT_CAPTURE_PATH) {
       writeFileSync(process.env.MOVEMENT_CAPTURE_PATH, JSON.stringify(candidate, null, 2) + '\n')
     }
@@ -199,7 +241,15 @@ describe('movement F1 immutable prototype capture and replay', () => {
     }
     for (const [index, c] of cases.entries()) {
       const actual = replayed[index].positionsMilli
+      expect(actual, c.id).toEqual(frozen.cases[index].prototypePositionsMilli)
       expect(actual.at(-1), c.id).toEqual([c.goal[0] * 1000 + 500, c.goal[1] * 1000 + 500])
+    }
+    for (const variant of frozen.policyVariants) {
+      expect(variant.prototypePositionsMilli).toHaveLength(variant.sampledControls.length)
+      if (variant.id.startsWith('danger-')) {
+        expect(variant.bomb?.cell).toEqual([3, 1])
+        expect(variant.bomb?.fuseIn).toBe(8)
+      }
     }
     expect(frozen.cases[4].sourceCapture.find(e => e.eventId === 'late-down'))
       .toMatchObject({ stepIndex: 14, preStepMilli: [3950, 1500] })

@@ -19,6 +19,7 @@ internal static class MovementNativeParityFixture
         public int FormatVersion { get; set; }
         public Requirements ConfigRequirements { get; set; } = null!;
         public Case[] Cases { get; set; } = [];
+        public PolicyVariant[] PolicyVariants { get; set; } = [];
     }
 
     internal sealed class Requirements
@@ -37,6 +38,7 @@ internal static class MovementNativeParityFixture
         public int[] Goal { get; set; } = [];
         public Map Map { get; set; } = null!;
         public Sample[] SampledControls { get; set; } = [];
+        public int[][] PrototypePositionsMilli { get; set; } = [];
     }
 
     internal sealed class Map
@@ -62,6 +64,24 @@ internal static class MovementNativeParityFixture
         public string Primary { get; set; } = "";
         public string Secondary { get; set; } = "";
         public bool TurnPressed { get; set; }
+    }
+
+    internal sealed class PolicyVariant
+    {
+        public string Id { get; set; } = "";
+        public string SourceCaseId { get; set; } = "";
+        public int[] Start { get; set; } = [];
+        public Map Map { get; set; } = null!;
+        public Sample[] SampledControls { get; set; } = [];
+        public PrototypeBomb? Bomb { get; set; }
+        public int[][] PrototypePositionsMilli { get; set; } = [];
+    }
+
+    internal sealed class PrototypeBomb
+    {
+        public int[] Cell { get; set; } = [];
+        public int Power { get; set; }
+        public int FuseIn { get; set; }
     }
 
     internal sealed record Section(VoxelSectionKey Key, ulong Revision, VoxelSectionEncoding Encoding,
@@ -142,12 +162,23 @@ internal static class MovementNativeParityFixture
         foreach (Case row in result.Cases)
         {
             if (row.Map.Size != 19 || row.Map.Ground.Length != 361 || row.Map.Obstacle.Length != 361 ||
-                row.SampledControls.Length == 0 || row.SampledControls.Select((step, index) => step.StepIndex == index).Any(ok => !ok))
+                row.SampledControls.Length == 0 || row.SampledControls.Select((step, index) => step.StepIndex == index).Any(ok => !ok) ||
+                row.PrototypePositionsMilli.Length != row.SampledControls.Length ||
+                row.PrototypePositionsMilli.Any(pose => pose.Length != 2))
                 throw new InvalidDataException("Movement fixture map or sampled steps are incomplete: " + row.Id);
             if (row.Map.Ground.Any(name => !Blocks.ContainsKey(name)) ||
                 row.Map.Obstacle.Any(name => !Blocks.ContainsKey(name)))
                 throw new InvalidDataException("Movement fixture uses an unknown block: " + row.Id);
         }
+        if (result.PolicyVariants.Length != 6 ||
+            result.PolicyVariants.Select(row => row.Id).Distinct().Count() != 6)
+            throw new InvalidDataException("Movement policy variants are incomplete.");
+        foreach (PolicyVariant row in result.PolicyVariants)
+            if (row.Start.Length != 2 || row.Map.Size != 19 || row.Map.Ground.Length != 361 ||
+                row.Map.Obstacle.Length != 361 || row.SampledControls.Length == 0 ||
+                row.PrototypePositionsMilli.Length != row.SampledControls.Length ||
+                row.PrototypePositionsMilli.Any(pose => pose.Length != 2))
+                throw new InvalidDataException("Movement policy variant lacks captured facts: " + row.Id);
         return result;
     }
 
