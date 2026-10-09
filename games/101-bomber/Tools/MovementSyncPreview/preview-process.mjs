@@ -8,11 +8,19 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
   const retained = new Set();
   const validIdentity = (pid, identity) => identity?.pid === pid
     && Number.isFinite(Date.parse(identity.startTime)) && typeof identity.exe === 'string' && identity.exe.length > 0;
+  const originalHandleAlive = ownership => ownership.state.child === ownership.child
+    && ownership.child?.pid === ownership.pid && !ownership.state.closed
+    && ownership.child.exitCode == null && ownership.child.signalCode == null;
   const capture = (ownership, recovered = false) => {
+    assert(originalHandleAlive(ownership), 'original child handle closed or changed');
     const identity = readIdentity(ownership.pid);
     assert(validIdentity(ownership.pid, identity)
       && resolve(identity.exe).toLowerCase() === resolve(ownership.executable).toLowerCase(),
     'owned process identity unavailable');
+    assert(originalHandleAlive(ownership), 'original child handle closed or changed');
+    assert(Date.parse(identity.startTime) >= Date.parse(ownership.launchStarted)
+      && Date.parse(identity.startTime) <= Date.parse(ownership.launchFinished),
+    'owned process start time outside original launch window');
     ownership.expected = { pid: identity.pid, startTime: identity.startTime, exe: identity.exe };
     if (recovered) record({ kind: 'MOVEMENT_PREVIEW_OWNED_PROCESS_IDENTITY_RECOVERED', previewId,
       ...ownership.expected, firstError: String(ownership.firstError) });
@@ -41,9 +49,12 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
         environment.LumioBotConfigDirectory = options.env.LumioBotConfigDirectory;
       }
     }
+    const launchStarted = new Date().toISOString();
     const state = official.startLogged(executable, publicArgs, { ...options, env: environment });
+    const launchFinished = new Date().toISOString();
     const pid = state.child?.pid;
-    const ownership = { pid, executable, expected: null, firstError: null };
+    const ownership = { state, child: state.child, pid, executable, launchStarted,
+      launchFinished, expected: null, firstError: null };
     owned.set(state, ownership);
     retained.add(state);
     let identity;
@@ -73,7 +84,7 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
     async forceCleanup(state) {
       const ownership = owned.get(state);
       assert(ownership, 'unowned process cleanup refused');
-      if (state.closed) { retained.delete(state); return; }
+      if (state.closed && ownership.expected) { retained.delete(state); return; }
       try {
         if (!ownership.expected) {
           let lastError;
@@ -84,11 +95,13 @@ export function createPreviewProcessTools(official, { officialBotHost, platformD
         }
         const current = readIdentity(ownership.expected.pid);
         assert(sameIdentity(ownership.expected, current), 'owned process identity mismatch');
+        assert(originalHandleAlive(ownership), 'original child handle closed or changed');
         await official.forceCleanup(state);
         retained.delete(state);
       } catch (error) {
         record({ kind: 'MOVEMENT_PREVIEW_PROCESS_CLEANUP_FAILED', previewId, pid: ownership.pid,
           retainedOwnedStart: true, expected: ownership.expected, firstError: String(ownership.firstError),
+          launchStarted: ownership.launchStarted, launchFinished: ownership.launchFinished,
           error: String(error) });
         throw error;
       }

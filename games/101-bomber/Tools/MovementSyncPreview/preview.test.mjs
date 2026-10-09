@@ -10,6 +10,8 @@ import { createPreviewProcessTools } from './preview-process.mjs';
 import * as launchPreview from './launch-preview.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const now = () => new Date().toISOString();
+const later = () => new Date(Date.now() + 60_000).toISOString();
 
 test('final gate binds review bytes, candidate and every regular artifact before effects', () => {
   const root = mkdtempSync(join(tmpdir(), 'preview-gate-'));
@@ -87,14 +89,17 @@ test('failed first child identity remains owned, recovers once, and refuses late
   const calls = [];
   const child = { child: { pid: 42 }, closed: false };
   const original = new Error('first identity read failed');
-  const identity = { pid: 42, startTime: '2026-10-09T00:00:00Z', exe: 'C:/dotnet.exe' };
+  let identity;
   let reads = 0;
-  const tools = createPreviewProcessTools({ startLogged: () => child,
+  const tools = createPreviewProcessTools({ startLogged: () => {
+    identity = { pid: 42, startTime: now(), exe: 'C:/dotnet.exe' };
+    return child;
+  },
     async forceCleanup() { calls.push('stop'); } }, {
     readIdentity: () => {
       if (++reads === 1) throw original;
       if (reads === 2) return { ...identity, exe: 'C:/unrelated.exe' };
-      if (reads === 4) return { ...identity, startTime: '2026-10-10T00:00:00Z' };
+      if (reads === 4) return { ...identity, startTime: later() };
       return identity;
     },
     previewId: 'one', record: value => calls.push(value),
@@ -126,7 +131,7 @@ test('persistent child identity failure retains cleanup failure and original sta
 test('PostgreSQL first identity failure retains start and recovers before exact-triplet stop', async () => {
   const events = [];
   const original = new Error('first PostgreSQL identity read failed');
-  const expected = { pid: 54, startTime: '2026-10-09T00:00:00Z', exe: 'C:/postgres.exe' };
+  const expected = { pid: 54, startTime: now(), exe: 'C:/postgres.exe' };
   let reads = 0;
   let current = expected;
   const pg = launchPreview.createPostgresOwnership({ readPid: () => 54,
@@ -137,7 +142,7 @@ test('PostgreSQL first identity failure retains start and recovers before exact-
       return current;
     },
     stop: () => events.push('stop'), record: value => events.push(value), previewId: 'one' });
-  pg.markStarted();
+  pg.markStarted({ started: expected.startTime, finished: now() });
   assert.throws(() => pg.captureIdentity(), error => error === original);
   assert.equal(events.some(value => value.kind === 'MOVEMENT_PREVIEW_POSTGRES_IDENTITY_UNAVAILABLE'
     && value.retainedOwnedStart === true), true);
@@ -148,22 +153,105 @@ test('PostgreSQL first identity failure retains start and recovers before exact-
 });
 
 test('PostgreSQL refuses identity mismatch and preserves persistent recovery failure', async () => {
-  const expected = { pid: 54, startTime: '2026-10-09T00:00:00Z', exe: 'C:/postgres.exe' };
+  const expected = { pid: 54, startTime: now(), exe: 'C:/postgres.exe' };
   let current = expected;
   let stops = 0;
   const pg = launchPreview.createPostgresOwnership({ readPid: () => 54, identify: () => current,
     expectedExe: 'C:/postgres.exe', stop: () => { stops++; } });
-  pg.markStarted();
+  pg.markStarted({ started: expected.startTime, finished: now() });
   pg.captureIdentity();
-  current = { ...expected, startTime: '2026-10-10T00:00:00Z' };
+  current = { ...expected, startTime: later() };
   await assert.rejects(pg.stop(), /identity mismatch/);
   assert.equal(stops, 0);
   const persistent = launchPreview.createPostgresOwnership({ readPid: () => 54,
     identify: () => { throw new Error('unavailable'); }, expectedExe: 'C:/postgres.exe',
     stop: () => { stops++; } });
-  persistent.markStarted();
+  persistent.markStarted({ started: now(), finished: now() });
   await assert.rejects(persistent.stop(), /identity unavailable/);
   assert.equal(stops, 0);
+});
+
+test('PostgreSQL recovery refuses a replacement PID after the first PID was retained', async () => {
+  const events = [];
+  const startTime = now();
+  let pid = 54;
+  let stops = 0;
+  const pg = launchPreview.createPostgresOwnership({ readPid: () => pid,
+    identify: () => { throw new Error('first identity unavailable'); },
+    expectedExe: 'C:/postgres.exe', stop: () => { stops++; }, record: row => events.push(row) });
+  pg.markStarted({ started: startTime, finished: now() });
+  assert.throws(() => pg.captureIdentity(), /first identity unavailable/);
+  pid = 55;
+  await assert.rejects(pg.stop(), /PID mismatch/);
+  assert.equal(stops, 0);
+  assert.equal(events.some(row => row.kind === 'MOVEMENT_PREVIEW_POSTGRES_CLEANUP_FAILED'
+    && row.originalPid === 54 && row.retainedOwnedStart), true);
+});
+
+test('PostgreSQL recovery refuses the original PID with a later start time', async () => {
+  let stops = 0;
+  let reads = 0;
+  const startTime = now();
+  const pg = launchPreview.createPostgresOwnership({ readPid: () => 54,
+    identify: () => {
+      if (++reads === 1) throw new Error('first identity unavailable');
+      return { pid: 54, startTime: later(), exe: 'C:/postgres.exe' };
+    }, expectedExe: 'C:/postgres.exe', stop: () => { stops++; } });
+  pg.markStarted({ started: startTime, finished: now() });
+  assert.throws(() => pg.captureIdentity(), /first identity unavailable/);
+  await assert.rejects(pg.stop(), /start time outside original launch window/);
+  assert.equal(stops, 0);
+});
+
+test('PostgreSQL repeated capture cannot replace an established identity', async () => {
+  const startTime = now();
+  const original = { pid: 54, startTime, exe: 'C:/postgres.exe' };
+  let current = original;
+  let stops = 0;
+  const pg = launchPreview.createPostgresOwnership({ readPid: () => 54,
+    identify: () => current, expectedExe: original.exe, stop: () => { stops++; } });
+  pg.markStarted({ started: startTime, finished: now() });
+  assert.deepEqual(pg.captureIdentity(), original);
+  current = { ...original, startTime: later() };
+  assert.throws(() => pg.captureIdentity(), /identity mismatch/);
+  await assert.rejects(pg.stop(), /identity mismatch/);
+  assert.equal(stops, 0);
+  current = original;
+  await pg.stop();
+  assert.equal(stops, 1);
+});
+
+test('child recovery refuses same PID and executable with a later start time', async () => {
+  const events = [];
+  let reads = 0;
+  const state = { child: { pid: 42 }, closed: false };
+  const tools = createPreviewProcessTools({ startLogged: () => state,
+    async forceCleanup() { events.push('stop'); } }, { readIdentity: () => {
+      if (++reads === 1) throw new Error('first identity unavailable');
+      return { pid: 42, startTime: later(), exe: 'C:/dotnet.exe' };
+    }, record: row => events.push(row) });
+  assert.throws(() => tools.startLogged('C:/dotnet.exe', [], {}), /first identity unavailable/);
+  await assert.rejects(tools.cleanupRetained(), /start time outside original launch window/);
+  assert.equal(events.includes('stop'), false);
+  assert.equal(events.some(row => row.kind === 'MOVEMENT_PREVIEW_PROCESS_CLEANUP_FAILED'
+    && row.retainedOwnedStart), true);
+});
+
+test('child recovery refuses identity after original handle closes', async () => {
+  const events = [];
+  const state = { child: { pid: 42 }, closed: false };
+  let reads = 0;
+  const tools = createPreviewProcessTools({ startLogged: () => state,
+    async forceCleanup() { events.push('stop'); } }, { readIdentity: () => {
+      if (++reads === 1) throw new Error('first identity unavailable');
+      return { pid: 42, startTime: now(), exe: 'C:/dotnet.exe' };
+    }, record: row => events.push(row) });
+  assert.throws(() => tools.startLogged('C:/dotnet.exe', [], {}), /first identity unavailable/);
+  state.closed = true;
+  await assert.rejects(tools.cleanupRetained(), /original child handle closed/);
+  assert.equal(events.includes('stop'), false);
+  assert.equal(events.some(row => row.kind === 'MOVEMENT_PREVIEW_PROCESS_CLEANUP_FAILED'
+    && row.retainedOwnedStart), true);
 });
 
 test('prefix receipt scans exact regular prefix files and refuses a collision', () => {
@@ -208,12 +296,14 @@ test('only recognized official Bot child receives ticket in its selected env', (
 test('owned process adapter scrubs official ticket and refuses changed PID identity on cleanup', async () => {
   const bot = 'C:/release/Lumio.Client.Bot.Host.dll';
   const calls = [];
+  let identity;
+  let current;
   const official = { startLogged(exe, args, options) {
     calls.push({ exe, args, options });
+    identity = { pid: 42, startTime: now(), exe: 'C:/dotnet.exe' };
+    current = identity;
     return { child: { pid: 42 }, closed: false };
   }, async forceCleanup() { calls.push('stop'); }, command() {}, assertAlive() {}, waitExit() {} };
-  const identity = { pid: 42, startTime: '2026-10-09T00:00:00Z', exe: 'C:/dotnet.exe' };
-  let current = identity;
   const adapter = createPreviewProcessTools(official, { officialBotHost: bot, readIdentity: () => current,
     previewId: 'one', record: value => calls.push(value) });
   const state = adapter.startLogged('C:/dotnet.exe', [bot, '--admission-ticket', 'secret'],
@@ -222,7 +312,7 @@ test('owned process adapter scrubs official ticket and refuses changed PID ident
   assert.equal(calls[0].options.env.LumioBotAdmissionTicket, 'secret');
   assert.equal(calls[0].options.env.LUMIO_ACCOUNT_PASSWORD, undefined);
   assert.equal(calls[1].pid, 42);
-  current = { ...identity, startTime: '2026-10-10T00:00:00Z' };
+  current = { ...identity, startTime: later() };
   await assert.rejects(adapter.forceCleanup(state), /identity/);
   assert.equal(calls.includes('stop'), false);
   current = identity;
@@ -233,12 +323,14 @@ test('owned process adapter scrubs official ticket and refuses changed PID ident
 test('only the official Bot retains its config directory while inherited secrets stay scrubbed', () => {
   const bot = 'C:/release/Lumio.Client.Bot.Host.dll';
   const calls = [];
+  let identity;
   const official = { startLogged(exe, args, options) {
     calls.push({ exe, args, options });
+    identity = { pid: 42, startTime: now(), exe: 'C:/dotnet.exe' };
     return { child: { pid: 42 }, closed: false };
   }, command() {}, assertAlive() {}, waitExit() {}, async forceCleanup() {} };
   const adapter = createPreviewProcessTools(official, { officialBotHost: bot,
-    readIdentity: () => ({ pid: 42, startTime: '2026-10-09T00:00:00Z', exe: 'C:/dotnet.exe' }),
+    readIdentity: () => identity,
     previewId: 'one' });
   const env = { PATH: 'path', LumioBotConfigDirectory: 'C:/owned-config',
     LumioBotAdmissionTicket: 'inherited-ticket', LUMIO_ACCOUNT_PASSWORD: 'inherited-password',

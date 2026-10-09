@@ -147,29 +147,50 @@ export async function launchPreview(configPath, { startInfrastructure } = {}) {
 export function createPostgresOwnership({ readPid, identify, expectedExe, stop, record = () => {}, previewId }) {
   let started = false;
   let stopped = false;
+  let originalPid;
+  let launchStarted;
+  let launchFinished;
   let expected;
   let firstError;
   const captureIdentity = (recovered = false) => {
     const pid = readPid();
     assert(Number.isInteger(pid) && pid > 0, 'PostgreSQL PID unavailable');
+    originalPid ??= pid;
+    assert.equal(pid, originalPid, 'PostgreSQL PID mismatch');
     const identity = identify(pid);
     assert(identity?.pid === pid && Number.isFinite(Date.parse(identity.startTime))
       && typeof identity.exe === 'string' && identity.exe.length > 0
       && (!expectedExe || resolve(identity.exe).toLowerCase() === resolve(expectedExe).toLowerCase()),
     'PostgreSQL identity unavailable');
+    if (expected) {
+      assert(sameIdentity(expected, identity), 'PostgreSQL identity mismatch');
+      return expected;
+    }
+    assert(Date.parse(identity.startTime) >= Date.parse(launchStarted)
+      && Date.parse(identity.startTime) <= Date.parse(launchFinished),
+    'PostgreSQL start time outside original launch window');
     expected = { pid, startTime: identity.startTime, exe: identity.exe };
     if (recovered) record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_IDENTITY_RECOVERED', previewId,
       ...expected, firstError: String(firstError) });
     return expected;
   };
   return {
-    markStarted() { started = true; record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_START_RETAINED', previewId }); },
+    markStarted(window) {
+      assert(!started && Number.isFinite(Date.parse(window?.started))
+        && Number.isFinite(Date.parse(window?.finished))
+        && Date.parse(window.started) <= Date.parse(window.finished), 'PostgreSQL launch window unavailable');
+      launchStarted = window.started;
+      launchFinished = window.finished;
+      started = true;
+      record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_START_RETAINED', previewId,
+        launchStarted, launchFinished });
+    },
     captureIdentity() {
       assert(started, 'PostgreSQL start not recorded');
       try { return captureIdentity(); } catch (error) {
         firstError ??= error;
         record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_IDENTITY_UNAVAILABLE', previewId,
-          retainedOwnedStart: true, error: String(error) });
+          retainedOwnedStart: true, originalPid, launchStarted, launchFinished, error: String(error) });
         throw error;
       }
     },
@@ -183,12 +204,13 @@ export function createPostgresOwnership({ readPid, identify, expectedExe, stop, 
           }
           if (!expected) throw new Error(`PostgreSQL identity unavailable; retained for recovery: ${lastError}`);
         }
-        assert(sameIdentity(expected, identify(expected.pid)), 'PostgreSQL identity mismatch');
+        captureIdentity();
         await stop();
         stopped = true;
       } catch (error) {
         record({ kind: 'MOVEMENT_PREVIEW_POSTGRES_CLEANUP_FAILED', previewId,
-          retainedOwnedStart: true, expected, firstError: String(firstError), error: String(error) });
+          retainedOwnedStart: true, originalPid, launchStarted, launchFinished,
+          expected, firstError: String(firstError), error: String(error) });
         throw error;
       }
     },
@@ -200,10 +222,11 @@ async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, sig
     const started = new Date().toISOString();
     const result = spawnSync(executable, args, { env: cleanEnv, cwd: run, encoding: 'utf8',
       windowsHide: true, timeout: 300000, maxBuffer: 32 * 1024 * 1024 });
-    if (!result.error && result.status === 0) onSuccess?.();
+    const finished = new Date().toISOString();
+    if (!result.error && result.status === 0) onSuccess?.({ started, finished });
     writeFileSync(join(run, `${name}.stdout.txt`), result.stdout ?? '', { flag: 'wx' });
     writeFileSync(join(run, `${name}.stderr.txt`), result.stderr ?? '', { flag: 'wx' });
-    save(join(run, `${name}.receipt.json`), { started, finished: new Date().toISOString(),
+    save(join(run, `${name}.receipt.json`), { started, finished,
       executable, args, rawExitCode: result.status, signal: result.signal,
       error: result.error ? String(result.error) : null });
     if (result.error || result.status !== 0) throw new Error(`${name} failed: ${result.status ?? result.signal ?? result.error}`);
@@ -231,7 +254,7 @@ async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, sig
   };
   try {
     command('pg-start', pg('pg_ctl'), ['-D', pgdata, '-l', pglog, '-o',
-      `-h 127.0.0.1 -p ${infra.ports.postgres}`, '-w', 'start'], () => postgres.markStarted());
+      `-h 127.0.0.1 -p ${infra.ports.postgres}`, '-w', 'start'], window => postgres.markStarted(window));
     const postgresIdentity = postgres.captureIdentity();
     save(join(run, 'postgres-identity.json'), { previewId: seal.previewId,
       ...postgresIdentity, pgdata, port: infra.ports.postgres });
