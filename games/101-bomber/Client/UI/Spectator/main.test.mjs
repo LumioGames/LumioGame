@@ -14,6 +14,28 @@ const WEB = path.join(process.env.LUMIO_ENGINE_CANDIDATE_ROOT || path.join(ROOT,
 const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
 const replica = await import(pathToFileURL(path.join(WEB, 'replica-voxel-grid.mjs')));
 const MAIN_SOURCE = fs.readFileSync(new URL('./main.js', import.meta.url), 'utf8');
+test('private movement diagnostic layout requires the exact scene and trace on a permitted player page', async () => {
+  const flags = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()'));
+  const initialize = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function initializePage()'), MAIN_SOURCE.indexOf('    inputDriver = flags.inputDriver;')) + '\n  }\n}';
+  for (const [search, hostname, playerMode, expected] of [
+    ['?scene=movement-sync-preview&trace=movement', '127.0.0.1', true, true],
+    ['?scene=movement-sync-preview', '127.0.0.1', true, false],
+    ['?scene=ordinary&trace=movement', '127.0.0.1', true, false],
+    ['?scene=movement-sync-preview&trace=movement', 'game.example', true, false],
+    ['', '127.0.0.1', true, false],
+    ['?scene=movement-sync-preview&trace=movement', '127.0.0.1', false, false],
+  ]) {
+    const classes = new Set(), node = {};
+    const context = vm.createContext({ PLAYER_MODE: playerMode, URLSearchParams,
+      location: { search, hostname }, LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'],
+      window: { __lumioPlayerConfig: {} }, canvas: {}, initializeResourceWitness: async () => {},
+      document: { body: { classList: { add: name => classes.add(name) } },
+        getElementById: () => node, querySelector: () => node } });
+    vm.runInContext(flags + initialize, context);
+    await context.initializePage();
+    assert.equal(classes.has('movement-private-preview'), expected, `${hostname}${search} player=${playerMode}`);
+  }
+});
 const CREDENTIAL = 'test-admission-credential-do-not-leak';
 test('closed input keeps private record and export buttons available in the real applyDump integration', () => {
   const direction = {disabled:false}, record = {disabled:false}, exp = {disabled:false}, identity = {disabled:false};

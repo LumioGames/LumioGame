@@ -1051,6 +1051,8 @@ async function initializePage() {
     document.getElementById('enter').textContent = 'Reconnect';
     canvas.width = canvas.height = 760;
     const flags = readMovementFlags();
+    const privatePreview = movementPreviewEnabled() && flags.trace;
+    if (privatePreview) document.body.classList.add('movement-private-preview');
     inputDriver = flags.inputDriver;
     if (flags.trace || movementPreviewEnabled()) {
       const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
@@ -1061,7 +1063,11 @@ async function initializePage() {
       observeLongTasks(movementTrace);
       resourceWitness?.noteStage('trace-created');
       const exportButton = document.getElementById('export-movement-trace');
-      if (exportButton) { exportButton.hidden = false; exportButton.addEventListener('click', exportMovementTrace); }
+      if (exportButton) {
+        exportButton.hidden = false;
+        exportButton.addEventListener('click', exportMovementTrace);
+        if (privatePreview) exportButton.addEventListener('pointerdown', event => event.preventDefault());
+      }
       for (const type of ['keydown', 'keyup'])
         window.addEventListener(type, event => movementTrace.key(type, event.code, event.repeat), { capture: true });
     }
