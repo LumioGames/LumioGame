@@ -113,6 +113,7 @@ export function createGameView(callbacks) {
             readLocalPose: callbacks?.readOwnerPose ? () => readLocalPose(generation) : undefined,
             onFrame: callbacks?.onFrame,
             onFrameTiming: callbacks?.onFrameTiming,
+            onRenderTiming: callbacks?.onRenderTiming,
             config: settings.config, rules: settings.rules,
             callbacks: { ...callbacks, inputReady: () => !suspended && (callbacks?.inputReady?.() ?? false), onChangeCharacter: settings.catalog.characters.size > 0 && callbacks.onChangeCharacter
               ? id => {

@@ -504,6 +504,7 @@ function updateGamePresentation() {
           timing?.finish({ rafT: frame.now });
         } : undefined,
         onFrameTiming: movementPhaseTimingEnabled ? timing => movementTrace.phaseTiming({ scope: 'raf', ...timing }) : undefined,
+        onRenderTiming: movementPhaseTimingEnabled ? timing => movementTrace.phaseTiming({ scope: 'wholeRaf', ...timing }) : undefined,
       } : {});
       gameView = ownerView;
       resourceWitness?.noteStage('Presentation-created');
