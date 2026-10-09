@@ -28,6 +28,8 @@ public sealed class ClientCompositionTests
         };
         var retry = new SessionNotServingRetryOptions(3, TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(80));
         Func<ReplicaRpcHooks> hooks = () => throw new InvalidOperationException("Composition must not instantiate hooks.");
+        var predictionSteps = new ClientPredictionStepOptions(_ => throw new InvalidOperationException("Composition must not invoke prediction steps."));
+        var outboundObserver = new NullClientOutboundMessageObserver();
         var options = new ClientInstanceOptions
         {
             Registry = BomberClientApplication.Registry,
@@ -36,6 +38,7 @@ public sealed class ClientCompositionTests
                 ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(4), admittedRoomId: "room-from-launch"),
             InputMapper = null!, // No session is created by this pure composition check.
             Voxel = voxel, NotServingRetry = retry, ReplicaRpcHooksFactory = hooks,
+            PredictionSteps = predictionSteps, OutboundObserver = outboundObserver,
             AllowWelcomeOnlyAdmission = false,
         };
 
@@ -46,6 +49,8 @@ public sealed class ClientCompositionTests
         Assert.Same(prediction, composed.Voxel!.Prediction);
         Assert.Same(retry, composed.NotServingRetry);
         Assert.Same(hooks, composed.ReplicaRpcHooksFactory);
+        Assert.Same(predictionSteps, composed.PredictionSteps);
+        Assert.Same(outboundObserver, composed.OutboundObserver);
         Assert.False(composed.AllowWelcomeOnlyAdmission);
         Assert.Equal(RegistrySide.Client, composed.Registry.Side);
     }

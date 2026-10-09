@@ -10,12 +10,14 @@
     <BomberClientHostDirectory>$(MSBuildThisFileDirectory)../../../Engine/bot/$(NETCoreSdkRuntimeIdentifier)</BomberClientHostDirectory>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../Tools/Fixtures/MovementNativeParityFixture.cs" Link="MovementNativeParityFixture.cs" />
     <!-- Pin the direct runtime identity too: transitive project discovery otherwise asks
          Gameplay for its default server output while Application compiled against client. -->
     <ProjectReference Include="../../../Gameplay/Lumio.Bomber.Gameplay.csproj" AdditionalProperties="LumioEcsSide=client" />
     <ProjectReference Include="../../Application/Lumio.Bomber.Client.Application.csproj" />
     <ProjectReference Include="../../Bots/Lumio.Bomber.Bots.csproj" />
     <Reference Include="$(BomberClientHostDirectory)/Lumio.Client.*.dll" Private="true" />
+    <Reference Include="$(BomberClientHostDirectory)/Lumio.Engine.NativeLoader*.dll" Private="true" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Microsoft.Testing.Platform" />
   </ItemGroup>

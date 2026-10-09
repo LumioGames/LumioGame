@@ -19,6 +19,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/Gameplay/**/*.cs" Link="Gameplay/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/EngineRelease.cs" Link="EngineRelease.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../Fixtures/MovementNativeParityFixture.cs" Link="MovementNativeParityFixture.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Gameplay/Lumio.Bomber.Gameplay.csproj" />
