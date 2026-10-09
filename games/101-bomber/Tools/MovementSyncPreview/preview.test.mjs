@@ -13,6 +13,18 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const now = () => new Date().toISOString();
 const later = () => new Date(Date.now() + 60_000).toISOString();
 
+test('infrastructure command keeps raw failed output and successful psql-style return text',{timeout:5000},()=>{
+  const root=mkdtempSync(join(tmpdir(),'preview-command-text-'));try{
+    let window;assert.equal(launchPreview.runInfrastructureCommand({name:'query',executable:process.execPath,args:['-e',"process.stdout.write('42\\n完整\\n');process.stderr.write('query stderr\\n')"],run:root,cleanEnv:process.env,onSuccess:value=>{window=value;}}),'42\n完整\n');
+    assert(window&&Date.parse(window.finished)>=Date.parse(window.started));
+    assert.equal(readFileSync(join(root,'query.stderr.txt'),'utf8'),'query stderr\n');
+    assert.equal(JSON.parse(readFileSync(join(root,'query.receipt.json'))).rawExitCode,0);
+    let successful=false;assert.throws(()=>launchPreview.runInfrastructureCommand({name:'failure',executable:process.execPath,args:['-e',"process.stdout.write(Buffer.from([255,0,10]));process.stderr.write('actual failure\\n');process.exitCode=7"],run:root,cleanEnv:process.env,onSuccess:()=>{successful=true;}}),/failure failed: 7/);
+    assert.equal(successful,false);assert.deepEqual(readFileSync(join(root,'failure.stdout.txt')),Buffer.from([255,0,10]));
+    assert.equal(readFileSync(join(root,'failure.stderr.txt'),'utf8'),'actual failure\n');assert.equal(JSON.parse(readFileSync(join(root,'failure.receipt.json'))).rawExitCode,7);
+  }finally{rmSync(root,{recursive:true,force:true});}
+});
+
 test('final gate binds review bytes, candidate and every regular artifact before effects', () => {
   const root = mkdtempSync(join(tmpdir(), 'preview-gate-'));
   try {

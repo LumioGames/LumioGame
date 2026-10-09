@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadProcessTools } from '../engine-tools.mjs';
@@ -217,21 +217,27 @@ export function createPostgresOwnership({ readPid, identify, expectedExe, stop, 
   };
 }
 
-async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, signer, identify }) {
-  const command = (name, executable, args, onSuccess) => {
+export function runInfrastructureCommand({ name, executable, args, run, cleanEnv, onSuccess }) {
     const started = new Date().toISOString();
-    const result = spawnSync(executable, args, { env: cleanEnv, cwd: run, encoding: 'utf8',
-      windowsHide: true, timeout: 300000, maxBuffer: 32 * 1024 * 1024 });
+    const stdout = join(run, `${name}.stdout.txt`), stderr = join(run, `${name}.stderr.txt`);
+    const descriptors=[];let result;
+    try {
+      descriptors.push(openSync(stdout,'wx'));descriptors.push(openSync(stderr,'wx'));
+      // Daemons may inherit these handles; regular files do not make spawnSync wait for pipe EOF.
+      result = spawnSync(executable, args, { env: cleanEnv, cwd: run, encoding: 'utf8',
+        windowsHide: true, timeout: 300000, maxBuffer: 32 * 1024 * 1024, stdio:['ignore',...descriptors] });
+    } finally { for(const fd of descriptors)closeSync(fd); }
     const finished = new Date().toISOString();
     if (!result.error && result.status === 0) onSuccess?.({ started, finished });
-    writeFileSync(join(run, `${name}.stdout.txt`), result.stdout ?? '', { flag: 'wx' });
-    writeFileSync(join(run, `${name}.stderr.txt`), result.stderr ?? '', { flag: 'wx' });
     save(join(run, `${name}.receipt.json`), { started, finished,
       executable, args, rawExitCode: result.status, signal: result.signal,
       error: result.error ? String(result.error) : null });
     if (result.error || result.status !== 0) throw new Error(`${name} failed: ${result.status ?? result.signal ?? result.error}`);
-    return result.stdout ?? '';
-  };
+    return readFileSync(stdout,'utf8');
+}
+
+async function startLocalInfrastructure({ seal, infra, run, tools, cleanEnv, signer, identify }) {
+  const command = (name, executable, args, onSuccess) => runInfrastructureCommand({ name, executable, args, run, cleanEnv, onSuccess });
   const pg = name => join(infra.postgresBin, `${name}.exe`);
   const pgdata = join(run, 'pgdata');
   const pglog = join(run, 'postgres.log');
