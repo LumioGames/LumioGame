@@ -24,6 +24,27 @@ internal sealed class InputTraceBatchDto
     public required int pending { get; init; }
     public InputTraceEventDto? traceOverflow { get; init; }
     public required List<InputTraceEventDto> events { get; init; }
+    public FacadeTickTimingDto? facadeTiming { get; init; }
+    public string facadeTimingLoss { get; init; } = "0";
+    public string facadeTimingDiagnosticFailures { get; init; } = "0";
+}
+
+internal sealed class FacadeTickTimingDto
+{
+    public int version { get; init; } = 1;
+    public required string ordinal { get; init; }
+    public required bool completed { get; init; }
+    public required bool sessionInvoked { get; init; }
+    public string? failedPhase { get; init; }
+    public required FacadePhaseTimingDto preIdentity { get; init; }
+    public FacadePhaseTimingDto? sessionTick { get; init; }
+    public FacadePhaseTimingDto? postIdentityCleanup { get; init; }
+}
+
+internal sealed class FacadePhaseTimingDto
+{
+    public string? startedStamp { get; init; }
+    public string? endedStamp { get; init; }
 }
 
 internal sealed class InputTraceEventDto

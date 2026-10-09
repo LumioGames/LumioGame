@@ -14,6 +14,8 @@ namespace Lumio.Bomber.Client.Spectator;
 /// <summary>Optional bounded observations of real step requests and accepted transport bytes.</summary>
 internal sealed class BomberInputTrace
 {
+    internal BomberInputTrace(ManagedFacadeTiming? facadeTiming = null) => FacadeTiming = facadeTiming ?? new ManagedFacadeTiming();
+    internal ManagedFacadeTiming FacadeTiming { get; }
     internal const int EventCapacity = 1024;
     internal const int PendingCapacity = 256;
     private readonly Queue<InputTraceEventDto> _events = new();
@@ -36,7 +38,8 @@ internal sealed class BomberInputTrace
     internal ulong EventLoss => _eventLoss;
     internal ulong PendingLoss => _pendingLoss;
     internal ulong Unmatched => _unmatched;
-    internal bool Complete => _eventLoss == 0 && _pendingLoss == 0 && _unmatched == 0 && _diagnosticFailures == 0;
+    internal bool Complete => _eventLoss == 0 && _pendingLoss == 0 && _unmatched == 0 && _diagnosticFailures == 0 &&
+        FacadeTiming.Loss == 0 && FacadeTiming.DiagnosticFailures == 0;
 
     private static string Decimal(ulong value) => value.ToString(CultureInfo.InvariantCulture);
     private static void Increment(ref ulong value) { if (value < ulong.MaxValue) value++; }
@@ -178,16 +181,20 @@ internal sealed class BomberInputTrace
     {
         try
         {
+            var facadeTiming = FacadeTiming.Peek();
             var batch = new InputTraceBatchDto { version = 1, enabled = true, hostLifetime = _lifetime,
                 clockDomain = "Stopwatch.GetTimestamp/unanchored-to-performance.now",
                 clockFrequency = Decimal(checked((ulong)Stopwatch.Frequency)), complete = Complete,
                 eventLoss = Decimal(_eventLoss), pendingLoss = Decimal(_pendingLoss),
                 unmatched = Decimal(_unmatched), diagnosticFailures = Decimal(_diagnosticFailures),
+                facadeTiming = facadeTiming, facadeTimingLoss = Decimal(FacadeTiming.Loss),
+                facadeTimingDiagnosticFailures = Decimal(FacadeTiming.DiagnosticFailures),
                 pending = _pending.Count,
                 traceOverflow = _eventLoss == 0 && _pendingLoss == 0 ? null : new InputTraceEventDto {
                     k = "trace-overflow", stamp = Stamp(), reason = _eventLoss > 0 ? "event-ring" : "pending-capacity" },
                 events = _events.ToList() };
             string json = JsonSerializer.Serialize(batch, SpectatorJsonContext.Default.InputTraceBatchDto);
+            if (facadeTiming is not null) FacadeTiming.Consume();
             _events.Clear();
             return json;
         }

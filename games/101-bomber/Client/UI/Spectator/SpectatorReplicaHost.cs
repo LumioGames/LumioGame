@@ -43,6 +43,14 @@ public sealed class SpectatorReplicaHost : IDisposable
     private bool _closing;
     private string _lastError = string.Empty;
 
+    internal SpectatorReplicaHost(IClientSession session, BomberPlayerStepOptions stepOptions, BomberInputTrace trace)
+    {
+        _session = session;
+        _stepOptions = stepOptions;
+        _inputTrace = stepOptions.TraceEnabled ? trace : null;
+        _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
+    }
+
     public SpectatorReplicaHost(LumioEngine engine, IClientConnectionFactory connections, byte[] catalog,
         string launchJson, Func<CancellationToken, Task<string>> renewEndpoint, Action<string> log,
         Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null,
@@ -117,17 +125,27 @@ public sealed class SpectatorReplicaHost : IDisposable
     public static ulong TickRateHz => GeneratedRegistry.Instance.DeclaredTickRateHz;
     public void Tick()
     {
+        var timing = _inputTrace?.FacadeTiming;
+        bool record = timing?.Begin() == true;
         try
         {
             ReconcileInputIdentity();
             var before = _session.GetSnapshot();
-            if (!before.IsDisposed) _session.Tick(new ClientOwnerTick(checked(before.OwnerTick + 1)));
+            if (!before.IsDisposed)
+            {
+                var ownerTick = new ClientOwnerTick(checked(before.OwnerTick + 1));
+                if (record) timing!.Session(invoked: true);
+                _session.Tick(ownerTick);
+            }
+            else if (record) timing!.Session(invoked: false);
+            if (record) timing!.Post();
             ReconcileInputIdentity();
             if (_session.GetSnapshot().CleanupStatus == SessionCleanupStatus.Failed)
                 throw new InvalidOperationException("client_cleanup_failed_resources_retained");
             if (_session.GetSnapshot().IsDisposed) _joint.Dispose();
+            if (record) timing!.Complete();
         }
-        catch (Exception error) { _lastError = FormatApplyError(error); throw; }
+        catch (Exception error) { if (record) timing!.Fail(); _lastError = FormatApplyError(error); throw; }
     }
     public string SessionState() => JsonSerializer.Serialize(new SessionStateDto
     {

@@ -7,6 +7,35 @@ import { createNativeInvokeObserver } from '../Client/UI/Spectator/native-invoke
 const STEP = 0.2;
 const H = 50;
 
+test('managed façade analysis uses raw same-domain stamps, keeps skipped spans null and cumulative loss visible', () => {
+  const span = (start, end) => ({ startedStamp: String(start), endedStamp: String(end) });
+  const base = 9007199254740993n;
+  const batch = timing => ({ hostLifetime: 'facade-host', clockDomain: 'Stopwatch.GetTimestamp/unanchored-to-performance.now',
+    clockFrequency: '1000', facadeTimingLoss: '0', facadeTimingDiagnosticFailures: '0', events: [], facadeTiming: timing });
+  const events = [
+    { k: 'managedTrace', t: 1, batch: batch({ version: 1, ordinal: '1', completed: true, sessionInvoked: true, failedPhase: null,
+      preIdentity: span(base, base + 10n), sessionTick: span(base + 10n, base + 60n), postIdentityCleanup: span(base + 60n, base + 70n) }) },
+    { k: 'managedTrace', t: 2, batch: batch({ version: 1, ordinal: '2', completed: false, sessionInvoked: true, failedPhase: 'sessionTick',
+      preIdentity: span(200, 210), sessionTick: span(210, 220), postIdentityCleanup: null }) },
+    { k: 'managedTrace', t: 3, batch: batch({ version: 1, ordinal: '3', completed: true, sessionInvoked: false, failedPhase: null,
+      preIdentity: span(300, 315), sessionTick: null, postIdentityCleanup: span(315, 330) }) },
+  ];
+  const trace = { events, version: 2, timeBasis: 'performance.now', frameTimeBasis: 'observer-invocation', truncated: false };
+  const metrics = analyzeMovementTrace(trace).timing.managedFacade;
+  assert.ok(metrics, 'actual analyzer is missing managed façade timing');
+  assert.equal(metrics.windows, 3); assert.equal(metrics.failedWindows, 1); assert.equal(metrics.skippedSessions, 1);
+  assert.equal(metrics.sections.preIdentity.n, 3); assert.equal(metrics.sections.preIdentity.max, 15);
+  assert.equal(metrics.sections.sessionTick.n, 2); assert.equal(metrics.sections.sessionTick.max, 50);
+  assert.equal(metrics.sections.postIdentityCleanup.n, 2); assert.equal(metrics.sections.postIdentityCleanup.max, 15);
+  assert.equal(metrics.status, 'OBSERVED'); assert.match(metrics.note, /not JS absolute time.*not pure managed CPU/);
+  events[0].batch.facadeTimingLoss = '1'; events[1].batch.facadeTimingLoss = '1';
+  assert.equal(analyzeMovementTrace(trace).timing.managedFacade.timingLoss, '1', 'cumulative host loss is not double counted');
+  assert.equal(analyzeMovementTrace(trace).timing.managedFacade.status, 'UNPROVEN');
+  events[0].batch.facadeTiming.preIdentity.startedStamp = null;
+  assert.equal(analyzeMovementTrace(trace).timing.managedFacade.sections.preIdentity.n, 2, 'missing stamp cannot be fabricated as zero');
+  assert.equal(analyzeMovementTrace({ ...trace, events: [] }).timing.managedFacade.status, 'NOT_OBSERVED');
+});
+
 // Held along X for `steps` pumps (stride sign per pump), then `trailing` pumps with nothing held.
 // The interval driver publishes 5 ms before a pump; the pump driver publishes inside it, before the Tick.
 // `display(t, target, admittedAt)` decides what the doll shows.

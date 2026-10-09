@@ -106,6 +106,63 @@ function nativeInvokeTiming(events, trace) {
     ...totals, operations, tickMs: stats(tickMs) };
 }
 
+function managedFacadeTiming(batches, trace) {
+  const phases = ['preIdentity', 'sessionTick', 'postIdentityCleanup'];
+  const values = Object.fromEntries(phases.map(phase => [phase, []]));
+  const counters = new Map();
+  let windows = 0, failedTicks = 0, skippedSessions = 0, invalidWindows = 0;
+  const unsigned = value => typeof value === 'string' && /^(0|[1-9]\d*)$/.test(value) ? BigInt(value) : null;
+  const stamp = value => typeof value === 'string' && /^-?(0|[1-9]\d*)$/.test(value) ? BigInt(value) : null;
+  for (const batch of batches) {
+    if ('facadeTimingLoss' in batch || 'facadeTimingDiagnosticFailures' in batch) {
+      const loss = unsigned(batch.facadeTimingLoss), failures = unsigned(batch.facadeTimingDiagnosticFailures);
+      if (loss === null || failures === null || typeof batch.hostLifetime !== 'string') invalidWindows++;
+      else {
+        const prior = counters.get(batch.hostLifetime) ?? { loss: 0n, failures: 0n };
+        counters.set(batch.hostLifetime, { loss: loss > prior.loss ? loss : prior.loss,
+          failures: failures > prior.failures ? failures : prior.failures });
+      }
+    }
+    const timing = batch.facadeTiming;
+    if (timing === null || timing === undefined) continue;
+    const frequency = unsigned(batch.clockFrequency);
+    if (timing.version !== 1 || unsigned(timing.ordinal) === null ||
+        typeof timing.completed !== 'boolean' || typeof timing.sessionInvoked !== 'boolean' ||
+        batch.clockDomain !== 'Stopwatch.GetTimestamp/unanchored-to-performance.now' ||
+        frequency === null || frequency === 0n ||
+        (timing.completed ? timing.failedPhase !== null : !phases.includes(timing.failedPhase))) {
+      invalidWindows++; continue;
+    }
+    windows++;
+    if (!timing.completed) failedTicks++;
+    if (!timing.sessionInvoked) skippedSessions++;
+    let invalid = false;
+    for (const phase of phases) {
+      const span = timing[phase];
+      const required = phase === 'preIdentity' || (phase === 'sessionTick' && timing.sessionInvoked) ||
+        (phase === 'postIdentityCleanup' && (timing.completed || timing.failedPhase === phase));
+      if (span === null && !required) continue; // Unexecuted spans are absent, never a zero-duration sample.
+      if (!required || !span) { invalid = true; continue; }
+      const start = stamp(span.startedStamp), end = stamp(span.endedStamp);
+      if (start === null || end === null || end < start) { invalid = true; continue; }
+      const ms = Number(end - start) * 1000 / Number(frequency);
+      if (!Number.isFinite(ms)) { invalid = true; continue; }
+      values[phase].push(ms);
+    }
+    if (invalid) invalidWindows++;
+  }
+  const timingLoss = [...counters.values()].reduce((sum, row) => sum + row.loss, 0n);
+  const diagnosticFailures = [...counters.values()].reduce((sum, row) => sum + row.failures, 0n);
+  const unproven = Boolean(trace.truncated) || (trace.diagnosticFailures ?? 0) > 0 || invalidWindows > 0 ||
+    timingLoss > 0n || diagnosticFailures > 0n;
+  return { boundary: 'MANAGED_FACADE_STOPWATCH',
+    note: 'Raw same-domain Stopwatch differences; not JS absolute time and not pure managed CPU time.',
+    status: unproven ? 'UNPROVEN' : windows ? 'OBSERVED' : 'NOT_OBSERVED',
+    windows, failedWindows: failedTicks, skippedSessions, invalidWindows,
+    timingLoss: timingLoss.toString(), diagnosticFailures: diagnosticFailures.toString(),
+    sections: Object.fromEntries(phases.map(phase => [phase, stats(values[phase])])) };
+}
+
 export function analyzeMovementTrace(trace) {
   if (!trace || !Array.isArray(trace.events)) throw new Error('movement_trace_events_missing');
   const certifiedCapture = trace.version >= 2 && trace.timeBasis === 'performance.now' &&
@@ -328,6 +385,7 @@ export function analyzeMovementTrace(trace) {
       framesOver50ms: frameIntervals.filter(v => v > 50).length, pumpIntervalMs: stats(pumpIntervals),
       tickMs: stats(pumps.map(p => p.tickMs)), pumpTotalMs: stats(pumps.map(p => p.totalMs)),
       nativeInvoke: nativeInvokeTiming(events, trace),
+      managedFacade: managedFacadeTiming(managedBatches, trace),
       phases: Object.fromEntries([...new Set(events.filter(e => e.k === 'phaseTiming').map(e => e.scope))].map(scope => {
         const observations = events.filter(e => e.k === 'phaseTiming' && e.scope === scope);
         const spans = observations.flatMap(e => e.spans ?? []);
