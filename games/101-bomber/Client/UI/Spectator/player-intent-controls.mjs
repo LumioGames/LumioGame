@@ -60,7 +60,11 @@ export function createPlayerIntentControls({ setMoveIntent, setBombIntent, latch
   function directions() {
     if (touch[0]) return touch;
     const latest = [...new Set([...held.values()].reverse())];
-    return [latest[0] ?? 0, latest[1] ?? 0];
+    const primary = latest[0] ?? 0;
+    const secondary = latest.find(direction => direction !== primary &&
+      ((primary === 1 || primary === 3) ? (direction === 2 || direction === 4)
+        : (direction === 1 || direction === 3))) ?? 0;
+    return [primary, secondary];
   }
   function publishMove(turn) {
     const [primary, secondary] = directions();

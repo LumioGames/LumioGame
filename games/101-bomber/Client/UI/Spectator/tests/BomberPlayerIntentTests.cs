@@ -32,7 +32,7 @@ public sealed class BomberPlayerIntentTests
         intent.SetMoveIntent(3, 2, true);
         intent.SetMoveIntent(2, 0, false);
         Assert.Equal(new BomberIntentSample(2, 0, true, 0, 0, false), intent.PeekSample(true));
-        intent.CommitMove();
+        intent.CommitMove(2);
         Assert.Equal(new BomberIntentSample(2, 0, false, 0, 0, false), intent.PeekSample(true));
         intent.SetMoveIntent(0, 0, false);
         Assert.Equal(default, intent.PeekSample(true));
@@ -44,12 +44,104 @@ public sealed class BomberPlayerIntentTests
         var intent = new BomberPlayerIntent();
         intent.SetMoveIntent(3, 2, true);
         intent.SetMoveIntent(0, 0, false);
-        Assert.Equal(new BomberIntentSample(3, 2, true, 0, 0, false), intent.PeekSample(true));
-        intent.CommitMove();
+        Assert.Equal(new BomberIntentSample(3, 0, true, 0, 0, false), intent.PeekSample(true));
+        intent.CommitMove(3);
         Assert.Equal(default, intent.PeekSample(true));
         intent.SetMoveIntent(2, 0, false);
         intent.SetMoveIntent(1, 0, false);
         Assert.Equal(1, intent.PeekSample(true).Primary);
+    }
+
+    [Fact]
+    public void UnpolledLosingTapDoesNotRenewTurnAfterCommittedUp()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.SetMoveIntent(2, 1, true);
+        Assert.Equal(new BomberIntentSample(2, 1, true, 0, 0, false), intent.PeekSample(true));
+        Assert.Equal(new BomberIntentSample(2, 1, true, 0, 0, false), intent.PeekSample(true));
+        intent.SetMoveIntent(1, 0, false);
+        Assert.Equal(new BomberIntentSample(1, 0, false, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void ReleasingCommittedRightBackToHeldUpProducesTurn()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.SetMoveIntent(2, 1, true);
+        intent.CommitMove(2);
+        intent.SetMoveIntent(1, 0, false);
+        Assert.Equal(new BomberIntentSample(1, 0, true, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void SameDirectionAliasDoesNotRenewCommittedTurn()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.SetMoveIntent(1, 0, true);
+        Assert.Equal(new BomberIntentSample(1, 0, false, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void FailedPublicationAndRepeatedPeekLeaveTapAndHistoryPending()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(2, 0, true);
+        intent.SetMoveIntent(0, 0, false);
+        var selected = intent.PeekSample(true);
+        Assert.Equal(new BomberIntentSample(2, 0, true, 0, 0, false), selected);
+        Assert.Equal(selected, intent.PeekSample(true));
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(selected.Primary);
+        Assert.Equal(new BomberIntentSample(1, 0, true, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void PublishedIdleAfterCancelDebtBecomesTheLastSampledPrimary()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.SetBombIntent(1);
+        intent.CommitBomb(1);
+        intent.Clear();
+        intent.SetMoveIntent(2, 0, true);
+        var debt = intent.PeekSample(true);
+        Assert.Equal(new BomberIntentSample(0, 0, false, 0, 4, false), debt);
+        intent.CommitMove(debt.Primary);
+        intent.CommitBomb(4);
+        Assert.Equal(new BomberIntentSample(2, 0, true, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void PublishedOrdinaryIdleAlsoResetsLastSampledPrimary()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.SetMoveIntent(0, 0, false);
+        intent.CommitMove(intent.PeekSample(true).Primary);
+        intent.SetMoveIntent(1, 0, true);
+        Assert.Equal(new BomberIntentSample(1, 0, true, 0, 0, false), intent.PeekSample(true));
+    }
+
+    [Fact]
+    public void ClearRetainsLastCommittedPrimaryAndInvalidateResetsIt()
+    {
+        var intent = new BomberPlayerIntent();
+        intent.SetMoveIntent(1, 0, true);
+        intent.CommitMove(1);
+        intent.Clear();
+        intent.SetMoveIntent(1, 0, true);
+        Assert.Equal(new BomberIntentSample(1, 0, false, 0, 0, false), intent.PeekSample(true));
+        intent.Invalidate();
+        intent.SetMoveIntent(1, 0, true);
+        Assert.Equal(new BomberIntentSample(1, 0, true, 0, 0, false), intent.PeekSample(true));
     }
 
     [Fact]

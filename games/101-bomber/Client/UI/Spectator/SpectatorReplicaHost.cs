@@ -271,7 +271,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             var move = new MoveAbility.Input { PrimaryDirection = (BomberDirection)sample.Primary,
                 SecondaryDirection = (BomberDirection)sample.Secondary, TurnPressed = sample.TurnPressed };
             if (!PublishStepInput<MoveAbility, MoveAbility.Input>(identity, false, in move)) return;
-            _intent.CommitMove();
+            _intent.CommitMove(sample.Primary);
         }
         if (sample.BombPressPhase != 0)
         {

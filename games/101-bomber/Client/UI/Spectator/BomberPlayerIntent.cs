@@ -17,8 +17,7 @@ internal sealed class BomberPlayerIntent
     private int _heldPrimary;
     private int _heldSecondary;
     private int _tapPrimary;
-    private int _tapSecondary;
-    private bool _turnPressed;
+    private int _lastSampledPrimary;
     private bool _skill;
     private int _bombIntentRefusalCount;
     private string _bombIntentStatusCode = "accepted";
@@ -36,10 +35,8 @@ internal sealed class BomberPlayerIntent
     {
         _heldPrimary = primary;
         _heldSecondary = secondary;
-        _turnPressed |= turnPressed;
         if (primary != 0 && turnPressed) {
             _tapPrimary = primary;
-            _tapSecondary = secondary;
         }
     }
 
@@ -82,7 +79,7 @@ internal sealed class BomberPlayerIntent
         if (_cancelDebt) return new BomberIntentSample(0, 0, false, 0, 4, false);
         if (!enabled) return default;
         int primary = _heldPrimary != 0 ? _heldPrimary : _tapPrimary;
-        int secondary = _heldPrimary != 0 ? _heldSecondary : _tapSecondary;
+        int secondary = _heldPrimary != 0 ? _heldSecondary : 0;
         int press = 0;
         int release = 0;
         if (_count != 0) {
@@ -90,14 +87,14 @@ internal sealed class BomberPlayerIntent
             press = head.BeginPublished ? (head.Terminal == 0 ? 2 : 0) : 1;
             release = head.Terminal;
         }
-        return new BomberIntentSample(primary, secondary, _turnPressed, press, release, _skill);
+        return new BomberIntentSample(primary, secondary, primary != 0 && primary != _lastSampledPrimary,
+            press, release, _skill);
     }
 
-    public void CommitMove()
+    public void CommitMove(int publishedPrimary)
     {
+        _lastSampledPrimary = publishedPrimary;
         _tapPrimary = 0;
-        _tapSecondary = 0;
-        _turnPressed = false;
     }
 
     public void CommitBomb(int phase)
@@ -118,8 +115,8 @@ internal sealed class BomberPlayerIntent
 
     public void Clear()
     {
-        _heldPrimary = _heldSecondary = _tapPrimary = _tapSecondary = 0;
-        _turnPressed = _skill = false;
+        _heldPrimary = _heldSecondary = _tapPrimary = 0;
+        _skill = false;
         bool debt = _count != 0 && _gestures[_head].BeginPublished;
         Array.Clear(_gestures);
         _head = 0;
@@ -135,5 +132,6 @@ internal sealed class BomberPlayerIntent
         _count = 0;
         _cancelDebt = false;
         _dropping = false;
+        _lastSampledPrimary = 0;
     }
 }

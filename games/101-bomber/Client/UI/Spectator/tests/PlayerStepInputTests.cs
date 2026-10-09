@@ -97,6 +97,40 @@ public sealed class PlayerStepInputTests
         }, stepOptions: new BomberPlayerStepOptions());
     }
 
+    [Fact]
+    public void ActualStepsTurnOnlyWhenTheCommittedPrimaryChanges()
+    {
+        MovementPredictionPublicationTests.RunActualPrediction("clear", beforeMove: (owner, self) =>
+        {
+            var host = owner.Host;
+            Assert.True(host.World!.Manager.ClientPredictionClockEnabled);
+            host.SetInputIntentEnabled(true);
+
+            (int Primary, int Secondary, bool Turn) Next()
+            {
+                int before = owner.ReceivedFrames.Length;
+                owner.PumpUntil(() => owner.ReceivedFrames.Length > before);
+                return DecodeMove(Decode(owner, self, owner.ReceivedFrames[before]));
+            }
+
+            host.SetMoveIntent(1, 0, true); // W
+            Assert.Equal((1, 0, true), Next());
+            host.SetMoveIntent(2, 1, true); // D down, then up before the next sample
+            host.SetMoveIntent(1, 0, false);
+            Assert.Equal((1, 0, false), Next());
+            host.SetMoveIntent(2, 1, true);
+            Assert.Equal((2, 1, true), Next());
+            host.SetMoveIntent(1, 0, false); // release D to held W
+            Assert.Equal((1, 0, true), Next());
+            host.SetMoveIntent(1, 0, true); // same-direction physical alias
+            Assert.Equal((1, 0, false), Next());
+            host.SetMoveIntent(0, 0, false);
+            Assert.Equal((0, 0, false), Next());
+            host.SetMoveIntent(1, 0, true);
+            Assert.Equal((1, 0, true), Next());
+        }, stepOptions: new BomberPlayerStepOptions());
+    }
+
     private static void VerifyPhysicalSetters(BrowserSessionOwner owner, NetEntityId self, ulong wireGeneration)
     {
         var host = owner.Host;
@@ -228,6 +262,23 @@ public sealed class PlayerStepInputTests
 
     private static InputCommandMessage Decode(BrowserSessionOwner owner, NetEntityId self, byte[] frame) =>
         WireCodec.DecodeAuthenticatedInput(frame, owner.WireProfile, self, 1, "game-test-socket", BrowserSessionOwner.Incarnation);
+
+    private static (int Primary, int Secondary, bool Turn) DecodeMove(InputCommandMessage frame)
+    {
+        using var stream = new MemoryStream(frame.Payload.ToArray());
+        using var reader = new BinaryReader(stream, Encoding.UTF8);
+        string ReadString() => Encoding.UTF8.GetString(reader.ReadBytes(reader.ReadInt32()));
+        Assert.Equal("AbilityComponent", ReadString());
+        Assert.Equal("Activate", ReadString());
+        Assert.Equal(5, reader.ReadInt32());
+        Assert.Equal(nameof(MoveAbility), ReadString());
+        int primary = int.Parse(ReadString(), System.Globalization.CultureInfo.InvariantCulture);
+        int secondary = int.Parse(ReadString(), System.Globalization.CultureInfo.InvariantCulture);
+        bool turn = bool.Parse(ReadString());
+        Assert.Equal("0", ReadString());
+        Assert.Equal(stream.Length, stream.Position);
+        return (primary, secondary, turn);
+    }
 
     private static BrowserSessionOwner ReadyStepOwner()
     {

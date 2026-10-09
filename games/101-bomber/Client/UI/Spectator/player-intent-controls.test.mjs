@@ -82,6 +82,32 @@ test('newest physical press wins before same-direction deduplication', () => {
   f.controls.destroy();
 });
 
+test('opposite held direction is skipped when finding perpendicular secondary', () => {
+  const f = fixture();
+  f.key('keydown', 'KeyW'); f.key('keydown', 'KeyA'); f.key('keydown', 'KeyD');
+  assert.deepEqual(f.moves.at(-1), [2, 1, true]);
+  f.key('keyup', 'KeyD');
+  assert.deepEqual(f.moves.at(-1), [4, 1, false]);
+  f.controls.destroy();
+});
+
+test('reverse opposite-key order still uses the older perpendicular direction', () => {
+  const f = fixture();
+  f.key('keydown', 'KeyW'); f.key('keydown', 'KeyD'); f.key('keydown', 'KeyA');
+  assert.deepEqual(f.moves.at(-1), [4, 1, true]);
+  f.controls.destroy();
+});
+
+test('newest alias keeps physical order while opposite keys are excluded from secondary', () => {
+  const f = fixture();
+  f.key('keydown', 'ArrowUp'); f.key('keydown', 'ArrowLeft');
+  f.key('keydown', 'KeyD'); f.key('keydown', 'ArrowRight');
+  assert.deepEqual(f.moves.at(-1), [2, 1, true]);
+  f.key('keyup', 'ArrowRight');
+  assert.deepEqual(f.moves.at(-1), [2, 1, false]);
+  f.controls.destroy();
+});
+
 test('touch wins and returning zero restores the latest current keyboard direction', () => {
   const f = fixture();
   f.key('keydown', 'KeyD'); f.controls.setTouchDirection(1, 4);
