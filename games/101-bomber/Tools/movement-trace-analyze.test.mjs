@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeMovementTrace } from './movement-trace-analyze.mjs';
+import { createMovementTrace } from '../Client/UI/Spectator/movement-trace.mjs';
 
 const STEP = 0.2;
 const H = 50;
@@ -164,4 +165,32 @@ test('visible step frames without an observed held movement remain unproven', ()
   assert.equal(summary.counts.holdWindows, 0);
   assert.equal(summary.display.heldFrames, 0);
   assert.equal(summary.display.stopOvershootM.n, 0);
+});
+
+test('a recorder export with a visible retained prefix cannot certify foreground or movement exposure after truncation', () => {
+  let clock = 0;
+  const trace = createMovementTrace({ now: () => clock, capacity: 3,
+    doc: { visibilityState: 'visible' } });
+  trace.moveIntent(2, 0, true);
+  clock = 10;
+  trace.frame({ now: 10, dt: 10, localPose: { target: { position: { x: 0, z: 0 } } },
+    local: { x: 0, z: 0 } });
+  clock = 20;
+  trace.frame({ now: 20, dt: 10, localPose: { target: { position: { x: 1, z: 0 } } },
+    local: { x: 1, z: 0 } });
+  const complete = analyzeMovementTrace(trace.export());
+  assert.equal(complete.foregroundGate, 'PASS');
+  assert.equal(complete.movementExposureGate, 'PASS');
+
+  clock = 30;
+  trace.frame({ now: 30, dt: 10, localPose: { target: { position: { x: 2, z: 0 } } },
+    local: { x: 2, z: 0 } });
+  const exported = trace.export();
+  assert.equal(exported.truncated, true);
+  assert.equal(exported.events.length, 3);
+  assert.equal(exported.events.filter(row => row.k === 'frame').length, 2);
+  const incomplete = analyzeMovementTrace(exported);
+  assert.equal(incomplete.counts.hiddenFrames, 0);
+  assert.equal(incomplete.foregroundGate, 'UNPROVEN');
+  assert.equal(incomplete.movementExposureGate, 'UNPROVEN');
 });

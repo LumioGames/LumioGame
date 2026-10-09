@@ -1,13 +1,131 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Lumio.Bomber.Gameplay;
+using Lumio.Bomber.Gameplay.Contracts.Components;
+using Lumio.Client.Gameplay.ECS;
+using Lumio.Client.Gameplay.GAS;
+using Lumio.Client.Gameplay.Input;
+using Lumio.Client.Gameplay.Session;
+using Lumio.Client.Log;
+using Lumio.Client.Network.Connection;
+using Lumio.Client.Network.Handshake;
+using Lumio.Client.Spectator;
+using Lumio.Client.Storage;
+using Lumio.Engine.NativeLoader;
+using Lumio.Engine.SDK;
 using Lumio.GameRuntime.Ecs;
+using Lumio.GameRuntime.Gas;
+using Lumio.GameRuntime.Hosting;
 using Lumio.Wire;
 
 namespace Lumio.Bomber.Client.Spectator.Tests;
 
 public sealed class BomberInputTraceTests
 {
+    [Fact]
+    public void ActualClientSessionRefusalLeavesRequestDistinctUntilRealTransportAcceptance()
+    {
+        // The local baseline carrier reaches the shared ClientSession send boundary. Successor
+        // receipts bind to the concrete WebSocket connection and cannot be proxied here.
+        string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")
+            ?? throw new InvalidOperationException("LUMIO_ENGINE_NATIVE_PATH is required");
+        var budget = new KernelConfig { MaxNativeBytes = 256UL << 20, MaxHandles = 65536,
+            MaxJobsQueued = 1024, MaxJobsRunning = 64, MaxCompletionItems = 1024,
+            LogMailboxCapacity = 4096, MaxContexts = 64 };
+        using var engine = LumioEngine.Start(native, budget);
+        var trace = new BomberInputTrace();
+        var carrier = new RefusingLocalConnectionFactory(new ClientConnectionFactory(engine.Hfsm));
+        var ingress = new InputSampleIngress(16);
+        var commands = new InputCommandSource(ingress, new FixedInputMapper());
+        var options = new ClientEventPipelineOptions(8, 4, TimeSpan.FromSeconds(1));
+        new ClientEventPipelineFactory().Create(in options, new InMemoryClientEventSink(8), out var events);
+        byte[] catalog = File.ReadAllBytes(Path.Combine(BrowserSessionOwner.FindGame(),
+            "Server/Assets/Maps/official-catalog.json"));
+        var config = SpectatorDump.LoadEmbeddedClientConfig();
+        var replicas = new ClientReplicaFactory(() => engine.CreateWorld(new WorldCreationOptions(GeneratedRegistry.Instance)
+        { Config = config.CreateWorldBinding(), Catalog = catalog, Subsystems = ReplicaSchedulingSubsystem.Create() }));
+        var dependencies = new ClientSessionDependencies(engine.Hfsm, carrier, new ClientHandshakeFactory(),
+            new GrantedCapability(), new TestHelloClassifier(), ingress, commands,
+            IClientPersistenceFactory.CreateMemory().CreateVerifiedSessionArtifactSource(), events,
+            new WorldChangeRuntimePort(), replicas, new ClientPredictionFactory(),
+            new ImmediateGameplayScopeActivator(), new NullPresentationSink(),
+            new JsonSessionMessageKindMap(new NoReplicaSectionEnvelopeReader()), new TraceObserver(trace),
+            allowWelcomeOnlyAdmission: true);
+        Assert.True(new ClientSessionFactory().Create(in dependencies, out var session).Succeeded);
+        using (session)
+        {
+            ulong tick = 0;
+            void Tick() => session.Tick(new ClientOwnerTick(++tick));
+            Assert.True(session.RequestConnect(new SessionConnectRequest(1), CancellationToken.None).Succeeded);
+            Tick();
+            carrier.Deliver(TestHelloClassifier.Hello);
+            Tick();
+            var self = new NetEntityId(7, 2);
+            carrier.Deliver(WireCodec.EncodePack(new WelcomeMessage(7, self, 1)));
+            Tick();
+            carrier.Deliver(WireCodec.EncodePack(new WorldChangeMessage(1, 0, new[] {
+                new CreateRecord("world", new NetEntityId(7, 1), new[] {
+                    new FieldValue(nameof(BomberMatchState), "phase", (int)BomberMatchPhase.Running),
+                    new FieldValue(nameof(BomberMatchState), "matchId", 1UL),
+                }),
+                new CreateRecord("player", self, new[] {
+                    new FieldValue(nameof(LogicTransform), "localPosition", "1,1.5,2"),
+                    new FieldValue(nameof(BomberPlayerState), "participant", new NetEntityId(7, 4)),
+                    new FieldValue(nameof(BomberPlayerState), "lifePhase", (int)BomberLifePhase.Vulnerable),
+                }),
+            }, Array.Empty<FieldChange>(), Array.Empty<DestroyRecord>(), Array.Empty<ClientRpcRecord>())));
+            Tick();
+            Assert.Equal(ClientSessionState.Active, session.GetSnapshot().State);
+            Assert.True(session.TryGetReplicaWorld(out var replica));
+            carrier.AcceptedFrames.Clear();
+            var manager = replica.Manager;
+            var before = manager.CaptureRpcCompletionContinuity();
+            Assert.Equal(self, before.Sender);
+            string sample = trace.Sample(manager, session.GetSnapshot().Generation, before.ConnectionGeneration, self.ToHex(),
+                manager.World.Single<BomberMatchState>().MatchId.Value,
+                manager.ClientPredictionElapsedStep, (int)BomberDirection.Right, 0, false, 0, 0, false)!;
+            var move = new MoveAbility.Input { PrimaryDirection = BomberDirection.Right };
+            Assert.True(manager.World.Get<AbilityComponent>(self).Activate<MoveAbility, MoveAbility.Input>(in move).Succeeded);
+            var after = manager.CaptureRpcCompletionContinuity();
+            Assert.Equal(before.NextSequence + 1, after.NextSequence);
+            trace.Request(sample, nameof(MoveAbility), self.ToHex(), before.ConnectionGeneration, before.NextSequence,
+                session.GetSnapshot().Generation);
+            carrier.RefuseNext = true;
+            Tick();
+            byte[] refused = Assert.Single(carrier.RefusedFrames);
+            var refusedMessage = WireCodec.DecodeInput(refused, self);
+            Assert.Equal(before.NextSequence, refusedMessage.Sequence);
+            Assert.Equal(self, refusedMessage.Sender);
+            using (var blocked = JsonDocument.Parse(trace.Drain()))
+            {
+                var rows = blocked.RootElement.GetProperty("events").EnumerateArray().ToArray();
+                Assert.Contains(rows, row => row.GetProperty("k").GetString() == "request" &&
+                    row.GetProperty("sampleId").GetString() == sample);
+                Assert.DoesNotContain(rows, row => row.GetProperty("k").GetString() == "accepted");
+                Assert.Equal(1, blocked.RootElement.GetProperty("pending").GetInt32());
+            }
+            Tick();
+            byte[] acceptedBytes = Assert.Single(carrier.AcceptedFrames);
+            Assert.Equal(refused, acceptedBytes);
+            using var delivered = JsonDocument.Parse(trace.Drain());
+            var accepted = Assert.Single(delivered.RootElement.GetProperty("events").EnumerateArray(), row =>
+                row.GetProperty("k").GetString() == "accepted");
+            Assert.Equal(sample, accepted.GetProperty("sampleId").GetString());
+            Assert.Equal(before.NextSequence.ToString(), accepted.GetProperty("sequence").GetString());
+            Assert.Equal(Convert.ToHexString(SHA256.HashData(acceptedBytes)).ToLowerInvariant(),
+                accepted.GetProperty("encodedSha256").GetString());
+            Console.WriteLine(JsonSerializer.Serialize(new {
+                qualification = "LOCAL_CLIENT_SESSION_NATIVE_TRY_SEND_BOUNDARY",
+                refusedTrySendCount = carrier.RefusedFrames.Count,
+                acceptedTrySendCount = carrier.AcceptedFrames.Count,
+                sequence = refusedMessage.Sequence,
+                encodedLength = acceptedBytes.Length,
+                encodedSha256 = accepted.GetProperty("encodedSha256").GetString(),
+                sampleId = sample,
+            }));
+        }
+    }
+
     [Fact]
     public void ActualObserverAcceptanceJoinsAllocatedRequestAndSurvivesCloseWithExactBytes()
     {
@@ -172,6 +290,69 @@ public sealed class BomberInputTraceTests
         public InputCommandPart this[int index] => new("rpc", ReadOnlyMemory<byte>.Empty);
         public IEnumerator<InputCommandPart> GetEnumerator() => throw new InvalidOperationException("diagnostic-enumeration");
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private sealed class TraceObserver(BomberInputTrace trace) : IClientOutboundMessageObserver
+    {
+        public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes) => trace.Accepted(message, encodedBytes);
+    }
+
+    private sealed class RefusingLocalConnectionFactory(IClientConnectionFactory inner) : IClientConnectionFactory
+    {
+        public bool RefuseNext { get; set; }
+        public List<byte[]> RefusedFrames { get; } = new();
+        public List<byte[]> AcceptedFrames { get; } = new();
+        private LocalEmbeddedLoopback? _loopback;
+        public void Deliver(byte[] bytes) => Assert.True(_loopback!.TryDeliverToClient(new EncodedFrame(bytes)));
+        public ClientConnectionCreateResult Create(in ClientConnectionCreateRequest request, out IClientConnection connection)
+        {
+            ClientConnectionCreateResult result = inner.Create(in request, out IClientConnection actual);
+            _loopback = result.Loopback;
+            connection = new RefusingConnection(actual, this);
+            return result;
+        }
+        private sealed class RefusingConnection(IClientConnection actual, RefusingLocalConnectionFactory owner) : IClientConnection
+        {
+            public ConnectionGeneration Generation => actual.Generation;
+            public Task DisposalCompletion => actual.DisposalCompletion;
+            public ConnectionCommandResult Start() => actual.Start();
+            public ConnectionSendResult TrySend(in EncodedFrame frame)
+            {
+                if (owner.RefuseNext)
+                {
+                    owner.RefuseNext = false;
+                    owner.RefusedFrames.Add(frame.Bytes.ToArray());
+                    return new ConnectionSendResult(false);
+                }
+                ConnectionSendResult result = actual.TrySend(in frame);
+                if (result.Accepted) owner.AcceptedFrames.Add(frame.Bytes.ToArray());
+                return result;
+            }
+            public ConnectionCommandResult RetirePendingSends() => actual.RetirePendingSends();
+            public int DrainEvents(Span<ConnectionEvent> destination) => actual.DrainEvents(destination);
+            public ConnectionCommandResult RequestClose(ConnectionCloseReason reason) => actual.RequestClose(reason);
+            public ClientConnectionSnapshot GetSnapshot() => actual.GetSnapshot();
+            public void Dispose() => actual.Dispose();
+        }
+    }
+
+    private sealed class TestHelloClassifier : IHandshakeFrameClassifier
+    {
+        public static readonly byte[] Hello = { 0xA5, 0x3C, 0x91, 0x07, 0xD2, 0x4E, 0xB8, 0x11 };
+        public HandshakeOpaqueFrameRole Classify(ReadOnlyMemory<byte> frame) =>
+            frame.Span.SequenceEqual(Hello) ? HandshakeOpaqueFrameRole.ServerHello : HandshakeOpaqueFrameRole.Unclassified;
+    }
+
+    private sealed class GrantedCapability : IPlatformCapabilityProvider
+    {
+        public ValueTask<PlatformCapabilityResult> QueryAsync(in PlatformCapabilityQuery query, CancellationToken cancellationToken)
+        { cancellationToken.ThrowIfCancellationRequested(); return new(new PlatformCapabilityResult(query.Attempt, query.Generation, true)); }
+    }
+
+    private sealed class FixedInputMapper : IGameInputMapper
+    {
+        public bool TryMap(in SequencedInputSample sample, in InputDrainContext context, out GameplayCommandCandidate candidate)
+        { candidate = new GameplayCommandCandidate(sample.Sequence, new byte[] { 0x42 }); return true; }
     }
 
     [Fact]

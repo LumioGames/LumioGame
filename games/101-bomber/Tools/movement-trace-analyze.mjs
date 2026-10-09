@@ -246,7 +246,7 @@ export function analyzeMovementTrace(trace) {
       lastDisplayedX: last?.dx ?? null, lastTargetX: last?.tx ?? null };
   });
   const framesAfterStop = postStopFrameIndices.size;
-  const foreground = certifiedCapture && frames.length > 0 && frames.every(f => f.vis === 'visible') &&
+  const foreground = certifiedCapture && !trace.truncated && frames.length > 0 && frames.every(f => f.vis === 'visible') &&
     frames.every(f => Number.isFinite(f.t)) && frames.some(f => Number.isFinite(f.dx) && Number.isFinite(f.tx));
 
   return {
