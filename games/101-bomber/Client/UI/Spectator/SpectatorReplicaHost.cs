@@ -126,7 +126,9 @@ public sealed class SpectatorReplicaHost : IDisposable
     public void Tick()
     {
         var timing = _inputTrace?.FacadeTiming;
+        var workBefore = _inputTrace?.CaptureWorkCounters(_session);
         bool record = timing?.Begin() == true;
+        bool sessionInvoked = false;
         try
         {
             ReconcileInputIdentity();
@@ -135,6 +137,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             {
                 var ownerTick = new ClientOwnerTick(checked(before.OwnerTick + 1));
                 if (record) timing!.Session(invoked: true);
+                sessionInvoked = true;
                 _session.Tick(ownerTick);
             }
             else if (record) timing!.Session(invoked: false);
@@ -146,6 +149,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             if (record) timing!.Complete();
         }
         catch (Exception error) { if (record) timing!.Fail(); _lastError = FormatApplyError(error); throw; }
+        finally { if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked); }
     }
     public string SessionState() => JsonSerializer.Serialize(new SessionStateDto
     {

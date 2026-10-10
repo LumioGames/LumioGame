@@ -27,7 +27,7 @@ public sealed class ManagedFacadeTimingTests
         var session = new SessionProbe();
         var host = new SpectatorReplicaHost(session, new BomberPlayerStepOptions(true), new BomberInputTrace(recorder));
         host.Tick();
-        Assert.Equal(["snapshot", "replica", "snapshot", "tick:1", "snapshot", "replica", "snapshot", "snapshot"], session.Calls);
+        Assert.Equal(["snapshot", "prediction", "snapshot", "replica", "snapshot", "tick:1", "snapshot", "replica", "snapshot", "snapshot", "snapshot", "prediction"], session.Calls);
         Assert.Equal(4, reads);
         using var document = Drain(host); var timing = Timing(document);
         Assert.True(timing.GetProperty("completed").GetBoolean());
@@ -49,7 +49,11 @@ public sealed class ManagedFacadeTimingTests
     {
         long stamp = 100;
         var session = new SessionProbe { FailurePhase = phase };
-        var host = new SpectatorReplicaHost(session, new BomberPlayerStepOptions(true), new BomberInputTrace(new ManagedFacadeTiming(() => stamp += 10)));
+        int clockPhase = 0;
+        var host = new SpectatorReplicaHost(session, new BomberPlayerStepOptions(true), new BomberInputTrace(new ManagedFacadeTiming(() => {
+            session.Phase = ++clockPhase switch { 1 => "preIdentity", 2 => "sessionTick", 3 => "postIdentityCleanup", _ => "observer" };
+            return stamp += 10;
+        })));
         var caught = Assert.Throws<InvalidOperationException>(host.Tick);
         Assert.Same(session.Error, caught);
         Assert.Contains(session.Error.Message, host.LastApplyError, StringComparison.Ordinal);
@@ -71,6 +75,7 @@ public sealed class ManagedFacadeTimingTests
         var host = new SpectatorReplicaHost(session, new BomberPlayerStepOptions(), new BomberInputTrace(recorder));
         host.Tick(); using var document = Drain(host);
         Assert.Equal(0, clocks); Assert.Equal(0, snapshots); Assert.Equal(1, session.TickCalls);
+        Assert.Equal(["snapshot", "replica", "snapshot", "tick:1", "snapshot", "replica", "snapshot", "snapshot"], session.Calls);
         Assert.False(document.RootElement.GetProperty("enabled").GetBoolean());
         Assert.False(document.RootElement.TryGetProperty("facadeTiming", out _));
     }
@@ -82,7 +87,7 @@ public sealed class ManagedFacadeTimingTests
         var session = new SessionProbe { Disposed = true };
         var host = new SpectatorReplicaHost(session, new BomberPlayerStepOptions(true), new BomberInputTrace(new ManagedFacadeTiming(() => stamp += 10)));
         host.Tick(); using var document = Drain(host); var timing = Timing(document);
-        Assert.Equal(0, session.TickCalls); Assert.Equal(5, session.Calls.Count);
+        Assert.Equal(0, session.TickCalls); Assert.Equal(7, session.Calls.Count);
         Assert.False(timing.GetProperty("sessionInvoked").GetBoolean());
         Assert.Equal(JsonValueKind.Null, timing.GetProperty("sessionTick").ValueKind);
         Assert.True(timing.GetProperty("completed").GetBoolean());
@@ -160,11 +165,11 @@ public sealed class ManagedFacadeTimingTests
         internal bool Disposed { get; init; }
         internal int TickCalls { get; private set; }
         internal readonly InvalidOperationException Error = new("original façade Tick error");
-        private int _snapshots;
+        internal string Phase { get; set; } = "observer";
         public ClientSessionSnapshot GetSnapshot()
         {
-            Calls.Add("snapshot"); _snapshots++;
-            if ((FailurePhase == "preIdentity" && _snapshots % 5 == 1) || (FailurePhase == "postIdentityCleanup" && _snapshots % 5 == 3)) throw Error;
+            Calls.Add("snapshot");
+            if (FailurePhase == Phase && Phase is "preIdentity" or "postIdentityCleanup") throw Error;
             return new(ClientSessionState.Active, 1, false, 0, false, false, false, 0, 0, 0, 0, 0, 0, [], isDisposed: Disposed);
         }
         public SessionTickResult Tick(in ClientOwnerTick tick) { Calls.Add("tick:1"); TickCalls++; if (FailurePhase == "sessionTick") throw Error; return default; }
@@ -173,7 +178,7 @@ public sealed class ManagedFacadeTimingTests
         public SessionCommandResult Login(in SessionConnectRequest request, CancellationToken cancellationToken) => default;
         public SessionCommandResult RequestClose(in SessionCloseRequest request) => default;
         public bool TryDequeueSuperseded(out SessionSupersededNotice notice) { notice = default; return false; }
-        public bool TryGetPrediction(out IClientPrediction prediction) { prediction = null!; return false; }
+        public bool TryGetPrediction(out IClientPrediction prediction) { Calls.Add("prediction"); prediction = null!; return false; }
         public bool TryUpdateOwnerPresentation(out OwnerPresentationPose pose) { pose = default; return false; }
         public void Dispose() { }
     }

@@ -439,6 +439,62 @@ test('managed trace drains only after the synchronous Tick with a pump observati
   assert.equal(receipt[0].bracket.endedAt - receipt[0].bracket.startedAt, 20);
 });
 
+test('managed work counters retain nested decimal strings and unavailable values through page forwarding and JSON export', async () => {
+  const calls = [], clock = { value: 0 };
+  const before = {
+    captureStartedStamp: '101', captureEndedStamp: '102', sessionGeneration: '1', ownerTick: '7',
+    state: 'active', disposed: false, predictionGeneration: '9', predictionId: '1', managerId: '1',
+    worldInstance: '7', driverId: '1', lastAssignedSeq: '9007199254740993', confirmedSeq: '9007199254740992',
+    historyCount: 1, windowCapacity: 256, highWatermark: 20, frozen: false, openAuthorityGroups: 4,
+    heldSections: 3, replicaStageCalls: 3, predictionAuthorityStageCalls: 3, runtimeAuthorityCalls: 3,
+    outstandingCount: 1, retainedBytes: '9223372036854775807', suspended: false, retired: false, faulted: false,
+    inputExecutions: '18446744073709551613', replays: '9007199254740993',
+    nativeStageAttempts: '18446744073709551615', nativeCoveredReleases: '9007199254740993',
+  };
+  const after = { ...before, captureStartedStamp: '103', captureEndedStamp: '104',
+    lastAssignedSeq: '9007199254740994', confirmedSeq: '9007199254740993',
+    inputExecutions: '18446744073709551615', replays: '9007199254740994', nativeCoveredReleases: '9007199254740994' };
+  const available = { version: 1, facadeOrdinal: '1', available: true, reason: null, sessionInvoked: true,
+    before, after, delta: { lastAssignedSeq: '1', confirmedSeq: '1', replicaStageCalls: 0,
+      predictionAuthorityStageCalls: 0, runtimeAuthorityCalls: 0, inputExecutions: '2', replays: '1',
+      firstAttempts: '1', nativeStageAttempts: '0', nativeCoveredReleases: '1' } };
+  const unavailable = { version: 1, facadeOrdinal: '2', available: false, reason: 'identity-changed',
+    sessionInvoked: true, before: after, after: { ...after, driverId: '2' }, delta: null };
+  const batches = [available, unavailable].map((workCounters, index) => ({
+    version: 1, enabled: true, hostLifetime: 'host-work-counter-forwarding', clockDomain: 'rawStopwatch',
+    clockFrequency: '1000', complete: true, pending: 0, eventLoss: '0', pendingLoss: '0', unmatched: '0',
+    diagnosticFailures: '0', traceOverflow: null,
+    events: [{ k: 'work-counters', stamp: String(105 + index), workCounters }],
+  }));
+  let drains = 0;
+  const p = await runPage({ clock, exports: {
+    Tick() { calls.push('tick'); clock.value += 20; },
+    DrainInputTrace() { calls.push('drain'); return JSON.stringify([batches[drains++]]); },
+  } });
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  p.win.__actualTrace = trace;
+  p.evalInPage('movementTrace = __actualTrace');
+  await p.tick(); await p.tick();
+  assert.deepEqual(calls.slice(-4), ['tick', 'drain', 'tick', 'drain']);
+  assert.equal(drains, 2);
+  const exported = JSON.parse(JSON.stringify(trace.export()));
+  const managed = exported.events.filter(event => event.k === 'managedTrace');
+  assert.deepEqual(managed.map(event => event.batch), batches, 'the real page must forward each complete batch without projecting known event fields');
+  assert.ok(managed.every(event => event.pumpBracket.endedAt - event.pumpBracket.startedAt === 20));
+  const counters = managed[0].batch.events[0].workCounters;
+  assert.equal(counters.before.lastAssignedSeq, '9007199254740993');
+  assert.equal(counters.after.inputExecutions, '18446744073709551615');
+  assert.equal(typeof counters.after.inputExecutions, 'string');
+  assert.equal(counters.before.retainedBytes, '9223372036854775807');
+  assert.equal(counters.before.historyCount, 1);
+  assert.equal(counters.reason, null);
+  const missing = managed[1].batch.events[0].workCounters;
+  assert.equal(missing.available, false);
+  assert.equal(missing.reason, 'identity-changed');
+  assert.equal(missing.after.driverId, '2');
+  assert.equal(missing.delta, null);
+});
+
 test('managed final trace drains after Close before the client reference is lost', async () => {
   const order = [];
   const p = await runPage({ exports: {

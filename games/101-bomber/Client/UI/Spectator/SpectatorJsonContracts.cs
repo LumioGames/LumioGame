@@ -74,6 +74,69 @@ internal sealed class InputTraceEventDto
     public int? encodedLength { get; init; }
     public string? encodedSha256 { get; init; }
     public string? reason { get; init; }
+    public WorkCounterPairDto? workCounters { get; init; }
+}
+
+internal sealed class WorkCounterPairDto
+{
+    public int version { get; init; } = 1;
+    public required string facadeOrdinal { get; init; }
+    public required bool available { get; init; }
+    public string? reason { get; init; }
+    public required bool sessionInvoked { get; init; }
+    public required WorkCounterSnapshotDto before { get; init; }
+    public required WorkCounterSnapshotDto after { get; init; }
+    public WorkCounterDeltaDto? delta { get; init; }
+}
+
+internal sealed class WorkCounterSnapshotDto
+{
+    public string? captureStartedStamp { get; init; }
+    public string? captureEndedStamp { get; init; }
+    public string? unavailableReason { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? ownerTick { get; init; }
+    public string? state { get; init; }
+    public bool? disposed { get; init; }
+    public string? predictionGeneration { get; init; }
+    public string? predictionId { get; init; }
+    public string? managerId { get; init; }
+    public string? worldInstance { get; init; }
+    public string? driverId { get; init; }
+    public string? lastAssignedSeq { get; init; }
+    public string? confirmedSeq { get; init; }
+    public int? historyCount { get; init; }
+    public int? windowCapacity { get; init; }
+    public int? highWatermark { get; init; }
+    public bool? frozen { get; init; }
+    public int? openAuthorityGroups { get; init; }
+    public int? heldSections { get; init; }
+    public int? replicaStageCalls { get; init; }
+    public int? predictionAuthorityStageCalls { get; init; }
+    public int? runtimeAuthorityCalls { get; init; }
+    public int? outstandingCount { get; init; }
+    public string? retainedBytes { get; init; }
+    public bool? suspended { get; init; }
+    public bool? retired { get; init; }
+    public bool? faulted { get; init; }
+    public string? inputExecutions { get; init; }
+    public string? replays { get; init; }
+    public string? nativeStageAttempts { get; init; }
+    public string? nativeCoveredReleases { get; init; }
+}
+
+internal sealed class WorkCounterDeltaDto
+{
+    public required string lastAssignedSeq { get; init; }
+    public required string confirmedSeq { get; init; }
+    public required int replicaStageCalls { get; init; }
+    public required int predictionAuthorityStageCalls { get; init; }
+    public required int runtimeAuthorityCalls { get; init; }
+    public required string inputExecutions { get; init; }
+    public required string replays { get; init; }
+    public required string firstAttempts { get; init; }
+    public required string nativeStageAttempts { get; init; }
+    public required string nativeCoveredReleases { get; init; }
 }
 
 internal sealed class OwnerPresentationDto
