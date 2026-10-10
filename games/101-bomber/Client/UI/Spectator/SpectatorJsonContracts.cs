@@ -53,6 +53,7 @@ internal sealed class InputTraceEventDto
     public required string stamp { get; init; }
     public string? sampleId { get; init; }
     public string? managerId { get; init; }
+    public string? driverId { get; init; }
     public string? sessionGeneration { get; init; }
     public string? bindingGeneration { get; init; }
     public string? self { get; init; }
@@ -75,6 +76,8 @@ internal sealed class InputTraceEventDto
     public string? encodedSha256 { get; init; }
     public string? reason { get; init; }
     public WorkCounterPairDto? workCounters { get; init; }
+    public ExecutionTelemetryStatusDto? executionTelemetry { get; init; }
+    public int? drainedRecords { get; init; }
 }
 
 internal sealed class WorkCounterPairDto
@@ -123,6 +126,7 @@ internal sealed class WorkCounterSnapshotDto
     public string? replays { get; init; }
     public string? nativeStageAttempts { get; init; }
     public string? nativeCoveredReleases { get; init; }
+    public ExecutionTelemetryStatusDto? executionTelemetry { get; init; }
 }
 
 internal sealed class WorkCounterDeltaDto
@@ -137,6 +141,61 @@ internal sealed class WorkCounterDeltaDto
     public required string firstAttempts { get; init; }
     public required string nativeStageAttempts { get; init; }
     public required string nativeCoveredReleases { get; init; }
+    public ExecutionTelemetryDeltaDto? executionTelemetry { get; init; }
+}
+
+internal sealed class ExecutionTelemetryStatusDto
+{
+    public required bool available { get; init; }
+    public string? reason { get; init; }
+    public string clockDomain { get; init; } = "native-monotonic-nanos";
+    public string? windowId { get; init; }
+    public bool? enabled { get; init; }
+    public string? stopReason { get; init; }
+    public bool? saturated { get; init; }
+    public string? recordsAttempted { get; init; }
+    public string? recordsWritten { get; init; }
+    public string? recordsDropped { get; init; }
+    public string? clockFailures { get; init; }
+    public string? firstAttempts { get; init; }
+    public string? replayAttempts { get; init; }
+    public string? firstCompleted { get; init; }
+    public string? replayCompleted { get; init; }
+    public string? timedFirstAttempts { get; init; }
+    public string? timedReplayAttempts { get; init; }
+    public string? firstElapsedNanos { get; init; }
+    public string? replayElapsedNanos { get; init; }
+    public string? dataWaits { get; init; }
+    public string? budgetWaits { get; init; }
+    public string? correctionRetries { get; init; }
+    public string? faults { get; init; }
+    public string? publications { get; init; }
+    public string? executionsSincePublication { get; init; }
+    public int? censoredOutstandingInputs { get; init; }
+    public int? bufferedRecords { get; init; }
+    public string? reservedBytes { get; init; }
+}
+
+internal sealed class ExecutionTelemetryDeltaDto
+{
+    public required bool complete { get; init; }
+    public string? reason { get; init; }
+    public string clockDomain { get; init; } = "native-monotonic-nanos";
+    public string? windowId { get; init; }
+    public string? firstAttempts { get; init; }
+    public string? replayAttempts { get; init; }
+    public string? timedFirstAttempts { get; init; }
+    public string? timedReplayAttempts { get; init; }
+    public string? firstElapsedNanos { get; init; }
+    public string? replayElapsedNanos { get; init; }
+    public string? firstCompleted { get; init; }
+    public string? replayCompleted { get; init; }
+    public string? dataWaits { get; init; }
+    public string? budgetWaits { get; init; }
+    public string? correctionRetries { get; init; }
+    public string? faults { get; init; }
+    public string? publications { get; init; }
+    public string? recordsDropped { get; init; }
 }
 
 internal sealed class OwnerPresentationDto

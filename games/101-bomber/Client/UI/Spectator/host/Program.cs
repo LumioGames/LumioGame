@@ -62,7 +62,8 @@ public static partial class SpectatorExports
                 new BrowserWebSocketClientConnectionFactory(platform.Hfsm, SpectatorReplicaHost.TransportOptions(launch.Profile), allowLoopback),
                 catalog, launchJson, async cancellation => { cancellation.ThrowIfCancellationRequested(); string value = await RenewLaunch(); cancellation.ThrowIfCancellationRequested(); return value; },
                 Console.WriteLine, configuration: configuration,
-                stepOptions: s_inputMode == "step" ? new BomberPlayerStepOptions(s_inputTrace) : null);
+                stepOptions: s_inputMode == "step" ? new BomberPlayerStepOptions(s_inputTrace) : null,
+                executionClock: s_inputTrace ? platform.Clock.NowNanos : null);
             s_client.Connect(launchJson);
         }
         catch (Exception primary)

@@ -43,6 +43,115 @@ public sealed class WorkCounterTraceTests
     }
 
     [Fact]
+    public void ExecutionTelemetryOptionalClockNullKeepsLegacyPublicTraceDiagnosticsComplete()
+    {
+        MovementPredictionPublicationTests.RunActualPrediction("clear", beforeMove: (owner, _) =>
+        {
+            Assert.NotNull(GasJointPrediction.For(owner.Host.World!.Manager));
+            using var setup = JsonDocument.Parse(owner.Host.DrainInputTrace());
+            Assert.Equal("0", setup.RootElement.GetProperty("diagnosticFailures").GetString());
+            Assert.DoesNotContain(setup.RootElement.GetProperty("events").EnumerateArray(),
+                e => e.GetProperty("k").GetString() == "execution-telemetry-diagnostic");
+            owner.Host.Tick(); using var json = Drain(owner.Host); var pair = Pair(json);
+            var status = pair.GetProperty("after").GetProperty("executionTelemetry");
+            Assert.False(status.GetProperty("available").GetBoolean());
+            Assert.Equal("window-not-enabled", status.GetProperty("reason").GetString());
+            Assert.Equal(JsonValueKind.Null, status.GetProperty("firstElapsedNanos").ValueKind);
+            Assert.Equal("0", json.RootElement.GetProperty("diagnosticFailures").GetString());
+            // Setup pumping can already lose facade ordinals. Optional timing
+            // preserves completeness from those existing loss fields.
+            bool priorComplete = new[] { "eventLoss", "pendingLoss", "unmatched", "facadeTimingLoss", "facadeTimingDiagnosticFailures" }
+                .All(name => json.RootElement.GetProperty(name).GetString() == "0");
+            Assert.Equal(priorComplete, json.RootElement.GetProperty("complete").GetBoolean());
+        }, stepOptions: new BomberPlayerStepOptions(true));
+    }
+
+    [Fact]
+    public void ExecutionTelemetryExportsActualNativeTimingInWorkCounters()
+    {
+        NativeProbe((owner, session, gas) =>
+        {
+            Assert.True(gas.TryEnableExecutionTelemetry(901, new(256, 32768, 120_000_000_000, 10000), owner.Clock));
+            session.OnTick = () => { owner.AdmitInput(); owner.Manager.Tick(); };
+            var host = Host(session); host.Tick(); using var json = Drain(host); var pair = Pair(json);
+            Assert.True(pair.GetProperty("available").GetBoolean());
+            Assert.Equal(1UL, gas.ExecutionTelemetryStatus.FirstAttempts);
+            Assert.Equal(1UL, gas.ExecutionTelemetryStatus.TimedFirstAttempts);
+            Assert.True(gas.ExecutionTelemetryStatus.FirstElapsedNanos > 0);
+            Assert.True(pair.GetProperty("after").TryGetProperty("executionTelemetry", out var status), "actual Native execution timing must survive the typed work-counter export");
+            Assert.Equal("901", status.GetProperty("windowId").GetString());
+            Assert.Equal(gas.ExecutionTelemetryStatus.FirstElapsedNanos.ToString(CultureInfo.InvariantCulture), status.GetProperty("firstElapsedNanos").GetString());
+            var delta = pair.GetProperty("delta").GetProperty("executionTelemetry");
+            Assert.True(delta.GetProperty("complete").GetBoolean());
+            Assert.Equal("1", delta.GetProperty("firstAttempts").GetString());
+            Assert.Equal(status.GetProperty("firstElapsedNanos").GetString(), delta.GetProperty("firstElapsedNanos").GetString());
+            Assert.Equal(1, session.TickCalls);
+        });
+    }
+
+    [Fact]
+    public void ExecutionTelemetryWrapperUsesActualNativeApiOnceAndRetiresBeforeDraining()
+    {
+        NativeProbe((owner, session, gas) =>
+        {
+            var trace = new BomberInputTrace();
+            var joint = new NativeCounterJoint(owner.Manager, gas);
+            var wrapper = new BomberTelemetryJointPrediction(joint, owner.Clock, trace);
+            wrapper.Attach(owner.Manager); ulong window = gas.ExecutionTelemetryStatus.WindowId;
+            Assert.True(window != 0); wrapper.Attach(owner.Manager);
+            Assert.Equal(window, gas.ExecutionTelemetryStatus.WindowId); Assert.Equal(2, joint.AttachCalls);
+            session.OnTick = () => { owner.AdmitInput(); owner.Manager.Tick(); };
+            var host = Host(session, trace); host.Tick(); using var json = Drain(host);
+            var delta = Pair(json).GetProperty("delta").GetProperty("executionTelemetry");
+            Assert.True(delta.GetProperty("complete").GetBoolean()); Assert.Equal("1", delta.GetProperty("firstAttempts").GetString());
+            Assert.True(gas.ExecutionTelemetryStatus.BufferedRecords > 0); wrapper.Drain(); Assert.Equal(0, gas.ExecutionTelemetryStatus.BufferedRecords);
+            wrapper.Retire(); Assert.Equal(PredictionExecutionStopReason.Retired, gas.ExecutionTelemetryStatus.StopReason);
+            using var retired = JsonDocument.Parse(trace.Drain());
+            var row = Assert.Single(retired.RootElement.GetProperty("events").EnumerateArray(), e => e.GetProperty("k").GetString() == "execution-telemetry-retired");
+            Assert.Equal(window.ToString(CultureInfo.InvariantCulture), row.GetProperty("executionTelemetry").GetProperty("windowId").GetString());
+            Assert.Equal("Retired", row.GetProperty("executionTelemetry").GetProperty("stopReason").GetString());
+            Assert.Equal(1, session.TickCalls); Assert.Equal(1, owner.Registry.MappedInputs);
+        });
+    }
+
+    [Fact]
+    public void ExecutionTelemetryNativeClockFailurePreservesActualAttemptAndOriginalTickError()
+    {
+        NativeProbe((owner, session, gas) =>
+        {
+            Assert.True(gas.TryEnableExecutionTelemetry(902, new(256, 32768, 120_000_000_000, 10000), () => throw new InvalidOperationException("broken diagnostic clock")));
+            var original = new InvalidOperationException("original tick error");
+            session.OnTick = () => { owner.AdmitInput(); owner.Manager.Tick(); };
+            session.TickFailure = original;
+            var host = Host(session); Assert.Same(original, Assert.Throws<InvalidOperationException>(host.Tick));
+            using var json = Drain(host); var pair = Pair(json);
+            Assert.Equal(1UL, gas.Metrics.InputExecutions); Assert.Equal(1UL, gas.ExecutionTelemetryStatus.FirstAttempts);
+            Assert.Equal(0UL, gas.ExecutionTelemetryStatus.TimedFirstAttempts);
+            Assert.Equal("ClockFailure", pair.GetProperty("after").GetProperty("executionTelemetry").GetProperty("stopReason").GetString());
+            var delta = pair.GetProperty("delta").GetProperty("executionTelemetry");
+            Assert.False(delta.GetProperty("complete").GetBoolean()); Assert.Equal("clock-failure", delta.GetProperty("reason").GetString());
+            Assert.Equal(JsonValueKind.Null, delta.GetProperty("firstElapsedNanos").ValueKind);
+            Assert.Equal(1, session.TickCalls);
+        });
+    }
+
+    [Fact]
+    public void ExecutionTelemetryNativeFixedWindowStopCannotLookLikeCompleteTiming()
+    {
+        NativeProbe((owner, session, gas) =>
+        {
+            ulong now = 0; Assert.True(gas.TryEnableExecutionTelemetry(903, new(256, 32768, 120_000_000_000, 10000), () => { now += 120_000_000_000; return now; }));
+            session.OnTick = () => { owner.AdmitInput(); owner.Manager.Tick(); };
+            var host = Host(session); host.Tick(); using var json = Drain(host); var pair = Pair(json);
+            Assert.Equal(PredictionExecutionStopReason.WindowLimit, gas.ExecutionTelemetryStatus.StopReason);
+            Assert.Equal(1UL, gas.ExecutionTelemetryStatus.FirstAttempts); Assert.Equal(1UL, gas.ExecutionTelemetryStatus.TimedFirstAttempts);
+            var delta = pair.GetProperty("delta").GetProperty("executionTelemetry");
+            Assert.False(delta.GetProperty("complete").GetBoolean()); Assert.Equal("window-stopped", delta.GetProperty("reason").GetString());
+            Assert.Equal(JsonValueKind.Null, delta.GetProperty("firstElapsedNanos").ValueKind);
+        });
+    }
+
+    [Fact]
     public void DisabledGateKeepsOriginalCallsAndNeverQueriesPrediction()
     {
         var session = new SessionProbe { PredictionFailure = new("disabled observer queried") };
@@ -334,6 +443,7 @@ public sealed class WorkCounterTraceTests
         internal CounterRegistry Registry { get; } = new();
         internal WorldManager Manager { get; }
         internal GasJointPrediction Gas { get; private set; }
+        internal Func<ulong> Clock => NativeMonotonicClock.Create(_engine.Native).NowNanos;
         internal NativeCounterFixture()
         {
             string native = Environment.GetEnvironmentVariable("LUMIO_ENGINE_NATIVE_PATH")
@@ -408,6 +518,14 @@ public sealed class WorkCounterTraceTests
             Assert.Equal(0, _engine.WorldCount);
             _engine.Dispose();
         }
+    }
+    private sealed class NativeCounterJoint(WorldManager manager, GasJointPrediction gas) : IClientJointPrediction
+    {
+        internal int AttachCalls;
+        public void Attach(WorldManager requested) { Assert.Same(manager, requested); AttachCalls++; }
+        public bool IsAttached(WorldManager requested) => ReferenceEquals(manager, requested) && !gas.Retired;
+        public void PublishAuthorityGroup(WorldManager requested, Action apply) { Assert.Same(manager, requested); gas.ApplyAuthority(apply); }
+        public void Retire() => gas.Retire();
     }
     private sealed class CounterRegistry : EcsRegistry
     {

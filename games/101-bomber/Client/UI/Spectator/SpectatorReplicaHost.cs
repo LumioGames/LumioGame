@@ -31,6 +31,7 @@ public sealed class SpectatorReplicaHost : IDisposable
 {
     private readonly IClientSession _session;
     private readonly RuntimeJointPrediction _joint;
+    private readonly BomberTelemetryJointPrediction? _telemetryJoint;
     private readonly SentObserver _sent = new();
     private readonly BomberInputTrace? _inputTrace;
     private readonly BomberPlayerIntent _intent = new();
@@ -54,7 +55,7 @@ public sealed class SpectatorReplicaHost : IDisposable
     public SpectatorReplicaHost(LumioEngine engine, IClientConnectionFactory connections, byte[] catalog,
         string launchJson, Func<CancellationToken, Task<string>> renewEndpoint, Action<string> log,
         Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null,
-        BomberPlayerStepOptions? stepOptions = null)
+        BomberPlayerStepOptions? stepOptions = null, Func<ulong>? executionClock = null)
     {
         _stepOptions = stepOptions;
         _inputTrace = stepOptions?.TraceEnabled == true ? new BomberInputTrace() : null;
@@ -64,6 +65,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         var input = new InputSampleIngress(16);
         var sections = new ReplicaSectionEnvelopeReader();
         _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
+        _telemetryJoint = _inputTrace is null || executionClock is null ? null : new BomberTelemetryJointPrediction(_joint, executionClock, _inputTrace);
         var replicas = new ClientReplicaFactory(() => engine.CreateWorld(new WorldCreationOptions(GeneratedRegistry.Instance)
         {
             Config = config.CreateWorldBinding(), Catalog = catalog, Subsystems = ReplicaSchedulingSubsystem.Create(),
@@ -79,7 +81,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             new WorldChangeRuntimePort(), replicas, new ClientPredictionFactory(), new ImmediateGameplayScopeActivator(),
             new NullPresentationSink(), new JsonSessionMessageKindMap(sections), _sent, allowWelcomeOnlyAdmission: true,
             endpointProvider: new PlatformEndpointProvider(launch.Profile, launch.Endpoint, renewEndpoint), sectionEnvelopes: sections,
-            voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: _joint,
+            voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: (IClientJointPrediction?)_telemetryJoint ?? _joint,
             predictionSteps: stepOptions is null ? null : new ClientPredictionStepOptions(SamplePlayerIntent, 5, TimeSpan.FromMilliseconds(250)));
         if (!new ClientSessionFactory().Create(in dependencies, out _session).Succeeded)
             throw new InvalidOperationException("client_session_creation_failed");
@@ -149,7 +151,11 @@ public sealed class SpectatorReplicaHost : IDisposable
             if (record) timing!.Complete();
         }
         catch (Exception error) { if (record) timing!.Fail(); _lastError = FormatApplyError(error); throw; }
-        finally { if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked); }
+        finally
+        {
+            if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked);
+            _telemetryJoint?.Drain();
+        }
     }
     public string SessionState() => JsonSerializer.Serialize(new SessionStateDto
     {

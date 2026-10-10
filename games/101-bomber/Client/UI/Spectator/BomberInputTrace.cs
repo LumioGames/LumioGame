@@ -77,6 +77,8 @@ internal sealed class BomberInputTrace
         internal ulong? WorldInstance;
         internal GasJointPrediction? Driver;
         internal GasJointPredictionMetrics? Metrics;
+        internal PredictionExecutionTelemetryStatus? ExecutionTelemetry;
+        internal string? ExecutionTelemetryReason;
         internal int? OutstandingCount;
         internal long? RetainedBytes;
         internal bool? Suspended, Retired, Faulted;
@@ -113,6 +115,8 @@ internal sealed class BomberInputTrace
             sample.OutstandingCount = driver.OutstandingCount; sample.RetainedBytes = driver.RetainedBytes;
             sample.Suspended = driver.Suspended; sample.Retired = driver.Retired; sample.Faulted = driver.Faulted;
             sample.Metrics = driver.Metrics;
+            try { sample.ExecutionTelemetry = driver.ExecutionTelemetryStatus; }
+            catch { Failure(); sample.ExecutionTelemetryReason = "status-read-failed"; }
             if (driver.Retired || driver.Faulted) sample.UnavailableReason = "driver-unavailable";
         }
         catch { Failure(); sample.UnavailableReason = "capture-failed"; }
@@ -160,7 +164,8 @@ internal sealed class BomberInputTrace
             runtimeAuthorityCalls = session?.RuntimeAuthorityCalls, outstandingCount = sample.OutstandingCount,
             retainedBytes = sample.RetainedBytes?.ToString(CultureInfo.InvariantCulture), suspended = sample.Suspended, retired = sample.Retired, faulted = sample.Faulted,
             inputExecutions = metrics?.InputExecutions.ToString(CultureInfo.InvariantCulture), replays = metrics?.Replays.ToString(CultureInfo.InvariantCulture),
-            nativeStageAttempts = metrics?.NativeStageAttempts.ToString(CultureInfo.InvariantCulture), nativeCoveredReleases = metrics?.NativeCoveredReleases.ToString(CultureInfo.InvariantCulture) };
+            nativeStageAttempts = metrics?.NativeStageAttempts.ToString(CultureInfo.InvariantCulture), nativeCoveredReleases = metrics?.NativeCoveredReleases.ToString(CultureInfo.InvariantCulture),
+            executionTelemetry = BomberExecutionTiming.Snapshot(sample.ExecutionTelemetry, sample.ExecutionTelemetryReason) };
     }
     private static string? WorkUnavailable(WorkCounterSample before, WorkCounterSample after, bool sessionInvoked)
     {
@@ -198,7 +203,20 @@ internal sealed class BomberInputTrace
             replicaStageCalls = ps.ReplicaStageCalls - bs.ReplicaStageCalls, predictionAuthorityStageCalls = ps.PredictionAuthorityStageCalls - bs.PredictionAuthorityStageCalls,
             runtimeAuthorityCalls = ps.RuntimeAuthorityCalls - bs.RuntimeAuthorityCalls, inputExecutions = Decimal(executions), replays = Decimal(replays),
             firstAttempts = Decimal(executions - replays), nativeStageAttempts = Decimal(am.NativeStageAttempts - bm.NativeStageAttempts),
-            nativeCoveredReleases = Decimal(am.NativeCoveredReleases - bm.NativeCoveredReleases) };
+            nativeCoveredReleases = Decimal(am.NativeCoveredReleases - bm.NativeCoveredReleases),
+            executionTelemetry = BomberExecutionTiming.Delta(before.ExecutionTelemetry, after.ExecutionTelemetry, executions - replays, replays) };
+    }
+    internal void ExecutionTelemetryFailure(string reason)
+    {
+        try { Failure(); Add(new() { k = "execution-telemetry-diagnostic", stamp = Stamp(), reason = reason }); }
+        catch { Failure(); }
+    }
+    internal void ExecutionTelemetryRetired(object driver, PredictionExecutionTelemetryStatus status, int drained)
+    {
+        try { Add(new() { k = "execution-telemetry-retired", stamp = Stamp(),
+            driverId = WorkIdentity(driver, ref _workDriver, ref _workDriverId),
+            executionTelemetry = BomberExecutionTiming.Snapshot(status), drainedRecords = drained }); }
+        catch { Failure(); }
     }
     private void QueueWorkCounters(FacadeTickTimingDto? timing)
     {

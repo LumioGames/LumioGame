@@ -450,17 +450,31 @@ test('managed work counters retain nested decimal strings and unavailable values
     outstandingCount: 1, retainedBytes: '9223372036854775807', suspended: false, retired: false, faulted: false,
     inputExecutions: '18446744073709551613', replays: '9007199254740993',
     nativeStageAttempts: '18446744073709551615', nativeCoveredReleases: '9007199254740993',
+    executionTelemetry: { windowId: '9007199254740993', clockDomain: 'native-monotonic-nanos',
+      enabled: true, stopReason: 'None', firstElapsedNanos: '18446744073709551613',
+      replayElapsedNanos: '9007199254740993', recordsDropped: '0', clockFailures: '0' },
   };
   const after = { ...before, captureStartedStamp: '103', captureEndedStamp: '104',
     lastAssignedSeq: '9007199254740994', confirmedSeq: '9007199254740993',
-    inputExecutions: '18446744073709551615', replays: '9007199254740994', nativeCoveredReleases: '9007199254740994' };
+    inputExecutions: '18446744073709551615', replays: '9007199254740994', nativeCoveredReleases: '9007199254740994',
+    executionTelemetry: { ...before.executionTelemetry, firstElapsedNanos: '18446744073709551615',
+      replayElapsedNanos: '9007199254740994' } };
   const available = { version: 1, facadeOrdinal: '1', available: true, reason: null, sessionInvoked: true,
     before, after, delta: { lastAssignedSeq: '1', confirmedSeq: '1', replicaStageCalls: 0,
       predictionAuthorityStageCalls: 0, runtimeAuthorityCalls: 0, inputExecutions: '2', replays: '1',
-      firstAttempts: '1', nativeStageAttempts: '0', nativeCoveredReleases: '1' } };
+      firstAttempts: '1', nativeStageAttempts: '0', nativeCoveredReleases: '1',
+      executionTelemetry: { complete: true, reason: null, clockDomain: 'native-monotonic-nanos',
+        windowId: '9007199254740993', firstAttempts: '1', replayAttempts: '1',
+        timedFirstAttempts: '1', timedReplayAttempts: '1', firstElapsedNanos: '2', replayElapsedNanos: '1' } } };
   const unavailable = { version: 1, facadeOrdinal: '2', available: false, reason: 'identity-changed',
     sessionInvoked: true, before: after, after: { ...after, driverId: '2' }, delta: null };
-  const batches = [available, unavailable].map((workCounters, index) => ({
+  const clockFailure = { ...available, facadeOrdinal: '3', before: after,
+    after: { ...after, executionTelemetry: { ...after.executionTelemetry, enabled: false,
+      stopReason: 'ClockFailure', clockFailures: '1' } },
+    delta: { ...available.delta, executionTelemetry: { complete: false, reason: 'clock-failure',
+      clockDomain: 'native-monotonic-nanos', windowId: '9007199254740993',
+      firstElapsedNanos: null, replayElapsedNanos: null } } };
+  const batches = [available, unavailable, clockFailure].map((workCounters, index) => ({
     version: 1, enabled: true, hostLifetime: 'host-work-counter-forwarding', clockDomain: 'rawStopwatch',
     clockFrequency: '1000', complete: true, pending: 0, eventLoss: '0', pendingLoss: '0', unmatched: '0',
     diagnosticFailures: '0', traceOverflow: null,
@@ -474,9 +488,9 @@ test('managed work counters retain nested decimal strings and unavailable values
   const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
   p.win.__actualTrace = trace;
   p.evalInPage('movementTrace = __actualTrace');
-  await p.tick(); await p.tick();
+  await p.tick(); await p.tick(); await p.tick();
   assert.deepEqual(calls.slice(-4), ['tick', 'drain', 'tick', 'drain']);
-  assert.equal(drains, 2);
+  assert.equal(drains, 3);
   const exported = JSON.parse(JSON.stringify(trace.export()));
   const managed = exported.events.filter(event => event.k === 'managedTrace');
   assert.deepEqual(managed.map(event => event.batch), batches, 'the real page must forward each complete batch without projecting known event fields');
@@ -488,11 +502,22 @@ test('managed work counters retain nested decimal strings and unavailable values
   assert.equal(counters.before.retainedBytes, '9223372036854775807');
   assert.equal(counters.before.historyCount, 1);
   assert.equal(counters.reason, null);
+  assert.equal(counters.before.executionTelemetry.windowId, '9007199254740993');
+  assert.equal(counters.after.executionTelemetry.firstElapsedNanos, '18446744073709551615');
+  assert.equal(typeof counters.after.executionTelemetry.firstElapsedNanos, 'string');
+  assert.equal(counters.delta.executionTelemetry.firstElapsedNanos, '2');
   const missing = managed[1].batch.events[0].workCounters;
   assert.equal(missing.available, false);
   assert.equal(missing.reason, 'identity-changed');
   assert.equal(missing.after.driverId, '2');
   assert.equal(missing.delta, null);
+  const partial = managed[2].batch.events[0].workCounters;
+  assert.equal(partial.available, true, 'work counters can remain available when timing is incomplete');
+  assert.equal(partial.delta.executionTelemetry.complete, false);
+  assert.equal(partial.delta.executionTelemetry.reason, 'clock-failure');
+  assert.equal(partial.after.executionTelemetry.stopReason, 'ClockFailure');
+  assert.equal(partial.delta.executionTelemetry.firstElapsedNanos, null);
+  assert.equal(partial.delta.executionTelemetry.replayElapsedNanos, null);
 });
 
 test('managed final trace drains after Close before the client reference is lost', async () => {

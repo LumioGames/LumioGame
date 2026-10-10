@@ -47,6 +47,7 @@
     <Compile Include="..\BomberPlayerIntent.cs" Link="BomberPlayerIntent.cs" />
     <Compile Include="..\BomberPlayerStepOptions.cs" Link="BomberPlayerStepOptions.cs" />
     <Compile Include="..\BomberInputTrace.cs" Link="BomberInputTrace.cs" />
+    <Compile Include="..\BomberTelemetryJointPrediction.cs" Link="BomberTelemetryJointPrediction.cs" />
     <Compile Include="..\ManagedFacadeTiming.cs" Link="ManagedFacadeTiming.cs" />
   </ItemGroup>
   <!--
