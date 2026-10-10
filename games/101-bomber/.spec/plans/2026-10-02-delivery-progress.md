@@ -3623,3 +3623,26 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - `f1-gas-execution-telemetry-implementation-01/green-native-related-02.receipt.json`：11713B，SHA256 `837a97e260ac7b44664790f80ab7a5f26950fe240314cb05393b797dcea343f4`。
 - `f1-gas-execution-telemetry-implementation-01//green-native-related-02.stdout.txt`：847B，SHA256 `90a9337a6259de0820d58b74feb33374dce6fbfab9c0161c11c3c0fcd355aa23`。
 - `f1-gas-execution-telemetry-implementation-01//green-native-related-02.stderr.txt`：0B，SHA256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+
+
+### checkpoint259 — 2425计时Host真实fresh fullAOT publish退出0；新闭包与前台测量尚未完成
+
+- 2026-10-10 22:02（Asia/Shanghai）。Game源码仍2425f47a0a3b788bd6a284871a8e327ddce5f82d，PR59远端实际读回该head；账本PR60 checkpoint258 headfadb7f7f4c0c471f4236ba5b776a2db76dbe2418已读回，两PR仍Draft/Open。Owner/ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED、F4 NOT_OPENED、handfeel FAIL_PENDING_USER。
+- 新目录C:/Work/LumioGames/.run-f1-aot-gas-telemetry-20261010-01；20 replica与上一轮字节相同，实际Ecs为Compact d15/d82ca791；Gameplay826/SDK25d维持同输入。58源码=旧55+新wrapper/测试+未修改normal launcher.mjs，后者为canonical地图guard必要输入。195 Presentation源与2个现编dist重新核hash均无漂移；不把旧身份结论当新Host结论。
+- Root实际核494输入全部0漂移、58源码全入plan、路径唯一；独立scoped preflight实际重核494/58/195+2/20均0漂移，无blocker。collector与旧审版本字节相同，收据只记录11项受控plan环境；新10分钟wall bound、隐藏独立pwsh、自有PID/start身份保护保持。
+- 首次启动请求raw1被exact路径守卫拒绝：Node收据plan.path用正斜线，而PowerShell Join-Path实际反斜线；未启动worker。原结果和review01保持。仅新review02把该path绑定实际Windows写法，plan bytes/hash/source/args不变，未放宽guard；第二次starter raw0。
+- 实际worker30852于13:55:39UTC启动；dotnet PID10384，13:55:39.9133506→13:58:37.3415166UTC，177.0567115秒，raw0/noTimeout，494 input mismatch0，sourceBefore/After都2425且sourceMatches=true。Release/net10/browser-wasm/RunAOTCompilation=true/PublishTrimmed=true/WasmStripILAfterAOT=false。
+- 新compile Host PE为870912B/SHA a8fbbe3be7c334f8d7f077fd6c9b68bbca8f96c521a465fb821084e8186d704e。它只证明实际构建产物，不能冒称boot WebCIL/Native wasm/trim后四API/Native clock/generated DTO验证已通过；鲜明闭包取证正在准备，新consumer/seal/guard及可见A/D时长尚未运行。未声称性能或手感改善。
+- 首次guard拒绝与所有旧fault、原始收据、旧包均保全；没有删除日志、操作受保护端口或停止他人进程。20Hz、2人+6官方Bot、体素、协议与额度继续保持。
+
+实际证据：
+
+- `f1-gas-execution-telemetry-aot-preparation-01/baseline-gas-telemetry-aot-publish-01.plan.json`：228669B，SHA256 `b15e584a02cce4e1dd84f630902f863a007d99187adb206c93ac6ef930ef639d`。
+- `f1-gas-execution-telemetry-aot-preparation-01/root-reviewed-telemetry-publish-plan-02.json`：337597B，SHA256 `cfc5369b3d77f4d07b632b92ac52b066fabfff86232bc7292537955e7fb630a7`。
+- `f1-gas-execution-telemetry-aot-preparation-01/root-actual-publish-readback-01.json`：2752B，SHA256 `432f6fdcf29164b3a6dafb5d91d1f2be19118f20b0884f075f230c6af5429bcc`。
+- `f1-gas-execution-telemetry-aot-preparation-01/baseline-gas-telemetry-aot-publish-01.receipt.json`：656908B，SHA256 `c2eaa7288ad1211610a28241652462d05fa52b3ac7e65da8419cc6f852106f66`。
+- `f1-gas-execution-telemetry-aot-preparation-01/actual-telemetry-source-binding-01.json`：30025B，SHA256 `f068ad76fafc9eb1316159ce85b1051d8541b916f873af45924b9fc62ae1632d`。
+- `f1-gas-execution-telemetry-aot-preparation-01/actual-telemetry-source-contract-01.json`：17266B，SHA256 `07a905332b923eec3e610900732b22ea5c658325dc83ee7a79716663fa6a7a0c`。
+- `f1-gas-execution-telemetry-aot-preflight-review-01/report-01.md`：2740B，SHA256 `b87573a1bedf4d09fe07b770b11a1acc1179cc32c32739b719833a9bae580b63`。
+- `f1-gas-execution-telemetry-aot-preparation-01/root-start-request-01.tool-result.json`：607B，SHA256 `7d732c7f5adda977aa14dd5ebfbb3235f481419986011a4bf7130ded5274e54a`。
+- `C:/Work/LumioGames/.run-f1-aot-gas-telemetry-20261010-01/artifacts/bin/Lumio.Bomber.Client.Spectator/release/Lumio.Bomber.Client.Spectator.dll`：870912B，SHA256 `a8fbbe3be7c334f8d7f077fd6c9b68bbca8f96c521a465fb821084e8186d704e`。
