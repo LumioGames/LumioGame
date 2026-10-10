@@ -31,19 +31,43 @@ public sealed class SpectatorReplicaHost : IDisposable
 {
     private readonly IClientSession _session;
     private readonly RuntimeJointPrediction _joint;
+    private readonly BomberTelemetryJointPrediction? _telemetryJoint;
     private readonly SentObserver _sent = new();
+    private readonly BomberInputTrace? _inputTrace;
+    private readonly BomberPlayerIntent _intent = new();
+    private readonly BomberPlayerStepOptions? _stepOptions;
+    private readonly string _intentLifetime = Guid.NewGuid().ToString("N");
+    private InputIdentity? _inputIdentity;
+    private InputIdentity? _lastTraceIdentity;
+    private ulong _intentResetVersion;
+    private bool _intentEnabled;
     private bool _closing;
     private string _lastError = string.Empty;
 
+    internal SpectatorReplicaHost(IClientSession session, BomberPlayerStepOptions stepOptions, BomberInputTrace trace)
+    {
+        _session = session;
+        _stepOptions = stepOptions;
+        _inputTrace = stepOptions.TraceEnabled ? trace : null;
+        _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
+    }
+
     public SpectatorReplicaHost(LumioEngine engine, IClientConnectionFactory connections, byte[] catalog,
         string launchJson, Func<CancellationToken, Task<string>> renewEndpoint, Action<string> log,
-        Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null)
+        Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null,
+        BomberPlayerStepOptions? stepOptions = null, Func<ulong>? executionClock = null)
     {
+        _stepOptions = stepOptions;
+        _inputTrace = stepOptions?.TraceEnabled == true ? new BomberInputTrace() : null;
+        _sent.Trace = _inputTrace;
         var launch = ReadLaunch(launchJson);
         var config = configuration ?? SpectatorDump.LoadEmbeddedClientConfig();
         var input = new InputSampleIngress(16);
         var sections = new ReplicaSectionEnvelopeReader();
         _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
+        _telemetryJoint = _inputTrace is null || executionClock is null ||
+            (AppContext.TryGetSwitch("Lumio.Bomber.DisableGasExecutionClock", out bool disabled) && disabled)
+            ? null : new BomberTelemetryJointPrediction(_joint, executionClock, _inputTrace);
         var replicas = new ClientReplicaFactory(() => engine.CreateWorld(new WorldCreationOptions(GeneratedRegistry.Instance)
         {
             Config = config.CreateWorldBinding(), Catalog = catalog, Subsystems = ReplicaSchedulingSubsystem.Create(),
@@ -59,7 +83,8 @@ public sealed class SpectatorReplicaHost : IDisposable
             new WorldChangeRuntimePort(), replicas, new ClientPredictionFactory(), new ImmediateGameplayScopeActivator(),
             new NullPresentationSink(), new JsonSessionMessageKindMap(sections), _sent, allowWelcomeOnlyAdmission: true,
             endpointProvider: new PlatformEndpointProvider(launch.Profile, launch.Endpoint, renewEndpoint), sectionEnvelopes: sections,
-            voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: _joint);
+            voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: (IClientJointPrediction?)_telemetryJoint ?? _joint,
+            predictionSteps: stepOptions is null ? null : new ClientPredictionStepOptions(SamplePlayerIntent, 5, TimeSpan.FromMilliseconds(250)));
         if (!new ClientSessionFactory().Create(in dependencies, out _session).Succeeded)
             throw new InvalidOperationException("client_session_creation_failed");
     }
@@ -104,15 +129,35 @@ public sealed class SpectatorReplicaHost : IDisposable
     public static ulong TickRateHz => GeneratedRegistry.Instance.DeclaredTickRateHz;
     public void Tick()
     {
+        var timing = _inputTrace?.FacadeTiming;
+        var workBefore = _inputTrace?.CaptureWorkCounters(_session);
+        bool record = timing?.Begin() == true;
+        bool sessionInvoked = false;
         try
         {
+            ReconcileInputIdentity();
             var before = _session.GetSnapshot();
-            if (!before.IsDisposed) _session.Tick(new ClientOwnerTick(checked(before.OwnerTick + 1)));
+            if (!before.IsDisposed)
+            {
+                var ownerTick = new ClientOwnerTick(checked(before.OwnerTick + 1));
+                if (record) timing!.Session(invoked: true);
+                sessionInvoked = true;
+                _session.Tick(ownerTick);
+            }
+            else if (record) timing!.Session(invoked: false);
+            if (record) timing!.Post();
+            ReconcileInputIdentity();
             if (_session.GetSnapshot().CleanupStatus == SessionCleanupStatus.Failed)
                 throw new InvalidOperationException("client_cleanup_failed_resources_retained");
             if (_session.GetSnapshot().IsDisposed) _joint.Dispose();
+            if (record) timing!.Complete();
         }
-        catch (Exception error) { _lastError = FormatApplyError(error); throw; }
+        catch (Exception error) { if (record) timing!.Fail(); _lastError = FormatApplyError(error); throw; }
+        finally
+        {
+            if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked);
+            _telemetryJoint?.Drain();
+        }
     }
     public string SessionState() => JsonSerializer.Serialize(new SessionStateDto
     {
@@ -121,6 +166,8 @@ public sealed class SpectatorReplicaHost : IDisposable
         notServingCloses = _session.GetSnapshot().NotServingCloses,
         sentInputs = _sent.Count, lastError = LastApplyError,
     }, SpectatorJsonContext.Default.SessionStateDto);
+    public string DrainInputTrace() => _inputTrace?.Drain() ?? BomberInputTrace.DisabledBatch;
+    public void RetireInputTrace() => _inputTrace?.RetirePending();
     private ulong AuthorityTick
     {
         get
@@ -159,10 +206,177 @@ public sealed class SpectatorReplicaHost : IDisposable
 
     public bool SendMove(int primary, int secondary, bool turnPressed)
     {
-        if (!Enum.IsDefined(typeof(BomberDirection), primary) || !Enum.IsDefined(typeof(BomberDirection), secondary) || (primary == 0 && secondary == 0))
+        if (!Enum.IsDefined(typeof(BomberDirection), primary) || !Enum.IsDefined(typeof(BomberDirection), secondary))
             throw new ArgumentException("player_move_direction_invalid");
         var input = new MoveAbility.Input { PrimaryDirection = (BomberDirection)primary, SecondaryDirection = (BomberDirection)secondary, TurnPressed = turnPressed };
         return Activate<MoveAbility, MoveAbility.Input>(in input);
+    }
+    public void SetMoveIntent(int primary, int secondary, bool turnPressed)
+    {
+        if (!Enum.IsDefined(typeof(BomberDirection), primary) || !Enum.IsDefined(typeof(BomberDirection), secondary))
+            throw new ArgumentException("player_move_direction_invalid");
+        RequirePhysicalInput();
+        _intent.SetMoveIntent(primary, secondary, turnPressed);
+    }
+    public string SetBombIntent(int phase)
+    {
+        var observation = ReconcileInputIdentity();
+        if (phase == 1 && (!_intentEnabled || !observation.Ready)) throw new InvalidOperationException("player_input_not_ready");
+        int before = _intent.BombIntentRefusalCount;
+        string result = _intent.SetBombIntent(phase);
+        if (_intent.BombIntentRefusalCount > before) _inputTrace?.IntentOverflow(result);
+        return result;
+    }
+    public void LatchSkillIntent() { RequirePhysicalInput(); _intent.LatchSkillIntent(); }
+    public void SetInputIntentEnabled(bool enabled)
+    {
+        ReconcileInputIdentity();
+        if (_intentEnabled && !enabled) _intent.Clear();
+        _intentEnabled = enabled;
+    }
+    public void ClearPlayerIntent() { ReconcileInputIdentity(); _intent.Clear(); }
+    public int GetBombIntentRefusalCount() => _intent.BombIntentRefusalCount;
+    public string GetBombIntentStatusCode() => _intent.BombIntentStatusCode;
+    public string GetInputIntentResetToken()
+    {
+        ReconcileInputIdentity();
+        return _intentLifetime + ":" + _intentResetVersion.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void RequirePhysicalInput()
+    {
+        var observation = ReconcileInputIdentity();
+        if (!_intentEnabled || !observation.Ready) throw new InvalidOperationException("player_input_not_ready");
+    }
+
+    private sealed record InputIdentity(WorldManager Manager, ulong WorldInstance, ulong SessionGeneration,
+        ulong WireGeneration, NetEntityId Self, NetEntityId Participant, ulong LifeGeneration, ulong MatchId);
+    private readonly record struct InputObservation(InputIdentity? Identity, IReplicaWorld? Replica, bool Ready);
+
+    private InputObservation ReconcileInputIdentity()
+    {
+        if (_stepOptions is null) return default;
+        InputObservation current = ObserveInputIdentity();
+        if (current.Identity is { } nextTrace)
+        {
+            if (_lastTraceIdentity is { } priorTrace &&
+                (!ReferenceEquals(priorTrace.Manager, nextTrace.Manager) ||
+                 priorTrace.SessionGeneration != nextTrace.SessionGeneration))
+                _inputTrace?.RetirePending(reason: "session-retired", newSession: true);
+            _lastTraceIdentity = nextTrace;
+        }
+        if (!Equals(_inputIdentity, current.Identity))
+        {
+            _intent.Invalidate();
+            _inputIdentity = current.Identity;
+            _intentResetVersion = checked(_intentResetVersion + 1);
+        }
+        else if (!current.Ready) _intent.Clear();
+        return current;
+    }
+
+    private InputObservation ObserveInputIdentity()
+    {
+        var snapshot = _session.GetSnapshot();
+        if (_closing || snapshot.IsDisposed || !_session.TryGetReplicaWorld(out var replica)) return default;
+        var lookup = replica.SelfLookup();
+        if (!lookup.Found) return default;
+        World world = replica.Manager.World;
+        if (!world.TryGetSelf(out Entity? bound) || bound is null || !world.IsLive(bound.Id) ||
+            !string.Equals(lookup.Binding.NetEntityId, bound.Id.ToHex(), StringComparison.OrdinalIgnoreCase)) return default;
+        BomberPlayerState? player = world.Each<BomberPlayerState>().FirstOrDefault(row => row.Entity == bound.Id);
+        if (player is null || player.Participant.Value.IsDefault || player.LifeGeneration.Value == 0 ||
+            !world.IsLive(player.Participant.Value)) return default;
+        BomberParticipantState? participant = world.Each<BomberParticipantState>()
+            .FirstOrDefault(row => row.Entity == player.Participant.Value);
+        BomberMatchState? match = world.Each<BomberMatchState>().SingleOrDefault();
+        if (participant is null || match is null || match.MatchId.Value == 0 ||
+            participant.MatchId.Value != match.MatchId.Value ||
+            participant.CurrentLife.Value != bound.Id || participant.LifeGeneration.Value != player.LifeGeneration.Value)
+            return default;
+        var identity = new InputIdentity(replica.Manager, world.InstanceId, snapshot.Generation,
+            lookup.Binding.ConnectionGeneration, bound.Id, player.Participant.Value,
+            player.LifeGeneration.Value, match.MatchId.Value);
+        BomberSkillState? skill = world.Each<BomberSkillState>().FirstOrDefault(row => row.Entity == bound.Id);
+        bool ready = snapshot.State == ClientSessionState.Active && replica.InputEnabled &&
+            (BomberMatchPhase)match.Phase.Value is BomberMatchPhase.Warmup or BomberMatchPhase.Running or BomberMatchPhase.FinalCircle &&
+            (BomberLifePhase)player.LifePhase.Value is BomberLifePhase.Protected or BomberLifePhase.Vulnerable &&
+            skill is not null && skill.FrozenUntilTick.Value <= world.Tick;
+        return new(identity, replica, ready);
+    }
+
+    private void SamplePlayerIntent(ClientPredictionStepContext context)
+    {
+        InputObservation observed = ReconcileInputIdentity();
+        InputIdentity? identity = observed.Identity;
+        if (identity is null || !ReferenceEquals(identity.Manager, context.Manager) ||
+            context.ConnectionGeneration != context.Manager.ClientPredictionClockGeneration) return;
+        bool enabled = _intentEnabled && observed.Ready;
+        BomberIntentSample sample = _intent.PeekSample(enabled);
+        string? sampleId = RecordInputSample(identity, context, sample);
+        if (enabled)
+        {
+            var move = new MoveAbility.Input { PrimaryDirection = (BomberDirection)sample.Primary,
+                SecondaryDirection = (BomberDirection)sample.Secondary, TurnPressed = sample.TurnPressed };
+            if (!PublishStepInput<MoveAbility, MoveAbility.Input>(identity, false, in move, sampleId)) return;
+            _intent.CommitMove(sample.Primary);
+        }
+        if (sample.BombPressPhase != 0)
+        {
+            var press = new BombButtonAbility.Input { Phase = sample.BombPressPhase };
+            if (!PublishStepInput<BombButtonAbility, BombButtonAbility.Input>(identity, false, in press, sampleId)) return;
+            _intent.CommitBomb(sample.BombPressPhase);
+        }
+        if (sample.BombReleasePhase != 0)
+        {
+            var release = new BombButtonReleaseAbility.Input { Phase = sample.BombReleasePhase };
+            if (!PublishStepInput<BombButtonReleaseAbility, BombButtonReleaseAbility.Input>(identity,
+                sample.BombReleasePhase == 4, in release, sampleId)) return;
+            _intent.CommitBomb(sample.BombReleasePhase);
+        }
+        if (sample.Skill)
+        {
+            var skill = new UseActiveSkillAbility.Input();
+            if (PublishStepInput<UseActiveSkillAbility, UseActiveSkillAbility.Input>(identity, false, in skill, sampleId)) _intent.CommitSkill();
+        }
+    }
+
+    private bool PublishStepInput<TAbility, TInput>(InputIdentity identity, bool allowDisabled, in TInput input, string? sampleId)
+        where TAbility : AbilityType<TInput>, new() where TInput : struct, IAbilityInput
+    {
+        InputObservation current = ReconcileInputIdentity();
+        if (!Equals(identity, current.Identity) || current.Replica is null || !current.Replica.InputEnabled ||
+            (!allowDisabled && (!_intentEnabled || !current.Ready))) return false;
+        var before = identity.Manager.CaptureRpcCompletionContinuity();
+        if (before.Sender != identity.Self || before.ConnectionGeneration != identity.WireGeneration) return false;
+        Activate<TAbility, TInput>(in input);
+        var after = identity.Manager.CaptureRpcCompletionContinuity();
+        if (!Equals(identity, ReconcileInputIdentity().Identity) || after.Sender != before.Sender ||
+            after.ConnectionGeneration != before.ConnectionGeneration ||
+            after.ServerWorldInstanceId != before.ServerWorldInstanceId ||
+            after.NextSequence != checked(before.NextSequence + 1))
+            throw new InvalidOperationException("player_intent_publication_continuity_lost");
+        RecordInputRequest(sampleId, typeof(TAbility).Name, before.Sender, before.ConnectionGeneration,
+            before.NextSequence, identity.SessionGeneration);
+        return true;
+    }
+
+    private string? RecordInputSample(InputIdentity identity, ClientPredictionStepContext context, BomberIntentSample sample)
+    {
+        if (_inputTrace is null) return null;
+        try { return _inputTrace.Sample(identity.Manager, identity.SessionGeneration,
+            identity.WireGeneration, identity.Self.ToHex(), identity.MatchId, context.LocalStepOrdinal,
+            sample.Primary, sample.Secondary, sample.TurnPressed, sample.BombPressPhase,
+            sample.BombReleasePhase, sample.Skill); }
+        catch { _inputTrace.Failure(); return null; }
+    }
+
+    private void RecordInputRequest(string? sampleId, string ability, NetEntityId sender, ulong generation,
+        ulong sequence, ulong sessionGeneration)
+    {
+        if (_inputTrace is null) return;
+        try { _inputTrace.Request(sampleId, ability, sender.ToHex(), generation, sequence, sessionGeneration); }
+        catch { _inputTrace.Failure(); }
     }
     public bool PlaceBomb() { var input = new PlaceBombAbility.Input(); return Activate<PlaceBombAbility, PlaceBombAbility.Input>(in input); }
     public bool BombButton(int phase)
@@ -206,7 +420,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         // ClientSession drains, stamps, encodes and sends the published request on its next owner Tick.
         return true;
     }
-    public void Dispose() { _closing = true; _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
+    public void Dispose() { _closing = true; ReconcileInputIdentity(); _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
     internal static string FormatApplyError(Exception error)
     {
         var text = new StringBuilder();
@@ -240,7 +454,12 @@ public sealed class SpectatorReplicaHost : IDisposable
     private sealed class SentObserver : IClientOutboundMessageObserver
     {
         public ulong Count { get; private set; }
-        public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes) => Count++;
+        public BomberInputTrace? Trace { get; set; }
+        public void Observe(InputCommandMessage message, ReadOnlyMemory<byte> encodedBytes)
+        {
+            if (Count < ulong.MaxValue) Count++;
+            Trace?.Accepted(message, encodedBytes);
+        }
     }
     // A synchronous host sink retains no queue or payload. Console delivery failures propagate.
     private sealed class BrowserEvents(Action<string> write, Action<string> failure) : IClientEventWriter

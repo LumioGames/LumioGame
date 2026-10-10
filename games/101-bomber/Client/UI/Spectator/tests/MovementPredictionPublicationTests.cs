@@ -27,9 +27,12 @@ public sealed class MovementPredictionPublicationTests
     public void UnconfirmedInputPublishesMovedOwnerWithoutChangingConfirmedLogic(string boundary)
         => RunActualPrediction(boundary);
 
-    internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null)
+    internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null,
+        Action<BrowserSessionOwner, NetEntityId>? beforeMove = null, BomberPlayerStepOptions? stepOptions = null,
+        ulong wireGeneration = 1, bool seedIdleOutcome = false, bool seedPendingTurn = false,
+        Action? executionClockObserver = null)
     {
-        using var owner = new BrowserSessionOwner(parts: true);
+        using var owner = new BrowserSessionOwner(parts: true, stepOptions: stepOptions, executionClockObserver: executionClockObserver);
         using var server = owner.CreateServerProjectionWorld(new ProjectionRegistry(BrowserSessionOwner.LoadServerRegistry()), 7);
         server.AttachControlAdapter(new ProjectionProfile());
         server.Tick(); server.DrainOutbox();
@@ -52,6 +55,12 @@ public sealed class MovementPredictionPublicationTests
         Set(player, nameof(BomberPlayerState.LifeGeneration), 3UL);
         Set(player, nameof(BomberPlayerState.LifePhase), (int)BomberLifePhase.Vulnerable);
         Set(player, nameof(BomberPlayerState.InputMemoryMatchId), 55UL);
+        if (seedIdleOutcome) Set(player, nameof(BomberPlayerState.Facing), (int)BomberDirection.Down);
+        if (seedPendingTurn)
+        {
+            Set(player, nameof(BomberPlayerState.PendingTurnDirection), (int)BomberDirection.Right);
+            Set(player, nameof(BomberPlayerState.PendingTurnUntilTick), checked(server.World.Tick + 30UL));
+        }
         server.World.Get<AttributeComponent>(life.AssignedId).SetCurrentValue(BomberAttributeNames.MovementSpeedMilli, 3500);
         Vector3 before = new(7.5f, 1.5f, 7.5f);
         var transform = server.World.Get<LogicTransform>(life.AssignedId);
@@ -77,7 +86,7 @@ public sealed class MovementPredictionPublicationTests
             using (bombTransform.BeginWrite(server.World.RegisterTransformController(bombId, nameof(MoveAbility))))
                 bombTransform.SetLocalPosition(before);
         }
-        observer.Connected = true; observer.ConnectionGeneration = 1;
+        observer.Connected = true; observer.ConnectionGeneration = wireGeneration;
         IBomberConfig config = SpectatorDump.LoadDisplayConfig();
         var exported = ExportActualGround(server, config, boundary == "wall");
         server.Tick();
@@ -97,6 +106,12 @@ public sealed class MovementPredictionPublicationTests
         Assert.Equal("active", owner.Host.ConnectionState);
         Assert.True(owner.Host.InputEnabled, string.Join(" | ", owner.Logs));
         var confirmed = owner.Host.World!;
+        if (beforeMove is not null)
+        {
+            Assert.True(confirmed.Manager.ClientPredictionClockEnabled);
+            beforeMove(owner, life.AssignedId);
+            return;
+        }
         var driver = Assert.IsType<Lumio.Client.Spectator.RuntimeJointPrediction>(typeof(SpectatorReplicaHost)
             .GetField("_joint", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner.Host));
         Assert.True(driver.IsAttached(confirmed.Manager));

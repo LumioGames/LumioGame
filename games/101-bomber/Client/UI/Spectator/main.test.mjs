@@ -6,12 +6,80 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createPlayerIntentControls } from './player-intent-controls.mjs';
+import { createMovementTrace } from './movement-trace.mjs';
+import { analyzeMovementTrace } from '../../../Tools/movement-trace-analyze.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const WEB = path.join(process.env.LUMIO_ENGINE_CANDIDATE_ROOT || path.join(ROOT, 'Engine'), 'web');
 const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
 const replica = await import(pathToFileURL(path.join(WEB, 'replica-voxel-grid.mjs')));
 const MAIN_SOURCE = fs.readFileSync(new URL('./main.js', import.meta.url), 'utf8');
+test('private movement diagnostic layout requires the exact scene and trace on a permitted player page', async () => {
+  const flags = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()'));
+  const initialize = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function initializePage()'), MAIN_SOURCE.indexOf('    inputDriver = flags.inputDriver;')) + '\n  }\n}';
+  for (const [search, hostname, playerMode, expected] of [
+    ['?scene=movement-sync-preview&trace=movement', '127.0.0.1', true, true],
+    ['?scene=movement-sync-preview', '127.0.0.1', true, false],
+    ['?scene=ordinary&trace=movement', '127.0.0.1', true, false],
+    ['?scene=movement-sync-preview&trace=movement', 'game.example', true, false],
+    ['', '127.0.0.1', true, false],
+    ['?scene=movement-sync-preview&trace=movement', '127.0.0.1', false, false],
+  ]) {
+    const classes = new Set(), node = {};
+    const context = vm.createContext({ PLAYER_MODE: playerMode, URLSearchParams,
+      location: { search, hostname }, LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'],
+      window: { __lumioPlayerConfig: {} }, canvas: {}, initializeResourceWitness: async () => {},
+      document: { body: { classList: { add: name => classes.add(name) } },
+        getElementById: () => node, querySelector: () => node } });
+    vm.runInContext(flags + initialize, context);
+    await context.initializePage();
+    assert.equal(classes.has('movement-private-preview'), expected, `${hostname}${search} player=${playerMode}`);
+  }
+});
+test('private diagnostic auto capture requires its explicit URL opt-in', async () => {
+  const flags = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()'));
+  const initialize = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function initializePage()'), MAIN_SOURCE.indexOf('    inputDriver = flags.inputDriver;')) + '\n  }\n}';
+  for (const [search, expected] of [
+    ['?scene=movement-sync-preview&trace=movement&capture=diagnostic', true],
+    ['?scene=movement-sync-preview&trace=movement', false],
+    ['?scene=movement-sync-preview&capture=diagnostic', false],
+    ['?scene=ordinary&trace=movement&capture=diagnostic', false],
+    ['?scene=movement-sync-preview&trace=movement&capture=diagnostic&capture=diagnostic', false],
+  ]) {
+    const classes = new Set(), node = {};
+    const context = vm.createContext({ PLAYER_MODE: true, URLSearchParams,
+      location: { search, hostname: '127.0.0.1' }, LOOPBACK_HOSTS: ['127.0.0.1'],
+      window: { __lumioPlayerConfig: {} }, canvas: {}, initializeResourceWitness: async () => {},
+      document: { body: { classList: { add: name => classes.add(name) } }, getElementById: () => node, querySelector: () => node } });
+    vm.runInContext(flags + initialize, context); await context.initializePage();
+    assert.equal(classes.has('movement-diagnostic-capture'), expected, search);
+  }
+});
+test('private diagnostic readiness respects the existing DOM UI focus gate', () => {
+  const start = MAIN_SOURCE.indexOf('privateDiagnosticCapture = createPrivateDiagnosticCapture(');
+  const setup = MAIN_SOURCE.slice(start, MAIN_SOURCE.indexOf("        window.addEventListener('pagehide', () => privateDiagnosticCapture.destroy()", start));
+  const focused = { closest: () => true };
+  const sandbox = { panel: {}, window: { __lumioPlayerConfig: { evidenceEndpoint: '/api/player/evidence?player=A' } },
+    diagnosticAuto: true, active: true, terminal: false, initialSelectionPending: false, player: { replica: { inputOpen: true } },
+    gameView: { inputBlocked: () => false }, inputDriver: 'interval', stepInputReady: true,
+    document: { activeElement: focused, getElementById: () => ({ contains: () => false }) },
+    createPrivateDiagnosticCapture: options => { sandbox.options = options; return {}; } };
+  vm.runInNewContext(setup, sandbox); assert.equal(sandbox.options.ready(), false);
+  sandbox.document.getElementById = () => ({ contains: () => true }); assert.equal(sandbox.options.ready(), true);
+  sandbox.inputDriver = 'step'; sandbox.stepInputReady = false; assert.equal(sandbox.options.ready(), false);
+});
 const CREDENTIAL = 'test-admission-credential-do-not-leak';
+test('closed input keeps private record and export buttons available in the real applyDump integration', () => {
+  const direction = {disabled:false}, record = {disabled:false}, exp = {disabled:false}, identity = {disabled:false};
+  const sandbox = { PLAYER_MODE:true, active:false, GAME_VIEW:false, player:{replica:null},
+    spectator:{positions:[]}, parseDump:()=>[],paint(){},commitInitialSelection(){},
+    csharp:{playerState:()=>'{"inputOpen":false}'},
+    document:{getElementById:()=>null,querySelectorAll:selector=>selector.includes(':not')?[direction]:[direction,record,exp,identity]} };
+  const context = vm.createContext(sandbox);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function applyDump(raw)'),MAIN_SOURCE.indexOf('function updateGamePresentation()')),context);
+  assert.equal(sandbox.applyDump('[]'),true); assert.equal(direction.disabled,true);
+  assert.equal(record.disabled,false); assert.equal(exp.disabled,false); assert.equal(identity.disabled,false);
+});
 const LAUNCH = { wsUrl: 'wss://edge.example/play/session-abc', subprotocol: 'lumio.successor-binding-receipts-parts.v1', admissionCredential: CREDENTIAL, roomId: 'room-from-platform' };
 const settle = async predicate => { for (let i = 0; i < 50 && !predicate(); i++) await new Promise(resolve => setImmediate(resolve)); assert.ok(predicate(), 'asynchronous composition settled'); };
 const drain = async () => { for (let i = 0; i < 10; i++) await new Promise(resolve => setImmediate(resolve)); };
@@ -26,6 +94,7 @@ async function runPage(options = {}) {
   const status = { textContent: '' }, legend = { innerHTML: '' }, enter = { hidden: false, addEventListener() {} };
   const exports = {
     ConfigureConfig(value) { runtime.configurations ??= []; runtime.configurations.push(value); if (options.configError) throw new Error(options.configError); },
+    ConfigureInputMode(mode, trace) { runtime.inputModes ??= []; runtime.inputModes.push({ mode, trace }); },
     async Boot(...args) { admissions.push(args); await options.bootWait; if (options.bootError) throw new Error(options.bootError); },
     async Close() { runtime.closes++; await options.closeWait; },
     Tick() { runtime.ticks++; if (runtime.tickError) throw new Error(runtime.tickError); },
@@ -352,6 +421,232 @@ test('Game page contains neither authority parsing, transport retry nor a second
   assert.doesNotMatch(code,/connectDs|new WebSocket|\.onFrame|\.onBytes|\.deliver\(|world_create|retryNotServing|\.localPosition|messageType/);
   assert.doesNotMatch(code,/params\.get\(["']allowLoopback/);assert.doesNotMatch(code,/\/api\/games\/[A-Za-z0-9]/);
 });
+
+test('managed trace drains only after the synchronous Tick with a pump observation bracket', async () => {
+  const calls = [], clock = { value: 0 };
+  const p = await runPage({ clock, exports: {
+    Tick() { calls.push('tick'); clock.value += 20; },
+    DrainInputTrace() { calls.push('drain'); return JSON.stringify([{ version: 1, enabled: true, events: [] }]); },
+  } });
+  p.evalInPage(`globalThis.__traceBatches=[]; movementTrace={
+    managed(batch, bracket){__traceBatches.push({batch,bracket})}, pump(){}, note(){}
+  }`);
+  await p.tick();
+  assert.deepEqual(calls.slice(-2), ['tick', 'drain']);
+  const receipt = JSON.parse(p.evalInPage('JSON.stringify(__traceBatches)'));
+  assert.equal(receipt.length, 1);
+  assert.equal(receipt[0].batch.enabled, true);
+  assert.equal(receipt[0].bracket.endedAt - receipt[0].bracket.startedAt, 20);
+});
+
+test('managed work counters retain nested decimal strings and unavailable values through page forwarding and JSON export', async () => {
+  const calls = [], clock = { value: 0 };
+  const before = {
+    captureStartedStamp: '101', captureEndedStamp: '102', sessionGeneration: '1', ownerTick: '7',
+    state: 'active', disposed: false, predictionGeneration: '9', predictionId: '1', managerId: '1',
+    worldInstance: '7', driverId: '1', lastAssignedSeq: '9007199254740993', confirmedSeq: '9007199254740992',
+    historyCount: 1, windowCapacity: 256, highWatermark: 20, frozen: false, openAuthorityGroups: 4,
+    heldSections: 3, replicaStageCalls: 3, predictionAuthorityStageCalls: 3, runtimeAuthorityCalls: 3,
+    outstandingCount: 1, retainedBytes: '9223372036854775807', suspended: false, retired: false, faulted: false,
+    inputExecutions: '18446744073709551613', replays: '9007199254740993',
+    nativeStageAttempts: '18446744073709551615', nativeCoveredReleases: '9007199254740993',
+    executionTelemetry: { windowId: '9007199254740993', clockDomain: 'native-monotonic-nanos',
+      enabled: true, stopReason: 'None', firstElapsedNanos: '18446744073709551613',
+      replayElapsedNanos: '9007199254740993', recordsDropped: '0', clockFailures: '0' },
+  };
+  const after = { ...before, captureStartedStamp: '103', captureEndedStamp: '104',
+    lastAssignedSeq: '9007199254740994', confirmedSeq: '9007199254740993',
+    inputExecutions: '18446744073709551615', replays: '9007199254740994', nativeCoveredReleases: '9007199254740994',
+    executionTelemetry: { ...before.executionTelemetry, firstElapsedNanos: '18446744073709551615',
+      replayElapsedNanos: '9007199254740994' } };
+  const available = { version: 1, facadeOrdinal: '1', available: true, reason: null, sessionInvoked: true,
+    before, after, delta: { lastAssignedSeq: '1', confirmedSeq: '1', replicaStageCalls: 0,
+      predictionAuthorityStageCalls: 0, runtimeAuthorityCalls: 0, inputExecutions: '2', replays: '1',
+      firstAttempts: '1', nativeStageAttempts: '0', nativeCoveredReleases: '1',
+      executionTelemetry: { complete: true, reason: null, clockDomain: 'native-monotonic-nanos',
+        windowId: '9007199254740993', firstAttempts: '1', replayAttempts: '1',
+        timedFirstAttempts: '1', timedReplayAttempts: '1', firstElapsedNanos: '2', replayElapsedNanos: '1' } } };
+  const unavailable = { version: 1, facadeOrdinal: '2', available: false, reason: 'identity-changed',
+    sessionInvoked: true, before: after, after: { ...after, driverId: '2' }, delta: null };
+  const clockFailure = { ...available, facadeOrdinal: '3', before: after,
+    after: { ...after, executionTelemetry: { ...after.executionTelemetry, enabled: false,
+      stopReason: 'ClockFailure', clockFailures: '1' } },
+    delta: { ...available.delta, executionTelemetry: { complete: false, reason: 'clock-failure',
+      clockDomain: 'native-monotonic-nanos', windowId: '9007199254740993',
+      firstElapsedNanos: null, replayElapsedNanos: null } } };
+  const batches = [available, unavailable, clockFailure].map((workCounters, index) => ({
+    version: 1, enabled: true, hostLifetime: 'host-work-counter-forwarding', clockDomain: 'rawStopwatch',
+    clockFrequency: '1000', complete: true, pending: 0, eventLoss: '0', pendingLoss: '0', unmatched: '0',
+    diagnosticFailures: '0', traceOverflow: null,
+    events: [{ k: 'work-counters', stamp: String(105 + index), workCounters }],
+  }));
+  let drains = 0;
+  const p = await runPage({ clock, exports: {
+    Tick() { calls.push('tick'); clock.value += 20; },
+    DrainInputTrace() { calls.push('drain'); return JSON.stringify([batches[drains++]]); },
+  } });
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  p.win.__actualTrace = trace;
+  p.evalInPage('movementTrace = __actualTrace');
+  await p.tick(); await p.tick(); await p.tick();
+  assert.deepEqual(calls.slice(-4), ['tick', 'drain', 'tick', 'drain']);
+  assert.equal(drains, 3);
+  const exported = JSON.parse(JSON.stringify(trace.export()));
+  const managed = exported.events.filter(event => event.k === 'managedTrace');
+  assert.deepEqual(managed.map(event => event.batch), batches, 'the real page must forward each complete batch without projecting known event fields');
+  assert.ok(managed.every(event => event.pumpBracket.endedAt - event.pumpBracket.startedAt === 20));
+  const counters = managed[0].batch.events[0].workCounters;
+  assert.equal(counters.before.lastAssignedSeq, '9007199254740993');
+  assert.equal(counters.after.inputExecutions, '18446744073709551615');
+  assert.equal(typeof counters.after.inputExecutions, 'string');
+  assert.equal(counters.before.retainedBytes, '9223372036854775807');
+  assert.equal(counters.before.historyCount, 1);
+  assert.equal(counters.reason, null);
+  assert.equal(counters.before.executionTelemetry.windowId, '9007199254740993');
+  assert.equal(counters.after.executionTelemetry.firstElapsedNanos, '18446744073709551615');
+  assert.equal(typeof counters.after.executionTelemetry.firstElapsedNanos, 'string');
+  assert.equal(counters.delta.executionTelemetry.firstElapsedNanos, '2');
+  const missing = managed[1].batch.events[0].workCounters;
+  assert.equal(missing.available, false);
+  assert.equal(missing.reason, 'identity-changed');
+  assert.equal(missing.after.driverId, '2');
+  assert.equal(missing.delta, null);
+  const partial = managed[2].batch.events[0].workCounters;
+  assert.equal(partial.available, true, 'work counters can remain available when timing is incomplete');
+  assert.equal(partial.delta.executionTelemetry.complete, false);
+  assert.equal(partial.delta.executionTelemetry.reason, 'clock-failure');
+  assert.equal(partial.after.executionTelemetry.stopReason, 'ClockFailure');
+  assert.equal(partial.delta.executionTelemetry.firstElapsedNanos, null);
+  assert.equal(partial.delta.executionTelemetry.replayElapsedNanos, null);
+});
+
+test('managed final trace drains after Close before the client reference is lost', async () => {
+  const order = [];
+  const p = await runPage({ exports: {
+    async Close() { order.push('close'); },
+    DrainInputTrace() { order.push('drain'); return JSON.stringify([{ version: 1, enabled: true,
+      events: [{ k: 'accepted', sequence: '7' }] }]); },
+  } });
+  p.evalInPage(`globalThis.__finalTrace=[]; movementTrace={
+    managed(batch, bracket){__finalTrace.push({batch,bracket})}, pump(){}, note(){}
+  }`);
+  await p.evalInPage("finish('closed')");
+  assert.deepEqual(order, ['close', 'drain']);
+  const receipt = JSON.parse(p.evalInPage('JSON.stringify(__finalTrace)'));
+  assert.equal(receipt[0].batch.events[0].sequence, '7');
+  assert.equal(receipt[0].bracket, null);
+});
+
+test('one failed managed drain makes a joined recording incomplete even after a later valid batch', async () => {
+  const clock = { value: 0 };
+  const first = { hostLifetime: 'host-a', clockFrequency: '1000', complete: true, pending: 0,
+    eventLoss: '0', pendingLoss: '0', unmatched: '0', diagnosticFailures: '0', events: [
+      { k: 'sample', sampleId: '1', primary: 2, stamp: '1' },
+      { k: 'request', sampleId: '1', ability: 'MoveAbility', sender: 'self', wireGeneration: '9', sequence: '7', stamp: '2' },
+      { k: 'accepted', sampleId: '1', sender: 'self', wireGeneration: '9', sequence: '7', stamp: '3', encodedLength: 3, encodedSha256: 'abc' },
+    ] };
+  let drains = 0;
+  const p = await runPage({ clock, exports: { DrainInputTrace() {
+    drains++;
+    if (drains === 2) throw new Error('actual drain failure');
+    return JSON.stringify([drains === 1 ? first : { ...first, events: [] }]);
+  } } });
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  p.win.__actualTrace = trace;
+  p.evalInPage('movementTrace = __actualTrace');
+  await p.tick(); await p.tick(); await p.tick();
+  assert.equal(drains, 3);
+  const exported = trace.export();
+  assert.equal(exported.events.filter(e => e.k === 'managedTrace').length, 2);
+  assert.ok(exported.diagnosticFailures > 0, 'the failed drain must survive later valid batches');
+  const summary = analyzeMovementTrace(exported);
+  assert.equal(summary.correlation.incompleteManaged, false, 'the gap is a JS drain failure, not a managed batch loss');
+  assert.equal(summary.correlation.diagnosticFailures, 1);
+  assert.equal(summary.correlation.status, 'UNPROVEN');
+});
+
+test('actual step setter path exposes a sustained hold, backward frame and post-release overshoot without legacy inputs', () => {
+  const clock = { value: 0 }, calls = [], listeners = new Map();
+  const target = { addEventListener(type, callback) { listeners.set(type, [...(listeners.get(type) ?? []), callback]); },
+    removeEventListener() {}, document: { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {} },
+    emit(type, code) { const event = { code, repeat: false, defaultPrevented: false, target: { closest: () => null }, preventDefault() {} };
+      for (const callback of listeners.get(type) ?? []) callback(event); } };
+  const panel = { contains: () => false, querySelectorAll: () => [], querySelector: () => null };
+  const trace = createMovementTrace({ now: () => clock.value, doc: { visibilityState: 'visible' } });
+  trace.note('input=step');
+  const context = vm.createContext({ csharp: { setMoveIntent(...args) { calls.push(args); } }, movementTrace: trace });
+  const binding = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('      setMoveIntent: (primary, secondary, turn) =>'),
+    MAIN_SOURCE.indexOf('\n      setBombIntent:', MAIN_SOURCE.indexOf('      setMoveIntent: (primary, secondary, turn) =>'))).trim().replace(/,\s*$/, '');
+  const setMoveIntent = vm.runInContext(`({ ${binding} }).setMoveIntent`, context);
+  const controls = createPlayerIntentControls({ setMoveIntent, setBombIntent: () => 'accepted',
+    latchSkillIntent() {}, clearIntent() {}, ready: () => true, target, panel });
+  const pose = z => ({ publicationSequence: String(Math.round(z * 10)), localStepOrdinal: '1', executionTick: '1',
+    target: { position: { x: 0, z } } });
+  const pump = (t, z) => trace.pump({ startedAt: t, tickAt: t + 1, tickMs: 1, totalMs: 2, state: 'active', pose: pose(z) });
+  const frame = (t, shown, targetZ) => { clock.value = t; trace.frame({ now: t - 2, dt: 16,
+    localPose: pose(targetZ), local: { x: 0, z: shown, yaw: 0, speed: 4 } }); };
+  clock.value = 1; target.emit('keydown', 'KeyW');
+  pump(10, 0); frame(20, 0, 0);
+  pump(60, .2); frame(70, .25, .2); frame(80, .15, .2);
+  pump(300, .4); frame(310, .45, .4); frame(350, .45, .4);
+  clock.value = 400; target.emit('keyup', 'KeyW');
+  frame(420, .6, .4); frame(440, .4, .4);
+  assert.deepEqual(calls.map(row => Array.from(row)), [[1, 0, true], [0, 0, false]]);
+  const summary = analyzeMovementTrace(trace.export());
+  assert.equal(summary.counts.legacyPublishedMoves, 0);
+  assert.equal(summary.counts.holdWindows, 1);
+  assert.ok(summary.display.heldFrames > 0);
+  assert.ok(summary.display.backwardFrames > 0);
+  assert.ok(summary.display.stopOvershootM.n > 0);
+  assert.ok(summary.display.stopOvershootM.max > .1);
+  assert.equal(summary.stopTails[0].frames, 2, 'tail frames occur after the setter-observed release');
+  assert.ok(summary.facing.heldFrames > 0);
+  assert.equal(summary.movementExposureGate, 'PASS');
+  controls.destroy();
+});
+
+test('step input observes opaque identity and clears retained sources before a fresh physical edge', () => {
+  const listeners = new Map();
+  const surface = { addEventListener(name, callback) { const rows = listeners.get(name) ?? []; rows.push(callback); listeners.set(name, rows); },
+    removeEventListener() {}, emit(name, code, repeat = false) {
+      const event = { code, repeat, target: surface, defaultPrevented: false, preventDefault() {} };
+      for (const callback of listeners.get(name) ?? []) callback(event);
+    } };
+  surface.document = { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {}, hasFocus: () => true };
+  const panel = { contains: () => false, querySelectorAll: () => [], querySelector: () => null };
+  let token = 'lifetime-a:1', clears = 0;
+  const moves = [], enabled = [];
+  const sandbox = { document: { ...surface.document, getElementById: () => panel },
+    createPlayerIntentControls, surface, panel,
+    csharp: { inputIntentResetToken: () => token, setInputIntentEnabled: value => enabled.push(value),
+      setMoveIntent: (...value) => moves.push(value), setBombIntent: () => 'accepted',
+      latchSkillIntent() {}, clearPlayerIntent() { clears++; } } };
+  const context = vm.createContext(sandbox);
+  vm.runInContext(`const PLAYER_MODE=true,inputDriver='step',gameView=null;let playerInput;
+    let stepInputToken=null,stepInputReady=false,stepInputObserving=false;
+    let managedLoaded=true,runtimeClosed=false,active=true,terminal=false,initialSelectionPending=false;
+    const player={replica:{inputOpen:true}};`, context);
+  const source = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function refreshStepInput()'), MAIN_SOURCE.indexOf('function pumpSession(attempt)'));
+  vm.runInContext(source, context);
+  vm.runInContext(`playerInput=createPlayerIntentControls({target:surface,panel,ready:()=>refreshStepInput(),
+    setMoveIntent:(...args)=>csharp.setMoveIntent(...args),setBombIntent:phase=>csharp.setBombIntent(phase),
+    latchSkillIntent:()=>csharp.latchSkillIntent(),clearIntent:()=>csharp.clearPlayerIntent()});`, context);
+  surface.emit('keydown', 'KeyA');
+  token = 'lifetime-a:2';
+  surface.emit('keydown', 'KeyD');
+  assert.deepEqual(moves.map(row => Array.from(row)), [[4, 0, true], [2, 0, true]]);
+  assert.equal(clears, 1);
+  vm.runInContext('player.replica.inputOpen=false;refreshStepInput()', context);
+  assert.equal(clears, 2);
+  vm.runInContext('refreshStepInput()', context);
+  assert.equal(clears, 2, 'stable disabled pumps must not repeat Clear');
+  vm.runInContext('player.replica.inputOpen=true;refreshStepInput()', context);
+  surface.emit('keydown', 'KeyA', true);
+  assert.equal(moves.length, 2, 'repeat cannot resurrect a retired source');
+  surface.emit('keydown', 'KeyA');
+  assert.deepEqual(moves.at(-1), [4, 0, true]);
+  assert.equal(enabled.at(-1), true);
+});
 test("player startup requires both new GAS exports and presentation callbacks send their commands", async () => {
   const section = (start, end) => MAIN_SOURCE.slice(MAIN_SOURCE.indexOf(start), MAIN_SOURCE.indexOf(end));
   const bind = section('function bindExports(api)', 'async function loadWasmExports');
@@ -362,9 +657,10 @@ test("player startup requires both new GAS exports and presentation callbacks se
   let callbacks;
   const sandbox = {
     JSON, Date,
+    resourceWitness:null, movementPreviewControls:null, previewFinitePose:'UNAVAILABLE',
     blocked: false, touch: [], bombEdges: [],
     api: {
-      ConfigureConfig() {}, Boot() {}, Close() {}, Tick() {}, TickRateHz() { return 30; }, SessionState() {}, WorldHandleBytes() {}, ReadBox() {}, WorldInstanceId() {}, LastApplyError() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},
+      ConfigureConfig() {}, ConfigureInputMode() {}, Boot() {}, Close() {}, Tick() {}, TickRateHz() { return 30; }, SessionState() {}, WorldHandleBytes() {}, ReadBox() {}, WorldInstanceId() {}, LastApplyError() {}, ConnectionState() { return 'active'; }, OnBytes() {}, OnFrame() {},
       DumpPositions() { return '[]'; }, MapDimensions() { return '{}'; }, PlayerState() { return '{}'; },
       SendMove() { sent.push('move'); return true; }, PlaceBomb() { sent.push('bomb'); return true; },
       BombButton(phase) { sent.push(`bomb-edge:${phase}`); return true; },
@@ -379,6 +675,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
   const context = vm.createContext(sandbox);
   vm.runInContext(`
     const PLAYER_MODE = true;
+    let inputDriver = 'interval';
     const csharp = {};
     let developmentSession;
     let gameView, gameViewLoading, gameViewGeneration = 0; let selectedCharacter=null,initialSelectionPending=false;
@@ -454,34 +751,35 @@ test('first character choice finishes before Platform launch or Session boot', a
   const selection = new Promise(resolve => choose = resolve);
   const context = vm.createContext({ TextEncoder, AbortController, calls, selection, performance: { now: () => 0 },
     async finish() {}, setStatus() {}, paint() {}, readQuery() { return {}; },
+    readMovementFlags() { return { gasExecutionClock: true }; },
     async loadWasmExports() { calls.push('wasm'); return true; },
     async loadSelectedConfig() { calls.push('config'); },
     async chooseFirstCharacter() { calls.push('choose'); return selection; },
     async obtainLaunch() { calls.push('launch'); return LAUNCH; },
     async loadCatalog() { return '{}'; }, pageAllowsLoopback() { return true; },
-    csharp: { async boot() { calls.push('boot'); } },
+    csharp: { configureInputMode(mode, trace) { calls.push(`input:${mode}:${trace}`); }, async boot() { calls.push('boot'); } },
     pumpSession() { calls.push('pump'); }, async releaseReplica() {},
     failLaunch(error) { throw error; },
   });
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
-    let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
+    let initialSelectionSent=false; let inputDriver='interval',movementTrace=null; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
   const running = context.start(); await drain();
-  assert.deepEqual(calls, ['wasm', 'config', 'choose']);
+  assert.deepEqual(calls, ['wasm', 'input:interval:false', 'config', 'choose']);
   choose('duck'); await running;
-  assert.deepEqual(calls, ['wasm', 'config', 'choose', 'launch', 'boot', 'pump']);
+  assert.deepEqual(calls, ['wasm', 'input:interval:false', 'config', 'choose', 'launch', 'boot', 'pump']);
   assert.equal(vm.runInContext('selectedCharacter', context), 'duck');
 });
 
 test('a closed pre-admission selection cannot launch after a late confirmation', async () => {
   const calls=[]; let choose;
   const context=vm.createContext({TextEncoder,AbortController,calls,performance:{now:()=>0},selection:new Promise(resolve=>choose=resolve),
-    async finish(){},setStatus(){},paint(){},readQuery(){return{};},
+    async finish(){},setStatus(){},paint(){},readQuery(){return{};},readMovementFlags(){return{gasExecutionClock:true};},
     async loadWasmExports(){return true;},async loadSelectedConfig(){},async chooseFirstCharacter(){return context.selection;},
     async obtainLaunch(){calls.push('launch');return LAUNCH;},async loadCatalog(){return'{}';},pageAllowsLoopback(){return true;},
-    csharp:{async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
+    csharp:{configureInputMode(){},async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
-    let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
+    let initialSelectionSent=false; let inputDriver='interval',movementTrace=null; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
   const running=context.start();await drain();vm.runInContext('terminal=true;connectionAttempt++;',context);
   choose('cat');await running;assert.deepEqual(calls,[]);
@@ -704,4 +1002,71 @@ test('a stale asynchronous GameView import cannot revive a replaced handle or a 
   await page.evalInPage("finish('closed')"); retiredCallback.callback(); await drain();
   assert.equal(current.disposeCount, 1); assert.equal(page.timers.size, 0);
   assert.equal(fixture.nodes.get('presentation').hidden, true); assert.equal(page.win.__lumioPresentation.status, 'closed');
+});
+
+
+async function gasClockStartup(options = {}) {
+  const calls = [], clocks = [], errors = [];
+  const api = Object.fromEntries(['ConfigureConfig', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions',
+    'ConnectionState', 'LastApplyError', 'WorldInstanceId', 'PresentationState', 'SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig',
+    'SetMoveIntent', 'SetBombIntent', 'LatchSkillIntent', 'SetInputIntentEnabled', 'ClearPlayerIntent', 'GetBombIntentRefusalCount', 'GetBombIntentStatusCode', 'GetInputIntentResetToken', 'DrainInputTrace']
+    .map(name => [name, () => {}]));
+  api.ConfigureInputMode = (mode, trace) => calls.push(['input', mode, trace]);
+  api.Boot = async () => calls.push(['boot']);
+  if (!options.missingExport) api.ConfigureGasExecutionClock = enabled => { clocks.push(enabled); calls.push(['gas-clock', enabled]); if (options.liveError) throw options.liveError; };
+  const context = vm.createContext({ api, calls, URLSearchParams, TextEncoder, AbortController,
+    location: { search: options.search ?? '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off', hostname: options.hostname ?? '127.0.0.1' },
+    LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'], __lumioDevelopment: options.development,
+    csharp: {}, performance: { now: () => 0 },
+    async finish() {}, setStatus() {}, paint() {}, readQuery() { return {}; },
+    async loadWasmExports() { context.bindExports(api); return true; },
+    async loadSelectedConfig() { calls.push(['config']); }, async chooseFirstCharacter() { return 'duck'; },
+    async obtainLaunch() { return LAUNCH; }, async loadCatalog() { return '{}'; },
+    pumpSession() { calls.push(['pump']); }, failLaunch(error) { errors.push(error); } });
+  vm.runInContext('const PLAYER_MODE=' + (options.player !== false) + "; let inputDriver='step',movementTrace={}; let developmentSession=null; let selectedCharacter='duck',initialSelectionPending=false,initialSelectionSent=false,terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;", context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()')), context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function bindExports(api)'), MAIN_SOURCE.indexOf('let managedLoaded = false;')), context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
+  await context.start();
+  return { calls, clocks, errors, flags: context.readMovementFlags() };
+}
+
+test('private GAS clock exact off configures the real export before input and Boot', async () => {
+  const p = await gasClockStartup();
+  assert.deepEqual(p.errors, []);
+  assert.deepEqual(p.clocks, [false]);
+  assert.deepEqual(p.calls.slice(0, 2), [['gas-clock', false], ['input', 'step', true]]);
+  assert.ok(p.calls.findIndex(x => x[0] === 'gas-clock') < p.calls.findIndex(x => x[0] === 'boot'));
+});
+
+test('private GAS clock missing opt-out export fails before real Boot', async () => {
+  const p = await gasClockStartup({ missingExport: true });
+  assert.equal(p.calls.some(x => x[0] === 'boot'), false);
+  assert.equal(p.errors.length, 1);
+  assert.match(p.errors[0].message, /ConfigureGasExecutionClock/);
+});
+
+test('private GAS clock live configuration failure retains the original error', async () => {
+  const original = new Error('client_input_mode_live');
+  const p = await gasClockStartup({ liveError: original });
+  assert.deepEqual(p.errors, [original]);
+  assert.equal(p.calls.some(x => x[0] === 'boot'), false);
+});
+
+test('private GAS clock default and ineligible flags preserve enabled behavior', async () => {
+  for (const options of [
+    { search: '?scene=movement-sync-preview&trace=movement&input=step' },
+    { search: '?scene=movement-sync-preview&trace=movement&input=step&gasClock=on' },
+    { search: '?scene=movement-sync-preview&trace=movement&gasClock=off&gasClock=off' },
+    { search: '?scene=movement-sync-preview&trace=movement&gasClock=unknown' },
+    { search: '?scene=ordinary&trace=movement&gasClock=off' },
+    { search: '?scene=movement-sync-preview&gasClock=off' },
+    { hostname: 'game.example' },
+  ]) { const p = await gasClockStartup(options); assert.deepEqual(p.errors, []); assert.deepEqual(p.clocks, [true], JSON.stringify(options)); }
+  const legacy = await gasClockStartup({ missingExport: true, search: '?scene=movement-sync-preview&trace=movement' });
+  assert.deepEqual(legacy.errors, []); assert.ok(legacy.calls.some(x => x[0] === 'boot'));
+  const nonplayer = await gasClockStartup({ player: false });
+  assert.deepEqual(nonplayer.errors, []); assert.deepEqual(nonplayer.clocks, []);
+  const development = await gasClockStartup({ hostname: 'development.example', development: true });
+  assert.deepEqual(development.errors, []); assert.deepEqual(development.clocks, [false]);
 });

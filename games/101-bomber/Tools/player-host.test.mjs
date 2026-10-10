@@ -5,6 +5,38 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startPlayerHost } from './player-host.mjs';
 import { parseLaunchArgs } from './launcher.mjs';
+import { createHash } from 'node:crypto';
+
+test('private diagnostic evidence preserves original JSON and rejects unsafe requests', { timeout: 5000 }, async t => {
+  const root = mkdtempSync(join(tmpdir(), 'bomber-private-evidence-'));
+  writeFileSync(join(root, 'index.html'), '<script type="importmap">{}</script>');
+  const evidenceDir = join(root, 'own-evidence');
+  const { server, url } = await startPlayerHost({ root, evidenceDir, playerCount: 2, getLaunch: async () => { throw new Error('no account operation'); } });
+  t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); rmSync(root, { recursive: true, force: true }); });
+  const origin = new URL(url).origin;
+  const endpoint = new URL('/api/player/evidence?player=A&kind=movement-trace&scene=movement-sync-preview&trace=movement', url);
+  const raw = '{"version":2,"events":[],"capacity":300000,"truncated":false,"diagnosticFailures":0}\n';
+  const send = (address = endpoint, body = raw, extra = {}) => fetch(address, { method: 'POST', headers: { Origin: origin, 'X-Lumio-Player': '1', 'Content-Type': 'application/json', ...extra }, body });
+  const response = await send(); assert.equal(response.status, 201);
+  const receipt = await response.json(); assert.equal(receipt.bytes, Buffer.byteLength(raw));
+  assert.equal(receipt.sha256, createHash('sha256').update(raw).digest('hex'));
+  assert.equal(readFileSync(join(evidenceDir, receipt.file), 'utf8'), raw);
+  assert.match(await (await fetch(url)).text(), /evidenceEndpoint/);
+  assert.equal((await send(endpoint, raw, { Origin: 'https://foreign.example' })).status, 403);
+  assert.equal((await send(endpoint, raw, { 'X-Lumio-Player': '0' })).status, 403);
+  assert.equal((await send(new URL(endpoint.href.replace('player=A', 'player=C')))).status, 400);
+  assert.equal((await send(new URL(endpoint.href + '&file=../../escape.json'))).status, 400);
+  assert.equal((await send(new URL(endpoint.href.replace('scene=movement-sync-preview', 'scene=ordinary')))).status, 400);
+  assert.equal((await send(endpoint, '{"version":2,"events":[{"password":"forbidden"}]}')).status, 400);
+  assert.equal((await send(endpoint, '{"version":2,"events":[],"credential":"forbidden"}')).status, 400);
+  assert.equal((await send(endpoint, raw, { 'Content-Type': 'text/plain' })).status, 415);
+  const witnessUrl = new URL(endpoint.href.replace('kind=movement-trace', 'kind=resource-witness'));
+  const witness = JSON.stringify({ version: 1, arm: 'baseline', pageRunId: 'own-run', manifestDigest: 'a'.repeat(64), resources: [], coverage: { expected: 0 } });
+  assert.equal((await send(witnessUrl, witness)).status, 201);
+  const off = await startPlayerHost({ root, getLaunch: async () => ({}) });
+  t.after(async () => { off.server.closeAllConnections(); await new Promise(done => off.server.close(done)); });
+  assert.equal((await fetch(new URL('/api/player/evidence', off.url), { method: 'POST', body: raw })).status, 404);
+});
 
 test('player host freezes the explicitly selected client export and never serves server files', async t => {
   const root = mkdtempSync(join(tmpdir(), 'bomber-config-host-'));

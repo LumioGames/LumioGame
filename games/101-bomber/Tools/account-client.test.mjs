@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,22 @@ import {
 } from './bot-credential.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+test('normal Node account transport sends its actual Platform Origin in a real upgrade',{timeout:5000},async()=>{
+  let headers;
+  const server=createServer();server.on('upgrade',(request,socket)=>{
+    headers=request.headers;
+    // This local header fixture never accepts a connection or receives a login frame.
+    socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const origin=`http://127.0.0.1:${server.address().port}`;
+  try{
+    await assert.rejects(loginOrRegister({origin,loginName:'OriginHeaderUser',password:'Header-fixture-1234!',timeoutMs:2000}),/account WebSocket failed/);
+    assert.equal(headers?.origin,origin);
+    assert.equal(headers['sec-websocket-protocol'],ACCOUNT_SUBPROTOCOL);
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});
 
 function createAccountStore() {
   const accounts = new Map();

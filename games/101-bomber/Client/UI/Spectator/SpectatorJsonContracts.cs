@@ -8,6 +8,196 @@ using Lumio.Config.Generated.Client;
 
 namespace Lumio.Bomber.Client.Spectator;
 
+// Trace fields are display-only. Every ulong is formatted as an invariant decimal string.
+internal sealed class InputTraceBatchDto
+{
+    public required int version { get; init; }
+    public required bool enabled { get; init; }
+    public required string hostLifetime { get; init; }
+    public required string clockDomain { get; init; }
+    public required string clockFrequency { get; init; }
+    public required bool complete { get; init; }
+    public required string eventLoss { get; init; }
+    public required string pendingLoss { get; init; }
+    public required string unmatched { get; init; }
+    public required string diagnosticFailures { get; init; }
+    public required int pending { get; init; }
+    public InputTraceEventDto? traceOverflow { get; init; }
+    public required List<InputTraceEventDto> events { get; init; }
+    public FacadeTickTimingDto? facadeTiming { get; init; }
+    public string facadeTimingLoss { get; init; } = "0";
+    public string facadeTimingDiagnosticFailures { get; init; } = "0";
+}
+
+internal sealed class FacadeTickTimingDto
+{
+    public int version { get; init; } = 1;
+    public required string ordinal { get; init; }
+    public required bool completed { get; init; }
+    public required bool sessionInvoked { get; init; }
+    public string? failedPhase { get; init; }
+    public required FacadePhaseTimingDto preIdentity { get; init; }
+    public FacadePhaseTimingDto? sessionTick { get; init; }
+    public FacadePhaseTimingDto? postIdentityCleanup { get; init; }
+}
+
+internal sealed class FacadePhaseTimingDto
+{
+    public string? startedStamp { get; init; }
+    public string? endedStamp { get; init; }
+}
+
+internal sealed class InputTraceEventDto
+{
+    public required string k { get; init; }
+    public required string stamp { get; init; }
+    public string? sampleId { get; init; }
+    public string? managerId { get; init; }
+    public string? driverId { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? bindingGeneration { get; init; }
+    public string? self { get; init; }
+    public string? matchId { get; init; }
+    public string? ordinal { get; init; }
+    public int? primary { get; init; }
+    public int? secondary { get; init; }
+    public bool? turn { get; init; }
+    public int? bombPress { get; init; }
+    public int? bombRelease { get; init; }
+    public bool? skill { get; init; }
+    public string? ability { get; init; }
+    public string? sender { get; init; }
+    public string? wireGeneration { get; init; }
+    public string? sequence { get; init; }
+    public int? commandCount { get; init; }
+    public string? mappingId { get; init; }
+    public string[]? commandMappingIds { get; init; }
+    public int? encodedLength { get; init; }
+    public string? encodedSha256 { get; init; }
+    public string? reason { get; init; }
+    public WorkCounterPairDto? workCounters { get; init; }
+    public ExecutionTelemetryStatusDto? executionTelemetry { get; init; }
+    public int? drainedRecords { get; init; }
+}
+
+internal sealed class WorkCounterPairDto
+{
+    public int version { get; init; } = 1;
+    public required string facadeOrdinal { get; init; }
+    public required bool available { get; init; }
+    public string? reason { get; init; }
+    public required bool sessionInvoked { get; init; }
+    public required WorkCounterSnapshotDto before { get; init; }
+    public required WorkCounterSnapshotDto after { get; init; }
+    public WorkCounterDeltaDto? delta { get; init; }
+}
+
+internal sealed class WorkCounterSnapshotDto
+{
+    public string? captureStartedStamp { get; init; }
+    public string? captureEndedStamp { get; init; }
+    public string? unavailableReason { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? ownerTick { get; init; }
+    public string? state { get; init; }
+    public bool? disposed { get; init; }
+    public string? predictionGeneration { get; init; }
+    public string? predictionId { get; init; }
+    public string? managerId { get; init; }
+    public string? worldInstance { get; init; }
+    public string? driverId { get; init; }
+    public string? lastAssignedSeq { get; init; }
+    public string? confirmedSeq { get; init; }
+    public int? historyCount { get; init; }
+    public int? windowCapacity { get; init; }
+    public int? highWatermark { get; init; }
+    public bool? frozen { get; init; }
+    public int? openAuthorityGroups { get; init; }
+    public int? heldSections { get; init; }
+    public int? replicaStageCalls { get; init; }
+    public int? predictionAuthorityStageCalls { get; init; }
+    public int? runtimeAuthorityCalls { get; init; }
+    public int? outstandingCount { get; init; }
+    public string? retainedBytes { get; init; }
+    public bool? suspended { get; init; }
+    public bool? retired { get; init; }
+    public bool? faulted { get; init; }
+    public string? inputExecutions { get; init; }
+    public string? replays { get; init; }
+    public string? nativeStageAttempts { get; init; }
+    public string? nativeCoveredReleases { get; init; }
+    public ExecutionTelemetryStatusDto? executionTelemetry { get; init; }
+}
+
+internal sealed class WorkCounterDeltaDto
+{
+    public required string lastAssignedSeq { get; init; }
+    public required string confirmedSeq { get; init; }
+    public required int replicaStageCalls { get; init; }
+    public required int predictionAuthorityStageCalls { get; init; }
+    public required int runtimeAuthorityCalls { get; init; }
+    public required string inputExecutions { get; init; }
+    public required string replays { get; init; }
+    public required string firstAttempts { get; init; }
+    public required string nativeStageAttempts { get; init; }
+    public required string nativeCoveredReleases { get; init; }
+    public ExecutionTelemetryDeltaDto? executionTelemetry { get; init; }
+}
+
+internal sealed class ExecutionTelemetryStatusDto
+{
+    public required bool available { get; init; }
+    public string? reason { get; init; }
+    public string clockDomain { get; init; } = "native-monotonic-nanos";
+    public string? windowId { get; init; }
+    public bool? enabled { get; init; }
+    public string? stopReason { get; init; }
+    public bool? saturated { get; init; }
+    public string? recordsAttempted { get; init; }
+    public string? recordsWritten { get; init; }
+    public string? recordsDropped { get; init; }
+    public string? clockFailures { get; init; }
+    public string? firstAttempts { get; init; }
+    public string? replayAttempts { get; init; }
+    public string? firstCompleted { get; init; }
+    public string? replayCompleted { get; init; }
+    public string? timedFirstAttempts { get; init; }
+    public string? timedReplayAttempts { get; init; }
+    public string? firstElapsedNanos { get; init; }
+    public string? replayElapsedNanos { get; init; }
+    public string? dataWaits { get; init; }
+    public string? budgetWaits { get; init; }
+    public string? correctionRetries { get; init; }
+    public string? faults { get; init; }
+    public string? publications { get; init; }
+    public string? executionsSincePublication { get; init; }
+    public int? censoredOutstandingInputs { get; init; }
+    public int? bufferedRecords { get; init; }
+    public string? reservedBytes { get; init; }
+}
+
+internal sealed class ExecutionTelemetryDeltaDto
+{
+    public required bool complete { get; init; }
+    public string? reason { get; init; }
+    public string clockDomain { get; init; } = "native-monotonic-nanos";
+    public string? windowId { get; init; }
+    public string? firstAttempts { get; init; }
+    public string? replayAttempts { get; init; }
+    public string? timedFirstAttempts { get; init; }
+    public string? timedReplayAttempts { get; init; }
+    public string? firstElapsedNanos { get; init; }
+    public string? replayElapsedNanos { get; init; }
+    public string? firstCompleted { get; init; }
+    public string? replayCompleted { get; init; }
+    public string? dataWaits { get; init; }
+    public string? budgetWaits { get; init; }
+    public string? correctionRetries { get; init; }
+    public string? faults { get; init; }
+    public string? publications { get; init; }
+    public string? recordsDropped { get; init; }
+}
+
 internal sealed class OwnerPresentationDto
 {
     public required string sessionGeneration { get; init; }

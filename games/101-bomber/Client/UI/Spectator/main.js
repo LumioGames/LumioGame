@@ -33,11 +33,21 @@ const spectator = {
 };
 window.__lumioSpectator = spectator;
 const PLAYER_MODE = Boolean(window.__lumioPlayerConfig);
-const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0, lastInput: null, replica: null };
+const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0,
+  bombIntentRefusalCount: 0, bombIntentStatusCode: 'accepted', lastInput: null, replica: null };
 let playerInput;
+let stepInputToken = null;
+let stepInputReady = false;
+let stepInputObserving = false;
 // Movement experiments: 'interval' is the shipped held-input timer, 'pump' publishes inside the Session pump.
 let inputDriver = 'interval';
 let movementTrace = null;
+let movementPhaseTimingEnabled = false;
+let movementPreviewControls = null;
+let privateDiagnosticCapture = null;
+let resourceWitness = null;
+let previewFinitePose = 'UNAVAILABLE';
+let lastTraceCompleteness = 'UNAVAILABLE';
 let selectedCharacter = null;
 let initialSelectionPending = false;
 let initialSelectionSent = false;
@@ -72,6 +82,7 @@ const ctx = canvas && typeof canvas.getContext === "function" ? canvas.getContex
 
 // The formal Engine WASM instance owns the Session's world and read-only renderer.
 let engineInvoke = null;
+let nativeInvokeObserver = null;
 let displayedWorldHandle = "";
 let displayedWorldId = null;
 // The game's official block catalog v2, published next to the page from
@@ -319,6 +330,7 @@ async function loadCatalog(signal) {
   if (!response || response.ok === false) {
     throw new Error(`catalog_fetch_failed:${response ? response.status : "no_response"}`);
   }
+  if (resourceWitness) await resourceWitness.verifyDataResponse(response, CATALOG_URL);
   catalogText = await response.text();
   if (PLAYER_MODE) blockAssets = new Map(JSON.parse(catalogText).rows.map(row => [row.blockType, row.assetRef]));
   return catalogText;
@@ -431,7 +443,7 @@ function applyDump(raw) {
       const self = spectator.positions.find(p => p.self);
       const selfEl = document.getElementById('player-self');
       if (selfEl) selfEl.textContent = self ? `${self.name ?? 'You'} | ${Number(self.x).toFixed(2)}, ${Number(self.z).toFixed(2)}` : 'Joining room';
-      document.querySelectorAll('#player-controls button').forEach(button => {
+      document.querySelectorAll('#player-controls button:not([data-movement-record]):not([data-movement-export]):not(#export-resource-witness)').forEach(button => {
         button.disabled = !active || !player.replica.inputOpen;
       });
     }
@@ -450,6 +462,7 @@ function updateGamePresentation() {
     if (gameViewLoading) return;
     const generation = gameViewGeneration;
     gameViewLoading = import('./game-view.mjs').then(({ createGameView }) => {
+      resourceWitness?.noteImport('./game-view.mjs');
       if (generation !== gameViewGeneration) return;
       const attempt = csharp.ownerPresentation ? connectionAttempt : null;
       if (csharp.ownerPresentation) gameViewOwnerGeneration = generation;
@@ -472,13 +485,29 @@ function updateGamePresentation() {
           const directions = [0, 1, 3, 4, 2];
           playerInput?.setTouchDirection(directions[primary], directions[secondary]);
         },
-        onPlaceBomb: () => sendPlayerCommand('bomb', () => csharp.placeBomb()),
+        onPlaceBomb: () => inputDriver === 'step'
+          ? (playerInput?.setBombPressed(true, false, 'place'), playerInput?.setBombPressed(false, false, 'place'))
+          : sendPlayerCommand('bomb', () => csharp.placeBomb()),
         onBombButton: (pressed, cancelled, surface) => playerInput?.setBombPressed(pressed, cancelled, surface),
-        onUseSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
+        onUseSkill: () => inputDriver === 'step'
+          ? (refreshStepInput() && csharp.latchSkillIntent())
+          : sendPlayerCommand('skill', () => csharp.useActiveSkill()),
         onChangeCharacter: id => sendPlayerCommand('character', () => csharp.selectCharacter(id)),
-        onFrame: globalThis.__lumioMovementTrace ? frame => globalThis.__lumioMovementTrace.frame(frame) : undefined,
+        onFrame: globalThis.__lumioMovementTrace ? frame => {
+          globalThis.__lumioMovementTrace.frame(frame);
+          const local = frame.local;
+          previewFinitePose = local ? [local.x, local.z, local.yaw].every(Number.isFinite) : 'UNAVAILABLE';
+          const timing = movementPhaseTimingEnabled ? movementTrace?.beginPhaseTiming('framePreviewRefresh') : null;
+          timing?.mark('previewRefresh');
+          try { movementPreviewControls?.refresh(); }
+          catch (error) { timing?.finish({ complete: false, error, rafT: frame.now }); throw error; }
+          timing?.finish({ rafT: frame.now });
+        } : undefined,
+        onFrameTiming: movementPhaseTimingEnabled ? timing => movementTrace.phaseTiming({ scope: 'raf', ...timing }) : undefined,
+        onRenderTiming: movementPhaseTimingEnabled ? timing => movementTrace.phaseTiming({ scope: 'wholeRaf', ...timing }) : undefined,
       } : {});
       gameView = ownerView;
+      resourceWitness?.noteStage('Presentation-created');
       gameViewLoading = null;
       updateGamePresentation();
     }).catch(error => {
@@ -502,10 +531,13 @@ function utf8ByteLength(text) {
 }
 
 function bindExports(api) {
-  for (const name of ['ConfigureConfig', 'Boot', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions'])
+  for (const name of ['ConfigureConfig', 'ConfigureInputMode', 'Boot', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions'])
     if (typeof api[name] !== 'function') throw new Error('SpectatorExports.' + name + ' missing');
   csharp.boot = (launch, catalog, loopback) => api.Boot(JSON.stringify(launch), catalog, loopback);
   csharp.configureConfig = value => api.ConfigureConfig(value);
+  csharp.configureInputMode = (mode, trace) => api.ConfigureInputMode(mode, trace);
+  csharp.configureGasExecutionClock = typeof api.ConfigureGasExecutionClock === 'function'
+    ? enabled => api.ConfigureGasExecutionClock(enabled) : undefined;
   csharp.close = () => api.Close();
   csharp.tick = () => developmentSession ? developmentSession.run(() => api.Tick(), 0) : api.Tick();
   csharp.tickRateHz = () => api.TickRateHz();
@@ -519,6 +551,9 @@ function bindExports(api) {
   csharp.worldInstanceId = () => api.WorldInstanceId();
   csharp.presentationState = () => api.PresentationState();
   csharp.ownerPresentation = typeof api.OwnerPresentation === 'function' ? () => api.OwnerPresentation() : undefined;
+  if (PLAYER_MODE && inputDriver === 'step' && movementTrace && typeof api.DrainInputTrace !== 'function')
+    throw new Error('Player trace export missing: DrainInputTrace');
+  csharp.drainInputTrace = typeof api.DrainInputTrace === 'function' ? () => api.DrainInputTrace() : undefined;
   if (PLAYER_MODE) {
       for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig'])
       if (typeof api[name] !== 'function') throw new Error('Player input export missing: ' + name);
@@ -529,14 +564,41 @@ function bindExports(api) {
     csharp.selectCharacter = id => api.SelectCharacter(id);
     csharp.selectionConfig = () => api.SelectionConfig();
     csharp.playerState = () => api.PlayerState();
+    if (inputDriver === 'step') {
+      for (const name of ['SetMoveIntent', 'SetBombIntent', 'LatchSkillIntent', 'SetInputIntentEnabled',
+        'ClearPlayerIntent', 'GetBombIntentRefusalCount', 'GetBombIntentStatusCode', 'GetInputIntentResetToken'])
+        if (typeof api[name] !== 'function') throw new Error('Player step export missing: ' + name);
+      csharp.setMoveIntent = (primary, secondary, turn) => api.SetMoveIntent(primary, secondary, turn);
+      csharp.setBombIntent = phase => api.SetBombIntent(phase);
+      csharp.latchSkillIntent = () => api.LatchSkillIntent();
+      csharp.setInputIntentEnabled = enabled => api.SetInputIntentEnabled(enabled);
+      csharp.clearPlayerIntent = () => api.ClearPlayerIntent();
+      csharp.bombIntentRefusalCount = () => api.GetBombIntentRefusalCount();
+      csharp.bombIntentStatusCode = () => api.GetBombIntentStatusCode();
+      csharp.inputIntentResetToken = () => api.GetInputIntentResetToken();
+    }
   }
 }
 
 let managedLoaded = false;
+async function initializeNativeInvokeObservation() {
+  nativeInvokeObserver = null;
+  if (!PLAYER_MODE || !movementPreviewEnabled() || !readMovementFlags().trace) return;
+  try {
+    const { createNativeInvokeObserver } = await import('./native-invoke-observer.mjs');
+    resourceWitness?.noteImport('./native-invoke-observer.mjs');
+    nativeInvokeObserver = createNativeInvokeObserver(engineInvoke);
+  } catch {
+    // Diagnostic setup cannot turn an otherwise valid Session into a fault.
+    noteNativeInvokeFailure('native-invoke-initialize');
+  }
+}
+
 async function loadWasmExports() {
   if (managedLoaded) return true;
   const injected = window.__lumioExports;
   if (injected && typeof injected === "object") {
+    if (resourceWitness) throw new Error('resource_witness_rejects_export_stub');
     engineInvoke = window.__lumioEngine;
     bindExports(injected);
     managedLoaded = true;
@@ -546,14 +608,22 @@ async function loadWasmExports() {
 
   try {
     const { dotnet } = await import("./_framework/dotnet.js");
-    const { loadEngineWasm } = await import('./engine-wasm.mjs');
-    engineInvoke = await loadEngineWasm(new URL('.', location.href));
-    const { getAssemblyExports, getConfig, runMain, setModuleImports } = await dotnet.create();
-    setModuleImports('bomber-engine', { invoke: engineInvoke });
+    resourceWitness?.noteImport('./_framework/dotnet.js');
+    if (resourceWitness) engineInvoke = await resourceWitness.initializeNative(new URL('.', location.href));
+    else {
+      const { loadEngineWasm } = await import('./engine-wasm.mjs');
+      engineInvoke = await loadEngineWasm(new URL('.', location.href));
+    }
+    const builder = resourceWitness ? dotnet.withResourceLoader(resourceWitness.loadBootResource) : dotnet;
+    const { getAssemblyExports, getConfig, runMain, setModuleImports } = await builder.create();
+    if (resourceWitness) { await resourceWitness.assertBootCoverage(); resourceWitness.noteStage('dotnet-created'); }
+    await initializeNativeInvokeObservation();
+    setModuleImports('bomber-engine', { invoke: nativeInvokeObserver ? nativeInvokeObserver.invoke : engineInvoke });
     setModuleImports('bomber-platform', { renewLaunch: async () => JSON.stringify(await launchFromPlatform()) });
     const config = getConfig();
     const exports = await getAssemblyExports(config.mainAssemblyName);
     await runMain();
+    resourceWitness?.noteStage('runMain-completed');
     const api = exports?.Lumio?.Bomber?.Client?.Spectator?.SpectatorExports;
     if (!api || typeof api.DumpPositions !== "function" || typeof api.Tick !== "function") {
       setStatus("failed", "exports missing");
@@ -568,6 +638,7 @@ async function loadWasmExports() {
         sdk: agentExports.Microsoft.DotNet.HotReload.WebAssembly.Browser.WebAssemblyHotReload });
     }
     bindExports(api);
+    resourceWitness?.noteStage('real-exports-bound');
     managedLoaded = true;
     setStatus("wasm-ready");
     return true;
@@ -632,13 +703,39 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
 // Movement experiments and traces stay on loopback pages and the development bridge.
 function readMovementFlags() {
-  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false };
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true };
   const params = new URLSearchParams(location.search);
-  return { inputDriver: params.get('input') === 'pump' ? 'pump' : 'interval', trace: params.get('trace') === 'movement' };
+  const requested = params.get('input');
+  const trace = params.get('trace') === 'movement';
+  const gasClock = params.getAll('gasClock');
+  const gasClockOff = PLAYER_MODE && params.get('scene') === 'movement-sync-preview' && trace &&
+    gasClock.length === 1 && gasClock[0] === 'off';
+  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff };
 }
 
 function pageAllowsLoopback() {
   return typeof location !== "undefined" && LOOPBACK_HOSTS.includes(location.hostname);
+}
+
+function movementPreviewEnabled() {
+  return (pageAllowsLoopback() || globalThis.__lumioDevelopment) &&
+    new URLSearchParams(location.search).get('scene') === 'movement-sync-preview';
+}
+
+async function initializeResourceWitness() {
+  if (!movementPreviewEnabled()) return;
+  const bootstrap = globalThis.__lumioResourceBootstrap;
+  if (!bootstrap) throw new Error('resource_witness_sealed_bootstrap_missing');
+  const { createLoadedResourceWitness } = await import('./loaded-resource-witness.mjs');
+  resourceWitness = createLoadedResourceWitness({ ...bootstrap, base: new URL('.', location.href).href });
+  await resourceWitness.ready;
+  resourceWitness.noteImport('./main.js');
+  resourceWitness.noteImport('./loaded-resource-witness.mjs');
+  resourceWitness.noteStyles(document);
+  const button = document.getElementById('export-resource-witness');
+  if (button) { button.hidden = false; resourceWitness.bindExport(button, {
+    onExport: raw => { void privateDiagnosticCapture?.save('resource-witness', raw).catch(reportDiagnosticError); },
+  }); }
 }
 
 // Local test mode, the one explicit entry that bypasses the Platform: whoever loads
@@ -701,7 +798,10 @@ let booting = Promise.resolve();
 let launchAbort = null;
 
 function releaseReplica() {
+  movementPreviewControls?.invalidate();
   playerInput?.clear();
+  stepInputToken = null;
+  stepInputReady = false;
   player.replica = null;
   closeVoxelWorld();
   active = false;
@@ -712,7 +812,7 @@ function releaseReplica() {
     // The managed exports own one static Session. Finish its Boot before Close,
     // and keep the owner retryable when cleanup still retains resources.
     closing = booting.then(() => csharp.close(), () => csharp.close())
-      .then(() => { runtimeClosed = true; })
+      .then(() => { runtimeClosed = true; drainManagedTrace(null); })
       .finally(() => { closePending = false; });
   }
   return closing;
@@ -737,43 +837,169 @@ function failLaunch(error) {
   console.error('[lumio-session]', spectator.lastError);
 }
 
+function drainManagedTrace(pumpBracket) {
+  if (!movementTrace || !csharp.drainInputTrace) return;
+  try {
+    const batches = JSON.parse(csharp.drainInputTrace());
+    if (!Array.isArray(batches)) throw new Error('managed_trace_batches_invalid');
+    for (const batch of batches) {
+      if (!batch || typeof batch !== 'object' || !Array.isArray(batch.events))
+        throw new Error('managed_trace_batch_invalid');
+      movementTrace.managed(batch, pumpBracket);
+    }
+  } catch (error) {
+    try { movementTrace.diagnosticFailure?.('managed-drain'); }
+    catch { /* Diagnostics must not fail the Session pump. */ }
+    try { movementTrace.note(`managed trace drain failed: ${String(error?.message ?? error)}`); }
+    catch { /* Diagnostics must not fail the Session pump. */ }
+  }
+}
+
+function exportMovementTrace() {
+  drainManagedTrace(null);
+  const exportedTrace = movementTrace.export();
+  lastTraceCompleteness = !exportedTrace.truncated && exportedTrace.diagnosticFailures === 0;
+  const raw = JSON.stringify(exportedTrace);
+  const blob = new Blob([raw], { type: 'application/json' });
+  void privateDiagnosticCapture?.save('movement-trace', raw).catch(reportDiagnosticError);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `lumio-movement-trace-${Date.now()}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function reportDiagnosticError(error) {
+  console.error('[lumio-diagnostic-capture]', String(error?.message ?? error));
+}
+
+function refreshStepInput() {
+  if (inputDriver !== 'step' || !PLAYER_MODE || !managedLoaded || runtimeClosed) return false;
+  if (stepInputObserving) return stepInputReady;
+  stepInputObserving = true;
+  try {
+    const token = csharp.inputIntentResetToken();
+    const panel = document.getElementById('player-controls');
+    const focusedElement = document.activeElement;
+    const focusBlocked = focusedElement?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]')
+      && !panel?.contains?.(focusedElement);
+    const ready = active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
+      !gameView?.inputBlocked() && !document.hidden && document.hasFocus?.() !== false && !focusBlocked;
+    const changed = stepInputToken !== null && token !== stepInputToken;
+    const disabled = stepInputReady && !ready;
+    stepInputToken = token;
+    stepInputReady = Boolean(ready);
+    if (changed || disabled) playerInput?.clear();
+    csharp.setInputIntentEnabled(stepInputReady);
+    return stepInputReady;
+  } finally { stepInputObserving = false; }
+}
+
+function noteNativeInvokeFailure(kind) {
+  try { movementTrace?.diagnosticFailure(kind); } catch { /* The trace counter survives a recording failure. */ }
+}
+
+function prepareNativeInvokeTick() {
+  const observer = nativeInvokeObserver;
+  if (!observer) return null;
+  try {
+    observer.reset('managedTick');
+    observer.beginScope('managedTick');
+    return observer;
+  } catch {
+    noteNativeInvokeFailure('native-invoke-prepare');
+    try { observer.beginScope('unscope'); } catch { noteNativeInvokeFailure('native-invoke-leave'); }
+    return null;
+  }
+}
+
+function finishNativeInvokeTick(observer, startedAt, endedAt, returned) {
+  if (!observer) return;
+  try { observer.beginScope('unscope'); }
+  catch { noteNativeInvokeFailure('native-invoke-leave'); return; }
+  try {
+    movementTrace?.nativeInvokeTiming({ startedAt, endedAt, returned, snapshot: observer.snapshot('managedTick') });
+  } catch { noteNativeInvokeFailure('native-invoke-record'); }
+}
+
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
+  let phaseTiming = null;
+  let pumpTailStartedAt = null;
   try {
     const pumpStartedAt = performance.now();
+    phaseTiming = movementPhaseTimingEnabled ? movementTrace?.beginPhaseTiming('pump', pumpStartedAt) : null;
+    phaseTiming?.mark('input', pumpStartedAt);
     if (inputDriver === 'pump') playerInput?.pump();
+    if (inputDriver === 'step') refreshStepInput();
+    const nativeTickObserver = prepareNativeInvokeTick();
     const tickStartedAt = performance.now();
-    csharp.tick();
-    const tickMs = performance.now() - tickStartedAt;
+    phaseTiming?.mark('managedTick', tickStartedAt);
+    let tickEndedAt, tickReturned = false;
+    try {
+      csharp.tick();
+      tickReturned = true;
+    } finally {
+      // Read the existing boundary clock before snapshot allocation or trace recording.
+      // Ordinary failed Ticks retain their previous clock reads.
+      if (tickReturned || nativeTickObserver) tickEndedAt = performance.now();
+      finishNativeInvokeTick(nativeTickObserver, tickStartedAt, tickEndedAt, tickReturned);
+    }
+    phaseTiming?.mark('postTickObservation', tickEndedAt);
+    const tickMs = tickEndedAt - tickStartedAt;
+    drainManagedTrace({ startedAt: tickStartedAt, endedAt: tickEndedAt });
     // Trace only: the owner publication this Tick left behind (executed step, not render sampling).
     const tracedPose = movementTrace && csharp.ownerPresentation ? JSON.parse(csharp.ownerPresentation()) : null;
     const state = JSON.parse(csharp.sessionState());
     currentSessionGeneration = state.generation ?? null;
     spectator.notServingCloses = state.notServingCloses ?? 0;
     player.inputsSent = state.sentInputs ?? 0;
+    if (inputDriver === 'step') {
+      player.bombIntentRefusalCount = csharp.bombIntentRefusalCount();
+      player.bombIntentStatusCode = csharp.bombIntentStatusCode();
+    }
     active = state.state === 'active';
     if (['faulted', 'closed', 'superseded'].includes(state.state)) {
       spectator.lastError = state.lastError || '';
       void finish(state.state === 'faulted' ? 'failed' : state.state).catch(error => console.error('[lumio-session] close failed', error));
+      phaseTiming?.finish({ complete: false, context: { state: state.state, phase: player.replica?.phase,
+        authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
       return;
     }
+    phaseTiming?.mark('refreshVoxelWorld');
     refreshVoxelWorld();
     let displayed = true;
     if (displayedWorldHandle) {
+      phaseTiming?.mark('configureMap');
       configureMap(csharp.mapDimensions());
+      phaseTiming?.mark('applyDump');
       displayed = applyDump(csharp.dumpPositions());
     } else paint([]);
+    phaseTiming?.mark('postDump');
     spectator.selfId = spectator.positions.find(position => position.self)?.id ?? null;
     spectator.voxel.sections = voxelGrid.sections().length;
+    if (inputDriver === 'step') refreshStepInput();
     if (displayed) setStatus(state.state);
     movementTrace?.pump({ startedAt: pumpStartedAt, tickAt: tickStartedAt, tickMs,
       totalMs: performance.now() - pumpStartedAt, state: state.state, pose: tracedPose });
+    if (phaseTiming) pumpTailStartedAt = performance.now();
+    phaseTiming?.mark('previewRefresh', pumpTailStartedAt);
+    movementPreviewControls?.refresh();
+    phaseTiming?.mark('resourceWitness');
+    if (resourceWitness?.status().complete) resourceWitness.noteStage('required-import-completed');
+    if (resourceWitness && state.state === 'active') resourceWitness.noteStage('real-session-admitted');
+    phaseTiming?.mark('schedule');
     const period = 1000 / csharp.tickRateHz();
     const now = performance.now();
     nextPumpAt += period;
     if (nextPumpAt <= now) nextPumpAt = now;
     pumpTimer = setTimeout(() => pumpSession(attempt), nextPumpAt - now);
+    phaseTiming?.finish({ tailStartedAt: pumpTailStartedAt, context: { state: state.state, phase: player.replica?.phase,
+      authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
   } catch (error) {
+    phaseTiming?.finish({ complete: false, error, tailStartedAt: pumpTailStartedAt, context: { state: active ? 'active' : null,
+      phase: player.replica?.phase, authorityTick: player.replica?.authorityTick, characterName: player.replica?.characterName, initialSelectionSent } });
     noteApplyFault(error);
     failLaunch(error);
   }
@@ -805,6 +1031,7 @@ async function loadSelectedConfig(signal) {
   if (selectedConfigLoaded) return;
   const response = await fetch('/api/game/config', { signal, cache: 'no-store', credentials: 'same-origin' });
   if (!response.ok) throw new Error('selected_client_config_unavailable');
+  if (resourceWitness) await resourceWitness.verifyDataResponse(response, '/api/game/config');
   const bundle = await response.text();
   signal.throwIfAborted();
   csharp.configureConfig(bundle);
@@ -822,6 +1049,13 @@ async function start() {
     setStatus('starting');
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
+    if (PLAYER_MODE) {
+      const { gasExecutionClock } = readMovementFlags();
+      if (!gasExecutionClock && !csharp.configureGasExecutionClock)
+        throw new Error("SpectatorExports.ConfigureGasExecutionClock missing");
+      csharp.configureGasExecutionClock?.(gasExecutionClock);
+      csharp.configureInputMode(inputDriver, Boolean(movementTrace));
+    }
     const abort = new AbortController();
     launchAbort = abort;
     await loadSelectedConfig(abort.signal);
@@ -851,6 +1085,7 @@ async function chooseFirstCharacter() {
   const abort = new AbortController();
   selectionAbort = abort;
   const { chooseEntryCharacter } = await import('./presentation/presentation.js');
+  resourceWitness?.noteImport('./presentation/presentation.js');
   abort.signal.throwIfAborted();
   const root = document.getElementById('presentation');
   root.hidden = false;
@@ -903,6 +1138,7 @@ function sendPlayerCommand(kind, publishRequest) {
 }
 
 async function initializePage() {
+  await initializeResourceWitness();
   if (PLAYER_MODE) {
     document.body.classList.add('player-page');
     const label = window.__lumioPlayerConfig.label;
@@ -914,18 +1150,56 @@ async function initializePage() {
     document.getElementById('enter').textContent = 'Reconnect';
     canvas.width = canvas.height = 760;
     const flags = readMovementFlags();
+    const privatePreview = movementPreviewEnabled() && flags.trace;
+    movementPhaseTimingEnabled = privatePreview;
+    if (privatePreview) document.body.classList.add('movement-private-preview');
+    const captureParams = new URLSearchParams(location.search);
+    const diagnosticAuto = privatePreview && captureParams.getAll('capture').length === 1 && captureParams.get('capture') === 'diagnostic';
+    if (diagnosticAuto) document.body.classList.add('movement-diagnostic-capture');
     inputDriver = flags.inputDriver;
-    if (flags.trace) {
+    if (flags.trace || movementPreviewEnabled()) {
       const { createMovementTrace, observeLongTasks } = await import('./movement-trace.mjs');
+      resourceWitness?.noteImport('./movement-trace.mjs');
       movementTrace = createMovementTrace();
       movementTrace.note(`input=${inputDriver}`);
       window.__lumioMovementTrace = movementTrace;
       observeLongTasks(movementTrace);
+      resourceWitness?.noteStage('trace-created');
+      const exportButton = document.getElementById('export-movement-trace');
+      if (exportButton) {
+        exportButton.hidden = false;
+        exportButton.addEventListener('click', exportMovementTrace);
+        if (privatePreview) exportButton.addEventListener('pointerdown', event => event.preventDefault());
+      }
       for (const type of ['keydown', 'keyup'])
         window.addEventListener(type, event => movementTrace.key(type, event.code, event.repeat), { capture: true });
     }
-    const { createPlayerInput } = await import('./player-controls.mjs');
-    playerInput = createPlayerInput({
+    const { createPlayerInput } = inputDriver === 'step'
+      ? await import('./player-intent-controls.mjs').then(({ createPlayerIntentControls }) => ({ createPlayerInput: createPlayerIntentControls }))
+      : await import('./player-controls.mjs');
+    resourceWitness?.noteImport(inputDriver === 'step' ? './player-intent-controls.mjs' : './player-controls.mjs');
+    playerInput = createPlayerInput(inputDriver === 'step' ? {
+      panel: document.getElementById('player-controls'),
+      ready: () => refreshStepInput(),
+      setMoveIntent: (primary, secondary, turn) => {
+        csharp.setMoveIntent(primary, secondary, turn);
+        try { movementTrace?.moveIntent(primary, secondary, turn); }
+        catch { try { movementTrace?.diagnosticFailure('move-intent-record'); } catch { /* Diagnostic only. */ } }
+      },
+      setBombIntent: phase => {
+        if (!managedLoaded || runtimeClosed) return 'accepted';
+        const code = csharp.setBombIntent(({ begin: 1, end: 3, cancel: 4 })[phase]);
+        if (code === 'player_bomb_intent_capacity') setStatus('error', '放弹操作太快，请松开后重试。');
+        return code;
+      },
+      latchSkillIntent: () => csharp.latchSkillIntent(),
+      clearIntent: () => { if (managedLoaded && !runtimeClosed) {
+        movementPreviewControls?.invalidate();
+        csharp.clearPlayerIntent();
+        try { movementTrace?.intentReset(); }
+        catch { try { movementTrace?.diagnosticFailure('intent-reset-record'); } catch { /* Diagnostic only. */ } }
+      } },
+    } : {
       driver: inputDriver,
       panel: document.getElementById('player-controls'),
       ready: () => active && !initialSelectionPending && player.replica?.inputOpen === true && !gameView?.inputBlocked(),
@@ -938,8 +1212,51 @@ async function initializePage() {
       bombButton: phase => sendPlayerCommand('bomb', () => csharp.bombButton(({ begin: 1, held: 2, end: 3, cancel: 4 })[phase])),
       useSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
     });
+    resourceWitness?.noteStage('controls-created');
+    if (movementPreviewEnabled()) {
+      const { createMovementPreviewControls } = await import('./movement-preview-controls.mjs');
+      resourceWitness?.noteImport('./movement-preview-controls.mjs');
+      const panel = document.getElementById('movement-preview-controls');
+      panel.hidden = false;
+      movementPreviewControls = createMovementPreviewControls({ panel, input: playerInput,
+        state: () => {
+          const identity=resourceWitness?.status();
+          const focused = document.activeElement;
+          const focusBlocked = focused?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]') &&
+            !document.getElementById('player-controls')?.contains?.(focused);
+          return { ready: inputDriver === 'step' ? refreshStepInput() :
+          active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true && !gameView?.inputBlocked() &&
+          !document.hidden && document.hasFocus?.() !== false && !focusBlocked,
+          resetToken: stepInputToken, inputMode: inputDriver, composition: '2 humans + 6 official Bot Hosts (admission UNVERIFIED)',
+          version: `Game ${identity?.sourceHead ?? 'UNAVAILABLE'} / SDK ${identity?.sdkVersion ?? 'UNAVAILABLE'}`,
+          identity: identity ? `${identity.arm}/${identity.pageRunId}` : 'UNAVAILABLE',
+          complete: identity?.complete ?? false, finitePose: previewFinitePose,
+          traceComplete:lastTraceCompleteness,inputsSent:player.inputsSent };
+        },
+        trace: () => movementTrace, exportTrace: exportMovementTrace });
+      const originalClear = playerInput.clear;
+      playerInput.clear = () => { movementPreviewControls.invalidate(); return originalClear(); };
+      window.addEventListener('pagehide', () => movementPreviewControls.destroy(), {once:true});
+      if (privatePreview && window.__lumioPlayerConfig.evidenceEndpoint) {
+        const { createPrivateDiagnosticCapture } = await import('./private-diagnostic-capture.mjs');
+        resourceWitness?.noteImport('./private-diagnostic-capture.mjs');
+        privateDiagnosticCapture = createPrivateDiagnosticCapture({ panel,
+          endpoint: window.__lumioPlayerConfig.evidenceEndpoint, auto: diagnosticAuto,
+          ready: () => {
+            const focused = document.activeElement;
+            const focusBlocked = focused?.closest?.('button,a,input,textarea,select,[contenteditable],[role="dialog"],[role="button"]') &&
+              !document.getElementById('player-controls')?.contains?.(focused);
+            return !focusBlocked && active && !terminal && !initialSelectionPending && player.replica?.inputOpen === true &&
+              !gameView?.inputBlocked() && (inputDriver !== 'step' || stepInputReady);
+          },
+          trace: () => { drainManagedTrace(null); return JSON.stringify(movementTrace.export()); },
+          witness: () => JSON.stringify(resourceWitness.validateExport(resourceWitness.snapshot())),
+          note: message => movementTrace.note(message) });
+        window.addEventListener('pagehide', () => privateDiagnosticCapture.destroy(), { once: true });
+      }
+    }
   }
   document.getElementById('enter')?.addEventListener('click', () => { void start(); });
   await start();
 }
-void initializePage();
+void initializePage().catch(failLaunch);

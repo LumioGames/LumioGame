@@ -42,7 +42,7 @@ public sealed class BrowserSessionOwner : IDisposable
     public static readonly NetEntityId Participant = new(7, 4);
     public byte[] Catalog { get; }
     public NativeVoxelWorld? Voxel { get; private set; }
-    public BrowserSessionOwner(bool parts = false, BomberClientConfig? configuration = null)
+    public BrowserSessionOwner(bool parts = false, BomberClientConfig? configuration = null, BomberPlayerStepOptions? stepOptions = null, Action? executionClockObserver = null)
     {
         _configuration = configuration;
         Profile = parts ? WebSocketTransportOptions.SuccessorBindingPartsSubProtocol : WebSocketTransportOptions.SuccessorBindingSubProtocol;
@@ -57,9 +57,11 @@ public sealed class BrowserSessionOwner : IDisposable
         _accepted = Accept();
         _reader = Receive();
         string launch = JsonSerializer.Serialize(new { wsUrl = $"ws://127.0.0.1:{port}/", admissionCredential = "unit-admission", subprotocol = Profile, roomId = "browser-room" });
+        var executionClock = executionClockObserver is null ? null : NativeMonotonicClock.Create(_engine.Native);
         Host = new SpectatorReplicaHost(_engine, new WebSocketClientConnectionFactory(_engine.Hfsm, SpectatorReplicaHost.TransportOptions(Profile)),
             Catalog, launch, _ => Task.FromException<string>(new InvalidOperationException("unexpected recovery")), Logs.Add,
-            manager => new NativeSections(Voxel = NativeWorldVoxelResources.Require(manager).Voxel), configuration);
+            manager => new NativeSections(Voxel = NativeWorldVoxelResources.Require(manager).Voxel), configuration, stepOptions,
+            executionClock is null ? null : () => { executionClockObserver!(); return executionClock.NowNanos(); });
         Host.Connect(launch);
         PumpUntil(() => _accepted.IsCompleted);
         _accepted.GetAwaiter().GetResult();
@@ -144,6 +146,7 @@ public sealed class BrowserSessionOwner : IDisposable
         }
     }
     public void Pump(int ticks = 5) { for (int i = 0; i < ticks; i++) { Host.Tick(); Thread.Sleep(2); } }
+    public byte[][] ReceivedFrames { get { lock (_received) return _received.Select(frame => frame.ToArray()).ToArray(); } }
     public byte[] TakeInput(Func<bool> request)
     {
         int before; lock (_received) before = _received.Count;

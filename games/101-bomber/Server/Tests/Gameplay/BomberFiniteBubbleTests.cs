@@ -1,4 +1,8 @@
+using System;
+using System.Buffers.Binary;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 using Lumio.Bomber.Gameplay.Config;
 using Lumio.Bomber.Gameplay.Contracts.Components;
 using Lumio.GameRuntime.Ecs;
@@ -11,19 +15,83 @@ namespace Lumio.Bomber.Gameplay.Tests;
 [Collection("BomberWorld")]
 public sealed class BomberFiniteBubbleTests
 {
+    private static readonly string[] LoadedPlanNames = { "Plan0", "Plan1", "Plan2", "Plan3", "Plan4" };
     [Fact]
     public void FrozenBubbleCapacityCoversEveryPublishedRowControlAndPayload()
     {
         using var scene = new BomberTerrainProductionTests.Scene(0, controlled: true);
-        EffectLimits limits = GasWorldContext.Require(scene.World).EffectLimits;
+        var gas = GasWorldContext.Require(scene.World);
+        EffectLimits limits = gas.EffectLimits;
         Assert.Equal(256, limits.PendingRequests);
         Assert.Equal(24, limits.LiveRows);
         Assert.Equal(3, limits.PerTargetRows);
         Assert.Equal(56, limits.PendingControls);
         Assert.Equal(192, limits.MaxPayloadBytes);
         Assert.Equal(360, limits.ResultRecords);
-        Assert.Equal(6000, limits.ReducerWrites);
+        Assert.Equal(5, gas.Reducers.Count);
+        var expected = new[]
+        {
+            (Id: "bomber.fire", Type: typeof(BomberFireReducer), Budget: new LoadedBudget(1816, 1816, 87168, 1000000, 16032)),
+            (Id: "bomber.fire-region", Type: typeof(BomberFireZoneLifetimeReducer), Budget: new LoadedBudget(720, 0, 31680, 1000000, 7520)),
+            (Id: "bomber.health", Type: typeof(BomberHealthReducer), Budget: new LoadedBudget(2160, 2160, 103680, 1000000, 6592)),
+            (Id: "bomber.settlement", Type: typeof(BomberSettlementReducer), Budget: new LoadedBudget(3600, 3600, 172800, 1000000, 17928)),
+            (Id: "bomber.outcome", Type: typeof(BomberOutcomeReducer), Budget: new LoadedBudget(423, 0, 18612, 1000000, 32976)),
+        };
+        var loaded = ReadLoadedBudgets();
+        Assert.Equal(expected.Select(row => row.Id).OrderBy(id => id, StringComparer.Ordinal),
+            loaded.Select(row => row.Id).OrderBy(id => id, StringComparer.Ordinal));
+        var authored = typeof(GeneratedEffectReducers).Assembly.GetTypes()
+            .Select(type => (Type: type, Attribute: type.GetCustomAttribute<EffectReducerAttribute>()))
+            .Where(row => row.Attribute is not null).ToArray();
+        Assert.Equal(5, authored.Length);
+        foreach (var row in expected)
+        {
+            Assert.Equal(row.Budget, Assert.Single(loaded, plan => plan.Id == row.Id).Budget);
+            var declaration = Assert.Single(authored, item => item.Attribute!.Id == row.Id);
+            Assert.Equal(row.Type, declaration.Type);
+            Assert.Equal((uint)row.Budget.Writes, declaration.Attribute!.MaxWrites);
+        }
+        int writes = loaded.Sum(row => row.Budget.Writes), indexed = loaded.Sum(row => row.Budget.Indexed);
+        int bytes = loaded.Sum(row => row.Budget.Bytes), work = loaded.Sum(row => row.Budget.Work);
+        int scratch = loaded.Max(row => row.Budget.Scratch);
+        Assert.Equal((8719, 7576, 413940, 5000000, 32976), (writes, indexed, bytes, work, scratch));
+        Assert.Equal(writes, limits.ReducerWrites);
+        Assert.Equal(indexed, limits.ReducerIndexedWrites);
+        Assert.Equal(bytes, limits.ReducerWriteBytes);
+        Assert.Equal(work, limits.ReducerWorkUnits);
+        Assert.Equal(128, limits.ReducerFields);
+        Assert.Equal(16, limits.MaxReducerValueBytes);
+        Assert.Equal(65536, limits.ReducerScratchBytes);
+        Assert.True(limits.ReducerScratchBytes >= scratch);
+        Assert.Equal(413940, writes * (28 + limits.MaxReducerValueBytes) + indexed * 4);
         Assert.True(limits.ResultRecords >= limits.PendingRequests + limits.PendingControls + 2 * limits.LiveRows);
+    }
+
+    private readonly record struct LoadedBudget(int Writes, int Indexed, int Bytes, int Work, int Scratch);
+
+    private static (string Id, LoadedBudget Budget)[] ReadLoadedBudgets()
+    {
+        FieldInfo[] fields = typeof(GeneratedEffectReducers).GetFields(BindingFlags.Static | BindingFlags.NonPublic)
+            .Where(field => field.Name.StartsWith("Plan", StringComparison.Ordinal)).OrderBy(field => field.Name, StringComparer.Ordinal).ToArray();
+        Assert.Equal(LoadedPlanNames, fields.Select(field => field.Name));
+        return fields.Select(field =>
+        {
+            Assert.True(field.IsLiteral && !field.IsInitOnly);
+            Assert.Equal(typeof(string), field.FieldType);
+            byte[] encoded = Convert.FromBase64String(Assert.IsType<string>(field.GetRawConstantValue()));
+            Assert.True(encoded.Length >= 4);
+            Assert.Equal((uint)(encoded.Length - 4), BinaryPrimitives.ReadUInt32LittleEndian(encoded));
+            using JsonDocument document = JsonDocument.Parse(encoded.AsMemory(4));
+            JsonElement root = document.RootElement;
+            Assert.Equal(JsonValueKind.Array, root.ValueKind);
+            Assert.Equal(10, root.GetArrayLength());
+            string id = Assert.IsType<string>(root[2].GetString());
+            JsonElement budget = root[8];
+            Assert.Equal(JsonValueKind.Array, budget.ValueKind);
+            Assert.Equal(5, budget.GetArrayLength());
+            return (id, new LoadedBudget(budget[0].GetInt32(), budget[1].GetInt32(), budget[2].GetInt32(),
+                budget[3].GetInt32(), budget[4].GetInt32()));
+        }).ToArray();
     }
     [Fact]
     public void ActualBubbleCastUsesARealFiniteEffectBeforePublicProjection()

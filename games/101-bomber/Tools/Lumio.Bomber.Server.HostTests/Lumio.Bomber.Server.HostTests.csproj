@@ -22,13 +22,16 @@
     <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/Host/**/*.cs" Link="Host/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- ADR-123: HostEntry and the Runtime three-path come from Engine/server/<rid>/. -->
     <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/EngineRelease.cs" Link="EngineRelease.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)../../Server/Tests/Gameplay/EngineReleaseSelectionTests.cs" Link="EngineReleaseSelectionTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Microsoft.Testing.Platform" />
+    <PackageReference Include="Lumio.Engine.SDK" />
     <!-- HostEntry loads into this process's default context and its Runtime three-path needs the
          logging abstractions at run time; the release's server/<rid>/SDK/Managed does not carry
          framework-adjacent packages (same reason as Lumio.Bomber.Gameplay.Tests). -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="10.0.11" />
   </ItemGroup>
+  <Import Project="../../eng/EngineTestRelease.targets" />
 </Project>

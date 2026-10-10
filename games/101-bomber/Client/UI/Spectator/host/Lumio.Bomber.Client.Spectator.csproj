@@ -44,6 +44,11 @@
     <Compile Include="..\SpectatorJsonContracts.cs" Link="SpectatorJsonContracts.cs" />
     <Compile Include="..\SpectatorJsonContext.cs" Link="SpectatorJsonContext.cs" />
     <Compile Include="..\SpectatorReplicaHost.cs" Link="SpectatorReplicaHost.cs" />
+    <Compile Include="..\BomberPlayerIntent.cs" Link="BomberPlayerIntent.cs" />
+    <Compile Include="..\BomberPlayerStepOptions.cs" Link="BomberPlayerStepOptions.cs" />
+    <Compile Include="..\BomberInputTrace.cs" Link="BomberInputTrace.cs" />
+    <Compile Include="..\BomberTelemetryJointPrediction.cs" Link="BomberTelemetryJointPrediction.cs" />
+    <Compile Include="..\ManagedFacadeTiming.cs" Link="ManagedFacadeTiming.cs" />
   </ItemGroup>
   <!--
     The page is the deliverable, so it has to be in the publish output. It lives
@@ -64,7 +69,10 @@
     <Content Include="..\index.html" Link="wwwroot\index.html" />
     <Content Include="..\main.js" Link="wwwroot\main.js" />
     <Content Include="..\player-controls.mjs" Link="wwwroot\player-controls.mjs" />
+    <Content Include="..\player-intent-controls.mjs" Link="wwwroot\player-intent-controls.mjs" />
     <Content Include="..\movement-trace.mjs" Link="wwwroot\movement-trace.mjs" />
+    <Content Include="..\movement-preview-controls.mjs" Link="wwwroot\movement-preview-controls.mjs" />
+    <Content Include="..\loaded-resource-witness.mjs" Link="wwwroot\loaded-resource-witness.mjs" />
     <Content Include="..\game-view.mjs" Link="wwwroot\game-view.mjs" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.js" Link="wwwroot\presentation\presentation.js" />
     <Content Include="$(LumioBomberRepoRoot)Client\Presentation\dist\presentation.css" Link="wwwroot\presentation\presentation.css" />
