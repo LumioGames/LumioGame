@@ -3646,3 +3646,14 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - `f1-gas-execution-telemetry-aot-preflight-review-01/report-01.md`：2740B，SHA256 `b87573a1bedf4d09fe07b770b11a1acc1179cc32c32739b719833a9bae580b63`。
 - `f1-gas-execution-telemetry-aot-preparation-01/root-start-request-01.tool-result.json`：607B，SHA256 `7d732c7f5adda977aa14dd5ebfbb3235f481419986011a4bf7130ded5274e54a`。
 - `C:/Work/LumioGames/.run-f1-aot-gas-telemetry-20261010-01/artifacts/bin/Lumio.Bomber.Client.Spectator/release/Lumio.Bomber.Client.Spectator.dll`：870912B，SHA256 `a8fbbe3be7c334f8d7f077fd6c9b68bbca8f96c521a465fb821084e8186d704e`。
+
+
+## checkpoint260 — 2026-10-10 新 telemetry FullAOT 与实际闭包范围核对
+
+- Game 诊断源码仍为 PR59 draft HEAD `2425f47a0a3b788bd6a284871a8e327ddce5f82d`，精确58源码绑定与本次494发布输入前后均0漂移；20个DLL、Gameplay826/SDK25d/Ecsd15、Presentation195输入与两个输出、页面main.js保持已记录的实际身份。未把旧Host/Gas结果当成本次证明。
+- 新 FullAOT实际 dotnet PID10384、raw0、177.0567115s、无超时（checkpoint259）。Root 本次执行90项元数据提取，43个当前boot选中程序集全部PE/WebCIL比较通过：27652方法、26503方法体；Host当前120源码文档/105生成物/33JSExports/PDB通过，typed DTO共98字段。托管审计子PID10376、raw0、输入0漂移；原生审计PID28332和posttrim→AOT审计PID12156均raw0，44个实际AOT对象与新链接产物闭合。
+- 新native WASM22556139B SHA `47b7c95438eedeaca1a626daa5790dc46915b6b3aea84c4e92894a51d9575558`；Host posttrim PE827392B SHA `4bc30826f6d53aa14c49fb11e694f35b6873366221afc899d9ee0877433ee341`，boot WebCIL827157B SHA `f8e03587ecaebe5c25c3041fc4d0b96fd090d0cefff8a49ba40ddce2425f1d1a`；Gas当前PE SHA `7379e29b456824521a0a9fab4b2a5a389756c1594ab2d022ca370ea1d9df8050`，WebCIL SHA `fd66ea021e335d61711ae084da0b02796096efdeb8b362bfd8cdec0e3fe992a8`。
+- 为消除仅凭源码/方法名猜测调用的缺口，隔离无包依赖静态Metadata工具实际构建PID31180/28368均raw0，实际提取PID6464/32756均raw0；四公开API各有Host真实call/callvirt根，Options4/Status25/Record9 getter shape完整。trim后参数名缺失明确记为UNAVAILABLE，按不含参数名的真实签名比较。时钟实际构造Core→_core字段→get_Clock→ITickMonotonicClock→Core.NowNanos→HotCodec.NowNanos→Transport.Invoke，ldstr token0x70000B8B实际值`clock_now`。原工具01/字段02/字符串03和原始收据均保全。此静态提取范围通过不等于浏览器执行或性能通过，最终API/clock审计组合和新consumer/守卫/启动尚待随后独立证据。
+- 实际身份汇总：`f1-gas-execution-telemetry-checkpoint-260-draft-01/actual-stage-identities-01.json`3136B SHA `08d87c62f8382a14ecd1a631dfabff7db6f5bc0d663da96a27c11f2b24732402`（根证据目录仍为`.run/20261008-movement-review-02/browser/movement-lab-live-01`）。新 managed audit1989450B SHA `d8a801fb09763a1edf8e12a530aac05e6ff8076ec4cb872db68f07eec9b6a651`；typed proof163677B SHA `0f5f7169bca65614eb36052a7b54ea9c0100da5fc9d3ce57af571b2303178af7`。
+- 只读成本候选04保留；errata05明确ExecuteJointInput计时包括其下游HFSM Marshal/传输及同步序列化，排除括号外Remove/Project及Host trace导出。未由458ms或replay次数宣称封送是根因，未实施性能改动。checkpoint259 GitHub API短暂滞后已消失，PR60实际head已读回`6c1e757b9d5b120159b21344a6b118ed960cbbfd`。
+- 边界：20Hz/8参与者含6官方Bot/体素/协议/额度保持；受保护端口未动、旧日志/脏文件/封件保全。Owner/ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED、F4 NOT_OPENED；手感 FAIL_PENDING_USER。新包前台和完整四组矩阵未跑，任务未完成。
