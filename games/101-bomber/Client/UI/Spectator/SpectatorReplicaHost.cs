@@ -65,7 +65,9 @@ public sealed class SpectatorReplicaHost : IDisposable
         var input = new InputSampleIngress(16);
         var sections = new ReplicaSectionEnvelopeReader();
         _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
-        _telemetryJoint = _inputTrace is null || executionClock is null ? null : new BomberTelemetryJointPrediction(_joint, executionClock, _inputTrace);
+        _telemetryJoint = _inputTrace is null || executionClock is null ||
+            (AppContext.TryGetSwitch("Lumio.Bomber.DisableGasExecutionClock", out bool disabled) && disabled)
+            ? null : new BomberTelemetryJointPrediction(_joint, executionClock, _inputTrace);
         var replicas = new ClientReplicaFactory(() => engine.CreateWorld(new WorldCreationOptions(GeneratedRegistry.Instance)
         {
             Config = config.CreateWorldBinding(), Catalog = catalog, Subsystems = ReplicaSchedulingSubsystem.Create(),

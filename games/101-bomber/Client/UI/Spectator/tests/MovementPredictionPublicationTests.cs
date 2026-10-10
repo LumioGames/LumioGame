@@ -29,9 +29,10 @@ public sealed class MovementPredictionPublicationTests
 
     internal static void RunActualPrediction(string boundary, Action<BrowserSessionOwner, NetEntityId>? inspect = null,
         Action<BrowserSessionOwner, NetEntityId>? beforeMove = null, BomberPlayerStepOptions? stepOptions = null,
-        ulong wireGeneration = 1, bool seedIdleOutcome = false, bool seedPendingTurn = false)
+        ulong wireGeneration = 1, bool seedIdleOutcome = false, bool seedPendingTurn = false,
+        Action? executionClockObserver = null)
     {
-        using var owner = new BrowserSessionOwner(parts: true, stepOptions: stepOptions);
+        using var owner = new BrowserSessionOwner(parts: true, stepOptions: stepOptions, executionClockObserver: executionClockObserver);
         using var server = owner.CreateServerProjectionWorld(new ProjectionRegistry(BrowserSessionOwner.LoadServerRegistry()), 7);
         server.AttachControlAdapter(new ProjectionProfile());
         server.Tick(); server.DrainOutbox();

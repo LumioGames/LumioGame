@@ -751,6 +751,7 @@ test('first character choice finishes before Platform launch or Session boot', a
   const selection = new Promise(resolve => choose = resolve);
   const context = vm.createContext({ TextEncoder, AbortController, calls, selection, performance: { now: () => 0 },
     async finish() {}, setStatus() {}, paint() {}, readQuery() { return {}; },
+    readMovementFlags() { return { gasExecutionClock: true }; },
     async loadWasmExports() { calls.push('wasm'); return true; },
     async loadSelectedConfig() { calls.push('config'); },
     async chooseFirstCharacter() { calls.push('choose'); return selection; },
@@ -773,7 +774,7 @@ test('first character choice finishes before Platform launch or Session boot', a
 test('a closed pre-admission selection cannot launch after a late confirmation', async () => {
   const calls=[]; let choose;
   const context=vm.createContext({TextEncoder,AbortController,calls,performance:{now:()=>0},selection:new Promise(resolve=>choose=resolve),
-    async finish(){},setStatus(){},paint(){},readQuery(){return{};},
+    async finish(){},setStatus(){},paint(){},readQuery(){return{};},readMovementFlags(){return{gasExecutionClock:true};},
     async loadWasmExports(){return true;},async loadSelectedConfig(){},async chooseFirstCharacter(){return context.selection;},
     async obtainLaunch(){calls.push('launch');return LAUNCH;},async loadCatalog(){return'{}';},pageAllowsLoopback(){return true;},
     csharp:{configureInputMode(){},async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
@@ -1001,4 +1002,71 @@ test('a stale asynchronous GameView import cannot revive a replaced handle or a 
   await page.evalInPage("finish('closed')"); retiredCallback.callback(); await drain();
   assert.equal(current.disposeCount, 1); assert.equal(page.timers.size, 0);
   assert.equal(fixture.nodes.get('presentation').hidden, true); assert.equal(page.win.__lumioPresentation.status, 'closed');
+});
+
+
+async function gasClockStartup(options = {}) {
+  const calls = [], clocks = [], errors = [];
+  const api = Object.fromEntries(['ConfigureConfig', 'Close', 'Tick', 'TickRateHz', 'SessionState', 'WorldHandleBytes', 'ReadBox', 'DumpPositions', 'MapDimensions',
+    'ConnectionState', 'LastApplyError', 'WorldInstanceId', 'PresentationState', 'SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig',
+    'SetMoveIntent', 'SetBombIntent', 'LatchSkillIntent', 'SetInputIntentEnabled', 'ClearPlayerIntent', 'GetBombIntentRefusalCount', 'GetBombIntentStatusCode', 'GetInputIntentResetToken', 'DrainInputTrace']
+    .map(name => [name, () => {}]));
+  api.ConfigureInputMode = (mode, trace) => calls.push(['input', mode, trace]);
+  api.Boot = async () => calls.push(['boot']);
+  if (!options.missingExport) api.ConfigureGasExecutionClock = enabled => { clocks.push(enabled); calls.push(['gas-clock', enabled]); if (options.liveError) throw options.liveError; };
+  const context = vm.createContext({ api, calls, URLSearchParams, TextEncoder, AbortController,
+    location: { search: options.search ?? '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off', hostname: options.hostname ?? '127.0.0.1' },
+    LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'], __lumioDevelopment: options.development,
+    csharp: {}, performance: { now: () => 0 },
+    async finish() {}, setStatus() {}, paint() {}, readQuery() { return {}; },
+    async loadWasmExports() { context.bindExports(api); return true; },
+    async loadSelectedConfig() { calls.push(['config']); }, async chooseFirstCharacter() { return 'duck'; },
+    async obtainLaunch() { return LAUNCH; }, async loadCatalog() { return '{}'; },
+    pumpSession() { calls.push(['pump']); }, failLaunch(error) { errors.push(error); } });
+  vm.runInContext('const PLAYER_MODE=' + (options.player !== false) + "; let inputDriver='step',movementTrace={}; let developmentSession=null; let selectedCharacter='duck',initialSelectionPending=false,initialSelectionSent=false,terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;", context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()')), context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function bindExports(api)'), MAIN_SOURCE.indexOf('let managedLoaded = false;')), context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
+  await context.start();
+  return { calls, clocks, errors, flags: context.readMovementFlags() };
+}
+
+test('private GAS clock exact off configures the real export before input and Boot', async () => {
+  const p = await gasClockStartup();
+  assert.deepEqual(p.errors, []);
+  assert.deepEqual(p.clocks, [false]);
+  assert.deepEqual(p.calls.slice(0, 2), [['gas-clock', false], ['input', 'step', true]]);
+  assert.ok(p.calls.findIndex(x => x[0] === 'gas-clock') < p.calls.findIndex(x => x[0] === 'boot'));
+});
+
+test('private GAS clock missing opt-out export fails before real Boot', async () => {
+  const p = await gasClockStartup({ missingExport: true });
+  assert.equal(p.calls.some(x => x[0] === 'boot'), false);
+  assert.equal(p.errors.length, 1);
+  assert.match(p.errors[0].message, /ConfigureGasExecutionClock/);
+});
+
+test('private GAS clock live configuration failure retains the original error', async () => {
+  const original = new Error('client_input_mode_live');
+  const p = await gasClockStartup({ liveError: original });
+  assert.deepEqual(p.errors, [original]);
+  assert.equal(p.calls.some(x => x[0] === 'boot'), false);
+});
+
+test('private GAS clock default and ineligible flags preserve enabled behavior', async () => {
+  for (const options of [
+    { search: '?scene=movement-sync-preview&trace=movement&input=step' },
+    { search: '?scene=movement-sync-preview&trace=movement&input=step&gasClock=on' },
+    { search: '?scene=movement-sync-preview&trace=movement&gasClock=off&gasClock=off' },
+    { search: '?scene=movement-sync-preview&trace=movement&gasClock=unknown' },
+    { search: '?scene=ordinary&trace=movement&gasClock=off' },
+    { search: '?scene=movement-sync-preview&gasClock=off' },
+    { hostname: 'game.example' },
+  ]) { const p = await gasClockStartup(options); assert.deepEqual(p.errors, []); assert.deepEqual(p.clocks, [true], JSON.stringify(options)); }
+  const legacy = await gasClockStartup({ missingExport: true, search: '?scene=movement-sync-preview&trace=movement' });
+  assert.deepEqual(legacy.errors, []); assert.ok(legacy.calls.some(x => x[0] === 'boot'));
+  const nonplayer = await gasClockStartup({ player: false });
+  assert.deepEqual(nonplayer.errors, []); assert.deepEqual(nonplayer.clocks, []);
+  const development = await gasClockStartup({ hostname: 'development.example', development: true });
+  assert.deepEqual(development.errors, []); assert.deepEqual(development.clocks, [false]);
 });

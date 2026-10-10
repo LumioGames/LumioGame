@@ -36,6 +36,13 @@ public static partial class SpectatorExports
     }
 
     [JSExport]
+    public static void ConfigureGasExecutionClock(bool enabled)
+    {
+        if (s_client is not null || s_engine is not null) throw new InvalidOperationException("client_input_mode_live");
+        AppContext.SetSwitch("Lumio.Bomber.DisableGasExecutionClock", !enabled);
+    }
+
+    [JSExport]
     public static void ConfigureConfig(string bundle)
     {
         if (s_configuration is not null || s_client is not null || s_engine is not null)

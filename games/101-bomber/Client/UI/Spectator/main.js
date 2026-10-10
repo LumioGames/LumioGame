@@ -536,6 +536,8 @@ function bindExports(api) {
   csharp.boot = (launch, catalog, loopback) => api.Boot(JSON.stringify(launch), catalog, loopback);
   csharp.configureConfig = value => api.ConfigureConfig(value);
   csharp.configureInputMode = (mode, trace) => api.ConfigureInputMode(mode, trace);
+  csharp.configureGasExecutionClock = typeof api.ConfigureGasExecutionClock === 'function'
+    ? enabled => api.ConfigureGasExecutionClock(enabled) : undefined;
   csharp.close = () => api.Close();
   csharp.tick = () => developmentSession ? developmentSession.run(() => api.Tick(), 0) : api.Tick();
   csharp.tickRateHz = () => api.TickRateHz();
@@ -701,10 +703,14 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
 // Movement experiments and traces stay on loopback pages and the development bridge.
 function readMovementFlags() {
-  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false };
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true };
   const params = new URLSearchParams(location.search);
   const requested = params.get('input');
-  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace: params.get('trace') === 'movement' };
+  const trace = params.get('trace') === 'movement';
+  const gasClock = params.getAll('gasClock');
+  const gasClockOff = PLAYER_MODE && params.get('scene') === 'movement-sync-preview' && trace &&
+    gasClock.length === 1 && gasClock[0] === 'off';
+  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff };
 }
 
 function pageAllowsLoopback() {
@@ -1043,7 +1049,13 @@ async function start() {
     setStatus('starting');
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
-    if (PLAYER_MODE) csharp.configureInputMode(inputDriver, Boolean(movementTrace));
+    if (PLAYER_MODE) {
+      const { gasExecutionClock } = readMovementFlags();
+      if (!gasExecutionClock && !csharp.configureGasExecutionClock)
+        throw new Error("SpectatorExports.ConfigureGasExecutionClock missing");
+      csharp.configureGasExecutionClock?.(gasExecutionClock);
+      csharp.configureInputMode(inputDriver, Boolean(movementTrace));
+    }
     const abort = new AbortController();
     launchAbort = abort;
     await loadSelectedConfig(abort.signal);
