@@ -3973,3 +3973,15 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - 本段没有当前新包前台cost因果或用户验收通过；20Hz、5步/250ms、8人6Bot、体素、协议与额度保持。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本稿关键原件路径/字节/SHA及历史Mac来源见f1-coordination-checkpoint281-draft-01/inputs-02.json（含原01十项历史引用，原稿/原件不改）。
+
+### checkpoint282 — 精确声明根私有SDK3与真实fresh fullAOT04（2026-10-10 UTC）
+
+- 承接checkpoint281，原AOT03裁剪失败、完整joint09的648PASS/1FAIL及后续单例2PASS均保留，联合分配断言原因仍UNKNOWN，不把本次发布raw0改称649全绿。Runtime精确根仅三个Event方法名与两个Keywords字段名；独立review06仅冻结源码/普通两TFMmetadata/声明ABI SPEC PASS_SCOPED、QUALITY APPROVED_SCOPED，不预先覆盖fresh AOT或浏览器。
+- Runtime仅两源正常commit77a20095（parent1f3d0ea9，PID19540/raw0，25+/8-），九源与freeze04字节相同，87旧生成dirty保全、index空、未push。正常两TFM实际产物及原测试仍是1f3d0ea9工作树加精确根源码编译，后77a为相同字节的提交身份，不重标为77a后重跑或重编；source/control与实际Csc范围保持原记录区分。
+- SDK3新私有target305物理文件（302逐字复制+2 Runtime DLL+1derived manifest），derive18720、normal verify31656、selector32868均raw0，原SDK与新target输入0漂移；manifest46341B/SHA256 36779a6a49bf4112cb96e4437908b9208db54b1a6c7a6789128a0bbf5886ef36。officialCompletePackageClaim/officialPublication/OwnerApproved均false。copy时Runtime当前HEAD1f3d与compile base如实保留，AOT04计划另记实际source commit77a，不改旧copy原件。
+- 真实ABI PID25500/raw0比较normal03→04两TFM Ecs/Gas四组：net10类型544/322、ns21 548/329，声明形状allEqual/changes0；有意排除private方法自定义属性、方法体/MVID/InformationalVersion，不证明行为或裁剪等价。Root据此及Game f7/3861当前输入0漂移复用实际Dual03：仍是原SDK2下client17560/server32764普通编译产物与原PDB173/251，不称SDK3新双build，AOT04重新绑定SDK3 Runtime。
+- attempt04 fresh restore PID31464/raw0/noTimeout/5.094s、6139输入0漂移、489 restored成员，绑定SDK3/原Dual03复用/当前Game f7。原collector sourceBefore/After/Matches=null设计保留，Root另以实际current3861源码/Git身份采纳，不伪填true。原prepared计划状态字节保留，实际后续执行以Root adoption及真实receipt证明。
+- 真实fresh fulltrim/fullAOT04 PID19956/raw0/noTimeout/188.8099517s，Game f7 before/after/sourceMatches=true，6634输入前后独立逐项0漂移。实际Release/net10/browser-wasm、EventSourceSupport=true、RunAOTCompilation=true、PublishTrimmed=true、WasmStripILAfterAOT=false；stdout10503B/SHA256 61eea4393ebc47189627fa30ebbfd800e23a3938312289d7df0c0018e8f4e240含44程序集→44bitcode→44object→native assets/link→publish，未出现IL分析error/warning。成功输出发布root C:/Work/LumioGames/.run-f1-aot-coordination-20261011-04/publish；此是实际编译发布通过。
+- 只读核16关键输出前后0漂移，含实际native AOT WASM23392684B、Host/Gameplay/Ecs/Gas WebCIL及retained linked PE、dotnet启动/运行脚本、Game main与SDK3 Rust WASM；原件字节/SHA与范围见inputs01，未编译/实例化WASM或提取closure。Root完整真实闭包取证尚在进行，本稿不授予其PASS；新包当前页面加载、typed listener实际capture、cost因果及用户手感仍未通过。20Hz、5步/250ms、8人6Bot、体素、协议、Owner预算与现有上限未改；Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；关键原件路径/字节/SHA见f1-coordination-checkpoint282-draft-01/inputs-01.json。
