@@ -3985,3 +3985,15 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - 只读核16关键输出前后0漂移，含实际native AOT WASM23392684B、Host/Gameplay/Ecs/Gas WebCIL及retained linked PE、dotnet启动/运行脚本、Game main与SDK3 Rust WASM；原件字节/SHA与范围见inputs01，未编译/实例化WASM或提取closure。Root完整真实闭包取证尚在进行，本稿不授予其PASS；新包当前页面加载、typed listener实际capture、cost因果及用户手感仍未通过。20Hz、5步/250ms、8人6Bot、体素、协议、Owner预算与现有上限未改；Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；关键原件路径/字节/SHA见f1-coordination-checkpoint282-draft-01/inputs-01.json。
+
+### checkpoint283 — fresh字节闭包通过与私有完整IL检查（2026-10-10 UTC）
+
+- 承接checkpoint282，当前Game f7/Runtime编译base1f3d加freeze04、后commit77a、私有SDK3 manifest36779和真实AOT04身份不改。实际managed extraction父12420/raw0/noTimeout/input0：43 managed pairs、49 boot assets、93子任务全raw0；未沿用历史计数。缺失Ecs/Gas linked PDB按本次selected/copy/linked实际路径逐一确认UNAVAILABLE，不伪造checksum；两normal compile PDB及当前Gas17 EmbeddedSource、实际Csc→ILLink→linked链另证仍保留。
+- 实际native audit7108/raw0/noTimeout/input0，17checks全true、44objects/注册/真实linker/boot/native/压缩包绑定；posttrim audit34732/raw0绑定43 linked→44 AOT input。formal网页实际使用SDK3完整engine Rust WASM及其体素模块，独立voxel WASM不是该host发布依赖；保持体素，不以删除资产或fault日志通过。native23392684B/SHA256 57555b8b15ac20853d49c9c84aeb1cca78a8b73a068ad2a7c3c6cd5991b8e3d4；原生语义与浏览器性能不由静态一致性替代。
+- managed07 PID28152/raw1因原expectedDtoShape含六字段而工具仅解析三字段；managed08 PID15088/raw1因生成属性合法C# @closed转义与原字符串预期不符。原失败及名单遗漏完整保全；新工具仍逐项检查12类224属性的六字段源码声明/line/nullable、三字段语义、required、生成metadata/getter、完整PE/WebCIL。真实managed09 PID31352/raw0/noTimeout/input0，43/43 pairs、29555 methods/28359 bodies、13checks全true/failures0；audit09 SHA256764f29df8c0b06144a8adda8ba368d320b444f21b48939da0a5c238dbeab50e7。
+- CallRoots原04 PID3528静态扫描60s timeout、原05 PID34228因不可变Game合同没有Runtime API形状字段失败，原输出保留。新专项合同绑定真实两API源/PDB/Csc，保留4/25/9 getter和四签名（含in/byref），不修改Game70fb合同；normal小tool build26500/raw0。真实CallRoots06 PID9304/raw0/noTimeout/input0，四API/四Host direct roots/11825 callsites完整提取；只静态参考token范围，不授予计时时钟/协调语义或前台可达PASS。
+- 当前Client73d字节仍来自原完整base2d868，SDK3为两Runtime DLL私有派生，不冒称官方complete。实际当前paired Client fullIL PID25412/raw0/noTimeout/input0；当前Game f7 carry guard fullIL PID29600/raw0/noTimeout/input0，两client/server ExecuteMovement各343指令/805B，client完整PE/WebCIL metadata与IL一致；语义review尚在进行，不继承旧结果。
+- 实际provider10 PID11212/raw1/noTimeout/input0：CoordinationCompleted pretrim RuntimeHelpers.get_OffsetToStringData()与posttrim ldc.i4.s12以及相关branch/offset不同。原失败不删；正核对真实CoreLib常量、三writer完整控制流/EH/locals与有限规范化，不删除检查消红，也不重新关闭trim或改Runtime逻辑。
+- 用户开发高帧率诉求继续执行；源码无FPS cap，尚无实际heap grow/GC/audio limit命中证据，本段没有调高tick/协议/额度/补算/音频/诊断上限，没有新包前台计时或用户手感通过。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实原件路径/字节/SHA见f1-coordination-checkpoint283-append-01/inputs-01.json。
