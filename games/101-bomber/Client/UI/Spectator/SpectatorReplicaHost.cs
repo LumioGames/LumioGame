@@ -36,6 +36,8 @@ public sealed class SpectatorReplicaHost : IDisposable
     private readonly BomberInputTrace? _inputTrace;
     private readonly BomberPlayerIntent _intent = new();
     private readonly BomberPlayerStepOptions? _stepOptions;
+    private readonly bool _coordinationArmed;
+    private BomberCoordinationCostCollector? _coordinationCost;
     private readonly string _intentLifetime = Guid.NewGuid().ToString("N");
     private InputIdentity? _inputIdentity;
     private InputIdentity? _lastTraceIdentity;
@@ -49,6 +51,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         _session = session;
         _stepOptions = stepOptions;
         _inputTrace = stepOptions.TraceEnabled ? trace : null;
+        _coordinationArmed = _inputTrace is not null && AppContext.TryGetSwitch("Lumio.Bomber.CoordinationCost", out bool enabled) && enabled;
         _joint = new RuntimeJointPrediction(new VoxelPredictionConfig(64UL << 20, 512, 4096, 4096, 4096, 64, 4096, 1024, 256));
     }
 
@@ -59,6 +62,7 @@ public sealed class SpectatorReplicaHost : IDisposable
     {
         _stepOptions = stepOptions;
         _inputTrace = stepOptions?.TraceEnabled == true ? new BomberInputTrace() : null;
+        _coordinationArmed = _inputTrace is not null && AppContext.TryGetSwitch("Lumio.Bomber.CoordinationCost", out bool enabled) && enabled;
         _sent.Trace = _inputTrace;
         var launch = ReadLaunch(launchJson);
         var config = configuration ?? SpectatorDump.LoadEmbeddedClientConfig();
@@ -133,6 +137,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         var workBefore = _inputTrace?.CaptureWorkCounters(_session);
         bool record = timing?.Begin() == true;
         bool sessionInvoked = false;
+        _coordinationCost?.BeginPump(record ? timing!.PendingOrdinal : null);
         try
         {
             ReconcileInputIdentity();
@@ -140,22 +145,26 @@ public sealed class SpectatorReplicaHost : IDisposable
             if (!before.IsDisposed)
             {
                 var ownerTick = new ClientOwnerTick(checked(before.OwnerTick + 1));
+                _coordinationCost?.EnterSession();
                 if (record) timing!.Session(invoked: true);
                 sessionInvoked = true;
                 _session.Tick(ownerTick);
             }
             else if (record) timing!.Session(invoked: false);
             if (record) timing!.Post();
+            _coordinationCost?.LeaveSession();
             ReconcileInputIdentity();
             if (_session.GetSnapshot().CleanupStatus == SessionCleanupStatus.Failed)
                 throw new InvalidOperationException("client_cleanup_failed_resources_retained");
-            if (_session.GetSnapshot().IsDisposed) _joint.Dispose();
+            if (_session.GetSnapshot().IsDisposed) { _joint.Dispose(); _coordinationCost?.Stop("host-retired"); }
             if (record) timing!.Complete();
         }
         catch (Exception error) { if (record) timing!.Fail(); _lastError = FormatApplyError(error); throw; }
         finally
         {
-            if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked);
+            _coordinationCost?.LeaveSession();
+            if (record) _inputTrace!.FinishWorkCounters(workBefore, _session, sessionInvoked, _coordinationCost);
+            else _coordinationCost?.EndPump(null, null, "facade-not-accepted", sessionInvoked);
             _telemetryJoint?.Drain();
         }
     }
@@ -166,6 +175,27 @@ public sealed class SpectatorReplicaHost : IDisposable
         notServingCloses = _session.GetSnapshot().NotServingCloses,
         sentInputs = _sent.Count, lastError = LastApplyError,
     }, SpectatorJsonContext.Default.SessionStateDto);
+    // PreBoot configuration arms this optional observer; an explicit recording
+    // request must reach an Active session before it can consume the one-shot.
+    internal string StartCoordinationCostCapture()
+    {
+        if (_closing) return "closed";
+        if (!_coordinationArmed) return "disabled";
+        if (_coordinationCost is not null) return _coordinationCost.StartResult == "started" ? "already-started" : "closed";
+        BomberCoordinationCostCollector? candidate = null;
+        try
+        {
+            var state = _session.GetSnapshot();
+            if (state.IsDisposed) return "closed";
+            if (state.State != ClientSessionState.Active) return "not-active";
+            candidate = new BomberCoordinationCostCollector(_inputTrace!.Lifetime);
+            string result = candidate.StartResult;
+            if (result != "started") { candidate.Dispose(); return result; }
+            _coordinationCost = candidate; _inputTrace.CoordinationCost = candidate;
+            return "started";
+        }
+        catch (Exception) { candidate?.Dispose(); return "capture-failed"; }
+    }
     public string DrainInputTrace() => _inputTrace?.Drain() ?? BomberInputTrace.DisabledBatch;
     public void RetireInputTrace() => _inputTrace?.RetirePending();
     private ulong AuthorityTick
@@ -420,7 +450,12 @@ public sealed class SpectatorReplicaHost : IDisposable
         // ClientSession drains, stamps, encodes and sends the published request on its next owner Tick.
         return true;
     }
-    public void Dispose() { _closing = true; ReconcileInputIdentity(); _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
+    public void Dispose()
+    {
+        _closing = true;
+        try { ReconcileInputIdentity(); _session.RequestClose(new SessionCloseRequest(false)); _session.Dispose(); }
+        finally { _coordinationCost?.Stop("host-disposed"); }
+    }
     internal static string FormatApplyError(Exception error)
     {
         var text = new StringBuilder();

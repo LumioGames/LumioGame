@@ -158,6 +158,18 @@ public sealed class ManagedFacadeTimingTests
         owner.Dispose(); using var closed = Drain(owner.Host); Assert.Equal(JsonValueKind.Object, Timing(closed).ValueKind);
     }
 
+
+    [Fact]
+    public void PendingOrdinalReadsTheAcceptedObservationWithoutAdditionalClockCalls()
+    {
+        int clocks = 0; var recorder = new ManagedFacadeTiming(() => ++clocks);
+        var property = typeof(ManagedFacadeTiming).GetProperty("PendingOrdinal", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(property); Assert.Null(property.GetValue(recorder));
+        Assert.True(recorder.Begin()); Assert.Equal(1UL, property.GetValue(recorder));
+        Assert.False(recorder.Begin()); Assert.Equal(1UL, property.GetValue(recorder));
+        Assert.Equal(1, clocks); recorder.Consume(); Assert.Null(property.GetValue(recorder));
+        Assert.Equal(1, clocks);
+    }
     private sealed class SessionProbe : IClientSession
     {
         internal List<string> Calls { get; } = [];

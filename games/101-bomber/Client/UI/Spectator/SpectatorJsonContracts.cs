@@ -24,9 +24,93 @@ internal sealed class InputTraceBatchDto
     public required int pending { get; init; }
     public InputTraceEventDto? traceOverflow { get; init; }
     public required List<InputTraceEventDto> events { get; init; }
+    public CoordinationCostBatchDto? coordinationCost { get; init; }
     public FacadeTickTimingDto? facadeTiming { get; init; }
     public string facadeTimingLoss { get; init; } = "0";
     public string facadeTimingDiagnosticFailures { get; init; } = "0";
+}
+
+internal sealed class CoordinationCostBatchDto
+{
+    public int version { get; init; } = 1;
+    public bool enabled { get; init; } = true;
+    public bool started { get; init; } = true;
+    public bool closed { get; init; }
+    public bool complete { get; init; }
+    public string? reason { get; init; }
+    public string? providerName { get; init; }
+    public string? assemblyName { get; init; }
+    public string? assemblyMvid { get; init; }
+    public string? assemblyMvidReason { get; init; }
+    public int recordLimit { get; init; } = 256;
+    public int windowMs { get; init; } = 5000;
+    public required string hostLifetime { get; init; }
+    public required string dropped { get; init; }
+    public required string diagnosticFailures { get; init; }
+    public required List<CoordinationCostRecordDto> records { get; init; }
+    public CoordinationCostStopDto? stopped { get; init; }
+}
+
+internal sealed class CoordinationCostRecordDto
+{
+    public required string windowId { get; init; }
+    public required string ordinal { get; init; }
+    public string? facadeOrdinal { get; init; }
+    public bool bindingAvailable { get; init; }
+    public string? bindingReason { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? predictionGeneration { get; init; }
+    public string? managerId { get; init; }
+    public string? worldInstance { get; init; }
+    public string? driverId { get; init; }
+    public double? elapsedMs { get; init; }
+
+    public required string startedTicks { get; init; }
+    public required string elapsedTicks { get; init; }
+    public required string frequency { get; init; }
+    public bool returned { get; init; }
+    public bool measurementValid { get; init; }
+    public int inputsBefore { get; init; }
+    public int inputsAfter { get; init; }
+    public int locationsBefore { get; init; }
+    public int locationsAfter { get; init; }
+    public required string stopReason { get; init; }
+    public required string classifiedTicks { get; init; }
+    public required string unclassifiedTicks { get; init; }
+    public required string beginCoverageTicks { get; init; }
+    public required string authorityRefreshTicks { get; init; }
+    public required string witnessTicks { get; init; }
+    public required string removeAffectedTicks { get; init; }
+    public required string executeAffectedTicks { get; init; }
+    public required string finalProjectTicks { get; init; }
+    public required string publicationTicks { get; init; }
+    public int projectCalls { get; init; }
+    public required string projectLocations { get; init; }
+    public required string projectTicks { get; init; }
+    public int trimCalls { get; init; }
+    public required string trimScans { get; init; }
+    public int trimRemoved { get; init; }
+    public required string trimTicks { get; init; }
+    public required string authorityScanned { get; init; }
+    public int authorityCopied { get; init; }
+    public int componentsCaptured { get; init; }
+    public required string fieldsCaptured { get; init; }
+    public required string accountIndexScanned { get; init; }
+}
+
+internal sealed class CoordinationCostStopDto
+{
+    public required string windowId { get; init; }
+    public required string ordinal { get; init; }
+    public required string stopReason { get; init; }
+    public string? facadeOrdinal { get; init; }
+    public bool bindingAvailable { get; init; }
+    public string? bindingReason { get; init; }
+    public string? sessionGeneration { get; init; }
+    public string? predictionGeneration { get; init; }
+    public string? managerId { get; init; }
+    public string? worldInstance { get; init; }
+    public string? driverId { get; init; }
 }
 
 internal sealed class FacadeTickTimingDto

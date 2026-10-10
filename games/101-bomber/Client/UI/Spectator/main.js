@@ -538,6 +538,10 @@ function bindExports(api) {
   csharp.configureInputMode = (mode, trace) => api.ConfigureInputMode(mode, trace);
   csharp.configureGasExecutionClock = typeof api.ConfigureGasExecutionClock === 'function'
     ? enabled => api.ConfigureGasExecutionClock(enabled) : undefined;
+  csharp.configureCoordinationCost = typeof api.ConfigureCoordinationCost === 'function'
+    ? enabled => api.ConfigureCoordinationCost(enabled) : undefined;
+  csharp.startCoordinationCostCapture = typeof api.StartCoordinationCostCapture === 'function'
+    ? () => api.StartCoordinationCostCapture() : undefined;
   csharp.close = () => api.Close();
   csharp.tick = () => developmentSession ? developmentSession.run(() => api.Tick(), 0) : api.Tick();
   csharp.tickRateHz = () => api.TickRateHz();
@@ -703,14 +707,17 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
 // Movement experiments and traces stay on loopback pages and the development bridge.
 function readMovementFlags() {
-  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true };
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true, coordinationCost: false };
   const params = new URLSearchParams(location.search);
   const requested = params.get('input');
   const trace = params.get('trace') === 'movement';
   const gasClock = params.getAll('gasClock');
   const gasClockOff = PLAYER_MODE && params.get('scene') === 'movement-sync-preview' && trace &&
     gasClock.length === 1 && gasClock[0] === 'off';
-  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff };
+  const coordination = params.getAll('coordination');
+  const coordinationCost = PLAYER_MODE && params.get('scene') === 'movement-sync-preview' && trace &&
+    requested === 'step' && coordination.length === 1 && coordination[0] === 'on';
+  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff, coordinationCost };
 }
 
 function pageAllowsLoopback() {
@@ -1050,11 +1057,14 @@ async function start() {
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
     if (PLAYER_MODE) {
-      const { gasExecutionClock } = readMovementFlags();
+      const { gasExecutionClock, coordinationCost } = readMovementFlags();
       if (!gasExecutionClock && !csharp.configureGasExecutionClock)
         throw new Error("SpectatorExports.ConfigureGasExecutionClock missing");
       csharp.configureGasExecutionClock?.(gasExecutionClock);
       csharp.configureInputMode(inputDriver, Boolean(movementTrace));
+      if (coordinationCost && (!csharp.configureCoordinationCost || !csharp.startCoordinationCostCapture))
+        throw new Error('SpectatorExports.ConfigureCoordinationCost / StartCoordinationCostCapture missing');
+      csharp.configureCoordinationCost?.(coordinationCost);
     }
     const abort = new AbortController();
     launchAbort = abort;
@@ -1135,6 +1145,19 @@ function sendPlayerCommand(kind, publishRequest) {
     setStatus('error', spectator.lastError);
     return false;
   }
+}
+
+function bindCoordinationCostCapture(panel) {
+  if (!readMovementFlags().coordinationCost) return () => {};
+  const button = panel.querySelector('[data-movement-record]');
+  const onRecord = () => {
+    let result = 'closed';
+    try { if (managedLoaded && !runtimeClosed) result = csharp.startCoordinationCostCapture(); }
+    catch { result = 'capture-failed'; }
+    movementTrace?.note('coordination:' + result);
+  };
+  button.addEventListener('click', onRecord);
+  return () => button.removeEventListener('click', onRecord);
 }
 
 async function initializePage() {
@@ -1234,9 +1257,10 @@ async function initializePage() {
           traceComplete:lastTraceCompleteness,inputsSent:player.inputsSent };
         },
         trace: () => movementTrace, exportTrace: exportMovementTrace });
+      const removeCoordinationCapture = bindCoordinationCostCapture(panel);
       const originalClear = playerInput.clear;
       playerInput.clear = () => { movementPreviewControls.invalidate(); return originalClear(); };
-      window.addEventListener('pagehide', () => movementPreviewControls.destroy(), {once:true});
+      window.addEventListener('pagehide', () => { removeCoordinationCapture(); movementPreviewControls.destroy(); }, {once:true});
       if (privatePreview && window.__lumioPlayerConfig.evidenceEndpoint) {
         const { createPrivateDiagnosticCapture } = await import('./private-diagnostic-capture.mjs');
         resourceWitness?.noteImport('./private-diagnostic-capture.mjs');

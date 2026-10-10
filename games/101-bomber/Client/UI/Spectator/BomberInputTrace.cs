@@ -20,6 +20,7 @@ internal sealed class BomberInputTrace
     internal BomberInputTrace(ManagedFacadeTiming? facadeTiming = null, Func<InputTraceBatchDto, string>? serialize = null)
     { FacadeTiming = facadeTiming ?? new ManagedFacadeTiming(); _serialize = serialize; }
     internal ManagedFacadeTiming FacadeTiming { get; }
+    internal BomberCoordinationCostCollector? CoordinationCost { get; set; }
     private readonly Func<InputTraceBatchDto, string>? _serialize;
     internal const int EventCapacity = 1024;
     internal const int PendingCapacity = 256;
@@ -123,11 +124,11 @@ internal sealed class BomberInputTrace
         finally { sample.EndedStamp = Stopwatch.GetTimestamp(); }
         return sample;
     }
-    internal void FinishWorkCounters(WorkCounterSample? before, IClientSession session, bool sessionInvoked)
+    internal void FinishWorkCounters(WorkCounterSample? before, IClientSession session, bool sessionInvoked, BomberCoordinationCostCollector? coordination = null)
     {
         try
         {
-            if (_workCounters is not null) return;
+            if (_workCounters is not null) { coordination?.EndPump(null, null, "work-pending", sessionInvoked); return; }
             var after = CaptureWorkSample(session);
             before ??= new() { UnavailableReason = "before-unavailable" };
             string? reason = WorkUnavailable(before, after, sessionInvoked);
@@ -135,8 +136,9 @@ internal sealed class BomberInputTrace
             // observations contain scalar DTOs, even while Drain is delayed.
             _workCounters = new(WorkSnapshot(before), WorkSnapshot(after), reason is null ? WorkDelta(before, after) : null,
                 reason, sessionInvoked, after.EndedStamp?.ToString(CultureInfo.InvariantCulture) ?? Stamp());
+            coordination?.EndPump(_workCounters.Before, _workCounters.After, reason, sessionInvoked);
         }
-        catch { Failure(); }
+        catch { Failure(); coordination?.EndPump(null, null, "work-capture-failed", sessionInvoked); }
     }
     private static string? WorkIdentity(object? current, ref WeakReference<object>? previous, ref ulong id)
     {
@@ -361,6 +363,7 @@ internal sealed class BomberInputTrace
                 clockFrequency = Decimal(checked((ulong)Stopwatch.Frequency)), complete = Complete,
                 eventLoss = Decimal(_eventLoss), pendingLoss = Decimal(_pendingLoss),
                 unmatched = Decimal(_unmatched), diagnosticFailures = Decimal(_diagnosticFailures),
+                coordinationCost = CoordinationCost?.Peek(),
                 facadeTiming = facadeTiming, facadeTimingLoss = Decimal(FacadeTiming.Loss),
                 facadeTimingDiagnosticFailures = Decimal(FacadeTiming.DiagnosticFailures),
                 pending = _pending.Count,
@@ -369,6 +372,7 @@ internal sealed class BomberInputTrace
                 events = _events.ToList() };
             string json = _serialize is null ? JsonSerializer.Serialize(batch, SpectatorJsonContext.Default.InputTraceBatchDto) : _serialize(batch);
             if (facadeTiming is not null) { FacadeTiming.Consume(); _workCounters = null; }
+            CoordinationCost?.Consume();
             _events.Clear();
             return json;
         }

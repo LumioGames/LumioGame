@@ -1014,6 +1014,8 @@ async function gasClockStartup(options = {}) {
   api.ConfigureInputMode = (mode, trace) => calls.push(['input', mode, trace]);
   api.Boot = async () => calls.push(['boot']);
   if (!options.missingExport) api.ConfigureGasExecutionClock = enabled => { clocks.push(enabled); calls.push(['gas-clock', enabled]); if (options.liveError) throw options.liveError; };
+  if (!options.missingCoordinationExport) api.ConfigureCoordinationCost = enabled => calls.push(['coordination', enabled]);
+  if (!options.missingCoordinationExport) api.StartCoordinationCostCapture = () => 'started';
   const context = vm.createContext({ api, calls, URLSearchParams, TextEncoder, AbortController,
     location: { search: options.search ?? '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off', hostname: options.hostname ?? '127.0.0.1' },
     LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'], __lumioDevelopment: options.development,
@@ -1069,4 +1071,90 @@ test('private GAS clock default and ineligible flags preserve enabled behavior',
   assert.deepEqual(nonplayer.errors, []); assert.deepEqual(nonplayer.clocks, []);
   const development = await gasClockStartup({ hostname: 'development.example', development: true });
   assert.deepEqual(development.errors, []); assert.deepEqual(development.clocks, [false]);
+});
+
+
+test('coordination exact on is armed after input before Boot without altering GAS clock', async () => {
+  const p = await gasClockStartup({search: '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off&coordination=on'});
+  assert.deepEqual(p.errors, []); assert.equal(p.flags.coordinationCost, true);
+  assert.deepEqual(p.clocks, [false]);
+  assert.deepEqual(p.calls.slice(0, 3), [['gas-clock', false], ['input', 'step', true], ['coordination', true]]);
+  assert.ok(p.calls.findIndex(x => x[0] === 'coordination') < p.calls.findIndex(x => x[0] === 'boot'));
+});
+
+test('coordination ineligible and duplicate flags remain off', async () => {
+  for (const options of [
+    {search: '?scene=movement-sync-preview&trace=movement&input=step'},
+    {search: '?scene=movement-sync-preview&trace=movement&input=step&coordination=off'},
+    {search: '?scene=movement-sync-preview&trace=movement&input=step&coordination=on&coordination=on'},
+    {search: '?scene=movement-sync-preview&trace=movement&input=pump&coordination=on'},
+    {search: '?scene=movement-sync-preview&input=step&coordination=on'},
+    {search: '?scene=ordinary&trace=movement&input=step&coordination=on'},
+    {player: false, search: '?scene=movement-sync-preview&trace=movement&input=step&coordination=on'},
+    {hostname: 'game.example', search: '?scene=movement-sync-preview&trace=movement&input=step&coordination=on'},
+  ]) { const p = await gasClockStartup(options); assert.deepEqual(p.errors, []); assert.equal(p.flags.coordinationCost, false, JSON.stringify(options)); }
+});
+
+test('coordination explicit on requires the private export before Boot', async () => {
+  const p = await gasClockStartup({missingCoordinationExport: true, search: '?scene=movement-sync-preview&trace=movement&input=step&coordination=on'});
+  assert.equal(p.calls.some(x => x[0] === 'boot'), false);
+  assert.equal(p.errors.length, 1); assert.match(p.errors[0].message, /ConfigureCoordinationCost/);
+});
+
+test('coordination default keeps legacy missing exports compatible', async () => {
+  const p = await gasClockStartup({missingCoordinationExport: true, search: '?scene=movement-sync-preview&trace=movement&input=step'});
+  assert.deepEqual(p.errors, []); assert.ok(p.calls.some(x => x[0] === 'boot'));
+});
+
+
+test('coordination recording button follows existing export and clear and can be removed', () => {
+  const begin = MAIN_SOURCE.indexOf('function bindCoordinationCostCapture(');
+  assert.ok(begin >= 0, 'recording button coordination handler missing');
+  const callbacks = [], order = [], notes = [];
+  const button = {addEventListener(type, fn) {assert.equal(type, 'click'); callbacks.push(fn);},
+    removeEventListener(type, fn) {assert.equal(type, 'click'); callbacks.splice(callbacks.indexOf(fn), 1);}};
+  callbacks.push(() => {order.push('export', 'clear');});
+  let captures = 0;
+  const context = vm.createContext({ readMovementFlags: () => ({coordinationCost:true}),
+    csharp: {startCoordinationCostCapture: () => {order.push('start'); return ++captures === 1 ? 'started' : 'already-started';}},
+    movementTrace: {note: value => notes.push(value)}, managedLoaded:true, runtimeClosed:false,
+    panel: {querySelector: selector => {assert.equal(selector, '[data-movement-record]'); return button;}} });
+  vm.runInContext(MAIN_SOURCE.slice(begin, MAIN_SOURCE.indexOf('async function initializePage()', begin)), context);
+  const destroy = context.bindCoordinationCostCapture(context.panel);
+  callbacks.slice().forEach(fn => fn());
+  assert.deepEqual(order, ['export', 'clear', 'start']); assert.match(notes[0], /started/);
+  callbacks.slice().forEach(fn => fn()); assert.match(notes[1], /already-started/);
+  destroy(); assert.equal(callbacks.length, 1);
+});
+
+test('coordination disabled recording handler adds no listener or managed invocation', () => {
+  const begin = MAIN_SOURCE.indexOf('function bindCoordinationCostCapture(');
+  assert.ok(begin >= 0, 'recording button coordination handler missing');
+  const context = vm.createContext({readMovementFlags: () => ({coordinationCost:false}),
+    panel: {querySelector() {throw new Error('disabled queried button');}},
+    csharp: {startCoordinationCostCapture() {throw new Error('disabled invoked managed');}} });
+  vm.runInContext(MAIN_SOURCE.slice(begin, MAIN_SOURCE.indexOf('async function initializePage()', begin)), context);
+  context.bindCoordinationCostCapture(context.panel)();
+});
+
+
+test('coordination typed batch keeps all raw strings nullable binding and old events through Tick Drain export', async () => {
+  const calls = [], clock = {value:0};
+  const coordinationCost = {version:1, enabled:true, started:true, closed:false, complete:false,
+    providerName:'Lumio-GameRuntime-Gas-SelectiveRebuild', assemblyMvid:null, assemblyMvidReason:'mvid-unavailable',
+    recordLimit:256, windowMs:5000, hostLifetime:'coord-host', dropped:'0', diagnosticFailures:'0',
+    records:[{windowId:'9007199254740993', ordinal:'9223372036854775807', startedTicks:'9007199254740993',
+      elapsedTicks:'123', frequency:'1000', elapsedMs:null, measurementValid:false, returned:false,
+      facadeOrdinal:'18446744073709551615', bindingAvailable:false, bindingReason:'identity-changed',
+      driverId:null, sessionGeneration:null, classifiedTicks:'100', unclassifiedTicks:'23',
+      projectCalls:8, projectLocations:'9007199254740993'}], stopped:null};
+  const batch = {version:1, enabled:true, hostLifetime:'coord-host', complete:true,
+    coordinationCost, events:[{k:'work-counters', stamp:'9007199254740993', workCounters:{available:false,delta:null}}]};
+  const page = await runPage({clock, exports:{Tick(){calls.push('tick'); clock.value+=20;},
+    DrainInputTrace(){calls.push('drain'); return JSON.stringify([batch]);}}});
+  const trace = createMovementTrace({now:()=>clock.value, doc:{visibilityState:'visible'}});
+  page.win.__actualTrace=trace; page.evalInPage('movementTrace=__actualTrace'); await page.tick();
+  const forwarded=JSON.parse(JSON.stringify(trace.export())).events.find(row=>row.k==='managedTrace');
+  assert.deepEqual(forwarded.batch,batch); assert.equal(forwarded.pumpBracket.endedAt-forwarded.pumpBracket.startedAt,20);
+  assert.deepEqual(calls.slice(-2),['tick','drain']);
 });
