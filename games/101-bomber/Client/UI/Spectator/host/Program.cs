@@ -43,6 +43,17 @@ public static partial class SpectatorExports
     }
 
     [JSExport]
+    public static void ConfigureCoordinationCost(bool enabled)
+    {
+        if (s_client is not null || s_engine is not null) throw new InvalidOperationException("client_input_mode_live");
+        if (enabled && (s_inputMode != "step" || !s_inputTrace)) throw new InvalidOperationException("coordination_requires_step_trace");
+        AppContext.SetSwitch("Lumio.Bomber.CoordinationCost", enabled);
+    }
+
+    [JSExport]
+    public static string StartCoordinationCostCapture() => s_client?.StartCoordinationCostCapture() ?? "closed";
+
+    [JSExport]
     public static void ConfigureConfig(string bundle)
     {
         if (s_configuration is not null || s_client is not null || s_engine is not null)

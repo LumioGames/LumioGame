@@ -49,6 +49,7 @@
     <Compile Include="..\BomberInputTrace.cs" Link="BomberInputTrace.cs" />
     <Compile Include="..\BomberTelemetryJointPrediction.cs" Link="BomberTelemetryJointPrediction.cs" />
     <Compile Include="..\ManagedFacadeTiming.cs" Link="ManagedFacadeTiming.cs" />
+    <Compile Include="..\BomberCoordinationCostCollector.cs" Link="BomberCoordinationCostCollector.cs" />
   </ItemGroup>
   <!--
     The page is the deliverable, so it has to be in the publish output. It lives

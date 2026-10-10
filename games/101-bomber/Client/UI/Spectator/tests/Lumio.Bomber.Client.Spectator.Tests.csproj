@@ -31,6 +31,7 @@
     <Compile Include="../BomberInputTrace.cs" Link="Spectator/BomberInputTrace.cs" />
     <Compile Include="../BomberTelemetryJointPrediction.cs" Link="Spectator/BomberTelemetryJointPrediction.cs" />
     <Compile Include="../ManagedFacadeTiming.cs" Link="Spectator/ManagedFacadeTiming.cs" />
+    <Compile Include="../BomberCoordinationCostCollector.cs" Link="Spectator/BomberCoordinationCostCollector.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="3.2.2" />

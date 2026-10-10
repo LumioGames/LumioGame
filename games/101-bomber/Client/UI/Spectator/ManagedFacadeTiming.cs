@@ -18,6 +18,7 @@ internal sealed class ManagedFacadeTiming
 
     internal ManagedFacadeTiming(Func<long>? clock = null, Action? beforeSnapshot = null)
     { _clock = clock; _beforeSnapshot = beforeSnapshot; }
+    internal ulong? PendingOrdinal => _pending ? _ordinal : null;
     internal ulong Loss => _loss;
     internal ulong DiagnosticFailures => _diagnosticFailures;
     private static void Increment(ref ulong value) { if (value < ulong.MaxValue) value++; }
