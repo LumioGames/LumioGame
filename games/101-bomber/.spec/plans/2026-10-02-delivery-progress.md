@@ -3847,3 +3847,26 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - **边界不变**：同 fresh 完整 SDK 的 13 项正常重建字节变化仍逐项登记，Native/capture/Rust 语义等价 UNKNOWN，不能把后续差异单独归因 Client 两文件。20Hz、8 参与者/6 Bot、体素、协议与额度保持；Owner OPEN、PR #280 NEVER_MERGE、F3 未采纳、手感 FAIL_PENDING_USER。
 
 证据：`f1-movement-carry-full-aot-preparation-01/closure-preparation-01/actual-closure-report-03.md`、`frozen-actual-result-manifest-03.json`、`audit-03.json`、`actual-result-readback-03.json`；失败原收据 `audit-execution-01.receipt.json` 与 `actual-pdb-retry-02/aggregate-02.receipt.json`；API/Client 原收据在 `f1-movement-carry-api-clock-proof-01`；guard 原收据在 `f1-movement-carry-posttrim-guard-proof-actual-01`。
+
+### checkpoint274 — Carry 新现场已启动、服务字节核实与实际左右短窗；手感仍未解决（2026-10-10 UTC）
+
+- 承接CP273的独立私有候选审批，Root实际读完整审批261372a9后正常issuer子PID3336/raw0（19:14:46Z），review-release6305B/d2bc518a…，正常launch --verify子PID32756/raw0。启动config5318B/8844ff10…，candidate仍32b8d03a/6088文件；不存在Owner自批。正常终端父session29801启动独立隐藏pwsh wrapper33216，实际start19:14:56.0160130Z、start收据1138B/ffb4d4d0…；launcher及密码/签发器只在内存，未保存密码。
+- 新现场根C:/Work/LumioGames/.run-f1-carry-preview-20261011-01，运行副本movement-f1-carry-baseline-compact-20261011-01-f36009b49ed9de64，账号前缀MoveLab-f36009b49ed9de64。prefix收据9682B/b3b2bbcd…为注册前RESERVED_NOT_REGISTERED快照；随后正常verification5643B/41df6270…实际SERVING、6/6 Bot Hosts、8 loginAndLaunch与A/B两个player URL，不能将旧snapshot误当未注册。整局step05–14仍NOT_RUN，不能宣布整局十四步通过。
+- 实际Game源码3d93da6f1cafb3da0140cbb7913fbd7ddc38b3ae，client/server Gameplay1a7/910，浏览器完整SDK25d/Client73及仅Ecs d82 Compact单项覆盖；DS/正常launcher gate仍经已审original98完整SDK路径绑定，不能把浏览器与DS Native字节假称相同。当前是F1 carry+Compact私有baseline，不是F3采纳或原始f69四组完成。额外Native/capture/Rust语义等价UNKNOWN保持。
+- 独立HTTP读回19:24:17Z：19147/play/main.js200/59696B/8a8eb2585a2bfef1574fafa046a1992ca703546ad03dbff3a0327e659574bcde；19147/play/presentation/presentation.js200/1155465B/395c415becf3ddd5d8c06318c5f45c1c1552810bab1438dc8ce18617cff2a722，分别含readMovementFlags/__lumioMovementTrace/onFrame/debugLocal。两body与candidate及实际resource witness逐字节一致；147静态witness条目对应candidate，另1个动态config对应本次HTTP。未把79 unloaded资源称实际执行，未冒称Presentation本轮重编。
+- 独立live readonly子PID33468/raw0（19:25:31–32Z）核实wrapper及8个已记录child PID/starttime一致。19144–47实际监听platform32840/PG24940/DS1548/page32444，保护18081/82/84/85/18092–97为空；未停他人进程或改保护端口。22日志读回snapshot未见FAULT/FATAL/Exception，但保留DS tick0 cadence_lag WARN与PG首次__EFMigrationsHistory缺表ERROR；日志可继续append，不冒称全程error-free。
+- Codex IAB实际A/B进入正常选角/准入，A第一会话7850e9e7…、B41ecf5ec…；真实物理KeyA持5030ms、KeyD持5166.9ms，均有setter-return-observed方向/停步链。A原件3592774B/719288df…、D1020013B/cde4abc5…；全部489/114 frame的dx/dz/tx/tz/rafT有限、hiddenFrames0、raw未截断、diagnosticFailures0。OS前台/DOM键事件target字段未观测，不伪造焦点证明。
+
+|实际范围|完整pure-held pump|first/replay|Session p50/p95/max ms|相邻真实rafT p50/p95/max ms|
+|---|---:|---:|---|---|
+|新carry A Running|78|100/11|47.3/89.4/106.4|19.0/74.4/93.9（整个A物理持键）|
+|新carry D Running|21|55/10|118.4/169.8/174.1|74.8/338.9/412.3（整个D物理持键，含FinalCircle）|
+|新carry D FinalCircle|8|35/31|295.6/391.3/391.3|不把整个D的间隔冒称本phase专属|
+
+- 标准显示指标A backward45/reversal44/maxBackward0.0566063m/facing>90度4；D4/4/0.0154m/0。两者300ms物理停尾仅8/3帧、观察overshoot0，且含墙边/端点阶段，不据此通过停步验收。wholeRaf回调p50/p95/max A1.6/2.8/4.2ms、D2.1/4.7/9.9ms；持键相交longTask46/29。旧D59 OnD曾first50/replay600、Session493.5/583.4ms；新D明显减少重放但年龄/phase/SDK其它13项字节不同，不作单改动因果保证。新A77零replay泵仍Sessionp5046.1ms、新DRunning20零replay泵仍118.4ms，剩余长Tick不能都归给回放。
+- 此后期held的executionTelemetry已WindowLimit、delta.complete=false/window-stopped，执行体时长与其占比必须NULL，不能填0。普通work持续first/replay；history≤15、window256、frozen/suspended/faulted false。单pure-held pair的前后driver/窗口/序号/纳秒原始括号核验留在实际报告；六次正常分析子raw0/input0，额外phase派生PID31408/raw0。派生先截微秒导致89.399999与89.399严对照raw1已保留，03仅恢复原未截断公式，严格检查未删。
+- 工具及保全限制：下载event等待/CUA CDP输入超时不等同Game帧卡证据。累计长trace导出曾HTTP413，错误保留；短原件已正常保存。尚未核实超限下载完整文件，不能声称长trace全已保全；未通过清旧fault日志放行。后续新fresh Session左右、W10s与A/B重叠观察另有真实原件，独立指标正在冻结，另追加，不在本段冒称完成W10s×5/起停10/四向/全部四组。
+- 用户原话：“我们在开发期 尽可能把那些性能上限放大最大，让我们高帧率同步”。独立31源/7已存raw上限审：没有30/60/120FPS封顶或入局几秒后FPS节流；实际120s仅诊断停采，trace容量实际300000（纠正旧摘要50000）。5步/250ms限制晚到的新预测步，不限制所有回放，未有直接discard量计数；盲增会延长单次主线程工作。2s条件只降DPR，audio400ms/.25s触发未实测；Native全部额度实时占用UNKNOWN。保持20Hz/8人6Bot/体素/协议预算，未盲目放大所有上限。
+- 实际静态/HTTP报告14937c85…、held报告03463413…、caps报告a952db8c…均由Root核读后限域采用。当前移动手感FAIL_PENDING_USER；Owner/ADR142/18085/schema门OPEN，ADR159 Draft，PR280 NEVER_MERGE，F3 NOT_ADOPTED/F4 NOT_OPENED。下一步在有效短时计时窗分解低replay剩余Session成本；不凭源码/closure通过宣布浏览器流畅。
+
+证据根仍C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段输入清单f1-movement-carry-checkpoint274-root-actual-01/input-identities-01.json绑定完整SHA/字节/路径；报告f1-movement-carry-live-http-health-273-01/report-01.md、f1-movement-carry-browser-analysis-01/report-01.md、f1-carry-development-ceilings-readonly-review-01/report-01.md与各manifest，原始失败/输出不改。
