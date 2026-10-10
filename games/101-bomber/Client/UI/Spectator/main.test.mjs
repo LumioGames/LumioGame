@@ -679,6 +679,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
     const csharp = {};
     let developmentSession;
     let gameView, gameViewLoading, gameViewGeneration = 0; let selectedCharacter=null,initialSelectionPending=false;
+    let movementPhaseTimingEnabled = false;
     const voxelGrid = {};
     const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0,
       replica: { phase: 'Warmup', inputOpen: true, inputEnabled: true, selfId: 'self' } };
