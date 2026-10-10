@@ -3590,3 +3590,36 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - Root已完成分析内存释放，analysis-memory-release-01.json为238B / SHA256 c3835176538e1841402994e3767e653f8ac28ff5f2eb93d64f1824604cfc34db，记录kernelResetCompleted/oldLargeAnalysisBindingsReleased为true；正常自有03/04服务及owned浏览器tabs已停止，旧raw/witness/fault/失败日志保留，filesDeleted=false/othersTouched=false，不以删日志通过守卫。本段没有重启或继承现场存活。
 - 本次Native机制实验execution telemetry明确OMIT。Root随后在独立ApiProof工程静态调用选中untrim Gas的TryEnable/Status/Drain/Disable四个公开API，terminal-parent隐藏编译PID30736/raw0/noTimeout、0warn/0error；Gas778752B/SHA256 ca26bdc1f7abc765b046403b0246d1a7ec63a089b663823fd8881c9d22090a6b，20个replica DLL前后0漂移，api-result-02.json1236B/SHA256 768eb8026ac209efbcbd21521df5ae55a05160eac908e825871a093b22fa3115。首次Node-parent编译PID31468/raw1的NuGet path1 null发生于API编译前、原输出完整保留；后续独立正常terminal-parent编译不修改SDK字节。该编译只证明四API可调用，未执行或启用窗口。接下来Game侧TDD接入可选wrapper，Program绑定platform.Clock.NowNanos，保留20Hz/准入/额度和完整Session计时，再回到新现场真实浏览器定位成本；不用Stopwatch换算冒充Native clock，不以desktop对照代替actual WASM证据。现有全四组/完整移动矩阵及用户前台验收仍未完成。
 - ADR159保持Draft，Owner/ADR142/18085/schema OPEN；PR280 NEVER_MERGE；F3 NOT_ADOPTED；F4 NOT_OPENED；handfeel FAIL_PENDING_USER。用户原话“感觉不是很流畅 虽然好了一些了，”“尤其是左右移动的时候”仍待解决。本段独立实际结论actual-result-review-01.json为37704B / SHA256 ca348ec4f983fd7ee5c031ccd11a19e26327640aaa529001c6ac57f7070d54ab；必要原件前后绑定保存在f1-native-controls-checkpoint257-draft-01；Root逐字审阅实际原件和草稿后采纳，只追加账本，不修改历史checkpoint。本段为排障事实与过程证据追加，未新增规范或Owner裁定。
+
+
+### checkpoint258 — 可选 GAS 实际执行计时已提交；旧公开调用兼容性 RED→GREEN；未构建/未宣称手感改善
+
+- 时间：2026-10-10 21:47（Asia/Shanghai）。延续用户“全部你来处理”授权；Owner OPEN、ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED、F4 NOT_OPENED、handfeel FAIL_PENDING_USER。
+- 源码实际从 9c1dfc58948200fe42e6d36f21fe67929803be2b 提交到 2425f47a0a3b788bd6a284871a8e327ddce5f82d，只提交本轮精确十文件，推送到 Game PR59 的 codex/101-movement-sync（实际 git push raw0）。三项原有 generated/client 脏文件未提交、hash 保持。Root final13项源码/脏文件核对0漂移；独立 review02 原冻结36项均匹配。
+- 只在 trace 与 executionClock 都存在时，通过既有 RuntimeJointPrediction 的可选 wrapper 使用公开 GAS 四API。Program 绑定 EngineWasmPlatform.Clock.NowNanos；无 trace/无 clock 的旧公开调用不启新窗口。正常 Attach/Retire 委托顺序、原异常和原 Tick 路径保留。256记录/32768B/120s/10000attempts 为诊断上限；不改协议、玩法额度或50ms模拟步。
+- 新 typed WorkCounters status/delta 保留 invariant decimal strings 与未知耗时null。before/after读取及bounded drain位于Session计时之外；只测 ExecuteJointInput，Remove/Project/准备/发布等在窗外；Session剩余不能称exclusive CPU。ring明细丢失单列，未以丢明细抹去有效聚合数。
+- 真实兼容 RED：正确复用真实Server projection+Sections，先断言 GAS driver 非null，red-clock-null-02 PID5112/raw2 命中 diagnosticFailures expected0/actual1；Host启用条件仅修一行后 green-clock-null-02 PID9704/raw0/1PASS。最终相关 green-native-related-02 PID6296/raw0：15/15、0skip、输入0漂移（5真实Native/旧调用场景+10wrapper边界）。原初始化 fixture 缺Sections 的 red/green-clock-null-01 raw2 单列保留，不算该RED。
+- Root JS forwarding 实际终端环境复测 raw0/1PASS，验证真实page→recorder→export不丢大整数string/partial null。初次缺 Engine module 的setup raw1保留。freeze01 Native21/unit10/phase10 仅保留原范围；最终复审没有剩余代码blocker。
+- 测试collector旧版误把继承环境写入原始收据；原件按用户保全要求留存，不再输出/复制该对象。新 run-managed03 child仅受控配置/选定OS路径，receipt仅12项白名单设置。后续legacy核对只使用safe selected identities；这里不含凭证。
+- 本checkpoint只采纳源码及上述Native/JS边界证据。新fullAOT、四API trim保留、Native时钟绑定、PE/WebCIL/boot字节闭合、consumer/seal/guard和实际可见A/D复测仍待执行，旧43pairs/49boot/50DTO或旧页面hash不能当成新包结果。20Hz、8玩家/6官方Bots、体素与受保护端口保持。
+- 原用户反馈逐字保留：“我刚玩了一下 超级卡”“感觉不是很流畅 虽然好了一些了，”“尤其是左右移动的时候”。上一轮真正held46个完整pump Session p50 457.7ms，不以空闲平均掩盖；本轮目的为区分首次执行/重放耗时，尚无优化收益或用户前台通过结论。
+
+实际证据：
+
+- `f1-gas-execution-telemetry-implementation-01/report-02.md`：3185B，SHA256 `d0e45b20c804c85114397df48ce9808cab0869aa059a98a1c2abba6281f783f1`。
+- `f1-gas-execution-telemetry-implementation-01/frozen-review-inputs-02.json`：16544B，SHA256 `7cb2aa659b4032521b83eb932ad465be20e0653da6d928ca1d3acdd7509472a9`。
+- `f1-gas-execution-telemetry-implementation-01/root-source-adoption-02.json`：4178B，SHA256 `219aa24c4f35b7fafe86199ee943ae77aa5ecf606cac4c52e3b39db732f6b74a`。
+- `f1-gas-execution-telemetry-implementation-01/root-final-source-readback-02.json`：8228B，SHA256 `09da8d4f7e36cfcbf612de9ed3ad26b4dba032ab22ee6393e95caaeda07bdca8`。
+- `f1-gas-execution-telemetry-implementation-01/root-commit-02.tool-results.json`：2543B，SHA256 `76528239617f9bd90a78ac95c58a85aaf5c4f4f0eeea33113ba85357799b6724`。
+- `f1-gas-execution-telemetry-code-review-01/report-02.md`：6708B，SHA256 `ad9f4730f1b6d68989c17826925ea28f2c80b5f3d497215c4c56e3e68e73328f`。
+- `f1-gas-execution-telemetry-code-review-01/manifest-02.json`：1059B，SHA256 `cbbc96db0f0e9a16b6dc719d590060ef32e541a4c24dab6ec5f617f96a12f913`。
+- `f1-gas-telemetry-js-forwarding-02.tool-result.json`：597B，SHA256 `5c0115133c0e43bbffb4a206991d76c545d4388c68c29e6531b0231d17f3d81e`。
+- `f1-gas-execution-telemetry-implementation-01/red-clock-null-02.receipt.json`：11741B，SHA256 `baf4d4ed60c4e254c4b08428fc6474db74178df2b2fe41e9f7c0a930f4db981b`。
+- `f1-gas-execution-telemetry-implementation-01//red-clock-null-02.stdout.txt`：2952B，SHA256 `ff3c89def14306c659c7edc0857b91c118f4bcca413a2ab16ff367b6cee3fb6c`。
+- `f1-gas-execution-telemetry-implementation-01//red-clock-null-02.stderr.txt`：0B，SHA256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `f1-gas-execution-telemetry-implementation-01/green-clock-null-02.receipt.json`：11750B，SHA256 `ca51ef063afe5a8e4d0b024d57157cc5fef71f3e1cb6860f912adb0f8d79129a`。
+- `f1-gas-execution-telemetry-implementation-01//green-clock-null-02.stdout.txt`：835B，SHA256 `b10d00918c6de5f79a9107bae78ad339df257bae3cc0d0eb8fb3665861f4fa22`。
+- `f1-gas-execution-telemetry-implementation-01//green-clock-null-02.stderr.txt`：0B，SHA256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `f1-gas-execution-telemetry-implementation-01/green-native-related-02.receipt.json`：11713B，SHA256 `837a97e260ac7b44664790f80ab7a5f26950fe240314cb05393b797dcea343f4`。
+- `f1-gas-execution-telemetry-implementation-01//green-native-related-02.stdout.txt`：847B，SHA256 `90a9337a6259de0820d58b74feb33374dce6fbfab9c0161c11c3c0fcd355aa23`。
+- `f1-gas-execution-telemetry-implementation-01//green-native-related-02.stderr.txt`：0B，SHA256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
