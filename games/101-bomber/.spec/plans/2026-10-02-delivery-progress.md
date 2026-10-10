@@ -3718,3 +3718,22 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 **消费准备与构建阶段（ACTUAL）**：新20个replica按实际新SDK复制，PID1920/raw0/20成员0漂移，仅Ecs替换为已审Compact d15的d82ca79…，Gas ca26…与Gameplay53dd…原件保持；selection PID20860/raw0。有界restore隐藏worker33348，其实际dotnet24428/raw0/noTimeout/7.3602519s、368输入0漂移；sourceBefore/After/Matches原样null，不改称publish源核对。实际AOT plan274170B/d3cdb5c93de3f5f75387dff930d0852edd39a8e1dedc5ffc0f9d873b4f535090，绑定d59e/73d、811输入；Root精确采纳c324ea…后隐藏worker23140@16:08:44.3190412Z，实际dotnet33592@16:08:45.3110881Z已启动。Root随后实际核到dotnet33592/raw0/noTimeout/189.8312138s、811输入0漂移、publish前后HEAD均d59e且sourceMatches=true（receipt1060916B/f8c1b52ee74c43dc95864e82d1f30d03497639df832c4d7437708a6fc27583fa）。保持Release/fullTrim/fullAOT/retainIL。实际新43 boot PE/WebCIL对90个提取job全部raw0；managed审计PID26120/raw0，27658方法/26509完整IL body、Host120 PDB源码文档/105生成文件/34实际JSExport、98 typed DTO字段、44 AOT模块全部同构建字节绑定，0漂移/0failure。NativeWASM22557579B/5b5e1f09c29af41af65ec77729c44efed5939cea0c0059a253992c95f9730b8b；新Rust1357999B/83b01eb2f3ccfab3a74bdff8ebaf88c368cff274e5a43e1b12bf9c34dce0b36a与新SDK精确相等。Client新paired IL结构工具实际raw0，仅结构scope，完整Root语义审阅尚待完成；fresh Gas API/Native clock调用链、新开关IL语义、consumer/seal/guard/独立候选审核、新现场与同包on/off实测仍future。旧闭包结果未继承。
 
 保持20Hz、8参与者、6Bot、体素及协议/额度；PR #280 NEVER_MERGE，Owner OPEN，ADR159 Draft，handfeel FAIL_PENDING_USER。不得由源码测试、打包或观察开关推断已流畅。
+
+### checkpoint266 — 新完整SDK的闭包、消费封件与私有候选守卫具化（前台仍待验收）
+
+- 源码身份维持 Game d59e153f15ad8636f722a3331fde9b79359aa1ec / Client 73d0c4f4498507afd9506e50c77f3154e4ab4967；完整新SDK304成员，13额外字节差异的机器码语义/性能等价仍 UNKNOWN。Compact Ecs source d15be9b652fae187f9a4d01116cebeba75e40018、DLL1106944B/d82ca79134273008536083eca4506578a393ee961435d2c9f7d7c5233e1bec76；复用Gameplay编译头826e122be2041a4d25ee76b84bee1533f7f10750，不改称d59重新编译。
+- Fresh Gas4API与Native clock静态审计实际完成：api-clock-audit.root-actual-01.json120898B/e0a0064ab4ee26193dba7770de0272e07645c6ddcdf68dcc9b90ee5e98080409；仅同次实际PE/WebCIL调用链与clock语义闭包，不是WASM实测性能。
+- 新gasClock开关Root完整控制流采纳8286B/b36b51c62c618f984060bd3abae776d882cad31fd153a781dc55b33d91a2585d；只读复核21827B/a73393ef2f8493db4e60c5f4790aa5b102e0848b1188c53e5db954559cad8808无material blocker，有限成功字典路径、Boolean wrapper/register、real_joint/soleTick保留；普通BCL依赖未逐body证明。
+- Client字节优化实际IL语义采纳4555B/cfa5fd0d16009d696f8c10faaef35c58f95064fcdc088100a2f38f7163fc1c6b及独立复核9463B/a60aa6de50ff6ea2314e16859226424794fa5f50674603e5adcc68cf13f49c91已完成；不将结构token存在或allocation测试换算成浏览器改善。
+- FreshArtifactContract仅私有消费采纳：13218B/501ec49df3bad41d0d3ae5b87156ad93f9138b57b7b80c53185689a684880f87；绑定59源/811publish输入/20replica与actual新Client pair。
+- Composer实际PID16372/raw0，Host闭包4835B/3ad9b326deeccb9ce67c2668039a5e1a15130cf07f80f3d9db0722478a32220d，43新PE/WebCIL对、49boot资源、输入0漂移；未继承旧closure结论。
+- 消费复制实际PID28636/raw0，新根C:/Work/LumioGames/.run-f1-wasm-call-consumer-20261010-01；consumer-binding1257792B/99e42e3e490350f19aa77f44cedf6b3cdcae7baaa9b22b029570f29c17e137fd。
+- 正常resource sealer实际PID33324/raw0；finalize PID11988/raw0，148逻辑资源、407physical leaves，sealed-resource-binding1254790B/7cf2bdd75d9bce791f0adb40a6dd7f6d63fdadcbd8491fcb761225e68014a6aa。仅资源字节绑定通过，normal release verify/runtime仍未运行。
+- Guard01实际PID10296/raw1：输入模板缺ecsArtifact，bindFreshArtifacts身份断言在首写入前失败；receipt1284B/3a216a0c0914fd7c87e0e0b3ee2c83942588cb85cc464d3504e658cf6a9fecc8与原stderr1226B/5c530e822c56a621571746e4162566613eb2b613f9492566f7308312fa1f8b6e保留。
+- Guard02只补精确d82 ecsArtifact、既有ecsProof和precedingGuardAttempt，未放宽守卫；inputs02 21287B/fda00e5729f126898dd6ad7cf39df614f36106d599a412ac9ddfc2f988692c3c，实际PID27016/raw0。
+- 新候选candidate-01.json781944B/8e664c736bdbbcf895281511a54df333e412f0ac6269bf4371ec24349ee5cf02，2582artifacts，scene movement-sync-preview；新Games根C:/Work/LumioGames/.run-f1-wasm-call-games-20261010-01。
+- 私有端口19144/19145/19146/19147只读readback541B/bab25ac0acee734e7ce7125608e87cfee2f8729af50b5987d94c210ba1e4141f，listeners=[]、protectedPortsTouched=false；这是当时空闲证据，不是永久预留或启动成功。
+- 此段断点（候选未发行的历史时点）：独立候选审核、issuer、normal verify、隐藏独立启动、新浏览器同包gasClock on/off和实际用户前台验收全部 PENDING；不写未来结果、不声称性能/手感已通过。
+- 唯一近期账本两树既有CP265前缀只读一致：1029644B/6c8cb595026bb0e7f23d474458c94fac1826becfa308ee0beec7f3d036adc0af；本段在两树仅追加，旧前缀逐字保全；真实追加与提交证据另存 f1-wasm-call-checkpoint266-actual-01。
+- 保持server20Hz、8参与者/6Bot、体素/协议/额度及旧fault/旧包/三份generated dirty；Owner/ADR142/18085/schema OPEN，PR280 NEVER_MERGE，F3 NOT_ADOPTED，F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+- 本段完整文件路径、bytes/SHA、原始PID/退出码/日志与账本prefix见 C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-wasm-call-checkpoint266-actual-01/append-receipt-01.json；仅已发生事实。
