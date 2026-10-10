@@ -3500,3 +3500,16 @@ baseline新run movement-f1-baseline-71397fcb-a3bf3f8e9d7e1e9e，在hidden独立p
 - 新短输出C:/Work/LumioGames/.run-f1-aot-counters-compact-baseline-20261010-01；Root正常terminal parent隐藏启动worker29064/start2026-10-10T11:03:48.6315156Z，600s有界collector，当前未收到actualpublish结果，不称AOT/43PE-WebCIL/Native/typedDTO闭环成功。新consumer/封件/guard/19134–19137新现场准备中，未启动。旧fault/partial/封件和保护端口不动。
 - Root新增只读counter分析器6938B SHAaf9df249f36baee7248e500e7d96180fb7b3adc301221189d5f67c5e60c822cd：只按同hostLifetime/ordinal配对strictRunning，验证delta/身份/原括号外capture成本。旧真实raw10Running没有counter，所有统计NULL而非0；三个BigInt/错误delta/UNAVAILABLE synthetic analyzer QA均按预期，但不是实际游戏measurement。新的真实前台counter数据仍PENDING。
 - main fetch实际仍b2f6822b050aadabc59fb1cdf4e37320db948155，PR59仍Draft未合入。20Hz/协议额度/8玩家6官方Bot/体素保持；Owner/ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED。Compact此前前台517.2ms仍FAIL，完整移动矩阵与用户原话验收仍FAIL_PENDING_USER。
+
+
+### checkpoint253 — 新计数 Host Compact fullAOT 已构建/封件，候选未放行（2026-10-10）
+
+计数源码固定9c1dfc58948200fe42e6d36f21fe67929803be2b。Root实际fullAOT publish PID20056/raw0、178.493804s、未超时，486输入前后0漂移。保留原Compact Ecs d15/d82ca791…、Gameplay826、SDK25d；新Host源码/新195 Presentation/新Native闭包独立绑定，不继承旧195/Native结论。
+
+实际闭包43个PE/WebCIL pair、49个boot资源、27332 methods/26188 bodies、Host117 documents/103 generated、计数DTO50字段及44 AOT objects全部通过；Root实际1179 records复核0漂移。新Mono22443034B/SHA46c0ff24fe2210fd1e63cad148bc8991c408178d6ae2e85e06210cee33df9784；Host PE774144B/58b01051ab53d5a445ff55916d7a5693c83f88fcff83fc088eb5c48832af5cc1，WebCIL773909B/55bc065a0d3d42a5feca5517f781f16d1a576e2874f1ed8ff94703c4fcf84c1f。消费页main.js58973B/SHA9937fdb65621cd5dc4dd5f33e3234ede33072e864df1fad98a85b1deb3e3c41f、新presentation.js1155465B/SHA395c415becf3ddd5d8c06318c5f45c1c1552810bab1438dc8ce18617cff2a722。
+
+Root完成新的owned consumer copy；正常sealer PID17728/raw0/noTimeout，封件407 leaves/148 resources。guard仅产生UNRELEASED候选：667592B/SHA5f9c29b64a9128517f5390a9b5519528baf0b748ee86ff387fb07de8d00ead09，2165绑定files。Root在2026-10-10T11:23:12.0536976Z只读确认19134–37无TCP listener，并采用+6h allocation；这不是后续启动时的端口保留。该阶段无review release、无Runtime/浏览器性能采集。旧包、旧封件、旧fault均保留。
+
+analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool available五坏边界实际RED，再GREEN9/9（RED PID20080/失败5项；GREEN PID4692/raw0）；这是分析工具QA，不是新现场性能证据。旧现场约500ms级Session仍FAIL，不能把构建/闭包/封件PASS写成“已顺畅”。Owner/ADR142/18085/schema仍OPEN，PR280 NEVER_MERGE，手感FAIL_PENDING_USER；下一步仍须独立实际候选审查→正常verify/隐藏启动→新现场前台计数/节拍观察→用户验收。
+
+实际证据身份见ROOT/f1-work-counters-checkpoint253-draft-01/actual-identity-readback-01.json；publish/closure/typedDTO/Rootreview/seal/guard/analyzer原始收据均按其实际路径保全。Root已FULLREAD这些实际结果并按只追加方式记入账本；独立候选审查/放行/Runtime结果在后续checkpoint单记。
