@@ -3513,3 +3513,24 @@ Root完成新的owned consumer copy；正常sealer PID17728/raw0/noTimeout，封
 analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool available五坏边界实际RED，再GREEN9/9（RED PID20080/失败5项；GREEN PID4692/raw0）；这是分析工具QA，不是新现场性能证据。旧现场约500ms级Session仍FAIL，不能把构建/闭包/封件PASS写成“已顺畅”。Owner/ADR142/18085/schema仍OPEN，PR280 NEVER_MERGE，手感FAIL_PENDING_USER；下一步仍须独立实际候选审查→正常verify/隐藏启动→新现场前台计数/节拍观察→用户验收。
 
 实际证据身份见ROOT/f1-work-counters-checkpoint253-draft-01/actual-identity-readback-01.json；publish/closure/typedDTO/Rootreview/seal/guard/analyzer原始收据均按其实际路径保全。Root已FULLREAD这些实际结果并按只追加方式记入账本；独立候选审查/放行/Runtime结果在后续checkpoint单记。
+
+### checkpoint254 — counter 新包候选已闭合；两次 normal hidden startup 失败保全，左右手感仍待解决（2026-10-10）
+
+- 用户原话“感觉不是很流畅 虽然好了一些了，”“尤其是左右移动的时候”仍未解决；没有新前台 Running 计数或用户验收，不能标完成。
+- Root 已读只读 `f1-movement-design-counter-path-readonly-01/report-02.md`（14130B，SHA256 `2d95301a866424f83f40944840c707a18fd5895b134585d2c15b59c09eb01434`）；37 源码身份前后 0 漂移，原 report01/mapping01 保留。
+- 修正 report01 归类：Game design rule9（`:282`）与 ADR0050 decision3（`:24`）均写松键停止采样、缓冲例外；差异在这些生效文字与 prototype/当前 Host 每个 enabled step 发送 typed Move None 的实际实现之间。
+- None 会写 LastMoveTick、清 LastMoveDirection，并可能驱动有效转向缓冲/续行；不能当 no-op 吞掉。左右共用 solver，仅 ±X；显示朝向仍读显示位移。本次没有选择修法或修改正式 ADR。
+- 实际 counter Game 源为 `9c1dfc58948200fe42e6d36f21fe67929803be2b`，私有 Compact Ecs 源为 `d15be9b652fae187f9a4d01116cebeba75e40018`；fresh AOT closure 实测 43 PE/WebCIL pairs、49 boot resources、typed Pair/Snapshot/Delta 8/32/10 字段。
+- Root actual closure review 采纳范围仅新私有候选绑定；8 checks 全 true、1179 actual input records 0 mismatch，不继承旧闭包数量，不代表已加载到新 Running 页面或性能通过。
+- 独立 `verdict-01.json` 为 spec PASS / quality APPROVED，仅精确 candidate01（SHA256 `5f9c29b64a9128517f5390a9b5519528baf0b748ee86ff387fb07de8d00ead09`），绑定 2165 文件；不采纳 F3/Owner/手感。
+- normal `review-release-01.json` SHA256 `9c0c524fcf24cfe9e4e82c274d4402650c77db1c4016f611d086c29baaaa948b` 已签发；`counter-normal-verify-01` 和 `counter-normal-verify-short02` 原始收据均 rawExitCode 0，分别 SHA256 `d4253a076c0f518ad0f643ae24954a73b561e84531252827c646d4ad2aff45db` / `9401576da3775152aa556ad9a4084d1f1d05da87369ce4db85979ea4f051e9a9`。
+- 第一次 normal hidden startup，长 run 后缀 `32cd49b04ffe8c91`：initdb raw1，首错 `initdb failed: 1`；initdb receipt SHA256 `85b72a486c96ef4cbd18aa295e6259c4acda46b56ae9c23d669a9c7fd373fd8e`，原 stdout/stderr/first-failure/prefix 均保留。
+- 该 initdb stderr 报不能创建 `pg_logical/replorigin_checkpoint.tmp`；实际完整文件名长 260（含 NUL 261）。路径上限为受控重试诊断依据，不把这次失败包装成构建、性能或手感失败的证明。
+- 第二次仅改新短 evidence root 为 `C:/Work/LumioGames/.run-f1-counter-preview-20261010-02`，run 后缀 `2d0e810b54d1d865`；实际 initdb / pg-start / db-create 均 raw0。
+- 第二次首错为 `AUTHOR_ONLY_MAP_SNAPSHOT: DS config must bind the frozen legacy map path and content SHA`：normal launcher 要求 base_map_path 解析后的规范路径与当前 gameRoot 对应，单有相同地图 SHA 不足以通过。
+- 第二次失败后自有 pg-stop raw0（receipt SHA256 `b9bb2370bf2db99a95866efcbff39c108ba63e43990aa8c4d34b42aebd3dea77`）；两次前/后端口收据的 protected 均为 `[]`，未借清旧 fault 日志通过守卫。
+- 两次均有新 prefix 收据：`MoveLab-32cd49b04ffe8c91` / `MoveLab-2d0e810b54d1d865`；passwordPersisted 均 false，密码只在 launcher 内存；旧 run、封件、日志与失败收据未被本轮操作删除或覆盖。
+- 只读 map-path preparation03 已核实新旧地图同为 33965B、SHA256 `ffc6b13ac8f7a24469a3348b38f720cb128f54c3284e13fe0fd8652fd7b8e019`；新旧 Tables 各 31 文件、differences `[]`，20Hz/8 玩家等边界未改。
+- Root 已全文读并冻结采纳 binding03 / issuer03 / wrapper03；实际 generator03 raw0，原2165文件保持，新增后 candidate03 为2207文件 / 682005B / SHA256 `17ce56f76d7e41c22904f1d3453a91dfe4c72df1f5827b9114d3b0945937d26d`。unchanged normal map guard 只读 PASS；server03 仅改 current9c1 的 map/config 两个路径，内容不变。candidate03 仍 UNRELEASED，等待精确独立审查，不能继承 candidate01 的批准或宣称新 Running。
+- 边界继续：Owner OPEN；PR280 NEVER_MERGE；F3 NOT_ADOPTED；F4 NOT_OPENED；handfeel FAIL_PENDING_USER；不降 tick/额度、不减玩家/Bot、不关体素、不吞错、不动受保护端口与他人进程。
+- 本段由 Root 采纳后仅追加账本；未修改玩法、SDK或正式ADR。原草稿及26份实际身份读回保留在 `f1-work-counters-checkpoint254-draft-01`。本轮 fresh fetch 后 Game main=`b2f6822b050aadabc59fb1cdf4e37320db948155` 且包含4055647（祖先检查raw0），PR59分支head=`9c1dfc58948200fe42e6d36f21fe67929803be2b`，Runtime #280分支head=`a5e8d9706c0f9665f4124655aff22fce63bcdbbd`，不合入。
