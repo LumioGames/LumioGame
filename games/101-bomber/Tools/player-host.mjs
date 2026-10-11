@@ -152,9 +152,10 @@ function readEvidenceBody(request, maximum) {
 function validEvidence(value, kind) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const allowed = kind === 'movement-trace'
-    ? ['version', 'timeBasis', 'frameTimeBasis', 'managedTimeBasis', 'startedAt', 'exportedAt', 'userAgent', 'truncated', 'diagnosticFailures', 'capacity', 'events']
+    ? ['version', 'timeBasis', 'frameTimeBasis', 'managedTimeBasis', 'startedAt', 'exportedAt', 'userAgent', 'truncated', 'diagnosticFailures', 'capacity', 'predictionCatchUp', 'events']
     : ['version', 'mode', 'arm', 'pageRunId', 'manifestDigest', 'sdkVersion', 'resources', 'bootAlternativeGroups', 'stages', 'failures', 'coverage', 'trustBase'];
   if (Object.keys(value).some(key => !allowed.includes(key))) return false;
+  if (kind === 'movement-trace' && 'predictionCatchUp' in value && !validPredictionCatchUp(value.predictionCatchUp)) return false;
   if (kind === 'movement-trace' ? value.version !== 2 || !Array.isArray(value.events) || value.events.length > 300000
     : value.version !== 1 || !['baseline', 'f3'].includes(value.arm) || typeof value.pageRunId !== 'string' || value.pageRunId.length > 128 ||
       !/^[a-f0-9]{64}$/.test(value.manifestDigest ?? '') || !Array.isArray(value.resources) || value.resources.length > 1024 || value.coverage?.expected !== value.resources.length) return false;
@@ -167,6 +168,23 @@ function validEvidence(value, kind) {
       if (/password|credential|authorization|cookie|secret/i.test(key)) return false;
       if (child && typeof child === 'object') pending.push([child, depth + 1]);
     }
+  }
+  return true;
+}
+
+function validPredictionCatchUp(value) {
+  if (value === null) return true;
+  const fields = ['requestedSteps', 'requestedDeltaMs', 'maxStepsPerPump', 'maxDeltaMs', 'configured'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) || value.configured !== true ||
+      Object.keys(value).length !== fields.length || Object.keys(value).some(key => !fields.includes(key))) return false;
+  for (const [request, effective, fallback, limit] of [
+    ['requestedSteps', 'maxStepsPerPump', 5, 64], ['requestedDeltaMs', 'maxDeltaMs', 250, 3200],
+  ]) {
+    if (!Number.isSafeInteger(value[effective]) || value[effective] < 1 || value[effective] > limit) return false;
+    if (value[request] === null) {
+      if (value[effective] !== fallback) return false;
+    } else if (typeof value[request] !== 'string' || !/^[1-9][0-9]*$/.test(value[request]) ||
+        Number(value[request]) !== value[effective]) return false;
   }
   return true;
 }
