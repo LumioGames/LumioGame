@@ -1,7 +1,7 @@
 {
   "name": "@lumio/bomber-presentation",
   "private": true,
-  "version": "0.0.5-bomber.schema15",
+  "version": "0.0.6-bomber.schema16",
   "type": "module",
   "exports": { ".": "./dist/presentation.js", "./style.css": "./dist/presentation.css" },
   "scripts": {
