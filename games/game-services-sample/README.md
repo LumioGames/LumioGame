@@ -53,7 +53,7 @@ dotnet run --project games/game-services-sample/Tools/HostProbe/Lumio.GameServic
 纯 HTML 浏览器验证使用已经完成的 HostProbe 结果，生产 SDK/adapter/WASM 与两个不同 loopback origin：
 
 ```powershell
-node games/game-services-sample/Tools/browser-probe.mjs --engine-sdk '<S Engine树>' --platform-sdk '<S Platform树>' --host-evidence '<本次HostProbe evidence.json>' --chromium '<Chromium可执行文件>' --playwright-package '<安装@playwright/test的package.json>' --out '<新的空.run目录>'
+node games/game-services-sample/Tools/browser-probe.mjs --browser-sdk '<正式SDK安装根目录>' --manifest-sha256 '<外部钉定的manifest SHA256>' --contract '<Engine唯一game-services-v1.json>' --host-evidence '<本次HostProbe evidence.json>' --chromium '<Chromium可执行文件>' --playwright-package '<安装@playwright/test的package.json>' --out '<新的空.run目录>'
 ```
 
 浏览器探针明确使用受控 HTTP 数据夹具，其公开玩法投影来自真实 R 返回候选。它证明模块接入、真实 WASM、资料拒绝、正式意图、离线隔离及父 UI 选档；它不实现、不验证 PostgreSQL 事务、账号认证、真实 alias 或最终两个玩家浏览器组合。上述最终证据归 I。
@@ -63,10 +63,12 @@ node games/game-services-sample/Tools/browser-probe.mjs --engine-sdk '<S Engine�
 ```powershell
 dotnet build games/game-services-sample/Gameplay/Lumio.GameServices.Sample.Rules.csproj -c Release
 node games/game-services-sample/Tools/package-rules.mjs --engine '<冻结Engine树>' --dll '<Release规则DLL>' --out '<新的私有规则目录>'
-node games/game-services-sample/Tools/package.mjs --engine-sdk '<S Engine树>' --platform-sdk '<S Platform树>' --platform-origin 'https://<实际可信平台origin>' --out '<新的游戏静态发布目录>'
+node games/game-services-sample/Tools/package.mjs --browser-sdk '<正式SDK安装根目录>' --manifest-sha256 '<外部钉定的manifest SHA256>' --contract '<Engine唯一game-services-v1.json>' --platform-origin 'https://<实际可信平台origin>' --out '<新的游戏静态发布目录>'
 ```
 
-静态发布只有 Client 与实际 S 闭包的原字节，不重新实现或修改 SDK。WASM 由 S 官方生产入口生成；包内没有规则 DLL、catalog、完整服务器状态、随机材料、证书或 Key。规则制品独立，完整 DLL 清单和原字节 SHA-256 写入冻结 `RulePluginArtifact`。输出目录必须为空，工具不会覆盖既有发布。
+静态发布消费已可信安装的完整官方浏览器 SDK 制品，要求外部 manifest pin 与 Engine 唯一合同；不接受源码树或缺依赖回退。工具逐文件校验字节、依赖、生产 WASM 和执行预算，再原样保留 `vendor/core`、`vendor/lumio`、`vendor/manifest.json` 全布局。Client 在 `Client/`，根 `index.html` 通过 base 指向该目录以对接正式 H 入口。包内没有规则 DLL、catalog、完整服务器状态、随机材料、证书或 Key。规则制品独立，完整 DLL 清单和原字节 SHA-256 写入冻结 `RulePluginArtifact`。输出目录必须为空，工具不会覆盖既有发布。
+
+打包守护测试要求 `GAME_SAMPLE_BROWSER_SDK`、`GAME_SAMPLE_BROWSER_SDK_MANIFEST_SHA256` 和 `LUMIO_ENGINE_ROOT` 指向实际材料，再运行 `node --test games/game-services-sample/Tools/package.test.mjs`；缺材料失败，不跳过。
 
 I 发布时采用实际分配的 game/environment/release/ruleVersion/serviceId 等一致登记。此仓 `deployment.json` 是固定测试输入；真实 release ID 与 H 受信 publication 快照必须一致，不能凭客户端字段推断。生产 origin 必须按 H 隔离域策略配置。`Client/publication.json` 的 platformOrigin 是可信发布配置；fragment 只允许 S 的非秘密 `lumioContainer` 当前文档标识，不携带 session/AI grant/密钥。
 

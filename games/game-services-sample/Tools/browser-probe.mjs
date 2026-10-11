@@ -9,10 +9,10 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const arg = name => { const i = process.argv.indexOf(name); if (i < 0) throw Error(`${name} required`); return process.argv[i + 1]; };
 const here = path.dirname(fileURLToPath(import.meta.url));
-const output = path.resolve(arg('--out')), engine = path.resolve(arg('--engine-sdk')), platform = path.resolve(arg('--platform-sdk'));
+const output = path.resolve(arg('--out')), sdk = path.resolve(arg('--browser-sdk')), manifestPin = arg('--manifest-sha256'), contractPath = path.resolve(arg('--contract'));
 const evidence = JSON.parse(await fs.readFile(arg('--host-evidence')));
-const wire = JSON.parse(await fs.readFile(path.join(engine, 'engine/wire/game-services-v1.json')));
-if (evidence.Evidence.ContractDigest !== (await import(pathToFileURL(path.join(engine, 'engine/browser/game-services/dist/runtime-contract.mjs')).href)).default.contractSha256) throw Error('Host and SDK contract mismatch');
+const wire = JSON.parse(await fs.readFile(contractPath));
+if (evidence.Evidence.ContractDigest !== (await import(pathToFileURL(path.join(sdk, 'core/dist/runtime-contract.mjs')).href)).default.contractSha256) throw Error('Host and SDK contract mismatch');
 const nativeCase = id => evidence.cases.find(x => x.id === id).response;
 const views = [nativeCase('project_empty').result.view, nativeCase('evaluate_begin').decision.view, nativeCase('evaluate_claim').decision.view, nativeCase('evaluate').decision.view];
 const calls = [], browserErrors = []; let phase = 0, permission = 'undecided', chosen = null;
@@ -64,7 +64,7 @@ const parentServer = http.createServer(async (req, res) => {
   } catch (error) { browserErrors.push(String(error)); json(res, { code: 'gs_invalid_request' }, 400); }
 });
 function parentScript() { return `
-import * as runtime from '/vendor/engine/src/index.mjs';
+import * as runtime from '/vendor/core/src/index.mjs';
 import { createLumioAdapter } from '/vendor/lumio/adapter.mjs';
 const frame=document.querySelector('#game'), section=document.querySelector('#permission'); let bridge;
 const adapter=createLumioAdapter({runtime, launch:{gameId:${JSON.stringify(gameId)},environment:'test',releaseId:'expedition_2',runtimeOrigin:${JSON.stringify(gameOrigin)},entryUrl:${JSON.stringify(gameOrigin + '/Client/index.html')}},platformOrigin:${JSON.stringify(parentOrigin)},containerId:'probe_container',documentId:'probe_document',csrf:async()=> 'local_probe_csrf',
@@ -72,8 +72,9 @@ showPermissions:()=>new Promise(resolve=>{section.hidden=false;for(const choice 
 onLogin:async()=>({bindingId:'bind_1'}),onRestart:()=>bridge.invalidateDisclosure({type:'identity_changed'}),onDisclosure:event=>bridge?.invalidateDisclosure(event),
 onBinding:selection=>{const box=document.querySelector('#binding');box.hidden=false;box.replaceChildren();for(const c of [selection.source,selection.target]){const b=document.createElement('button');b.id='choose_'+c.reference;b.textContent='选择'+c.reference+' / 服务器修订'+c.revision;b.onclick=()=>adapter.choose(c.reference);box.append(b)}}});
 await adapter.open();
-bridge=await runtime.createParentBridge({frameWindow:frame.contentWindow,frameOrigin:${JSON.stringify(gameOrigin)},containerSessionId:'probe_document',wasm:await(await fetch('/vendor/engine/dist/lifecycle.wasm')).arrayBuffer(),execute:adapter.execute});
+bridge=await runtime.createParentBridge({frameWindow:frame.contentWindow,frameOrigin:${JSON.stringify(gameOrigin)},containerSessionId:'probe_document',wasm:await(await fetch('/vendor/core/dist/lifecycle.wasm')).arrayBuffer(),execute:adapter.execute});
 document.querySelector('#settings').onclick=async event=>{await bridge.openPermissions(event);bridge.permissionsClosed()};
+frame.addEventListener('load',()=>{void adapter.startupPermissions()},{once:true});
 frame.src=${JSON.stringify(gameOrigin + '/Client/index.html#lumioContainer=probe_document')};
 `; }
 await new Promise(resolve => parentServer.listen(0, '127.0.0.1', resolve));
@@ -82,7 +83,7 @@ parentOrigin = `http://127.0.0.1:${parentServer.address().port}`; gameOrigin = `
 await fs.mkdir(output, { recursive: true });
 let browser;
 try {
-  execFileSync(process.execPath, [path.join(here, 'package.mjs'), '--engine-sdk', engine, '--platform-sdk', platform, '--platform-origin', parentOrigin, '--out', path.join(output, 'publication')]);
+  execFileSync(process.execPath, [path.join(here, 'package.mjs'), '--browser-sdk', sdk, '--manifest-sha256', manifestPin, '--contract', contractPath, '--platform-origin', parentOrigin, '--out', path.join(output, 'publication')]);
   const require = createRequire(path.resolve(arg('--playwright-package'))), { chromium } = require('@playwright/test');
   browser = await chromium.launch({ executablePath: arg('--chromium'), headless: true });
   const page = await browser.newPage({ viewport: { width: 1100, height: 1100 } });

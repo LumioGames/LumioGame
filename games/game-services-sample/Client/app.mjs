@@ -1,4 +1,4 @@
-import { createGameServices } from '../vendor/engine/src/index.mjs';
+import { createGameServices } from '../vendor/core/src/index.mjs';
 import { readLumioDocumentId } from '../vendor/lumio/adapter.mjs';
 import { createSession } from './session.mjs';
 
@@ -27,7 +27,7 @@ try {
   const config = await (await fetch('./publication.json', { cache: 'no-store' })).json();
   const platform = new URL(config.platformOrigin);
   if (platform.origin !== config.platformOrigin || !['https:', 'http:'].includes(platform.protocol)) throw Error('平台来源配置无效');
-  const wasm = await (await fetch('../vendor/engine/dist/lifecycle.wasm')).arrayBuffer();
+  const wasm = await (await fetch('../vendor/core/dist/lifecycle.wasm')).arrayBuffer();
   const sdk = await createGameServices({ parentWindow: window.parent, platformOrigin: config.platformOrigin,
     containerSessionId: readLumioDocumentId(location.hash), wasm,
     onInvalidated: () => session?.invalidate(), onReconciled: event => session?.reconcile(event),
