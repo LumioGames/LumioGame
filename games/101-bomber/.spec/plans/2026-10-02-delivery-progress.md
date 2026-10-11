@@ -4127,3 +4127,16 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - 20Hz、8人6Bot、voxel、协议/额度不变；Owner ADR142/18085/schema OPEN，ADR159 Draft，PR280 NEVER_MERGE，F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER，officialPublication=false。新页面未启动，浏览器性能、音频和用户手感均未通过；C#旧8PASS/2Session startup timeout原失败单列保全。
 
 精确当前输入身份见 C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint294-append-01/inputs-01.json；本段仅追加，历史 checkpoint与原始收据保全。
+
+### checkpoint295 — 当前私有签发、隐藏启动、页面字节与前台采样限制（2026-10-11 UTC）
+
+- 承接checkpoint294，沿用Game bde0dadfe0e79777b4250a046bada14ee2c61ce9及明确七个正常生成/两个已审JS工作树字节、Runtime 4a8db8df23b909a7481ccbb786565c9dfe86adce、SDK4/Dual04/AOT5，本段未构建或改生产源。限定路径资格seal09/guard10保留原门，正常finalizer PID30004和guard PID28260均raw0/noTimeout/输入0漂移；407 sealed leaves/148资源、43 managed对/49 boot限定当前组合，不由此推浏览器或全传递helpers验收。
+- 独立artifact SPEC PASS/QUALITY APPROVED，approval3573B/dfbfedecc864e6267241785056705ae5f3a98b4b3e90750225169371ce9ad8de到2026-10-11T04:52:55.509Z，Root private launch adoption限定采纳。正常签发PID2956/raw0、verify PID14408/raw0，均noTimeout/输入0漂移，实际release6147B、launch5703B/7358c0bfa44b174ba60a1f4caed2319a46a46d00054f90eebd5c683776102b85原件保全。
+- 新hidden wrapper PID9780于03:58:23.7394435Z以当前bundled pwsh启动；新run movement-f1-authority-baseline-20261011-01-967e4e17107bdf65/prefix.json保留MoveLab-967e4e17107bdf65、8个loginNames、passwordPersisted=false（不冒称8账户新注册）。正常launcher verification为SERVING，admittedBots=6/requiredBots=6，仅证明本次服务启动/准入，不继承页面或手感验收。
+- 实际HTTP19157返回main.js63153B/7e34ab9e43a78b9e6f8da0a491c30fe3356e13c6f1e5d7adde6aebb26aa831fa，predictionSteps/predictionDeltaMs/trace flags标记存在；Presentation1155465B/395c415becf3ddd5d8c06318c5f45c1c1552810bab1438dc8ce18617cff2a722含onFrame/debugLocal，Root served-byte原件1278B。它证明实际响应字节，帧行为与性能仍分别取证。
+- 当前前台A/B tab17/18；本段A trace独立证明默认5/250实际configured=true；分析两5/250导出与10/500启动idle原件的轻量PID12856/30064均raw0/输入0漂移。5/250两份导出累计重叠，27.787s与55.756s跨度不是两个独立5秒窗口，不池化；5000ms自动capture只标观察，不切trace、不清旧events。A/D自动控制尝试后仍无有效key/moveIntent，StartRecording成功NOT_OBSERVED；native两次focus和Playwright DOM超时只作工具限制，不能单独证明页面卡死。
+- 当前累计5/250的RAF523个间隔p50/p95/max=31.4/249.8/531.1ms，SessionTick p50/p95/max=72.7/303.1/489.6ms；这些elapsed跨度不等于纯CPU，也不证明剩余内部根因。coordinationCost全null，绝不写协调成本0；10/500仅启动idle，无匹配held暴露。20/1000当前188435B/afe4b42c10f7d6b62fcdb220793f305325a7a9d143c93cbabae4cf5cf3766bf1确实configured=true、7帧/hidden0/truncated=false/diagnosticFailures0；UI资源witness超时未qualify，不能冒四组对照完成或参数优胜。64/3200结果不纳本段。
+- 后续04:14:28.101Z实际first-failure记录Bot1 PID30936退出code=1，hidden wrapper9780最终raw1；正常收尾保留旧日志和pg-stop/ports-after，未删除fault通过守卫。动态verification由初始SERVING5576B/b701f13b113ed91d8b653848f3a275b8a202d1623b32fbc00e32bf4c6629b89a更新为FAIL6469B/6277bc6545d6aacab8e251b41137e3f88ffe4cb9bed100e6e25fb30a26cd446b；Root从当时已实际读取的内存对象按正常JSON格式恢复启动快照，与原5576B/SHA逐字节身份一致，单独冻结资格，未重写原流水文件。这条首故障收据未给出DS内部原因；后续DS独立定位另段记录，不能把30936冒称DS PID或正常轮次结束。
+- 20Hz、8人6Bot、voxel与协议/额度保持；Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNPROVEN、audio NOT_OBSERVED、officialPublication=false。实际可见帧/静态包限定PASS不构成持键、音频连续性或用户手感通过。
+
+精确本轮原件身份见C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint295-draft-01/inputs.root-04.json；trace分析report5577B/a6a3de11f46f2e72ec60855fbcd04f59978137c99c0854d4b3346d79bc970f4d。
