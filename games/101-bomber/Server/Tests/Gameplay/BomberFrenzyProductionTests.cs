@@ -1073,7 +1073,7 @@ public sealed class BomberFrenzyProductionTests
         var runtime = world.Single<BomberWorldRuntime>();
         var life = world.Get<BomberPlayerState>(participant.CurrentLife.Value);
         ulong chain = checked(runtime.NextChainId.Value + 1);
-        // Explicit owner-state fixture for restore/corruption boundaries. No
+        // Authored owner-state fixture for restore/corruption boundaries. No
         // structural create was submitted, and this is not actual Unknown proof.
         var row = new BomberFrenzy.Promise($"frenzy:{participant.Entity.ToHex()}:{chain:x16}",
             life.Entity.ToHex(), life.LifeGeneration.Value, participant.MatchId.Value, chain,

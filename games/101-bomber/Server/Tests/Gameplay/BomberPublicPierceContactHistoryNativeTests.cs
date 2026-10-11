@@ -72,7 +72,7 @@ public sealed class BomberPublicPierceContactHistoryNativeTests
 
         var match = scene.World.Single<BomberMatchState>();
         ulong matchId = match.MatchId.Value, matchIndex = match.MatchIndex.Value;
-        // Explicit phase input premise; World.Tick and bomb clocks are never
+        // Specified phase input premise; World.Tick and bomb clocks are never
         // overwritten. The ordinary processor owns all following deadline work.
         match.Phase.Value = (int)BomberMatchPhase.Results;
         match.PhaseEndTick.Value = scene.World.Tick;
