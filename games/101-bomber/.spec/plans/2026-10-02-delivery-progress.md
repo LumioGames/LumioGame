@@ -4395,3 +4395,11 @@ Root实际boot选择：49resources/43managed，EventSource=true。Host WebCIL908
 新launch-only deployment实际copy child9500/raw0；normal verify child28844/raw0/noTimeout/0drift，305physical/304manifest，newmanifest46432B/07fa76e6，copy371266B/46cb832f、verify169159B/b6103158、result207149B/b09bff2f，Rootresult有限采纳1087B/e5672c90。来源compileSDK不动，旧69ac deployment fault2127B/222a8839保留，未删日志通过守卫。新site scope4839B/844daa61仅采纳owned paths/profile，19162/19163/19164/19165在2026-10-11T10:30:55.3303405Z实际listeners=[]，并非占用租约；launcher仍须重查。新consumer/guard/issuer/hiddenlaunch/账号prefix及A/B Running尚未完成，不能标完成。
 
 账本CP307–311已只追加提交1519ee9至DraftPR60，lint-extensions与diff-check通过；仅修新追加EOF空行，原前缀保全。20Hz/8players/6Bots/voxel/协议/额度保持；前台验收拟用默认5/250补算，未重用此前64/3200长阻塞设置。Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNKNOWN、officialComplete=false。
+
+### CP313 — 正常 Host07 实际只读审计与Root限域采纳
+
+Host Csc 读取 PID7372 与编译 PE/PDB 读取 PID19580 均 raw0；337 个当前输入独立复核零漂移。主 Host 的16 Sources/190 References/11 Analyzers 与第二个 aot-instances Csc 记录完整保留；127 个 PDB 文档对应16主输入和111实际生成文件，生成文件单列发布后证据。
+
+六项正常只读审计均 raw0、无超时、零漂移：当前43组 PE/WebCIL、49个boot资源、93/93 identity读取成功；29563 methods/28368 bodies、37个Host导出、typed work-counter/execution-telemetry DTO、native链接闭包及43组posttrim→AOT/44条实际编译命令通过原有范围校验。Root已有独立限域采纳（Host Csc/PDB及normal publication），原immutable2449、Game685来源、P2原205来源+2产物、五项AOT/trim/retainIL/EventSource旗标保持。Runtime selected/copy/linked PDB实际缺失仍为UNAVAILABLE，P2/projection仅属后验审计元数据。
+
+原authoring失败保全：Csc wrapper PID8212/raw1，首轮extract PID29444/raw1与native PID15364/raw1；均与实际publish PID27136/raw0分列。Root选择直接normal生产入口，沿当前prodguard推进两浏览器手感，不把helper历史future表新增为本次启动门。此处记录路径选择，未冒称启动或用户验收已完成。API/clock及完整coordination语义仍按原范围单列；Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNPROVEN。
