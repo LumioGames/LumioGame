@@ -536,6 +536,8 @@ function bindExports(api) {
   csharp.boot = (launch, catalog, loopback) => api.Boot(JSON.stringify(launch), catalog, loopback);
   csharp.configureConfig = value => api.ConfigureConfig(value);
   csharp.configureInputMode = (mode, trace) => api.ConfigureInputMode(mode, trace);
+  csharp.configurePredictionCatchUp = typeof api.ConfigurePredictionCatchUp === 'function'
+    ? (maxSteps, maxDeltaMs) => api.ConfigurePredictionCatchUp(maxSteps, maxDeltaMs) : undefined;
   csharp.configureGasExecutionClock = typeof api.ConfigureGasExecutionClock === 'function'
     ? enabled => api.ConfigureGasExecutionClock(enabled) : undefined;
   csharp.configureCoordinationCost = typeof api.ConfigureCoordinationCost === 'function'
@@ -707,7 +709,8 @@ const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]", "::1"];
 
 // Movement experiments and traces stay on loopback pages and the development bridge.
 function readMovementFlags() {
-  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true, coordinationCost: false };
+  if (!pageAllowsLoopback() && !globalThis.__lumioDevelopment) return { inputDriver: 'interval', trace: false, gasExecutionClock: true, coordinationCost: false,
+    predictionSteps: 5, predictionDeltaMs: 250, requestedPredictionSteps: null, requestedPredictionDeltaMs: null };
   const params = new URLSearchParams(location.search);
   const requested = params.get('input');
   const trace = params.get('trace') === 'movement';
@@ -717,7 +720,23 @@ function readMovementFlags() {
   const coordination = params.getAll('coordination');
   const coordinationCost = PLAYER_MODE && params.get('scene') === 'movement-sync-preview' && trace &&
     requested === 'step' && coordination.length === 1 && coordination[0] === 'on';
-  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff, coordinationCost };
+  const catchUpRequested = params.has('predictionSteps') || params.has('predictionDeltaMs');
+  if (catchUpRequested && !(PLAYER_MODE && requested === 'step' && trace && params.get('scene') === 'movement-sync-preview'))
+    throw new Error('prediction_catch_up_requires_private_step_trace');
+  function positive(name, fallback, limit) {
+    const values = params.getAll(name);
+    if (values.length === 0) return { value: fallback, raw: null };
+    if (values.length !== 1 || !/^[1-9][0-9]*$/.test(values[0]))
+      throw new Error('prediction_catch_up_invalid:' + name);
+    const value = Number(values[0]);
+    if (!Number.isSafeInteger(value) || value > limit)
+      throw new Error('prediction_catch_up_invalid:' + name);
+    return { value, raw: values[0] };
+  }
+  const steps = positive('predictionSteps', 5, 64), delta = positive('predictionDeltaMs', 250, 3200);
+  return { inputDriver: requested === 'step' || requested === 'pump' ? requested : 'interval', trace, gasExecutionClock: !gasClockOff, coordinationCost,
+    predictionSteps: steps.value, predictionDeltaMs: delta.value,
+    requestedPredictionSteps: steps.raw, requestedPredictionDeltaMs: delta.raw };
 }
 
 function pageAllowsLoopback() {
@@ -1057,11 +1076,20 @@ async function start() {
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
     if (PLAYER_MODE) {
-      const { gasExecutionClock, coordinationCost } = readMovementFlags();
+      const flags = readMovementFlags();
+      const { gasExecutionClock, coordinationCost } = flags;
       if (!gasExecutionClock && !csharp.configureGasExecutionClock)
         throw new Error("SpectatorExports.ConfigureGasExecutionClock missing");
       csharp.configureGasExecutionClock?.(gasExecutionClock);
       csharp.configureInputMode(inputDriver, Boolean(movementTrace));
+      if (inputDriver === 'step') {
+        if (!csharp.configurePredictionCatchUp)
+          throw new Error('SpectatorExports.ConfigurePredictionCatchUp missing');
+        csharp.configurePredictionCatchUp(flags.predictionSteps, flags.predictionDeltaMs);
+        movementTrace?.setPredictionCatchUp({
+          requestedSteps: flags.requestedPredictionSteps, requestedDeltaMs: flags.requestedPredictionDeltaMs,
+          maxStepsPerPump: flags.predictionSteps, maxDeltaMs: flags.predictionDeltaMs, configured: true });
+      }
       if (coordinationCost && (!csharp.configureCoordinationCost || !csharp.startCoordinationCostCapture))
         throw new Error('SpectatorExports.ConfigureCoordinationCost / StartCoordinationCostCapture missing');
       csharp.configureCoordinationCost?.(coordinationCost);

@@ -60,6 +60,7 @@ public sealed class SpectatorReplicaHost : IDisposable
         Func<WorldManager, IReplicaVoxelSink>? voxelSections = null, BomberClientConfig? configuration = null,
         BomberPlayerStepOptions? stepOptions = null, Func<ulong>? executionClock = null)
     {
+        var predictionSteps = stepOptions?.CreatePredictionSteps(SamplePlayerIntent);
         _stepOptions = stepOptions;
         _inputTrace = stepOptions?.TraceEnabled == true ? new BomberInputTrace() : null;
         _coordinationArmed = _inputTrace is not null && AppContext.TryGetSwitch("Lumio.Bomber.CoordinationCost", out bool enabled) && enabled;
@@ -88,7 +89,7 @@ public sealed class SpectatorReplicaHost : IDisposable
             new NullPresentationSink(), new JsonSessionMessageKindMap(sections), _sent, allowWelcomeOnlyAdmission: true,
             endpointProvider: new PlatformEndpointProvider(launch.Profile, launch.Endpoint, renewEndpoint), sectionEnvelopes: sections,
             voxelSections: voxelSections ?? (manager => new EngineWasmSectionSink(EngineWasmWorldVoxelResources.Require(manager))), jointPrediction: (IClientJointPrediction?)_telemetryJoint ?? _joint,
-            predictionSteps: stepOptions is null ? null : new ClientPredictionStepOptions(SamplePlayerIntent, 5, TimeSpan.FromMilliseconds(250)));
+            predictionSteps: predictionSteps);
         if (!new ClientSessionFactory().Create(in dependencies, out _session).Succeeded)
             throw new InvalidOperationException("client_session_creation_failed");
     }

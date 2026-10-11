@@ -23,6 +23,8 @@ public static partial class SpectatorExports
     private static BomberClientConfig? s_configuration;
     private static string s_inputMode = "interval";
     private static bool s_inputTrace;
+    private static int s_predictionMaxSteps = 5;
+    private static int s_predictionMaxDeltaMs = 250;
     private static readonly Queue<string> s_closedTraces = new();
     private static bool s_closedTraceLoss;
 
@@ -33,6 +35,16 @@ public static partial class SpectatorExports
         if (mode is not ("interval" or "pump" or "step")) throw new ArgumentException("client_input_mode_invalid", nameof(mode));
         s_inputMode = mode;
         s_inputTrace = trace;
+    }
+
+    [JSExport]
+    public static void ConfigurePredictionCatchUp(int maxSteps, int maxDeltaMs)
+    {
+        if (s_client is not null || s_engine is not null)
+            throw new InvalidOperationException("client_input_mode_live");
+        BomberPlayerStepOptions.ValidateCatchUp(maxSteps, maxDeltaMs);
+        s_predictionMaxSteps = maxSteps;
+        s_predictionMaxDeltaMs = maxDeltaMs;
     }
 
     [JSExport]
@@ -80,7 +92,7 @@ public static partial class SpectatorExports
                 new BrowserWebSocketClientConnectionFactory(platform.Hfsm, SpectatorReplicaHost.TransportOptions(launch.Profile), allowLoopback),
                 catalog, launchJson, async cancellation => { cancellation.ThrowIfCancellationRequested(); string value = await RenewLaunch(); cancellation.ThrowIfCancellationRequested(); return value; },
                 Console.WriteLine, configuration: configuration,
-                stepOptions: s_inputMode == "step" ? new BomberPlayerStepOptions(s_inputTrace) : null,
+                stepOptions: s_inputMode == "step" ? new BomberPlayerStepOptions(s_inputTrace, s_predictionMaxSteps, s_predictionMaxDeltaMs) : null,
                 executionClock: s_inputTrace ? platform.Clock.NowNanos : null);
             s_client.Connect(launchJson);
         }
