@@ -4152,3 +4152,16 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - Owner OPEN / PR280 NEVER_MERGE / F3 NOT_ADOPTED / handfeel FAIL_PENDING_USER / officialPublication=false；8人6Bot、体素、协议、额度与受保护端口不改，本段仅追加账本。
 
 精确原件索引：C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint296-draft-01/inputs.root-02.json。
+
+### checkpoint297 — SDK部署隔离、历史故障日志限定资格与新私有守卫（2026-10-11 UTC）
+
+- 承接已提交推送的checkpoint295–296，docs工作树HEAD c99fa5e8f463edc0b4b3992bf82f92c409c49d98，Game bde0dadfe0e79777b4250a046bada14ee2c61ce9与已限定工作树字节、Runtime4a/Client73d/SDK4/Dual04/AOT5不变。本段没有生产修改、新构建、AOT或性能采样；本checkpoint记录部署与守卫的实际执行。
+- 在新的owned目录 C:/Work/LumioGames/.run-f1-coordination-deployment-20261011-01/release-win-x64 实际按原manifest复制304叶+manifest本身共305个文件。copy实际PID38412、305 source/target映射、inputMismatch0；原manifest46500B/ba855bb88ae51f5ff6735ce01271c8f64ca2a62b5b3452bfd56bdbba32111b68字节未改。原包正常verify-release实际PID36732/raw0/noTimeout/inputMismatch0，stdout files304；“305”含manifest，不冒305个manifest叶。copy收据没有独立rawExitCode字段，不给它补造raw0。
+- 源SDK4的hostentry_fault.log2186B/5e9a53f6e541ae148f556883340d9e1a07f92d883bae3fb919339fe690215a81与两次旧run失败、DS原栈均保全；不删/挪日志绕门、不复制该额外日志到部署。部署alias仅让启动路径使用新target，原compileSDK/Runtime/AOT/overlay/Gameplay/consumer/seal身份保持。未承诺运行后SDK永久不可变：若target新增日志，正常verify仍按原规则拒绝。
+- 原guard11实际PID37192/raw1/noTimeout/inputMismatch0，在原publication04:50拒绝源SDK4的额外日志；7326B/e7551d6ad9a0a1061fd33a79d64c0a7d951dc15865d8899dfd7dd7f74687a132收据和stderr保持。本次失败不重写为通过。
+- 新publication05/contracts10/guard12只增加明确历史source日志资格：默认仍要求exact305；例外只钉这一个历史SDK4日志、原firstFailure/DS栈与原编译/AOT/overlay绑定、实际305 source/target复制映射、Rootalias和正常verify原件。source物理306含旧日志，target仍exact305且无额外文件例外；所有其他原门保留，3导数全文正反重构。独立source/plan审 status PASS_SCOPED、spec COMPLIANT、quality APPROVED_SCOPED/Rootfalse，限域导数资格，不等于新candidate审批或运行成功。
+- Root实际历史资格7385B/14b703a75374cd7d1b7982523e2fc71126f9a3f8bfd96de344a8162ddd626197与新的guard inputs34703B在独立文件冻结；不改原closure inputs、旧收据或过去AOT输入。Bot1 PID30936不冒称DS PID；原DS结算断言原因仍需offending row证据，资格不修玩法故障。
+- 新guard12实际PID32344/raw0/noTimeout/inputMismatch0，04:52:58.905Z至04:53:32.326Z；stdout明确 BOUND_PRIVATE_COORDINATION_AOT_CANDIDATE_UNRELEASED。新candidate2976739B/508af526db3f0262fa6630ccb9a9d1c5828ae5a2107efa0031259e8f966addb2，artifactCount9344/externalPrior5685/newGamesRoot02。该candidate身份来自实际guard stdout与Root回报，本草稿不重新散列大candidate或SDK二进制。在本checkpoint证据截点，新candidate审批、签发、normalverify、隐藏启动与浏览器均尚未执行，不能继承旧approval或SERVING。
+- Owner OPEN / PR280 NEVER_MERGE / F3 NOT_ADOPTED / handfeel FAIL_PENDING_USER / performance UNPROVEN / audio NOT_OBSERVED / officialPublication=false；20Hz、8人6Bot、体素、协议、额度与受保护端口保持。source限定审与guard成功不补造高帧率同步、held、音频或全helpers通过。
+
+精确原件索引：C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint297-draft-01/inputs.root-03.json。
