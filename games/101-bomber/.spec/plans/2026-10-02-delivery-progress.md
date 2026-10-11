@@ -4024,3 +4024,16 @@ Root于本次实际readback后追加。PR60于本段前实际读回Draft/OPEN、
 - Root实际REPL内存reset从746602760降至10374008B，属于分析进程内存释放，不是游戏FPS/手感证据。本段未调20Hz、补算/协议/额度、玩家/Bot数量或体素；Owner ADR142/18085/schema OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED、handfeel FAIL_PENDING_USER。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段综述/原件身份/筛选边界见f1-coordination-browser-independent-summary-285-01/inputs-and-findings-01.json，原OFF严格持键报告另在f1-coordination-off-held-phase-readonly-01。Root于当前真实readback后追加，后续源码优化与前台验收另记。
+
+### checkpoint286 — authority-base复用的真实Native RED与兼容性基线（2026-10-11 UTC）
+
+- 承接checkpoint285；当前优化使用新的隔离RuntimeAuthorityBaseReuse20261011，base77a20095f1074ebae7f386d83a5f380edaa7c1f4、分支codex/101-authority-base-reuse-20261011。该阶段生产尚为原77a字节；不修改冻结Game f7/RuntimeCarry，原87生成dirty保全。
+- 基线私有预览经既有owned driver stop.flag正常SIGINT关闭；wrapper5140 exit于00:32:38Z实际raw0、terminal parent97167实际raw0。00:34:39Z仅查我们19154–19157四口，0listeners、wrapper不存活。verification最后写的SERVING是启动记录，不冒为终态；原stop/日志/封件保全，旧config不得复用。原件见f1-coordination-browser-actual-01/owned-stop-{readback,network-readback}-01.json。
+- 首次真实Native RED PID16896/raw2/noTimeout/52.488s、检查的10输入0漂移；1项FAIL，准确Expected authorityCopied0/Actual97。四次无新authority的Rebuild已实际执行且输入只执行1次、replay0、outstanding1、healthy/published断言先通过。首诊断记录copied97/components291/fields3298；不是浏览器FPS或用户手感结果。原stdout2461B/e817f141…、空stderr及7583B/bdb5a539…receipt、初版测试源码均保全。
+- 新兼容性控制覆盖sameTick/coverage不同fingerprint、direct SetSilent/List/Dict、独立root Transform、结构及空ACK Observer；fullCapture使用既有fullRefresh分支为oracle。sem02实际编译CS1579失败raw1原输出保留，修正fixture使用真实Count/index而未删除断言。sem03 PID31648/raw2为6项5PASS1目标FAIL；其9895B测试版本目前完整字节副本尚未确认，保留receipt前后hash而明确SOURCE_SNAPSHOT_UNAVAILABLE，不用现live代替旧源。
+- sem04 PID11464/raw2/noTimeout/inputChanges0，实际9项8PASS1同目标FAIL、0skip；测试live读回12124B/35c04bb6…，之后改动和GREEN另记。本阶段仅确定重复重采集根因及兼容性基线，没有修复通过或公开发布结论。
+- 复用候选依据既有touched/fullRefresh，不能用Tick/coverage/World.Revision当完整源版本；未知Transform/结构写保守fallback，必须保留Invalid/NativeWitness、预测survivor、预算拒绝与完整发布。20Hz、5步/250ms、8人6Bot、体素/协议/额度均未改。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实测试原件在f1-authority-base-reuse-implementation-01，输入身份见本段append目录inputs-01.json。
+
+Root补充实际readback：sem03测试字节已在behavior-test-before-production-03.cs保全（9895B/9b990a54…），sem04在before-production-04同名序号副本保全（12124B/35c04bb6…）。前条为当时未确认；现在SOURCE_SNAPSHOT_AVAILABLE，原副本精确匹配收据hash，不能继续报告为缺失。完整身份见本段source-snapshot-readback-02.json。
