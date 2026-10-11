@@ -4049,3 +4049,15 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - 当前尚未将4a或追帧配置置入前台。20Hz、8人6Bot、体素、协议/额度不变。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER；不得用Native测试通过代替用户验收。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实原件身份见f1-coordination-checkpoint287-append-01/inputs-01.json。
+
+### checkpoint288 — postcommit双Runtime、私有SDK4与追帧配置草稿PR（2026-10-11 UTC）
+
+- 承接checkpoint287，Root实际正常push Runtime base77a及候选4a；新增Draft PR289、base codex/101-carry-coordination-cost-20261011、head4a8db8df，GitHub实际Draft/OPEN，不合并。Game七文件独审COMPLIANT/APPROVED限源码/JS组成、8个源码SHA当前0漂移；Root实际commit bde0dadfe0e79777b4250a046bada14ee2c61ce9、7文件159+/11-，正常push并开Draft PR62（base codex/101-coordination-cost-20261011），实际Draft/OPEN/headbde。两PR均附本任务，main/PR280/Owner门未动。
+- 4a后正常双TFM net10 PID8776/raw0/4.671s及ns21 PID30284/raw0/3.794s/noTimeout，各380源与control superset前后0漂移、0warning/error。真实Csc readonly8404/27276 raw0，8prod每TFM共16精确Csc/PDB绑定；四MVID net10 Ecs474ad963-350c-4a9f-a4e5-548ec9d01d7d、Gas1e48ed4f-5996-4d0f-9565-f017e17f36ff，ns21 Ecs63a5a623-39b2-43d8-be1d-737116baeaf5、Gas0aa4f32b-8588-4498-b381-ca367fb12cb0。Gas每TFM85 physical PASS+17 virtual filesystem UNAVAILABLE仍如实保留；不引用旧EmbeddedSource作本次fresh通过。
+- 原完整声明比较PID13956/raw2/allEqual=false保全：两Ecs各22changed type（新增internal hooks/HasInputLayers及private compiler closure编号），Gas两组全decl相同。限定公开/受保护API四组equal，无public改变；仅据此支持旧Dual03原Gameplay有限复用，非方法体/新Game编译/行为等价。
+- Root实际新SDK4 derive26364、normalverify34048、selector26048均raw0；305物理成员（302不变+2新ns21 Runtime DLL+1private derived manifest）、source/target input0。manifest46500B/ba855bb88ae51f5ff6735ce01271c8f64ca2a62b5b3452bfd56bdbba32111b68，精确4a编译来源；是同布局私有派生，officialCompletePackageClaim/officialPublication/OwnerApproved=false。选择器实际输出P/aot-06/props06与NuGet.config，旧SDK3及所有失败保留。
+- 新GameGdev Presentation正常离线install25464/raw0、build30472/raw0（tsc+vite135modules）；205tracked源/锁前后0漂移，实际JS1155465B/395c415b…、CSS48920B/509541ef…；onFrame/debugLocal普通与计时分支标记在新产物。相同JS字节来自本轮新工作树正常build，不重标旧产物为新执行。
+- 旧SDK3的C#03实际自然terminal24696/raw2，10项8PASS/2Session-active-timeout/0skip；不是参数回归全绿。新selector预检确认测试仍从不变nupkg加载旧Runtime，不会因更换browser ns21自动改变net10引用。Root授权仅自有fresh测试AppBase私有overlay，源码/测试/SDK包不改；首次精确4a Runtime加载后因NativeLoader/Hfsm旧0.1对新引用1.0身份不兼容，actual34372/raw2/10FAIL，原件保全。该失败是明确测试闭包问题，不混称产品性能失败/默认兼容通过；最小实际正常1.0两NativeFacade闭包修正与后续结果另段登记。
+- 当前新AOT5/consumer/前台仍未运行；aot06原prepared路径不一致已定位，新的独立aot07仅路径派生准备，原件不覆盖。20Hz、8人6Bot、体素、协议/额度保持；默认5/250，开发参数范围1–64/1–3200只是待比较profile。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段精确当前原件身份见f1-coordination-checkpoint288-append-01/inputs-01.json。
