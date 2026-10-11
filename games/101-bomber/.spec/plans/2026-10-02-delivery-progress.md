@@ -4012,3 +4012,15 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段当前实际原件路径/字节/SHA见f1-coordination-checkpoint284-draft-01/inputs-01.json与f1-coordination-checkpoint284-append-01/input-identities-01.json。
 Root于本次实际readback后追加。PR60于本段前实际读回Draft/OPEN、head acac34955452675e031b19677b4ee8ddf7268d76；本段走该Docs分支提交，不合main。
+
+### checkpoint285 — 当前 support=true 私有网页的 OFF/ON 协调成本观察（2026-10-11）
+
+- 当前真实现场 SERVING，required/admitted Bots 6/6，隐藏 wrapper PID5140。00:19:53Z HTTP读回 main 61227B/a2ba048e…、Presentation 1155465B/395c415b…与封件一致，movement trace/onFrame/debugLocal标记均在。Root现场人类实体为8个组件；不把组件数当8个当前前台玩家。
+- 两次原出口来自 Codex IAB tab15 的 A 前台，OFF/ON hiddenFrames=0、hiddenPumps=0，未截断、诊断失败0。B只在同一IAB后台连接，不计双窗口前台对照。OFF原件2983508B/4c13e621…、ON1953863B/44d0eabd…均保全，输入指针、指标与本段独立前后回读身份见证据目录。
+- OFF严格仅取全程在setter-held内、同向样本且完整Running的A/D约5s窗口：34/48 pumps，各100 first、replay13/8。Session p50/p95分别111.15/230.87与90.40/122.16ms；wholeRaf p95仅3.10/3.60ms。真实RAF间隔p95为221.47/111.67ms，>50ms大间隔与managedTick几何重叠占96.75%/95.67%；这不是排他CPU归因，未定位Session内部全部余量。
+- ON真实WASM provider Lumio-GameRuntime-Gas-SelectiveRebuild（MVID78c7a866-0115-4217-80e8-67d381e371b7）交付256有效记录、23包，重复0/内部ordinal缺口0/issues0；全部观测包声明complete且closed。配置5s/256，实际RecordLimit在3.0051s闭窗，并非采满5s；末条Event2给终止，未收到Event3 stop DTO。截止后任意尾段仍不据此宣称完整。
+- 256次Rebuild观测壁钟2488.0ms：beginCoverage88.8、authorityRefresh1187.4、witness563.0、removeAffected176.4、executeAffected398.6、finalProject39.8、publication30.1、未分类3.9ms；authority+witness占70.35%。inclusive Project/Trim200.0/127.6ms已含在排他分摊，不重复相加。计数p50为inputs11/locations218/Project4次/Trim3次/capture128组件2556字段/Trim扫描17925；authority实际重捕获总计为191×17实体/128组件/2556字段；总Trim扫描3433523次，是重复工作计数而非唯一对象规模。
+- OFF与ON采样起始时间、持键长度（每向5s与2s）、世界工作量不同；不采纳为性能改善、diagnostic overhead或左右方向因果。ON Session与协调窗覆盖也不同，不能把全Session总计作分母得贡献率；无Stopwatch↔performance.now导出锚点，不把协调记录直接对齐RAF。下一步有依据地核重复authority/witness工作，尚无修复验收。
+- Root实际REPL内存reset从746602760降至10374008B，属于分析进程内存释放，不是游戏FPS/手感证据。本段未调20Hz、补算/协议/额度、玩家/Bot数量或体素；Owner ADR142/18085/schema OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED、handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段综述/原件身份/筛选边界见f1-coordination-browser-independent-summary-285-01/inputs-and-findings-01.json，原OFF严格持键报告另在f1-coordination-off-held-phase-readonly-01。Root于当前真实readback后追加，后续源码优化与前台验收另记。
