@@ -98,3 +98,14 @@ test('failed reconnect leaves offline trial available for an explicit retry', as
   assert.equal(f.session.current.mode, 'trial');
   f.holdInitialize(undefined); await f.session.reconnect(); assert.equal(f.session.current.mode, 'official');
 });
+
+test('SDK synchronous reconnect invalidation still leaves a failed connection retryable', async () => {
+  const f = renewingSession(); await f.session.start(); f.session.offline();
+  // The official SDK reports disclosure invalidation synchronously on offline -> online.
+  f.sdk.setOnline = online => { if (online) f.session.invalidate(); };
+  f.holdInitialize(() => { throw Error('network unavailable'); });
+  await assert.rejects(f.session.reconnect(), /network unavailable/);
+  assert.equal(f.session.current.mode, 'trial');
+  f.holdInitialize(undefined); await f.session.reconnect();
+  assert.equal(f.session.current.mode, 'official');
+});

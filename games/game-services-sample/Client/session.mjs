@@ -69,7 +69,9 @@ export function createSession(sdk, render = () => {}, { now = () => performance.
     },
     async reconnect() {
       if (retired) throw Error('restart required');
-      const captured = ++generation; sdk.setOnline(true); publish({ mode: 'connecting', message: '连接服务器…' });
+      generation++; sdk.setOnline(true);
+      if (retired) throw Error('restart required');
+      const captured = generation; publish({ mode: 'connecting', message: '连接服务器…' });
       try { await initialize(); }
       catch (error) { if (!retired && captured === generation) offline(); throw error; }
     },
