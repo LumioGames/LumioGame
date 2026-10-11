@@ -13,6 +13,7 @@ namespace Lumio.Bomber.Client.Spectator;
 [JsonSerializable(typeof(PlayerStateDto))]
 [JsonSerializable(typeof(SessionStateDto))]
 [JsonSerializable(typeof(OwnerPresentationDto))]
+[JsonSerializable(typeof(InputTraceBatchDto))]
 [JsonSerializable(typeof(ReadBoxDto))]
 [JsonSerializable(typeof(IEnumerable<LoadedModuleDto>), TypeInfoPropertyName = "LoadedModules")]
 [JsonSerializable(typeof(string))]

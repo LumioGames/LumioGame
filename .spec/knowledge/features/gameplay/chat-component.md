@@ -21,7 +21,7 @@ metadata:
 - **声明生成**：注册表、实体模板与同步表由 Runtime 的 `gen-declarations` 在构建时生成到 `generated/server/`（接线在仓根 `Directory.Build.targets`，照 LumioSample 的 sibling 接法），生成物入库、不手改。本程序集只有一份注册表：炸弹人 Stage 0 契约实体与聊天玩家同表，世界实体是 `BomberWorldEntity`。
 - **写入口**：`ChatComponent.SendMessage` 是 last-message 的唯一写入口——取同实体 `IdentityComponent.Name` 拼「名字: 内容」，空文本或行超过 UTF-8 512 字节即拒绝（不写、不发事件）；`ChatSetMessageSystem` 只 Admit 信封到 `WorldManager.Enqueue` 或在 Owner Thread 调 `SendMessage`。
 - **查询 / 过期**：Game 通过 `WorldManager.Enqueue` 提交 Runtime owner-thread controls，并从 `Drain` 的 `queries` 集合消费结果；不建立第二份绑定、查询、tombstone 或 expiry authority。
-- **世界启动**：测试世界由测试工程的 `ServerWorldBoot` 按 Runtime 生产 API 启动——`WorldManager.Create` → `Start` → `TryBindNativeSpatialIndex(KernelConfig)`（绑不上即失败）→ `WorldTickBinding.Bind`。注册表不声明玩法配置契约，Runtime 此时要求不传 `WorldConfigBinding`；`ChatComponentSchemaTests` 钉住这一点，哪天声明了契约必须补真实绑定。
+- **世界启动**：测试工程的 `ServerEngineFixture` 为串行测试进程持有一个惰性启动的 `LumioEngine`，经 `LumioEngine.Start(nativePath, KernelConfig)` 校验并加载真实 Native；缺失或身份不符即失败。`ServerWorldBoot` 调用公开的 `LumioEngine.CreateWorld(WorldCreationOptions)`，传本仓注册表、服务器实例 ID 与本仓测试体素目录，由引擎装配空间索引、体素、GAS、HFSM 与 Tick，并要求空间索引已绑定。每个测试释放自己的世界，fixture 在全部世界释放后关闭进程引擎。注册表不声明玩法配置契约，此时不传 `WorldConfigBinding`；`ChatComponentSchemaTests` 钉住这一点，声明了契约就必须传真实绑定。
 - **输入**：`ChatInput` 只有 `text`。发送者由宿主会话注入为 128 位 `NetEntityId`（instanceId + counter，32-hex），客户端不能自选。
 - **状态**：`LastMessageText` + `LastMessageTick`（契约字段 `lastMessageText` / `lastMessageTick`），服务器私有、`[Persist]`、不同步。
 - **事件**：`OnChatMessage` ClientRpc（信封侧即 `WorldChange.rpcs` 的 `ClientRpcRecord`）；本仓自有的 `chat.event` 是它的本地投影，sender 编码为 `senderNetEntityIdInstanceId` + `senderNetEntityIdCounter`（u64 LE ×2，对应记录里的 128 位 `sender`）。世界不保留历史列表。

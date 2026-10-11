@@ -34,7 +34,7 @@ public sealed class MovementInputMemoryTests
     }
 
     [Fact]
-    public void EarlyTurnTapContinuesToTheOpeningAndFinishesAfterRelease()
+    public void EarlyTurnTapContinuesToTheOpeningOnlyWithExplicitIdle()
     {
         using var scene = OpenScene();
         scene.Write(7, 1, 8, 1023u << 8);
@@ -43,7 +43,12 @@ public sealed class MovementInputMemoryTests
         scene.Manager.Tick();
         QueueMove(scene, BomberDirection.Down, BomberDirection.None, true, 2);
         scene.Manager.Tick();
-        for (int i = 0; i < 5; i++) scene.Manager.Tick();
+        for (uint i = 3; i <= 7; i++)
+        {
+            QueueMove(scene, BomberDirection.None, BomberDirection.None, false, i);
+            scene.Manager.Tick();
+            Assert.Equal((int)BomberDirection.Down, scene.World.Get<BomberPlayerState>(scene.Lives[0]).Facing.Value);
+        }
         Assert.InRange(Position(scene).X, 8.49999f, 8.50001f);
         Assert.InRange(Position(scene).Z, 7.54999f, 7.55001f);
         Vector3 settled = Position(scene);
@@ -94,6 +99,7 @@ public sealed class MovementInputMemoryTests
         scene.Manager.Tick();
         for (int i = 1; i < delay; i++) scene.Manager.Tick();
         scene.Write(7, 1, 8, 0);
+        QueueMove(scene, BomberDirection.None, BomberDirection.None, false, 2);
         scene.Manager.Tick();
         AssertPosition(moves ? Center + Vector3.UnitZ * 0.175f : Center, Position(scene));
         Assert.Equal(0UL, scene.World.Get<BomberPlayerState>(scene.Lives[0]).PendingTurnUntilTick.Value);
@@ -127,7 +133,7 @@ public sealed class MovementInputMemoryTests
     }
 
     [Fact]
-    public void PairedColdRestoreContinuesTheSameTurnWithoutReplayingItsInput()
+    public void PairedColdRestoreContinuesTheSameTurnWithNewExplicitIdleInputs()
     {
         using var scene = OpenScene(persistence: true);
         scene.Write(7, 1, 8, 1023u << 8);
@@ -147,11 +153,50 @@ public sealed class MovementInputMemoryTests
         Assert.Equal(original.LastMoveDirection.Value, copy.LastMoveDirection.Value);
         for (int i = 0; i < 7; i++)
         {
+            uint sequence = checked((uint)i + 3);
+            QueueMove(scene, BomberDirection.None, BomberDirection.None, false, sequence);
+            restored.Enqueue(Message(scene.Lives[0], nameof(MoveAbility), default(MoveAbility.Input), checked((uint)i + 1), sequence));
             scene.Manager.Tick(); restored.Tick();
             AssertPosition(Position(scene), restored.World.Get<LogicTransform>(scene.Lives[0]).LocalPosition);
             Assert.Equal(original.PendingTurnUntilTick.Value, copy.PendingTurnUntilTick.Value);
         }
         AssertPosition(new Vector3(8.5f, 1.5f, 7.55f), Position(scene));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitIdleWithoutTurnBufferPreservesFacingAndPositionAndCreatesNoBuffer(bool turnPressed)
+    {
+        using var scene = OpenScene();
+        Position(scene, Center);
+        var player = scene.World.Get<BomberPlayerState>(scene.Lives[0]);
+        player.Facing.Value = (int)BomberDirection.Left;
+        QueueMove(scene, BomberDirection.None, BomberDirection.None, turnPressed, 1);
+        scene.Manager.Tick();
+        Assert.Equal(OperationOutcomeKind.Succeeded, Assert.Single(scene.Manager.DrainOutbox().Operations).Outcome.Kind);
+        AssertPosition(Center, Position(scene));
+        Assert.Equal((int)BomberDirection.Left, player.Facing.Value);
+        Assert.Equal(0UL, player.PendingTurnUntilTick.Value);
+        Assert.Equal(0, player.PendingTurnDirection.Value);
+    }
+
+    [Fact]
+    public void AbsentInputDoesNotContinueAnUnexpiredTurnBuffer()
+    {
+        using var scene = OpenScene();
+        scene.Write(7, 1, 8, 1023u << 8);
+        Position(scene, Center);
+        QueueMove(scene, BomberDirection.Right, BomberDirection.None, false, 1);
+        scene.Manager.Tick();
+        QueueMove(scene, BomberDirection.Down, BomberDirection.None, true, 2);
+        scene.Manager.Tick();
+        var player = scene.World.Get<BomberPlayerState>(scene.Lives[0]);
+        Assert.True(player.PendingTurnUntilTick.Value > scene.World.Tick);
+        Vector3 before = Position(scene);
+        scene.Manager.Tick();
+        AssertPosition(before, Position(scene));
+        Assert.True(player.PendingTurnUntilTick.Value > scene.World.Tick);
     }
 
     [Fact]
@@ -274,10 +319,17 @@ public sealed class MovementInputMemoryTests
         MoveAbility.WritePosition(scene.World, scene.Lives[0], value, nameof(MoveAbility));
 
     internal static void QueueMove(BomberTerrainProductionTests.Scene scene, BomberDirection primary,
-        BomberDirection secondary, bool turnPressed, uint sequence) => Queue(scene, nameof(MoveAbility),
+        BomberDirection secondary, bool turnPressed, uint sequence) =>
+        scene.Manager.Enqueue(MoveMessage(scene.Lives[0], sequence, primary, secondary, turnPressed));
+
+    private static InputCommandMessage MoveMessage(NetEntityId life, uint sequence, BomberDirection primary,
+        BomberDirection secondary, bool turnPressed) => Message(life, nameof(MoveAbility),
             new MoveAbility.Input { PrimaryDirection = primary, SecondaryDirection = secondary, TurnPressed = turnPressed }, sequence);
 
     internal static void Queue(BomberTerrainProductionTests.Scene scene, string ability, IAbilityInput input, uint sequence, ulong? abilitySequence = null)
+        => scene.Manager.Enqueue(Message(scene.Lives[0], ability, input, sequence, abilitySequence));
+
+    internal static InputCommandMessage Message(NetEntityId life, string ability, IAbilityInput input, uint sequence, ulong? abilitySequence = null)
     {
         var args = new List<object?> { ability };
         input.Write(args);
@@ -285,7 +337,7 @@ public sealed class MovementInputMemoryTests
         MethodInfo encode = typeof(WireCodec).GetMethod("EncodeServerRpc", BindingFlags.Static | BindingFlags.NonPublic,
             null, new[] { typeof(string), typeof(string), typeof(object[]) }, null)!;
         byte[] payload = (byte[])encode.Invoke(null, new object[] { nameof(AbilityComponent), "Activate", args.ToArray() })!;
-        scene.Manager.Enqueue(new InputCommandMessage(sequence, WireCodec.ServerRpc, scene.Lives[0], payload));
+        return new InputCommandMessage(sequence, WireCodec.ServerRpc, life, payload);
     }
 
     internal static void AssertPosition(Vector3 expected, Vector3 actual) =>

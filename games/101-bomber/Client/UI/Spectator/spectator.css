@@ -53,3 +53,15 @@ body.presentation-mode { margin: 0; padding: 0; max-width: none; overflow: hidde
 .presentation-mode .sel-sub { display: none; }
 .presentation-mode .terrain-pending #game-stage { visibility: hidden; }
 @media (pointer: fine) { .presentation-mode #player-controls { display: none; } }
+/* The private exercise stays inside the existing input focus panel. */
+#movement-preview-controls { max-width: 48rem; padding: .75rem; border: 1px solid currentColor; }
+#movement-preview-controls button[aria-pressed="true"] { outline: 3px solid #53d0f0; }
+#movement-preview-controls [data-movement-status] { overflow-wrap: anywhere; }
+
+/* Only the explicit private exercise overlays diagnostics on the 3D view. */
+body.presentation-mode.movement-private-preview #player-controls:not([hidden]) { display: block; position: fixed; left: 12px; bottom: 12px; width: min(28rem, calc(100vw - 24px)); z-index: 1000; pointer-events: auto; }
+body.presentation-mode.movement-private-preview #player-controls > .direction-pad { display: none; }
+body.presentation-mode.movement-private-preview #movement-preview-controls { box-sizing: border-box; max-height: 35vh; overflow: auto; padding: 8px; border: 1px solid #a5b2b4; border-radius: 4px; background: rgba(255,255,255,.96); color: #202628; font: 12px/1.4 system-ui, sans-serif; }
+body.presentation-mode.movement-private-preview #movement-preview-controls [data-movement-status] { margin: 0 0 6px; }
+body.presentation-mode.movement-private-preview #movement-preview-controls button { min-height: 32px; margin: 2px; padding: 4px 8px; font-size: 12px; }
+body.presentation-mode.movement-private-preview #export-movement-trace:not([hidden]) { position: fixed; top: 12px; right: 12px; z-index: 1001; pointer-events: auto; min-height: 32px; padding: 4px 8px; font-size: 12px; }

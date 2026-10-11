@@ -176,7 +176,7 @@ public sealed class BomberWiringTests
     }
 
     [Fact]
-    public void GameplayCatalogRegistersInstantEffectTypes()
+    public void GameplayCatalogRegistersAllEffectTypes()
     {
         using WorldManager manager = BomberTestWorld.Start();
         GasTypeRegistry registry = GasWorldContext.Require(manager.World).Types;
@@ -189,7 +189,14 @@ public sealed class BomberWiringTests
         Assert.Equal(10107u, registry.EffectTypeIdOf(typeof(BomberBubbleEffect)));
         Assert.Equal(10108u, registry.EffectTypeIdOf(typeof(BomberFreezeEffect)));
         Assert.Equal(10109u, registry.EffectTypeIdOf(typeof(BomberFreezeImmunityEffect)));
-        Assert.Equal(9, registry.EnumerateEffectsCanonical().Count);
+        Assert.Equal(10110u, registry.EffectTypeIdOf(typeof(BomberBurnDamageEffect)));
+        Assert.Equal(10111u, registry.EffectTypeIdOf(typeof(BomberFireAuraEffect)));
+        Assert.Equal(10112u, registry.EffectTypeIdOf(typeof(BomberFireZoneLifetimeEffect)));
+        uint[] ids = registry.EnumerateEffectsCanonical().Select(id => id.Value).ToArray();
+        Assert.Equal(12, ids.Length);
+        Assert.Equal(12, ids.Distinct().Count());
+        Assert.DoesNotContain(0u, ids);
+        Assert.Equal(Enumerable.Range(10101, 12).Select(id => (uint)id), ids);
         Assert.True(registry.IsFrozen);
     }
 }

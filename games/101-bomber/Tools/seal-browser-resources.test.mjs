@@ -1,0 +1,112 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp,writeFile,mkdir,readFile,rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+const module=await import('./seal-browser-resources.mjs').catch(error=>{if(error.code==='ERR_MODULE_NOT_FOUND')return {};throw error;});
+async function fixture(t) {
+  assert.equal(typeof module.sealBrowserResources,'function','sealer implementation exists');
+  const root=await mkdtemp(path.join(tmpdir(),'lumio-uv-seal-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  await mkdir(path.join(root,'_framework'));
+  for(const [name,text] of Object.entries({'index.html':'<head><script type="importmap">{"imports":{"./_framework/dotnet.js":"./_framework/dotnet.hash.js"}}</script></head><link rel="stylesheet" href="./spectator.css"><script type="module" src="./main.js"></script>',
+    'main.js':"import './static.mjs';import('./dynamic.mjs');",'static.mjs':'export const x=1;', 'dynamic.mjs':'export const y=2;',
+    'lumio_engine_wasm.js':'export default function(){}','engine-wasm.mjs':'export function createEngineBridge(){}',
+    'lumio_engine_wasm_bg.wasm':'native bytes','engine-wasm-build-info.json':'{}','official-catalog.json':'{}',
+    'spectator.css':'body{}','_framework/dotnet.hash.js':'export const dotnet={};',
+    '_framework/a.wasm':'WebCIL bytes','_framework/dotnet.boot.js':'export const config = {"resources":{"assembly":[{"name":"a.wasm","hash":"sha256-test"}]}};'}))await writeFile(path.join(root,name),text);
+  return root;
+}
+test('seal covers descendants and WebCIL with SDK fingerprint map preserved before entry',async t=>{
+  const root=await fixture(t);const out=path.join(root,'browser-resource-manifest.json');
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',version:'test'},out});
+  assert.ok(manifest.resources.find(r=>r.url==='./static.mjs'));assert.ok(manifest.resources.find(r=>r.url==='./dynamic.mjs'));
+  assert.ok(manifest.bootResources.includes('./_framework/a.wasm'));
+  const html=await readFile(path.join(root,'index.html'),'utf8');assert.match(html,/integrity="sha256-/);assert.match(html,/dotnet\.hash\.js/);
+  assert.ok(html.indexOf('lumioPageRun')<html.indexOf('src="./main.js"'));assert.ok(!manifest.resources.some(r=>r.url==='./index.html'));
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out}),/exists|sealed/i);
+});
+for(const [name,source] of [['missing',"import './absent.mjs';"],['computed',"import(variable);"],['worker',"new Worker('./static.mjs');"]]) test(`sealer rejects ${name} unresolved graph`,async t=>{
+  const root=await fixture(t);await writeFile(path.join(root,'main.js'),source);
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}));
+});
+test('embedded actual SDK boot array binds initializer through an inspected loader hash',async t=>{
+  const root=await fixture(t);await rm(path.join(root,'_framework/dotnet.boot.js'));
+  const loader='const url="./initializer.js";import(url);const dotnet={withConfig(){}};dotnet.withConfig(/*! dotnetBootConfig */{"resources":{"assembly":[{"name":"a.wasm","hash":"sha256-test"}],"modulesAfterRuntimeReady":[{"name":"initializer.js","hash":"sha256-test"}]}});';
+  await writeFile(path.join(root,'_framework/dotnet.hash.js'),loader);await writeFile(path.join(root,'_framework/initializer.js'),'export function onRuntimeReady(){}');
+  const out=path.join(root,'browser-resource-manifest.json');
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out}),/computed_import/);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',version:'test',dotnetLoaderContract:{version:'10.0.12',files:[{file:'_framework/dotnet.hash.js',sha256:createHash('sha256').update(loader).digest('hex')}]}},out});
+  assert.ok(manifest.bootModules.includes('./_framework/initializer.js'));assert.ok(manifest.jsEdges.some(e=>e.to==='./_framework/initializer.js'));
+});
+test('published json-start boot data is bounded and preserves actual array resources',async t=>{
+  const root=await fixture(t);await rm(path.join(root,'_framework/dotnet.boot.js'));
+  const loader='const ft={withConfig(){}};ft.withConfig(/*json-start*/{"resources":{"assembly":[{"name":"a.wasm","hash":"sha256-test"}]}}/*json-end*/);';
+  await writeFile(path.join(root,'_framework/dotnet.hash.js'),loader);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
+  assert.ok(manifest.bootResources.includes('./_framework/a.wasm'));
+});
+test('an inspected native Node-only import requires matching byte and branch receipts',async t=>{
+  const root=await fixture(t);
+  const native="const ENVIRONMENT_IS_NODE=false;\nif (ENVIRONMENT_IS_NODE) {\n  const { createRequire } = await import('module');\n}\n";
+  await writeFile(path.join(root,'_framework/dotnet.native.hash.js'),native);
+  await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}],"jsModuleNative":[{"name":"dotnet.native.hash.js"}]}};');
+  const statementStart=native.indexOf("import('module')"),statementEnd=statementStart+"import('module')".length,nodeGuardStart=native.indexOf('if (ENVIRONMENT_IS_NODE) {');
+  const file={file:'_framework/dotnet.native.hash.js',sha256:createHash('sha256').update(native).digest('hex'),browserUnreachableImports:[{specifier:'module',statementStart,statementEnd,nodeGuardStart,guardSliceSha256:createHash('sha256').update(native.slice(nodeGuardStart,statementEnd)).digest('hex')}]};
+  const out=path.join(root,'browser-resource-manifest.json');
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out}),/resource_import_missing/);
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[{...file,sha256:'0'.repeat(64)}]}},out}),/resource_import_missing/);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[file]}},out});
+  assert.ok(manifest.excludedBranches.some(branch=>branch.url==='module'&&branch.loaderSha256===file.sha256));
+});
+test('exact Node and disabled async-flush contracts preserve their distinct conditions',async t=>{
+  const digest=value=>createHash('sha256').update(value).digest('hex');
+  for(const kind of ['node-environment','selected-async-flush-disabled']){
+    const root=await fixture(t),node=kind==='node-environment';
+    const definition='tt="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node';
+    const guard=node?'if(tt){await import(/*! webpackIgnore: true */"process");}':'if(Pe.config&&Pe.config.asyncFlushOnExit&&0===t){await import(/*! webpackIgnore: true */"process");}';
+    const source=(node?'const '+definition+';':'const Pe={config:{}},t=0;')+guard;
+    const fileName=node?'_framework/dotnet.runtime.hash.js':'_framework/dotnet.hash.js';await writeFile(path.join(root,fileName),source);
+    if(node)await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}],"jsModuleRuntime":[{"name":"dotnet.runtime.hash.js"}]}};');
+    const statement='import(/*! webpackIgnore: true */"process")',statementStart=source.indexOf(statement),guardStart=source.indexOf(guard);
+    const branch={kind,specifier:'process',statementStart,statementEnd:statementStart+statement.length,statement,guardStart,guardEnd:guardStart+guard.length,guardSliceSha256:digest(guard)};
+    if(node)branch.environmentDefinition={token:'tt',start:source.indexOf(definition),end:source.indexOf(definition)+definition.length,sha256:digest(definition)};
+    else branch.builderSha256=digest(await readFile(path.join(root,'main.js')));
+    const expectedInput={arm:'f3',dotnetLoaderContract:{version:'10.0.12',files:[{file:fileName,sha256:digest(source),browserUnreachableImports:[branch]}]}};
+    const out=path.join(root,'browser-resource-manifest.json');
+    if(!node){await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"asyncFlushOnExit":true,"resources":{"assembly":[{"name":"a.wasm"}]}};');await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput,out}),/resource_import_missing/);await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"a.wasm"}]}};');}
+    const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput,out});
+    assert.ok(manifest.excludedBranches.some(branch=>branch.kind===kind));
+  }
+});
+test('required boot membership missing and path escape fail before any seal output',async t=>{
+  const root=await fixture(t);await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config={"resources":{"assembly":[{"name":"missing.wasm"}]}};');
+  await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}),/missing/);
+});
+test('module lexer distinguishes comment imports from import-like text inside a string',async t=>{
+  const root=await fixture(t);await writeFile(path.join(root,'main.js'),`const label="import('./absent.mjs')";import /* actual module */ './static.mjs';import('./dynamic.mjs');`);
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
+  assert.ok(manifest.jsEdges.some(edge=>edge.to==='./static.mjs'));assert.ok(manifest.jsEdges.some(edge=>edge.to==='./dynamic.mjs'));
+});
+
+test('actual sharded ICU array seals one locale alternative group and preserves nonlocale requirements',async t=>{
+  const root=await fixture(t),paths=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'];
+  const icu=paths.map(virtualPath=>({virtualPath,name:virtualPath.replace('.dat','.fingerprint.dat')}));
+  for(const row of icu)await writeFile(path.join(root,'_framework',row.name),'locale bytes');
+  await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config='+JSON.stringify({globalizationMode:'sharded',resources:{assembly:[{name:'a.wasm'}],icu}})+';');
+  const manifest=await module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')});
+  assert.deepEqual(manifest.bootAlternativeGroups,[{id:'dotnet-icu-sharded-locale',kind:'dotnet-icu-sharded-locale',minimumVerified:1,
+    members:icu.map(row=>({url:'./_framework/'+row.name,virtualPath:row.virtualPath}))}]);
+  assert.deepEqual(manifest.bootResources,['./_framework/a.wasm']);
+  assert.equal(manifest.resources.find(row=>row.url==='./_framework/a.wasm').required,true);
+  assert.ok(icu.every(row=>manifest.resources.find(resource=>resource.url==='./_framework/'+row.name).required===false));
+});
+test('sharded ICU malformed actual array fails instead of weakening boot coverage',async t=>{
+  for(const kind of ['empty','duplicate','missing']){
+    const root=await fixture(t),icu=['icudt_CJK.dat','icudt_EFIGS.dat','icudt_no_CJK.dat'].map(virtualPath=>({virtualPath,name:virtualPath}));
+    for(const row of icu)await writeFile(path.join(root,'_framework',row.name),'locale bytes');
+    if(kind==='empty')icu.length=0;if(kind==='duplicate')icu[1]={...icu[0]};if(kind==='missing')icu.pop();
+    await writeFile(path.join(root,'_framework/dotnet.boot.js'),'export const config='+JSON.stringify({globalizationMode:'sharded',resources:{assembly:[{name:'a.wasm'}],icu}})+';');
+    await assert.rejects(module.sealBrowserResources({publishRoot:root,expectedInput:{arm:'f3'},out:path.join(root,'browser-resource-manifest.json')}),/icu_alternative_group/);
+  }
+});

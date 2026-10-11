@@ -18,3 +18,11 @@ test('every page-owned module the page imports is published', () => {
   for (const name of owned)
     assert.ok(project.includes(`Include="..\\${name}"`), `${name} is imported by the page but not published`);
 });
+test('private controls and witness publish as page modules with separate latch selectors',()=>{
+  const html=fs.readFileSync(new URL('index.html',here),'utf8');
+  for(const name of ['movement-preview-controls.mjs','loaded-resource-witness.mjs'])assert.ok(project.includes(`Include="..\\${name}"`));
+  const section=html.match(/<section id="movement-preview-controls"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(section);assert.doesNotMatch(section,/\sdata-direction=/);assert.match(section,/data-movement-direction="0"/);
+  assert.match(section,/data-movement-record/);assert.match(section,/export-resource-witness/);
+  assert.doesNotMatch(project,/Content\s+Include="[^"]*\.test\.mjs"/);
+});

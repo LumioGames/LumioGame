@@ -397,7 +397,7 @@ public sealed class BomberPublicAuraProductionTests
             var match = scene.World.Single<BomberMatchState>();
             var skill = scene.World.Get<BomberSkillState>(source);
             var participant = scene.World.Get<BomberParticipantState>(scene.World.Get<BomberPlayerState>(source).Participant.Value);
-            // Explicit initial-selection fixture: reopen an unbound Warmup slot,
+            // Authored initial-selection fixture: reopen an unbound Warmup slot,
             // then use the real public selection path to populate every binding.
             match.Phase.Value = (int)BomberMatchPhase.Warmup;
             match.PhaseEndTick.Value = scene.World.Tick + 100;
