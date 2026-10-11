@@ -78,3 +78,4 @@
 | [0048](0048-bomber-m2-map-packages-and-interaction-boundaries.md) | 炸弹人 M2 三档地图参数及金箱穿透、踢弹糖、冰桥和狂暴边界 | 生效 |
 | [0049](0049-bomber-container-capacity-candidate.md) | 炸弹人容器容量、本地候选 Schema 与兼容审计迁移 | 生效 |
 | [0050](0050-bomber-movement-per-tick-intent-sampling.md) | 炸弹人移动改为逐 Tick 意图采样:按住匀速、短按至少一步、同 Tick 至多一步 | 生效 |
+| [0051](0051-game-rule-plugin-production-profile.md) | 规则插件以独立 net10.0 生产配置消费真实合同并保留构建守卫 | 生效 |

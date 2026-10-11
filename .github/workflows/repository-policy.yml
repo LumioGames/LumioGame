@@ -71,6 +71,9 @@ jobs:
       - name: native-exemption-guard unit tests
         working-directory: game
         run: node --test eng/native-exemption-guard.test.mjs
+      - name: Rule plugin production profile guards
+        working-directory: game
+        run: node --test eng/game-rule-plugin-profile.test.mjs
       - name: dotnet build
         id: build
         working-directory: game
