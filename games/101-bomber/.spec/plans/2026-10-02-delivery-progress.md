@@ -1989,3 +1989,47 @@ Runtime复核7fa与最终f69的Owner生产blob相同；h到2h三角回收仍有�
 - 默认 Engine pin 缺 `replica-voxel-grid.mjs`，与已登记的 SDK 版本错位同源，未改 pin。
 
 下一步见[离线准备交接](2026-10-08-movement-offline-prep-handoff.md)：Windows 跑基线 / F2 / F3 / F2+F3 四组浏览器对照，按指标交用户前台试，再由用户定 F3。持续意图（F1）另开会话做方案讨论。移动手感仍 FAIL；Owner 门不变。知识同步豁免：本段为排障证据与实验分支，F3 定案后再沉淀 feature 与 ADR。
+
+### 移动手感排障：checkpoint115，Windows 重新核实远端与现场，启动 Native 联合验证和前台计时探针（2026-10-08）
+
+接手后先 fetch；Game origin/main 精确为 40556477683e46a9e248812119fb3e6bd76c07c1（PR52），包含浏览器埋点和 F2 开关。Runtime PR280 读回 OPEN、draft，分支 exp/101-owner-interpolation、头 98a9f69bdb61cb5cd5cb8f6dc4eefb67fb35deb4；f69e2c9445fd5cf39b005c0857308cd96da1f04d 与候选均已获取，未合并或转正式。根工作树停在 f14bd50，原 .sdd 修改、未跟踪草稿、.zcodeignore 与 pelican-cycling.svg 全部保留；新 managed 工作树基于精确 Game405，分支 codex/101-movement-windows。
+
+现场重新查监听：旧 18105 网页和 18333 DS 已停止，18402 平台与受保护 18097 同属 PID10680，未操作该进程或受保护端口。新证据根为 [20261008-movement-windows-01](../../../../.run/20261008-movement-windows-01/)；Native 联合验证与私有预览准备并行，原始输出和旧 fault 保留，不继承旧 SERVING 状态。
+
+已在本机安装的 Chrome154.0.8037.98、独立可见窗口启动 main405 的原始 movement-beat-probe.html，经 18110 loopback 静态服务；初始 document.visibilityState=visible、document.hasFocus()=true。源 SHA256 为 99d6b07792dd40d40bd15aeaa13a3d0cf0934468e41ff0a54ff58c92c17bf11b，按 Mac 同配置 4 档、每档 25 次 × 2s，结果尚待导出。它只证明本机计时行为，不能代替真实 WASM/DS 或用户手感验收。预览按旧已审 6 Bot + A/B 两玩家 = 8 的容量保持，不增减数量或放宽守卫。
+
+本段未改生产源码、包或页面正式发布物；移动手感继续 FAIL，F3 仍候选，ADR142、18085、生产 schema 等 Owner 门 OPEN。知识同步豁免：现场与取证事实，无新公共契约或产品裁定。
+
+### 移动手感排障：checkpoint116，真实 Native 原版对照完成；浏览器控制被 URL 安全守卫停止（2026-10-08）
+
+两个独立 Runtime 工作树以 Engine4bf8d283 编译依赖、既有带 HFSM/voxel 测试支持的 win-x64 Native 验证同一 84 项 Owner/PredictionClock 聚焦集合。原始 attempt01 基线 83/84、F3 47/84，共同一项缺 LUMIO_VOXEL_PREDICTION_TEST_PATH 的环境失败单独保留；只补测试支持路径、不改源码的 attempt02 为基线 84/84（raw0）、原版 F3 48/84（raw2、36失败），零跳过。原始日志在 [gas-native](../../../../.run/20261008-movement-windows-01/gas-native/)，不得把 F3 改后的断言通过回写成原版通过，后续逐例判定新后缀/前探租期语义与独立失败。
+
+精确 f69 与 98a9 原版 portable Ecs 已构建封存：基线 DLL SHA256 3ddd4278a32e66c5fbb1222c1b51982adeb9da1a72888cd1304dfeb1ba06368d、Owner blob d047f9b3a28e6e410a02b0055d8c6362873067f0；F3 DLL aab8a11a69a00768b81dd67badb7972687c679aead44e925f5575fd7f0c6ef33、Owner blob 8d62eed55b0d49d48a4b7aed60a61e73601cb5fa。只供本次私有实验，未批准 F3 或正式 complete。
+
+计时探针在 visible/focused Chrome 启动后，Computer Use get_window_state 被安全守卫停止，原始信息为“could not determine the current browser URL on Windows with enough confidence to enforce policy”。本轮停止进一步浏览器控制，未绕过；[停止收据](../../../../.run/20261008-movement-windows-01/probe/browser-guard-stop.json)保留初始身份与最后 running 状态。尚未保存 window.__probe 完成结果，四组真实浏览器对照未执行，无本机指标表或新用户手感裁定。
+
+只读埋点复核：Owner pose 经 game-view.mjs 注入 readLocalPose，源码链完整，仍须实际页核实 frames>0、hiddenFrames=0、dx/tx 非空。分析器 admission.movesPerHeldPump 按已发布请求的时刻归泵，不能证明 GAS 准入成功或“2次实际走动”；150ms 输入间隔分窗会漏统计长卡顿的0泵，转向/死亡/TP及最后输入与keyup差异也会污染混合窗口。后续单向按键区间与起停、转向、贴墙、双窗口须分段核验，不能凭空或长窗口平均 FPS 裁定 F3。
+
+新预览准备已从不可变 Game405 git archive 冻结，Presentation 现编成功。旧 Game35 副本多出的 hostentry_fault.log（1647 bytes，SHA256 7907f3129682b61a98d1e4b7f6643e0c1ae97e298f25d81d92ac3cb318400ce7）原路径保留；新副本逐 complete31 manifest 复制305 payload+manifest=306项。第一次工作树HEAD守卫因checkpoint115提交使HEAD变化而正确阻断，失败输出保留，未削弱精确源码检查；改用精确405 archive。发布/IL/WebCIL/现场收据尚在准备，不能写成已 SERVING。移动手感仍 FAIL；所有 Owner 门 OPEN。知识同步豁免：取证与实验事实。
+
+### 移动手感排障：checkpoint117，两套精确私有网页封存，隐藏启动/guard/prefix 收据就绪但未启动（2026-10-08）
+
+预览总收据 [launch-preparation.json](../../../../.run/20261008-movement-windows-01/preview/launch-preparation.json) 为 READY_NOT_STARTED。Game 精确40556477683e46a9e248812119fb3e6bd76c07c1 的不可变 archive 冻结4446个文件；两份 Release 网页 publish raw0，Presentation 现编 raw0。两套 main.js SHA256 同为49345f3d098e6ba4536b5ea0dfe9af41d4f4feb0cf9146c1803389f7effa78f7，包含 readMovementFlags/__lumioMovementTrace；presentation.js 同为c395c77b1638acae9b840e3bc556a5d4a9f5d7087204cbc71177825ff72f235f，包含 onFrame/debugLocal。此处是封存文件身份，实际 HTTP 服务响应尚未验证。
+
+基线 f69e2c9 的 WebCIL 为 Lumio.GameRuntime.Ecs.8hqr3ehmpl.wasm，SHA256 cc290c2ec235073474e9324a9c187c380aaebcf139b181df48f23375f692a683、MVID e36b921c-28f4-4d77-8529-a49524bd7484；F3 精确98a9f69 的 WebCIL 为 Lumio.GameRuntime.Ecs.1ix15y4i65.wasm，SHA256 27f3bd79e22f65158d39366356a18d33eaee5e3b0534e87d3e31ad6e4cd24287、MVID 366aed41-1bd9-46df-b37d-d9450595d44a。各自 [published-runtime-audit.json](../../../../.run/20261008-movement-windows-01/preview/baseline/published-runtime-audit.json) 与 [F3审计](../../../../.run/20261008-movement-windows-01/preview/f3/published-runtime-audit.json) 核实 exact DLL/PDB、编译 Owner 源、对应方法 IL、WebCIL、br/gz 与 boot 引用；未换 Server/Client 正式组成，非官方 complete，hotReload=false。
+
+旧 fault 原样保留，新运行副本 closure 守卫305 payload+manifest=306项通过。新 [prefix收据](../../../../.run/20261008-movement-windows-01/preview/prefix-receipt.json) 登记计划 WinMove/WinHuman2026100803325899608b，accountsRegistered=false、passwordGenerated=false、passwordPersisted=false；仅真正执行 launcher 时在内存产生密码。拓扑保留6 Bot+A/B两玩家。18108/18333 仍空闲，18402与受保护18097仍PID10680；未操作受保护端口或他人 Runner。
+
+隐藏独立 pwsh 的 start-detached-preview-01.ps1、launch/guard、保留旧junction的变体切换与实际HTTP字节收据入口已备齐，脚本解析检查通过。因本轮浏览器安全守卫已停止控制，未启动DS/HTTP，不让新现场无人采样空跑；下轮无需新许可，重新guard后直接隐藏启动，同DS/Platform下关闭采样会话、切换变体、冷加载并核实服务字节。只读 [trace-review.md](../../../../.run/20261008-movement-windows-01/trace-review.md) 给出按键/生命周期分段和指标有效分母要求；既有分析器5/5局部通过，不是实际浏览器证据。
+
+Game [PR54](https://github.com/LumioGames/LumioGame/pull/54) 已建，账本只追加；本段未进行四组浏览器实验、未选最佳变体或取得用户原话，F3仍未定案。Runtime PR280保持draft，不得合并；移动手感验收FAIL，ADR142、18085、生产schema等Owner门OPEN。知识同步豁免：私有实验准备与证据身份，无新增公共规则。
+
+### 移动手感排障：checkpoint118，98a候选GAS修订真实Native全绿并独审；#280并发改变生产语义，隔离封存不覆盖（2026-10-08）
+
+针对用户指定的精确98a9f69候选，四份GAS Owner测试仅修订22个方法的「新后缀立即生效/前探租期」表现期望，61个Owner展开case全部保留；PredictionClock22项及额外PresentationBudget1项原样保留，最终 [f3-revised-full-02](../../../../.run/20261008-movement-windows-01/gas-native/f3-revised-full-02/receipt.json) 为84/84、零失败/跳过、raw0。最终日志SHA256为53d4b37820bfbcb587ad981b8cc6365d6e04c6fd1f1f5233fee77a3138363a28；原基线84/84、原98a48/84及共同环境缺路径失败的attempt01均保留，不改写原始结果。没有删除检查消红、改额度或修改生产代码。
+
+[最终四文件独审](../../../../.run/20261008-movement-windows-01/gas-native/independent-review-final-four-files-02.md) PASS；中间unpaired与same-slot把完整Pose精确Equal变成仅X范围的问题已恢复独立Logic比例计算的完整Pose Equal，分别重测8/8、19/19后再跑全84项。最终diff SHA256 b784f5ac2d56163dc64cbef8666831363a6180636164ab7bb970180cd5a39e6f。[源码/case收据](../../../../.run/20261008-movement-windows-01/gas-native/final-source-and-case-receipt.json)核实五目标文件58方法/83展开case不减少、Clock blob8140349997328fc1a8efab436f2522870c93f502不变、Owner生产blob仍8d62eed55b0d49d48a4b7aed60a61e73601cb5fa。两新工作树各87个仅EOL生成物及末次2项逐文件核对归一化SHA后还原；他人文件未动。Native与Engine身份沿用checkpoint116，不宣称本轮新建Native。
+
+测试提交c7c25a50d6cc7e61c2ceb79b57266798c4d92438；逐条理由归档提交b24d26f90d3d70f88133ba0ef6c5d700adb72e5c，范围澄清提交e1ad14be40ba628525a8fbfaa0ef80dc0f529b85。推送前exact-head守卫发现Runtime #280已被另一会话从98a推进到1955239325ba9651a89a9c8c26d3f798c068b378：该提交修改Owner生产及三份ECS测试，移除独立纠偏残差，纠偏也重新一步滑行。此为真实候选语义变化，不能把98a的84/84写成195的验证，也不能机械合入仍断言独立残差的GAS期望。因此未推原#280分支、未force或撤回并发工作；三个提交普通推至独立 [codex/101-owner-gas-98a-audit](https://github.com/LumioGames/LumioGameRuntime/tree/codex/101-owner-gas-98a-audit)，[22条理由](https://github.com/LumioGames/LumioGameRuntime/blob/e1ad14be40ba628525a8fbfaa0ef80dc0f529b85/.spec/archive/reviews/2026-10-08-owner-gas-f3-assertions.md)远端可审。Runtime #280读回仍OPEN/draft、头1955239，禁止合并或转正式。195在本机尚未Native实测，已向用户确认后续候选范围，回答到达前不改实验对象。
+
+两套浏览器私有预览继续封存精确Game405与原f69/98a DLL/PDB、IL/WebCIL身份，READY_NOT_STARTED；未用测试提交后的程序集或195悄悄替换。浏览器URL安全守卫仍使本轮控制停止，未导出完成的Windows计时探针、未执行四组真实对照、未取得用户试手感原话。下一现场须先恢复可控前台浏览器，再按确认的候选重新guard/隐藏启动及实际HTTP字节核验。Game本轮仅追加账本，PR54未合并；移动手感仍FAIL，F3未裁定，F1/F4未实现，ADR142、18085、生产schema等Owner门OPEN。知识同步豁免：候选测试与证据归档，不新增正式M8规则或替Owner批准。
