@@ -74,6 +74,9 @@ jobs:
       - name: Rule plugin production profile guards
         working-directory: game
         run: node --test eng/game-rule-plugin-profile.test.mjs
+      - name: Server-authoritative HTML sample client tests
+        working-directory: game
+        run: node --test games/game-services-sample/Tools/client.test.mjs
       - name: dotnet build
         id: build
         working-directory: game
