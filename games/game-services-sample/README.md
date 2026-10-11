@@ -26,7 +26,11 @@ R-00833。浏览器只需要普通 HTML、ES modules 和 WebAssembly。入口是
 
 绑定只选择服务器提供的 reference。保留所有 ledger/rank 事件原 ID 和原 subjectId；A/B 负责同一一致性快照的当前 alias 归属证明。相同 canonical starter 资格的 grant 取最大值，全部 spend 相加，余额最低为零。即使两个游客各领三份并各花两份，合并后也不会多出补给。有效榜单贡献全部保留，最高分重建；旧存档只影响可逆的路线展示。容量不够必须先拒绝，不截断历史、不删除 guest、不阻断账号登录。
 
-`expedition_v1` 到 `expedition_v2` 是本新功能自身的规则版本迁移：补上 `trail=camp`，并用当前不可回滚账本重建机会 ordinal/eligibility；不迁移旧 SDK，不产生 ledger/rank 效果。
+挑战完成资格使用经校验的服务器机会键（game/environment/entitlementKey/drawIndex）的稳定 SHA256；achievement 与 rank 共用该资格。同一机会换 operationId 保持资格，不同来源的机会独立，`starter_v1` 补给资格仍全局防重。
+
+本规则以新 release `expedition_3` / ruleVersion `expedition_v3` 发布，状态仍为 `expedition_v2`，catalog/schema 形状不变。旧 release 的 `expedition_<drawIndex>` 资格可能已合并不同来源的成绩；本 release 不接受或拆分这种冲突历史，不能覆盖旧制品后原地升级。
+
+`expedition_v1` 到 `expedition_v2` 是本功能自身的状态版本迁移：补上 `trail=camp`，并用当前不可回滚账本重建机会 ordinal/eligibility；不迁移旧 SDK，不产生 ledger/rank 效果。
 
 离线试玩使用页面内独立临时值，不写 localStorage、IndexedDB 或动作队列。重新联网只读 getState/getProfile；未确认正式操作保留原 SDK reference 供查询，not_found 不解释为已关闭。身份变化后清空资料/视图/榜单并停用旧实例。
 

@@ -41,10 +41,10 @@ const parentServer = http.createServer(async (req, res) => {
     const operation = Object.entries(wire.operations).find(([, op]) => op.binding === 'POST ' + url.pathname || op.binding?.replace('{gameId}', gameId).replace('{environment}', 'test') === 'POST ' + url.pathname)?.[0];
     calls.push({ operation: operation ?? 'settings_action', body });
     if (url.pathname.endsWith('/settings-action')) { res.writeHead(204, { 'X-Lumio-Settings-Action': 'local_probe_setting' }).end(); return; }
-    if (operation === 'session_create') return json(res, { credential: 'local-probe-not-a-real-credential', expiresAt: now + 300000, playerId: 'guest_1', gameId, environment: 'test', releaseId: 'expedition_2', ruleVersion: 'expedition_v2' });
+    if (operation === 'session_create') return json(res, { credential: 'local-probe-not-a-real-credential', expiresAt: now + 300000, playerId: 'guest_1', gameId, environment: 'test', releaseId: 'expedition_3', ruleVersion: 'expedition_v3' });
     if (operation === 'permission_get') return json(res, { gameId, environment: 'test', gameTitle: '林间远征', consentRevision: profile().consentRevision, policyRevision: 1, fields: [{ fieldId: 'profile.display_name', sensitivity: 2, semanticRevision: 1, purposes: ['game_display'], decision: permission }], prompt: permission === 'undecided' || body.mode === 'settings' ? { promptId: 'local_prompt', expiresAt: now + 300000, fieldIds: ['profile.display_name'] } : null });
     if (operation === 'permission_decide') { permission = body.choice; return json(res, { consentRevision: 1, policyRevision: 1, profile: profile() }); }
-    if (operation === 'initialize') return json(res, { playerId: 'guest_1', gameId, environment: 'test', releaseId: 'expedition_2', ruleVersion: 'expedition_v2', profile: profile(), state: state(), capabilities: wire.schemas.InitializeResult.properties.capabilities.items.enum, epoch, eventCapabilities: ['profile_changed', 'identity_changed', 'services_unavailable'] });
+    if (operation === 'initialize') return json(res, { playerId: 'guest_1', gameId, environment: 'test', releaseId: 'expedition_3', ruleVersion: 'expedition_v3', profile: profile(), state: state(), capabilities: wire.schemas.InitializeResult.properties.capabilities.items.enum, epoch, eventCapabilities: ['profile_changed', 'identity_changed', 'services_unavailable'] });
     if (operation === 'state_get') return json(res, state());
     if (operation === 'profile_get') return json(res, profile());
     if (operation === 'action_perform') {
@@ -67,7 +67,7 @@ function parentScript() { return `
 import * as runtime from '/vendor/core/src/index.mjs';
 import { createLumioAdapter } from '/vendor/lumio/adapter.mjs';
 const frame=document.querySelector('#game'), section=document.querySelector('#permission'); let bridge;
-const adapter=createLumioAdapter({runtime, launch:{gameId:${JSON.stringify(gameId)},environment:'test',releaseId:'expedition_2',runtimeOrigin:${JSON.stringify(gameOrigin)},entryUrl:${JSON.stringify(gameOrigin + '/Client/index.html')}},platformOrigin:${JSON.stringify(parentOrigin)},containerId:'probe_container',documentId:'probe_document',csrf:async()=> 'local_probe_csrf',
+const adapter=createLumioAdapter({runtime, launch:{gameId:${JSON.stringify(gameId)},environment:'test',releaseId:'expedition_3',runtimeOrigin:${JSON.stringify(gameOrigin)},entryUrl:${JSON.stringify(gameOrigin + '/Client/index.html')}},platformOrigin:${JSON.stringify(parentOrigin)},containerId:'probe_container',documentId:'probe_document',csrf:async()=> 'local_probe_csrf',
 showPermissions:()=>new Promise(resolve=>{section.hidden=false;for(const choice of ['allow','deny'])document.querySelector('#'+choice).onclick=()=>{section.hidden=true;resolve(choice)}}),
 onLogin:async()=>({bindingId:'bind_1'}),onRestart:()=>bridge.invalidateDisclosure({type:'identity_changed'}),onDisclosure:event=>bridge?.invalidateDisclosure(event),
 onBinding:selection=>{const box=document.querySelector('#binding');box.hidden=false;box.replaceChildren();for(const c of [selection.source,selection.target]){const b=document.createElement('button');b.id='choose_'+c.reference;b.textContent='选择'+c.reference+' / 服务器修订'+c.revision;b.onclick=()=>adapter.choose(c.reference);box.append(b)}}});
