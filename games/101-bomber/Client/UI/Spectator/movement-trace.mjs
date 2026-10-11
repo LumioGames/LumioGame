@@ -12,6 +12,7 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
   const startedAt = new Date().toISOString();
   let truncated = false;
   let diagnosticFailures = 0;
+  let predictionCatchUp = null;
   function push(event) {
     if (events.length >= capacity) { truncated = true; return; }
     events.push(event);
@@ -36,6 +37,10 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     }
   }
   return {
+    setPredictionCatchUp(value) {
+      predictionCatchUp = { requestedSteps: value.requestedSteps ?? null, requestedDeltaMs: value.requestedDeltaMs ?? null,
+        maxStepsPerPump: value.maxStepsPerPump, maxDeltaMs: value.maxDeltaMs, configured: value.configured === true };
+    },
     phaseTiming,
     nativeInvokeTiming({ startedAt, endedAt, returned, snapshot }) {
       try {
@@ -118,7 +123,7 @@ export function createMovementTrace({ now = () => performance.now(), capacity = 
     export() {
       return { version: MOVEMENT_TRACE_VERSION, timeBasis: 'performance.now', frameTimeBasis: 'observer-invocation',
         managedTimeBasis: 'raw-Stopwatch-unanchored', startedAt, exportedAt: new Date().toISOString(), userAgent,
-        truncated, diagnosticFailures, capacity, events: events.slice() };
+        truncated, diagnosticFailures, capacity, predictionCatchUp, events: events.slice() };
     },
     clear() { events.length = 0; truncated = false; diagnosticFailures = 0; },
     get size() { return events.length; },

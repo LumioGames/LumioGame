@@ -14,6 +14,41 @@ const WEB = path.join(process.env.LUMIO_ENGINE_CANDIDATE_ROOT || path.join(ROOT,
 const voxel = await import(pathToFileURL(path.join(WEB, 'voxel-grid.mjs')));
 const replica = await import(pathToFileURL(path.join(WEB, 'replica-voxel-grid.mjs')));
 const MAIN_SOURCE = fs.readFileSync(new URL('./main.js', import.meta.url), 'utf8');
+test('prediction catch-up accepts bounded private settings and rejects invalid input', () => {
+  function flags(search, hostname = '127.0.0.1', player = true, development = false) {
+    const context = vm.createContext({ PLAYER_MODE: player, URLSearchParams, location: { search, hostname },
+      LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'], __lumioDevelopment: development });
+    vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'),
+      MAIN_SOURCE.indexOf('async function initializeResourceWitness()')), context);
+    return JSON.parse(JSON.stringify(context.readMovementFlags()));
+  }
+  const base = '?player=A&scene=movement-sync-preview&trace=movement&input=step';
+  for (const [steps, delta] of [[5,250], [10,500], [20,1000], [64,3200], [10,250], [5,500], [1,1]]) {
+    const actual = flags(base + `&predictionSteps=${steps}&predictionDeltaMs=${delta}`);
+    assert.equal(actual.predictionSteps, steps); assert.equal(actual.predictionDeltaMs, delta);
+    assert.equal(actual.requestedPredictionSteps, String(steps)); assert.equal(actual.requestedPredictionDeltaMs, String(delta));
+  }
+  const defaults = flags(base);
+  assert.equal(defaults.predictionSteps, 5); assert.equal(defaults.predictionDeltaMs, 250);
+  assert.equal(defaults.requestedPredictionSteps, null); assert.equal(defaults.requestedPredictionDeltaMs, null);
+  assert.equal(flags(base + '&predictionSteps=10').predictionDeltaMs, 250);
+  assert.equal(flags(base + '&predictionDeltaMs=500').predictionSteps, 5);
+  for (const suffix of ['predictionSteps=0', 'predictionSteps=65', 'predictionSteps=1.5',
+    'predictionSteps=1e1', 'predictionSteps=+10', 'predictionSteps=', 'predictionSteps=10&predictionSteps=10',
+    'predictionSteps=9007199254740992', 'predictionSteps=01', 'predictionSteps=-1',
+    'predictionDeltaMs=0', 'predictionDeltaMs=3201', 'predictionDeltaMs=NaN',
+    'predictionDeltaMs=', 'predictionDeltaMs=250&predictionDeltaMs=250'])
+    assert.throws(() => flags(base + '&' + suffix), /prediction_catch_up_invalid/);
+  for (const search of ['?scene=ordinary&predictionSteps=10',
+    '?scene=movement-sync-preview&trace=movement&input=pump&predictionSteps=10',
+    '?scene=movement-sync-preview&input=step&predictionSteps=10'])
+    assert.throws(() => flags(search), /prediction_catch_up_requires_private_step_trace/);
+  assert.throws(() => flags(base + '&predictionSteps=10', 'localhost', false), /prediction_catch_up_requires_private_step_trace/);
+  const remote = flags(base + '&predictionSteps=64', 'game.example');
+  assert.equal(remote.predictionSteps, 5); assert.equal(remote.inputDriver, 'interval');
+  assert.equal(remote.requestedPredictionSteps, null);
+  assert.equal(flags(base + '&predictionSteps=10', 'dev.example', true, true).predictionSteps, 10);
+});
 test('private movement diagnostic layout requires the exact scene and trace on a permitted player page', async () => {
   const flags = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()'));
   const initialize = MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function initializePage()'), MAIN_SOURCE.indexOf('    inputDriver = flags.inputDriver;')) + '\n  }\n}';
@@ -1013,11 +1048,17 @@ async function gasClockStartup(options = {}) {
     'SetMoveIntent', 'SetBombIntent', 'LatchSkillIntent', 'SetInputIntentEnabled', 'ClearPlayerIntent', 'GetBombIntentRefusalCount', 'GetBombIntentStatusCode', 'GetInputIntentResetToken', 'DrainInputTrace']
     .map(name => [name, () => {}]));
   api.ConfigureInputMode = (mode, trace) => calls.push(['input', mode, trace]);
+  const trace = createMovementTrace({ now: () => 0 });
+  if (!options.missingCatchUpExport) api.ConfigurePredictionCatchUp = (steps, deltaMs) => {
+    calls.push(['catch-up', steps, deltaMs]);
+    assert.equal(trace.export().predictionCatchUp, null, 'receipt cannot precede export success');
+    if (options.catchUpError) throw options.catchUpError;
+  };
   api.Boot = async () => calls.push(['boot']);
   if (!options.missingExport) api.ConfigureGasExecutionClock = enabled => { clocks.push(enabled); calls.push(['gas-clock', enabled]); if (options.liveError) throw options.liveError; };
   if (!options.missingCoordinationExport) api.ConfigureCoordinationCost = enabled => calls.push(['coordination', enabled]);
   if (!options.missingCoordinationExport) api.StartCoordinationCostCapture = () => 'started';
-  const context = vm.createContext({ api, calls, URLSearchParams, TextEncoder, AbortController,
+  const context = vm.createContext({ api, calls, trace, URLSearchParams, TextEncoder, AbortController,
     location: { search: options.search ?? '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off', hostname: options.hostname ?? '127.0.0.1' },
     LOOPBACK_HOSTS: ['127.0.0.1', 'localhost', '[::1]'], __lumioDevelopment: options.development,
     csharp: {}, performance: { now: () => 0 },
@@ -1026,13 +1067,49 @@ async function gasClockStartup(options = {}) {
     async loadSelectedConfig() { calls.push(['config']); }, async chooseFirstCharacter() { return 'duck'; },
     async obtainLaunch() { return LAUNCH; }, async loadCatalog() { return '{}'; },
     pumpSession() { calls.push(['pump']); }, failLaunch(error) { errors.push(error); } });
-  vm.runInContext('const PLAYER_MODE=' + (options.player !== false) + "; let inputDriver='step',movementTrace={}; let developmentSession=null; let selectedCharacter='duck',initialSelectionPending=false,initialSelectionSent=false,terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;", context);
+  vm.runInContext('const PLAYER_MODE=' + (options.player !== false) + "; let inputDriver='step',movementTrace=trace; let developmentSession=null; let selectedCharacter='duck',initialSelectionPending=false,initialSelectionSent=false,terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;", context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function readMovementFlags()'), MAIN_SOURCE.indexOf('async function initializeResourceWitness()')), context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function bindExports(api)'), MAIN_SOURCE.indexOf('let managedLoaded = false;')), context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
+  vm.runInContext('inputDriver=readMovementFlags().inputDriver;', context);
   await context.start();
-  return { calls, clocks, errors, flags: context.readMovementFlags() };
+  return { calls, clocks, errors, trace, flags: context.readMovementFlags() };
 }
+
+test('prediction catch-up configures real exports after input and before Boot', async () => {
+  const p = await gasClockStartup({ search: '?scene=movement-sync-preview&trace=movement&input=step&predictionSteps=10&predictionDeltaMs=500' });
+  assert.deepEqual(p.errors, []);
+  assert.deepEqual(p.calls.filter(row => row[0] === 'catch-up'), [['catch-up', 10, 500]]);
+  const index = p.calls.findIndex(row => row[0] === 'catch-up');
+  assert.ok(p.calls.findIndex(row => row[0] === 'input') < index);
+  assert.ok(index < p.calls.findIndex(row => row[0] === 'boot'));
+  assert.deepEqual(p.trace.export().predictionCatchUp, {
+    requestedSteps: '10', requestedDeltaMs: '500', maxStepsPerPump: 10, maxDeltaMs: 500, configured: true });
+  const defaults = await gasClockStartup();
+  assert.deepEqual(defaults.trace.export().predictionCatchUp, {
+    requestedSteps: null, requestedDeltaMs: null, maxStepsPerPump: 5, maxDeltaMs: 250, configured: true });
+});
+
+test('prediction catch-up leaves interval and pump startup unchanged', async () => {
+  for (const input of ['interval', 'pump']) {
+    const p = await gasClockStartup({ missingCatchUpExport: true, search: `?scene=movement-sync-preview&trace=movement&input=${input}` });
+    assert.deepEqual(p.errors, []); assert.ok(p.calls.some(row => row[0] === 'boot'));
+    assert.equal(p.calls.some(row => row[0] === 'catch-up'), false);
+    assert.equal(p.trace.export().predictionCatchUp, null);
+  }
+});
+
+test('prediction catch-up missing or rejected export stops Boot without a success receipt', async () => {
+  const missing = await gasClockStartup({ missingCatchUpExport: true });
+  assert.equal(missing.calls.some(row => row[0] === 'boot'), false);
+  assert.equal(missing.errors.length, 1); assert.match(missing.errors[0].message, /ConfigurePredictionCatchUp missing/);
+  assert.equal(missing.trace.export().predictionCatchUp, null);
+  const original = new Error('client_input_mode_live');
+  const rejected = await gasClockStartup({ catchUpError: original });
+  assert.deepEqual(rejected.errors, [original]);
+  assert.equal(rejected.calls.some(row => row[0] === 'boot'), false);
+  assert.equal(rejected.trace.export().predictionCatchUp, null);
+});
 
 test('private GAS clock exact off configures the real export before input and Boot', async () => {
   const p = await gasClockStartup();
@@ -1079,7 +1156,7 @@ test('coordination exact on is armed after input before Boot without altering GA
   const p = await gasClockStartup({search: '?scene=movement-sync-preview&trace=movement&input=step&gasClock=off&coordination=on'});
   assert.deepEqual(p.errors, []); assert.equal(p.flags.coordinationCost, true);
   assert.deepEqual(p.clocks, [false]);
-  assert.deepEqual(p.calls.slice(0, 3), [['gas-clock', false], ['input', 'step', true], ['coordination', true]]);
+  assert.deepEqual(p.calls.filter(row => row[0] !== 'catch-up').slice(0, 3), [['gas-clock', false], ['input', 'step', true], ['coordination', true]]);
   assert.ok(p.calls.findIndex(x => x[0] === 'coordination') < p.calls.findIndex(x => x[0] === 'boot'));
 });
 

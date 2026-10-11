@@ -4,6 +4,14 @@ import { createMovementTrace } from './movement-trace.mjs';
 import { analyzeMovementTrace } from '../../../Tools/movement-trace-analyze.mjs';
 import { createNativeInvokeObserver } from './native-invoke-observer.mjs';
 
+test('prediction catch-up metadata survives recording clear', () => {
+  const trace = createMovementTrace({ now: () => 0 });
+  const config = { requestedSteps: '10', requestedDeltaMs: '500', maxStepsPerPump: 10, maxDeltaMs: 500, configured: true };
+  trace.setPredictionCatchUp(config); trace.note('before'); trace.clear();
+  assert.deepEqual(JSON.parse(JSON.stringify(trace.export())).predictionCatchUp, config);
+  assert.equal(trace.export().events.length, 0);
+});
+
 test('trace keeps the post-Tick owner publication on the pump and the shown pose on the frame', () => {
   let clock = 0;
   const trace = createMovementTrace({ now: () => clock, doc: { visibilityState: 'visible' }, userAgent: 'test' });
