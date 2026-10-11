@@ -4037,3 +4037,15 @@ Root于本次实际readback后追加。PR60于本段前实际读回Draft/OPEN、
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实测试原件在f1-authority-base-reuse-implementation-01，输入身份见本段append目录inputs-01.json。
 
 Root补充实际readback：sem03测试字节已在behavior-test-before-production-03.cs保全（9895B/9b990a54…），sem04在before-production-04同名序号副本保全（12124B/35c04bb6…）。前条为当时未确认；现在SOURCE_SNAPSHOT_AVAILABLE，原副本精确匹配收据hash，不能继续报告为缺失。完整身份见本段source-snapshot-readback-02.json。
+
+### checkpoint287 — authority-base真实Native GREEN与开发追帧配置（2026-10-11 UTC）
+
+- 承接checkpoint286，全部旧RED/编译身份疑点/fixture失败原件保全。Root实际独立采纳精确9源码冻结与review SPEC PASS/QUALITY APPROVED，仅授权代码提交及新私有构建；实际提交4a8db8df23b909a7481ccbb786565c9dfe86adce（RuntimeAuthorityBaseReuse20261011、codex/101-authority-base-reuse-20261011，9文件429+/10-）。正常旧测试编译身份为77a20095加冻结工作树，后4a为相同源码字节，不伪称4a后重跑。
+- 同真实Native基线12 PID3556/raw2，97个owned实体、291组件、3298字段每次重复capture；最终focused16 PID19480/raw0/noTimeout/input0，13/13 PASS、0skip，四次无新authority的Rebuild均实际capture0/0/0。fullJoint17 PID17808/raw0/noTimeout/32.075s/input0，662/662 PASS、0skip；含真实Native兼容、原额度1024拒绝与samequota retry、结构survivor/creationOrder和强制full-refresh oracle。不是662项全Native，不授予WASM性能或手感通过。
+- 优化仅复用既有touched/fullRefresh，不增加持久索引/额度；confirmed写按稳定ConfirmedWorld身份追踪，预测临时World选择不误当confirmed。confirmed Transform/结构未知写保守fullfallback，所有Invalid/NativeWitness/allocator/terminated/Project/发布仍在。源码PDB/Csc精确9行绑定，Ecs DLL1120256B/2d7053cd…、PDB266216B/53f846ce…；测试DLL1118208B/ff02c240…、PDB285732B/9ee93b6b…。原确定性/_/路径解析UNAVAILABLE仍保留，新限定relative-source/checksum补证不改旧结果。
+- 自有Runtime隔离工作树87个正常生成dirty先快照/保全后仅恢复本树，正常commit前只含8prod+1test；冻结RuntimeCarry原87个及GameG原7个他人生成dirty完整保留。旧19154–19157基线已正常STOP，本段无新服务/网页加载。
+- 用户原话“我们在开发期 尽可能把那些性能上限放大最大，让我们高帧率同步”授权私有可逆补算配置实验。新的Game managed工作树101-development-catchup base f7c62610、分支codex/101-development-catchup-20261011；Root先读计划并限域5prod+2JS tests，参数predictionSteps/predictionDeltaMs默认5/250、私有step移动现场实验范围1–64/1–3200ms。既有20Hz及Client public API不变，最高档不是预选结论；其它预算未观察命中不盲目提升。
+- 实现中实际JS RED16724针对5个新行为断言失败；GREEN27432为104/104。既有C#回归仍在独立有界核实：首命令MTP filter错误zero tests、次ArtifactsPath位于证据目录不含Gameplay造成FindGame失败均保全，修正正常输出路径后当前仍有真实session active失败/长耗时，未称回归全绿。源码/正常构建/当前包身份及其新结果另段追加。
+- 当前尚未将4a或追帧配置置入前台。20Hz、8人6Bot、体素、协议/额度不变。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER；不得用Native测试通过代替用户验收。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实原件身份见f1-coordination-checkpoint287-append-01/inputs-01.json。
