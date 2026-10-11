@@ -4403,3 +4403,13 @@ Host Csc 读取 PID7372 与编译 PE/PDB 读取 PID19580 均 raw0；337 个当�
 六项正常只读审计均 raw0、无超时、零漂移：当前43组 PE/WebCIL、49个boot资源、93/93 identity读取成功；29563 methods/28368 bodies、37个Host导出、typed work-counter/execution-telemetry DTO、native链接闭包及43组posttrim→AOT/44条实际编译命令通过原有范围校验。Root已有独立限域采纳（Host Csc/PDB及normal publication），原immutable2449、Game685来源、P2原205来源+2产物、五项AOT/trim/retainIL/EventSource旗标保持。Runtime selected/copy/linked PDB实际缺失仍为UNAVAILABLE，P2/projection仅属后验审计元数据。
 
 原authoring失败保全：Csc wrapper PID8212/raw1，首轮extract PID29444/raw1与native PID15364/raw1；均与实际publish PID27136/raw0分列。Root选择直接normal生产入口，沿当前prodguard推进两浏览器手感，不把helper历史future表新增为本次启动门。此处记录路径选择，未冒称启动或用户验收已完成。API/clock及完整coordination语义仍按原范围单列；Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNPROVEN。
+
+### CP314 — 新0b真实本地A/B前台入局与用户本轮收尾意见
+
+正常消费copy02 child26976/raw0，392发布叶+15覆盖；seal5216/raw0，原normal资源sealer；candidate9256/raw0，9778文件/b23c7597。三个输入零漂移/无超时。copy01 child16140/raw1在消费副本创建前发现两UI-only叶不在685来源/2449Csc中，旧失败保全，仅在prepared05按当前bde git filtered blob+SHA补UI覆盖来源，不改编译输入或生产守卫。独审7328/raw0全9778 final叶SHA匹配/无漂移，limited technical approval2896B/4f9c7762；Root有限采纳后issuer7874a4/raw0，原normal launcher --verify60d3bd/raw0，Owner/性能/fullsemantics/official claims均未由技术发行批准。
+
+真实隐藏独立pwsh31244/start2026-10-11T10:57:59.3849584Z，wrapper5996/start10:58:14.0287806Z，launcher新现场movement-f1-root-leaf-0b971ff4-01-1a7f0fdef5112e8f；新prefix MoveLab-1a7f0fdef5112e8f有原prefix收据，密码仅launcher内存。原launcher实际步骤02八账号票据PASS、03 DS PASS、04六正式Bot准入PASS；05–14完整比赛验收原NOT_RUN保留。本机19162–19165新现场；受保护端口和旧fault/旧服务保留。20Hz/8players6Bots/voxel/5steps250ms，coordination默认OFF，未启重诊断query。
+
+真实HTTP19165 main63153B/7e34ab9e包含readMovementFlags/__lumioMovementTrace，Presentation1155465B/395c415b含onFrame/debugLocal；Host WebCIL908565B/73d7520f、Ecs515349B/6f40988d、Gas486677B/127fc7c7均与新AOT消费叶字节相等。Codex前台A/B实际HUD入局、finite pose=true、各八人榜可见，A/B页已markDeliverable。B手动正常开始，A已由用户操作进入；Agent未发送移动按键。用户操作期间的inputs不能作为自动对照无污染数据。本轮未声称四组controlled metrics完成，也未用平均FPS证明性能。截图及全部实际refs见normal-direct-01/actual-user-handoff-and-acceptance-01.json。
+
+用户随后逐字原话“这一版就先这样 提交推送合并把”。记录为本轮0b私有现场允许提交/推送/合并的实测收尾意见，不冒称全部手感根因已解决、不自行关闭架构Owner门。下一步核对本版对应PR和正式整包交付条件。PR280 NEVER_MERGE、F3 NOT_ADOPTED、officialComplete=false仍保持。
