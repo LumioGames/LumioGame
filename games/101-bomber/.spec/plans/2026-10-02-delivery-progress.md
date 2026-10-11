@@ -4383,3 +4383,15 @@ Root在新owned /data/lumio/dev-preview/movement-20261011-01/ip-entry准备独�
 实际生产CA及随后自动staging重试都收到“Connection reset by peer”，多次明确“During secondary validation”；日志同时证明多个远端验证者的TLS-ALPN证书确已由本服务响应，不能说443从未可达，也不能说公开可信证书已签发。Windows直连HTTPS fcafd8外层raw1/curl(35) Recv failure reset，正常浏览器可用性未通过；既不将staging当可信生产证书，也不要求用户安装CA/忽略警告。fail2ban只sshd jail，UFW/iptables明确443允许，尚未找到本机阻断443的规则；上游/机房限制或具体线路原因仍需核实，不推定备案状态或法律结论。
 
 原05准备/pull、06正常validate/start、07现场日志/监听/防火墙读回和远端startup receipt均保留。实际b6b8ec/raw0按精确owned容器ID断言后仅停止本次证书重试，stop exit0；没有删容器/cache/config/log或旧fault，没有停原服务。新入口只设/healthz及503准备页，gamePlayable=false、dsStarted=false，不能交成可玩地址。Root已向用户请求提供商/现有域名信息；用户回答“那应该怎么办”，未提供该信息，本段保持公网入口未通过。服务器内部DS包准备继续；20Hz/8players6Bots/voxel/协议及额度保留，Owner OPEN、PR280 NEVER_MERGE、officialComplete=false、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER。
+
+### CP312 — 按Owner最新顺序先备本地A/B验收，正常新0b完整AOT实际通过
+
+Owner最新原话“那你先让我验收一下手感把，本地启动，两个浏览器，我验收一下 现在什么样子”。本地新现场优先，合并/正式部署顺延；手感未通过，不替Owner采纳ADR159/F3，不合PR280。Codex IAB实际库存为tabs=[]，未继承旧窗口持续存活。
+
+正常restore07：child2076/worker31608，start2026-10-11T10:15:19.5493983Z，raw0/noTimeout/1948 before-after equal/inputMismatch0，source trio null为原restore collector语义。Root真核1948 inputs并单独采纳执行；原collector6343B/c673f974保持。新publish07 immutable plan1411061B/1b0ea177，2449 unique inputs（1948正常原输入+实际cache484/restoreArtifacts5与实际证据去重）；Root逐项streaming hash0drift，并独立采纳执行1603B/9c2eb6c2。实际child27136/worker3820，start2026-10-11T10:23:01.6508775Z，elapsed329.5919405s/raw0/noTimeout/2449 allEqual/inputMismatch0/source bde before-aftertrue，原600s deadline不改；原23argv及fullAOT/fulltrim/retainIL/EventSource/TrimmerSingleWarn保持。receipt3306502B/37ba25c3，raw-result有限采纳2288B/f5810c72。stdout无warning/error、stderr空，不推导浏览器性能。
+
+Root实际boot选择：49resources/43managed，EventSource=true。Host WebCIL908565B/73d7520f；Ecs515349B/6f40988d（Runtime0b新源码），Gas486677B/127fc7c7；bootreadback3620B/debf0280。Host Csc/PDB、posttrim/WebCIL元数据与native audits仍在真实读取，不能把这些byte校验当浏览器Running或手感证据。Runtime发布字段兼容投影有限采纳8297B/18cd205e保留normal0b真实两TFM/381control/Csc/PDB全部原引用；这些新投影及frozen copies是后验审计资料，不事后加入immutable2449 inputs或冒编译输入。Gamebde、Client73、Dual04/P2实际源包身份沿已核原件，不声称新Gameplay编译。
+
+新launch-only deployment实际copy child9500/raw0；normal verify child28844/raw0/noTimeout/0drift，305physical/304manifest，newmanifest46432B/07fa76e6，copy371266B/46cb832f、verify169159B/b6103158、result207149B/b09bff2f，Rootresult有限采纳1087B/e5672c90。来源compileSDK不动，旧69ac deployment fault2127B/222a8839保留，未删日志通过守卫。新site scope4839B/844daa61仅采纳owned paths/profile，19162/19163/19164/19165在2026-10-11T10:30:55.3303405Z实际listeners=[]，并非占用租约；launcher仍须重查。新consumer/guard/issuer/hiddenlaunch/账号prefix及A/B Running尚未完成，不能标完成。
+
+账本CP307–311已只追加提交1519ee9至DraftPR60，lint-extensions与diff-check通过；仅修新追加EOF空行，原前缀保全。20Hz/8players/6Bots/voxel/协议/额度保持；前台验收拟用默认5/250补算，未重用此前64/3200长阻塞设置。Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNKNOWN、officialComplete=false。
