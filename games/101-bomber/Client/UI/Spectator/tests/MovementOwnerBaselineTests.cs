@@ -9,7 +9,7 @@ using Lumio.Wire;
 namespace Lumio.Bomber.Client.Spectator.Tests;
 
 /// <summary>Native server projection through the real WebSocket/replica owner.
-/// Explicit server setup supplies no client-only fields and grants no DS admission.</summary>
+/// Specified server setup supplies no client-only fields and grants no DS admission.</summary>
 public sealed class MovementOwnerBaselineTests
 {
     [Fact]

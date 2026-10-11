@@ -5,6 +5,110 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startPlayerHost } from './player-host.mjs';
 import { parseLaunchArgs } from './launcher.mjs';
+import { createHash } from 'node:crypto';
+import { createMovementTrace } from '../Client/UI/Spectator/movement-trace.mjs';
+
+async function catchUpEvidenceSink(t) {
+  const root = mkdtempSync(join(tmpdir(), 'bomber-catch-up-evidence-'));
+  writeFileSync(join(root, 'index.html'), '<script type="importmap">{}</script>');
+  const evidenceDir = join(root, 'own-evidence');
+  const { server, url } = await startPlayerHost({ root, evidenceDir, getLaunch: async () => { throw new Error('no account operation'); } });
+  t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); rmSync(root, { recursive: true, force: true }); });
+  const endpoint = new URL('/api/player/evidence?player=A&kind=movement-trace&scene=movement-sync-preview&trace=movement', url);
+  return { evidenceDir, send: raw => fetch(endpoint, { method: 'POST', headers: {
+    Origin: new URL(url).origin, 'X-Lumio-Player': '1', 'Content-Type': 'application/json' }, body: raw }) };
+}
+
+const configuredCatchUp = (requestedSteps = null, requestedDeltaMs = null) => ({
+  requestedSteps, requestedDeltaMs, maxStepsPerPump: requestedSteps === null ? 5 : Number(requestedSteps),
+  maxDeltaMs: requestedDeltaMs === null ? 250 : Number(requestedDeltaMs), configured: true,
+});
+
+test('catch-up evidence saves the real unconfigured null trace unchanged', { timeout: 5000 }, async t => {
+  const sink = await catchUpEvidenceSink(t);
+  const raw = JSON.stringify(createMovementTrace().export()) + '\n';
+  const response = await sink.send(raw);
+  assert.equal(response.status, 201);
+  const receipt = await response.json();
+  assert.equal(receipt.bytes, Buffer.byteLength(raw));
+  assert.equal(receipt.sha256, createHash('sha256').update(raw).digest('hex'));
+  assert.equal(readFileSync(join(sink.evidenceDir, receipt.file), 'utf8'), raw);
+});
+
+test('catch-up evidence saves real configured bounds and independent defaults after clear', { timeout: 5000 }, async t => {
+  const sink = await catchUpEvidenceSink(t);
+  for (const [steps, delta] of [[null, null], ['5', '250'], ['10', '500'], ['20', '1000'], ['64', '3200'],
+    ['1', '1'], ['10', '250'], ['5', '500'], ['10', null], [null, '500']]) {
+    const trace = createMovementTrace();
+    trace.setPredictionCatchUp(configuredCatchUp(steps, delta));
+    trace.note('recorded before clear'); trace.clear();
+    const raw = JSON.stringify(trace.export());
+    const response = await sink.send(raw);
+    assert.equal(response.status, 201, `configured ${steps}/${delta}`);
+    const receipt = await response.json();
+    assert.equal(receipt.bytes, Buffer.byteLength(raw));
+    assert.equal(receipt.sha256, createHash('sha256').update(raw).digest('hex'));
+    assert.equal(readFileSync(join(sink.evidenceDir, receipt.file), 'utf8'), raw);
+  }
+});
+
+test('catch-up evidence rejects incomplete shapes and invalid field types', { timeout: 5000 }, async t => {
+  const sink = await catchUpEvidenceSink(t), valid = configuredCatchUp();
+  const missing = Object.keys(valid).map(key => { const row = { ...valid }; delete row[key]; return row; });
+  for (const row of [[], 1, 'configured', false, {}, ...missing, { ...valid, extra: 1 },
+    { ...valid, requestedSteps: 5 }, { ...valid, requestedDeltaMs: 250 },
+    { ...valid, maxStepsPerPump: '5' }, { ...valid, maxDeltaMs: '250' }, { ...valid, configured: 'true' }])
+    assert.equal((await sink.send(JSON.stringify({ version: 2, events: [], predictionCatchUp: row }))).status, 400);
+});
+
+test('catch-up evidence rejects out-of-range values and noncanonical requests', { timeout: 5000 }, async t => {
+  const sink = await catchUpEvidenceSink(t), valid = configuredCatchUp();
+  for (const [field, values] of [['maxStepsPerPump', [0, -1, 1.5, 65, 9007199254740992, null]],
+    ['maxDeltaMs', [0, -1, 1.5, 3201, 9007199254740992, null]],
+    ['requestedSteps', ['', '0', '05', '+5', '-1', '1.5', '5e0', ' 5', '65', '9007199254740992']],
+    ['requestedDeltaMs', ['', '0', '0250', '+250', '1.5', '250 ', '3201', '9007199254740992']]]) {
+    for (const value of values)
+      assert.equal((await sink.send(JSON.stringify({ version: 2, events: [], predictionCatchUp: { ...valid, [field]: value } }))).status, 400, `${field}=${value}`);
+  }
+});
+
+test('catch-up evidence rejects unsuccessful configuration and request-effective mismatches', { timeout: 5000 }, async t => {
+  const sink = await catchUpEvidenceSink(t), valid = configuredCatchUp();
+  for (const row of [{ ...valid, configured: false }, { ...valid, maxStepsPerPump: 10 }, { ...valid, maxDeltaMs: 500 },
+    { ...configuredCatchUp('10', '500'), maxStepsPerPump: 5 }, { ...configuredCatchUp('10', '500'), maxDeltaMs: 250 }])
+    assert.equal((await sink.send(JSON.stringify({ version: 2, events: [], predictionCatchUp: row }))).status, 400);
+});
+
+test('private diagnostic evidence preserves original JSON and rejects unsafe requests', { timeout: 5000 }, async t => {
+  const root = mkdtempSync(join(tmpdir(), 'bomber-private-evidence-'));
+  writeFileSync(join(root, 'index.html'), '<script type="importmap">{}</script>');
+  const evidenceDir = join(root, 'own-evidence');
+  const { server, url } = await startPlayerHost({ root, evidenceDir, playerCount: 2, getLaunch: async () => { throw new Error('no account operation'); } });
+  t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); rmSync(root, { recursive: true, force: true }); });
+  const origin = new URL(url).origin;
+  const endpoint = new URL('/api/player/evidence?player=A&kind=movement-trace&scene=movement-sync-preview&trace=movement', url);
+  const raw = '{"version":2,"events":[],"capacity":300000,"truncated":false,"diagnosticFailures":0}\n';
+  const send = (address = endpoint, body = raw, extra = {}) => fetch(address, { method: 'POST', headers: { Origin: origin, 'X-Lumio-Player': '1', 'Content-Type': 'application/json', ...extra }, body });
+  const response = await send(); assert.equal(response.status, 201);
+  const receipt = await response.json(); assert.equal(receipt.bytes, Buffer.byteLength(raw));
+  assert.equal(receipt.sha256, createHash('sha256').update(raw).digest('hex'));
+  assert.equal(readFileSync(join(evidenceDir, receipt.file), 'utf8'), raw);
+  assert.match(await (await fetch(url)).text(), /evidenceEndpoint/);
+  assert.equal((await send(endpoint, raw, { Origin: 'https://foreign.example' })).status, 403);
+  assert.equal((await send(endpoint, raw, { 'X-Lumio-Player': '0' })).status, 403);
+  assert.equal((await send(new URL(endpoint.href.replace('player=A', 'player=C')))).status, 400);
+  assert.equal((await send(new URL(endpoint.href + '&file=../../escape.json'))).status, 400);
+  assert.equal((await send(new URL(endpoint.href.replace('scene=movement-sync-preview', 'scene=ordinary')))).status, 400);
+  assert.equal((await send(endpoint, '{"version":2,"events":[{"password":"forbidden"}]}')).status, 400);
+  assert.equal((await send(endpoint, '{"version":2,"events":[],"credential":"forbidden"}')).status, 400);
+  assert.equal((await send(endpoint, raw, { 'Content-Type': 'text/plain' })).status, 415);
+  const witnessUrl = new URL(endpoint.href.replace('kind=movement-trace', 'kind=resource-witness'));
+  const witness = JSON.stringify({ version: 1, arm: 'baseline', pageRunId: 'own-run', manifestDigest: 'a'.repeat(64), resources: [], coverage: { expected: 0 } });
+  assert.equal((await send(witnessUrl, witness)).status, 201);
+  const off = await startPlayerHost({ root, getLaunch: async () => ({}) });
+  t.after(async () => { off.server.closeAllConnections(); await new Promise(done => off.server.close(done)); });
+  assert.equal((await fetch(new URL('/api/player/evidence', off.url), { method: 'POST', body: raw })).status, 404);
+});
 
 test('player host freezes the explicitly selected client export and never serves server files', async t => {
   const root = mkdtempSync(join(tmpdir(), 'bomber-config-host-'));

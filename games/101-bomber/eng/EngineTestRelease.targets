@@ -1,0 +1,13 @@
+<Project>
+  <Target Name="EmitVerifiedEngineTestMetadata" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="VerifyExplicitEngineCandidate" Condition="'$(LumioEngineCandidate)' == 'true'">
+    <Error Condition="'$(LumioEngineCandidateKind)' != 'complete-release'" Text="LUMIO_ENGINE_TEST_SELECTION_INVALID: tests require a complete release." />
+    <GetFileHash Files="$(LumioEngineManifest)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_EngineTestManifestHash" />
+    </GetFileHash>
+    <ItemGroup>
+      <AssemblyMetadata Include="Lumio.Test.EngineRoot" Value="$([System.IO.Path]::GetFullPath('$(LumioEngineRoot)'))" />
+      <AssemblyMetadata Include="Lumio.Test.EngineVersion" Value="$(LumioSdkVersion)" />
+      <AssemblyMetadata Include="Lumio.Test.EngineManifestSha256" Value="%(_EngineTestManifestHash.FileHash)" />
+    </ItemGroup>
+  </Target>
+</Project>

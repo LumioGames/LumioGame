@@ -438,7 +438,7 @@ public sealed class BomberReducerNativeCorrelationReviewTests
         var facts = world.Get<BomberFireFacts>(participant.Entity);
         Assert.Equal(0, facts.FireStatus.Count);
         ulong pulse = checked(skill.FirePulseSequence.Value + 1);
-        // Explicit correlation fixture for the generated 10110 contract. Coverage
+        // Authored correlation fixture for the generated 10110 contract. Coverage
         // producers are separately tested; this does not assert guarded cast admission.
         facts.FireHandleWorld.Add(0); facts.FireHandleInstance.Add(0); facts.FireHandleGeneration.Add(0);
         facts.FireTypeId.Add(10110); facts.FireTarget.Add(target); facts.FireSource.Add(source.Entity);

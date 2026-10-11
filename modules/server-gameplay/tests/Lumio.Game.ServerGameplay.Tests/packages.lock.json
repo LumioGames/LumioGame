@@ -298,6 +298,17 @@
           "Lumio.GameRuntime.Primitives": "[0.1.0, )"
         }
       },
+      "lumio.gameruntime.hosting": {
+        "type": "Project",
+        "dependencies": {
+          "Lumio.Engine.SDK": "[1.0.0, )",
+          "Lumio.GameRuntime.Coordination.VoxelAdapters": "[0.1.0, )",
+          "Lumio.GameRuntime.Gas": "[0.1.0, )",
+          "Lumio.GameRuntime.Persistence": "[0.1.0, )",
+          "Lumio.GameRuntime.Replication": "[0.1.0, )",
+          "Lumio.GameRuntime.Simulation": "[0.1.0, )"
+        }
+      },
       "lumio.gameruntime.persistence": {
         "type": "Project",
         "dependencies": {
