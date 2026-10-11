@@ -22,6 +22,9 @@ test('actual whole published SDK packs without source repositories', async () =>
     assert.doesNotMatch(entry, /<base\b/i, 'formal isolated host uses base-uri none');
     assert.match(entry, /href="\.\/Client\/style\.css"/);
     assert.match(entry, /src="\.\/Client\/app\.mjs"/);
+    const app = await fs.readFile(path.join(temp, 'game/Client/app.mjs'), 'utf8');
+    assert.match(app, /new URL\('\.\/publication\.json', import\.meta\.url\)/);
+    assert.match(app, /new URL\('\.\.\/vendor\/core\/dist\/lifecycle\.wasm', import\.meta\.url\)/);
   } finally { await fs.rm(temp, { recursive: true, force: true }); }
 });
 test('missing WASM and changed bytes in actual published archive fail', async () => {
