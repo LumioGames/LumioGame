@@ -25,8 +25,8 @@ internal static class Fixtures
     };
     internal static RuleServiceBindings ServiceBindings => new()
     {
-        InvocationId = "invoke_1", GameId = GameId, Environment = "test", AuthorityId = "platform_1", ReleaseId = "expedition_2",
-        RuleVersion = "expedition_v2", ServiceId = "expedition_rules", ServerTimeMs = 1_800_000_000_000, ExpiresAtMs = 1_800_000_030_000,
+        InvocationId = "invoke_1", GameId = GameId, Environment = "test", AuthorityId = "platform_1", ReleaseId = "expedition_3",
+        RuleVersion = "expedition_v3", ServiceId = "expedition_rules", ServerTimeMs = 1_800_000_000_000, ExpiresAtMs = 1_800_000_030_000,
     };
     internal static RuleServiceSubject Subject(RuleSnapshot snapshot, string subject = "guest_1", string reference = "save_1") => new()
     {
@@ -39,7 +39,7 @@ internal static class Fixtures
         return new()
         {
             Bindings = new() { GameId = GameId, Environment = "test", OriginSubjectId = "guest_1", OperationEpoch = "epoch_1", OperationId = operationId,
-                AuthorityId = "platform_1", ReleaseId = "expedition_2", RuleVersion = "expedition_v2", StateRevision = 1, LedgerRevision = 1, ConfigRevision = 1,
+                AuthorityId = "platform_1", ReleaseId = "expedition_3", RuleVersion = "expedition_v3", StateRevision = 1, LedgerRevision = 1, ConfigRevision = 1,
                 SecurityRevision = 1, SubjectRevision = 1, RequestDigest = new string('b', 64), SnapshotDigest = RuleWireCodec.Digest(JsonSerializer.SerializeToUtf8Bytes(snapshot)),
                 ServerTimeMs = 1_800_000_000_000, ExecutionExpiresAtMs = 1_800_000_030_000 },
             Action = action, Arguments = Json(arguments ?? new { }), Snapshot = snapshot,

@@ -71,7 +71,11 @@ public sealed class ExpeditionRules : IGameRulePlugin
             trail = request.Arguments.GetProperty("route").GetString()!;
             long score = trail == "ridge" ? 10 + material[0] % 20 : 15 + material[0] % 10;
             best = Math.Max(best, score);
-            string completed = "expedition_" + spent.ToString(CultureInfo.InvariantCulture);
+            string completed = "expedition_" + Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new[]
+            {
+                opportunity.Key.GameId, opportunity.Key.Environment, opportunity.Key.EntitlementKey,
+                opportunity.Key.DrawIndex.ToString(CultureInfo.InvariantCulture),
+            })));
             ledger.Add(new() { EffectId = "expedition_cost", Kind = "spend", DefinitionId = "supplies", QualificationKey = Starter, Quantity = 1 });
             ledger.Add(new() { EffectId = "expedition_complete", Kind = "achievement", DefinitionId = "challenge", QualificationKey = completed, Quantity = 1 });
             rank.Add(new() { EffectId = "expedition_score", BoardId = "expedition_best", SeasonId = "all_time", QualificationKey = completed, Value = score });

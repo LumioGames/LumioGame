@@ -1,8 +1,8 @@
 {
   "gameId": "91d25d0c-9b87-4c34-9c47-19b779b10001",
   "environment": "test",
-  "releaseId": "expedition_2",
-  "ruleVersion": "expedition_v2",
+  "releaseId": "expedition_3",
+  "ruleVersion": "expedition_v3",
   "serviceId": "expedition_rules",
   "stateSchemaId": "expedition_v2",
   "viewSchemaId": "expedition_view",

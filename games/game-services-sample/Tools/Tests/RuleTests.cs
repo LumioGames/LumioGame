@@ -55,6 +55,35 @@ public sealed class RuleTests
         Assert.Equal("spend", Assert.Single(first.AppliedValue.Decision.Ledger, x => x.Kind == "spend").Kind);
         Assert.InRange(Assert.Single(first.AppliedValue.Decision.Rank).Value, 10, 29);
         Assert.Equal(2, first.AppliedValue.Decision.View.GetProperty("supplies").GetInt32());
+        Assert.Equal("starter_v1", Assert.Single(first.AppliedValue.Decision.Ledger, x => x.Kind == "spend").QualificationKey);
+        Assert.Equal(Assert.Single(first.AppliedValue.Decision.Ledger, x => x.Kind == "achievement").QualificationKey,
+            Assert.Single(first.AppliedValue.Decision.Rank).QualificationKey);
+    }
+
+    [Theory]
+    [InlineData("game")][InlineData("environment")][InlineData("entitlement")][InlineData("draw")]
+    public async Task IndependentServerOpportunitiesHaveIndependentCompletedQualifications(string dimension)
+    {
+        var firstRequest = Fixtures.Action("explore", Fixtures.Snapshot(3), new { route = "ridge" });
+        var secondRequest = dimension == "draw" ? Fixtures.Action("explore", Fixtures.Snapshot(3, 1), new { route = "ridge" }) : firstRequest;
+        var secondOpportunity = secondRequest.Opportunity.Deserialize<RuleRandomOpportunity>()!;
+        if (dimension == "game") secondRequest = secondRequest with { Bindings = secondRequest.Bindings with { GameId = "91d25d0c-9b87-4c34-9c47-19b779b10002" } };
+        if (dimension == "environment") secondRequest = secondRequest with { Bindings = secondRequest.Bindings with { Environment = "production" } };
+        if (dimension == "entitlement") secondRequest = secondRequest with { Snapshot = secondRequest.Snapshot with { State = new() { Documents =
+            [Fixtures.State() with { Data = Fixtures.Json(new { drawIndex = 0, bestScore = 0, eligible = true, entitlementKey = new string('b', 64), hiddenCode = "forest_only", trail = "camp" }) }] } } };
+        secondOpportunity = secondOpportunity with { Key = secondOpportunity.Key with
+        {
+            GameId = secondRequest.Bindings.GameId, Environment = secondRequest.Bindings.Environment,
+            EntitlementKey = secondRequest.Snapshot.State.Documents[0].Data.GetProperty("entitlementKey").GetString()!,
+        } };
+        secondRequest = secondRequest with { Opportunity = Fixtures.Json(secondOpportunity) };
+        var rules = new ExpeditionRules();
+        var first = await rules.EvaluateAsync(firstRequest, Fixtures.Context, CancellationToken.None);
+        var second = await rules.EvaluateAsync(secondRequest, Fixtures.Context, CancellationToken.None);
+        var firstCompleted = Assert.Single(first.AppliedValue!.Decision.Ledger, x => x.Kind == "achievement").QualificationKey;
+        var secondCompleted = Assert.Single(second.AppliedValue!.Decision.Ledger, x => x.Kind == "achievement").QualificationKey;
+        Assert.NotEqual(firstCompleted, secondCompleted);
+        Assert.NotEqual(Assert.Single(first.AppliedValue.Decision.Rank).QualificationKey, Assert.Single(second.AppliedValue.Decision.Rank).QualificationKey);
     }
 
     [Fact]

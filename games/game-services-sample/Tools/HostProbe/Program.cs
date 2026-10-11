@@ -24,12 +24,12 @@ Directory.CreateDirectory(artifactRoot);
 string assembly = typeof(ExpeditionRules).Assembly.Location;
 string entry = Path.GetFileName(assembly);
 File.Copy(assembly, Path.Combine(artifactRoot, entry));
-byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new RulePluginArtifact { GameId = Fixtures.GameId, Environment = "test", ReleaseId = "expedition_2", RuleVersion = "expedition_v2",
+byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new RulePluginArtifact { GameId = Fixtures.GameId, Environment = "test", ReleaseId = "expedition_3", RuleVersion = "expedition_v3",
     ContractId = GameServiceContract.ContractId, ContractSha256 = GameServiceContract.ContractSha256, EntryAssembly = entry, EntryType = typeof(ExpeditionRules).FullName!,
     Files = [new() { Path = entry, Sha256 = RuleWireCodec.Digest(File.ReadAllBytes(assembly)) }] });
 await File.WriteAllBytesAsync(Path.Combine(scratch, "artifact.json"), manifest);
 byte[] catalog = await File.ReadAllBytesAsync(Path.Combine(sample, "Server/catalog.json"));
-await using var runtime = new RuleHostRuntime(native, manifest, new TrustedRuleArtifact(artifactRoot, Fixtures.GameId, "test", "expedition_2", "expedition_v2", RuleWireCodec.Digest(manifest)), catalog, RuleWireCodec.Digest(catalog), "expedition_v2", "expedition_view", 4);
+await using var runtime = new RuleHostRuntime(native, manifest, new TrustedRuleArtifact(artifactRoot, Fixtures.GameId, "test", "expedition_3", "expedition_v3", RuleWireCodec.Digest(manifest)), catalog, RuleWireCodec.Digest(catalog), "expedition_v2", "expedition_view", 4);
 var codec = new RuleWireCodec();
 using RSA caKey = RSA.Create(2048), serverKey = RSA.Create(2048), clientKey = RSA.Create(2048);
 var caRequest = new CertificateRequest("CN=Sample local probe CA", caKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -42,7 +42,7 @@ using var server = Certificate(serverKey, true);
 using var client = Certificate(clientKey, false);
 var roots = new X509Certificate2Collection(ca);
 using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); int port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
-var registration = new RuleTransportRegistration("sample_registration", 1, Fixtures.GameId, "test", "platform_1", "expedition_2", "expedition_v2", "expedition_rules",
+var registration = new RuleTransportRegistration("sample_registration", 1, Fixtures.GameId, "test", "platform_1", "expedition_3", "expedition_v3", "expedition_rules",
     new Uri("https://localhost:" + port), new HashSet<string>(StringComparer.Ordinal) { RuleTlsPeer.Pin(client) }, new HashSet<string>(StringComparer.Ordinal) { RuleTlsPeer.Pin(server) },
     1_799_999_900_000, 1_800_000_900_000, false);
 var clock = new ProbeTime();
