@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>林间远征 · 权威游戏样例</title><link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script></head>
+<body><main><header><span class="eyebrow">LUMIO · 小型探索挑战</span><h1>林间远征</h1><p>领取三份补给，选择路线，完成远征。</p></header>
+<section class="status" aria-live="polite"><span id="mode">正在连接</span><span id="player">匿名探险家</span><p id="message">等待平台建立正式游戏连接…</p></section>
+<section class="landscape" aria-label="探索路线"><div class="sun"></div><div class="mountain mountain-one"></div><div class="mountain mountain-two"></div><div class="river"></div><div class="camp">⌂ <span id="trail">营地</span></div></section>
+<section class="stats"><div><strong id="supplies">—</strong><span>剩余补给</span></div><div><strong id="draws">—</strong><span>完成挑战</span></div><div><strong id="score">—</strong><span>最佳成绩</span></div></section>
+<section class="actions"><button id="begin" disabled>开始远征</button><button id="claim" disabled>领取一次性补给</button><button id="ridge" disabled>登上山脊 · 10–29 分</button><button id="river" disabled>沿河探索 · 15–24 分</button></section>
+<p class="hint">每次探索消耗一份补给。补给只可领取一次，随机结果与正式成绩由服务器确认。选择旧存档也不会恢复已经消耗的补给。</p>
+<nav aria-label="游戏服务"><button id="login" disabled>登录 / 绑定存档</button><button id="permissions" disabled>资料授权</button><button id="ranks" disabled>查看排行榜</button><button id="recover" disabled>查询未确认操作</button><button id="trial">离线试玩</button><button id="reconnect" disabled>重读正式进度</button></nav>
+<section><h2>远征排行榜</h2><ol id="rows"><li>点击查看服务器确认的成绩。</li></ol></section>
+<footer>拒绝昵称头像授权仍可匿名游玩并保存云进度。登录后的两份存档选择由平台显示；游戏无法读取账号凭据。离线试玩不保存、不领奖、不计入排行榜。</footer>
+</main></body></html>
