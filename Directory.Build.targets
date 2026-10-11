@@ -33,15 +33,19 @@
     </PropertyGroup>
 
     <Error
-      Condition="'$(GameProductionProject)' == 'true' and ('$(IsTestProject)' == 'true' or '$(_GameHasTestPackage)' == 'true')"
+      Condition="('$(GameProductionProject)' == 'true' or '$(GameRulePluginProject)' == 'true') and ('$(IsTestProject)' == 'true' or '$(_GameHasTestPackage)' == 'true')"
       Text="GAME_BUILD_PROFILE_INVALID production projects cannot reference test packages or set IsTestProject=true." />
+
+    <Error
+      Condition="'$(GameRulePluginProject)' == 'true' and ('$(GameProductionProject)' == 'true' or '$(GameTestProject)' == 'true' or '$(TargetFramework)' != 'net10.0' or '$(TargetFrameworks)' != '')"
+      Text="GAME_BUILD_PROFILE_INVALID rule plugins require the dedicated net10.0 production profile; gameplay and test profiles cannot be combined." />
 
     <Error
       Condition="'$(GameTestProject)' == 'true' and (('$(TargetFrameworks)' != '' and '$(TargetFrameworks)' != 'net10.0') or ('$(TargetFrameworks)' == '' and '$(TargetFramework)' != 'net10.0'))"
       Text="GAME_BUILD_PROFILE_INVALID test projects must target net10.0 only; multi-target or non-net10.0 targets are not allowed." />
 
     <Error
-      Condition="('$(GameProductionProject)' == 'true' or '$(GameTestProject)' == 'true') and '$(LangVersion)' != '14.0'"
+      Condition="('$(GameProductionProject)' == 'true' or '$(GameRulePluginProject)' == 'true' or '$(GameTestProject)' == 'true') and '$(LangVersion)' != '14.0'"
       Text="GAME_BUILD_PROFILE_INVALID LangVersion must remain 14.0 for game projects; actual value is $(LangVersion)." />
   </Target>
 

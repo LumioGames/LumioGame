@@ -1,0 +1,347 @@
+{
+  "actions": [
+    {
+      "action": "begin",
+      "argumentsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "selectorId": null
+    },
+    {
+      "action": "claim_supplies",
+      "argumentsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "selectorId": null
+    },
+    {
+      "action": "explore",
+      "argumentsSchema": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "enum": [
+              "ridge",
+              "river"
+            ]
+          }
+        },
+        "required": [
+          "route"
+        ],
+        "additionalProperties": false
+      },
+      "selectorId": "expedition_draw"
+    }
+  ],
+  "selectors": [
+    {
+      "selectorId": "expedition_draw",
+      "documentId": "expedition",
+      "eligibilityPath": [
+        "eligible"
+      ],
+      "entitlementPath": [
+        "entitlementKey"
+      ],
+      "drawIndexPath": [
+        "drawIndex"
+      ]
+    }
+  ],
+  "stateSchemas": [
+    {
+      "id": "expedition_v1",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "const": "expedition"
+                },
+                "schemaVersion": {
+                  "const": "expedition_v1"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "drawIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "bestScore": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 29
+                    },
+                    "eligible": {
+                      "type": "boolean"
+                    },
+                    "entitlementKey": {
+                      "type": "string",
+                      "minLength": 64,
+                      "maxLength": 64,
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "hiddenCode": {
+                      "const": "forest_only"
+                    }
+                  },
+                  "required": [
+                    "drawIndex",
+                    "bestScore",
+                    "eligible",
+                    "entitlementKey",
+                    "hiddenCode"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "documentId",
+                "schemaVersion",
+                "data"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "expedition_v2",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "const": "expedition"
+                },
+                "schemaVersion": {
+                  "const": "expedition_v2"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "drawIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "bestScore": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 29
+                    },
+                    "eligible": {
+                      "type": "boolean"
+                    },
+                    "entitlementKey": {
+                      "type": "string",
+                      "minLength": 64,
+                      "maxLength": 64,
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "hiddenCode": {
+                      "const": "forest_only"
+                    },
+                    "trail": {
+                      "enum": [
+                        "camp",
+                        "ridge",
+                        "river"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "drawIndex",
+                    "bestScore",
+                    "eligible",
+                    "entitlementKey",
+                    "hiddenCode",
+                    "trail"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "documentId",
+                "schemaVersion",
+                "data"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "expedition_view",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "started": {
+            "type": "boolean"
+          },
+          "supplies": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "draws": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "bestScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 29
+          },
+          "canClaim": {
+            "type": "boolean"
+          },
+          "canExplore": {
+            "type": "boolean"
+          },
+          "trail": {
+            "enum": [
+              "camp",
+              "ridge",
+              "river"
+            ]
+          }
+        },
+        "required": [
+          "started",
+          "supplies",
+          "draws",
+          "bestScore",
+          "canClaim",
+          "canExplore",
+          "trail"
+        ],
+        "additionalProperties": false
+      },
+      "fieldCatalog": [
+        "/started",
+        "/supplies",
+        "/draws",
+        "/bestScore",
+        "/canClaim",
+        "/canExplore",
+        "/trail"
+      ]
+    },
+    {
+      "id": "binding_summary",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "stateExists": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stateExists"
+        ],
+        "additionalProperties": false
+      },
+      "fieldCatalog": [
+        "/stateExists"
+      ]
+    },
+    {
+      "id": "binding_receipt",
+      "schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "fieldCatalog": []
+    }
+  ],
+  "migrations": [
+    {
+      "fromStateSchemaId": "expedition_v1",
+      "toStateSchemaId": "expedition_v2"
+    }
+  ],
+  "deniedReasons": [
+    {
+      "entrypoint": "prepare",
+      "gameReason": "invalid_action"
+    },
+    {
+      "entrypoint": "prepare",
+      "gameReason": "already_started"
+    },
+    {
+      "entrypoint": "prepare",
+      "gameReason": "not_started"
+    },
+    {
+      "entrypoint": "prepare",
+      "gameReason": "already_claimed"
+    },
+    {
+      "entrypoint": "prepare",
+      "gameReason": "no_supplies"
+    },
+    {
+      "entrypoint": "evaluate",
+      "gameReason": "invalid_action"
+    },
+    {
+      "entrypoint": "evaluate",
+      "gameReason": "already_started"
+    },
+    {
+      "entrypoint": "evaluate",
+      "gameReason": "not_started"
+    },
+    {
+      "entrypoint": "evaluate",
+      "gameReason": "already_claimed"
+    },
+    {
+      "entrypoint": "evaluate",
+      "gameReason": "no_supplies"
+    },
+    {
+      "entrypoint": "migrate",
+      "gameReason": "migration_unavailable"
+    }
+  ],
+  "bindingTargetStateSchemaIds": [
+    "expedition_v2"
+  ]
+}

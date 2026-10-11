@@ -1,0 +1,33 @@
+{
+  "gameId": "91d25d0c-9b87-4c34-9c47-19b779b10001",
+  "environment": "test",
+  "releaseId": "expedition_2",
+  "ruleVersion": "expedition_v2",
+  "serviceId": "expedition_rules",
+  "stateSchemaId": "expedition_v2",
+  "viewSchemaId": "expedition_view",
+  "authorityId": "platform_1",
+  "rules": {
+    "prepare": "POST /api/game-rules/v1/prepare",
+    "evaluate": "POST /api/game-rules/v1/evaluate",
+    "project": "POST /api/game-rules/v1/project",
+    "migrate": "POST /api/game-rules/v1/migrate",
+    "bind": "POST /api/game-rules/v1/bind"
+  },
+  "board": {
+    "boardId": "expedition_best",
+    "aggregation": "highest",
+    "unit": "integer",
+    "seasons": [
+      {
+        "seasonId": "all_time",
+        "startsAt": null,
+        "endsAt": null
+      }
+    ]
+  },
+  "clientEntry": "Client/index.html",
+  "pluginEntryType": "Lumio.GameServices.Sample.ExpeditionRules",
+  "catalog": "catalog.json",
+  "initializationAction": "begin"
+}

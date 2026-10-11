@@ -26,6 +26,7 @@ metadata:
 |------|--------|
 | [`features/_TEMPLATE.md`](features/_TEMPLATE.md) | 新功能文档模板——新增功能记录时照此建,放对 领域 / 模块 |
 | [`features/gameplay/chat-component.md`](features/gameplay/chat-component.md) | ChatComponent 与 IdentityComponent 归本仓——声明、声明生成、SendMessage 与 persist last-message、测试世界启动 |
+| [`features/gameplay/game-services-sample.md`](features/gameplay/game-services-sample.md) | 服务器权威 HTML 样例——纯规则插件、云进度与防重资格；接入或验证游戏服务时查 |
 | [`features/tools/clone-all.md`](features/tools/clone-all.md) | 组织仓一次性 clone 工具——查失败分级(远端授权 vs 本地/网络)、退出码语义与清单维护纪律 |
 
 ## Lumio Bomber 101
