@@ -17,7 +17,13 @@ public sealed partial class MoveAbility
         IBomberConfig config = BomberConfigBinding.For(world);
         BomberPlayerState memory = world.Get<BomberPlayerState>(player);
         BomberInputMemory.Prepare(world, memory);
-        BomberDirection previous = world.Tick > 0 && memory.LastMoveTick.Value == world.Tick - 1
+        BomberDirection carryBuffer = turnPressed
+            ? (config.Movement.TurnBufferTicks > 0 ? primary : BomberDirection.None)
+            : (memory.PendingTurnUntilTick.Value > world.Tick
+                ? (BomberDirection)memory.PendingTurnDirection.Value : BomberDirection.None);
+        bool needsPrevious = carryBuffer != BomberDirection.None &&
+            (primary == carryBuffer || primary == BomberDirection.None);
+        BomberDirection previous = needsPrevious && world.Tick > 0 && memory.LastMoveTick.Value == world.Tick - 1
             ? (BomberDirection)memory.LastMoveDirection.Value : BomberDirection.None;
         memory.LastMoveTick.Value = world.Tick;
         memory.LastMoveDirection.Value = 0;

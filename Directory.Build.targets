@@ -14,6 +14,7 @@
     <LumioRuntimeReplicationProject>$(_LumioRuntimeRoot)/modules/replication/src/Lumio.GameRuntime.Replication/Lumio.GameRuntime.Replication.csproj</LumioRuntimeReplicationProject>
     <LumioRuntimeGasProject>$(_LumioRuntimeRoot)/modules/gas/src/Lumio.GameRuntime.Gas/Lumio.GameRuntime.Gas.csproj</LumioRuntimeGasProject>
     <LumioRuntimeSimulationProject>$(_LumioRuntimeRoot)/modules/simulation/src/Lumio.GameRuntime.Simulation/Lumio.GameRuntime.Simulation.csproj</LumioRuntimeSimulationProject>
+    <LumioRuntimeHostingProject>$(_LumioRuntimeRoot)/modules/hosting/src/Lumio.GameRuntime.Hosting/Lumio.GameRuntime.Hosting.csproj</LumioRuntimeHostingProject>
     <_LumioEcsToolProject>$(_LumioRuntimeRoot)/tools/gen-declarations/Lumio.Tools.GenDeclarations.csproj</_LumioEcsToolProject>
     <_LumioEcsSide Condition="'$(LumioEcsSide)' != ''">$(LumioEcsSide)</_LumioEcsSide>
     <_LumioEcsSide Condition="'$(_LumioEcsSide)' == ''">server</_LumioEcsSide>

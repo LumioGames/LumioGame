@@ -94,7 +94,12 @@ function defaultConnect(url) {
   if (typeof WebSocket !== 'function') {
     throw new AccountClientError('invalid_request', 'WebSocket is unavailable in this runtime.');
   }
-  return new WebSocket(url, [ACCOUNT_SUBPROTOCOL]);
+  const origin = new URL(url);
+  origin.protocol = origin.protocol === 'wss:' ? 'https:' : 'http:';
+  return new WebSocket(url, {
+    protocols: [ACCOUNT_SUBPROTOCOL],
+    headers: { Origin: origin.origin },
+  });
 }
 
 function waitOpen(socket, timeoutMs) {

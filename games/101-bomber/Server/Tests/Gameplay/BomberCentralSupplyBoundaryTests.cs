@@ -25,7 +25,7 @@ public sealed class BomberCentralSupplyBoundaryTests
     [InlineData(true, 11)]
     public void ActualFiftyAndSixtySecondTicksIssueTheConfiguredQuotaExactlyOnce(bool skills, int expected)
     {
-        // Explicit UGC 19/8 consumer, not formal 23/12 or 27/16 admission.
+        // Specified UGC 19/8 consumer, not formal 23/12 or 27/16 admission.
         // The skills-on row deliberately retains all production shape guards.
         using var authored = SupplyConfig(skills);
         using var scene = new BomberTerrainProductionTests.Scene(0, configDirectory: authored.Compile());
@@ -222,7 +222,7 @@ public sealed class BomberCentralSupplyBoundaryTests
         BomberSupplyPromise[] selected = BomberCentralSupply.Decode(runtime.SupplyPending.Value);
         Assert.Equal(9, selected.Length);
         Assert.All(selected, row => Assert.False(row.Submitted));
-        // Explicit durable unknown-state fixture on a real issued selection.
+        // Authored durable unknown-state fixture on a real issued selection.
         // No Commands.Create exception or actual pending structural capture is claimed.
         runtime.SupplyPending.Value = BomberCentralSupply.Encode(selected.Select(row => row with
         {

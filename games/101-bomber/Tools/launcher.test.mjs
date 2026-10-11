@@ -9,6 +9,7 @@ import { loadProcessTools, processToolsPath } from './engine-tools.mjs';
 import { engineDir, hostRid, releaseLayout } from './engine-release.mjs';
 import {
   collectLaunchTickets,
+  botScenarioSelection,
   assertLegacyMapSelection,
   startReleasePlatform,
   choosePlatformHostPort,
@@ -39,6 +40,35 @@ import {
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const FROZEN_DS_CONFIG = JSON.parse(readFileSync(new URL('../Server/Config/Startup/server.json', import.meta.url), 'utf8'));
+
+test('movement preview selects only its explicit Bot scenario', () => {
+  assert.equal(botScenarioSelection({ player: true, index: 0, scenarioDll: 'bots.dll' }).scenarioName,
+    'Lumio.Bomber.Bots.BomberPlayScenario');
+  assert.equal(botScenarioSelection({ player: true, index: 0, scenarioDll: 'bots.dll',
+    playerBotScenario: 'movement-sync-preview' }).scenarioName,
+    'Lumio.Bomber.Bots.MovementSyncPreviewScenario');
+  assert.throws(() => botScenarioSelection({ player: true, index: 0, scenarioDll: 'bots.dll',
+    playerBotScenario: 'other' }), /playerBotScenario/);
+  assert.throws(() => botScenarioSelection({ player: false, index: 0, scenarioDll: 'bots.dll',
+    playerBotScenario: 'movement-sync-preview' }), /playerBotScenario/);
+});
+
+test('movement preview rejects all invalid shapes before creating a run folder', async () => {
+  const invalid = [
+    { player: false }, { player: true, playerCount: 1 }, { player: true, bots: 5 },
+    { player: true, fleetPerProcess: 2 }, { player: true, spectator: true },
+    { player: true, admissionOnly: true }, { player: true, spectatorUrl: 'http://127.0.0.1/' },
+    { player: true, playerBotScenario: 'other' },
+  ];
+  for (const shape of invalid) {
+    const root = mkdtempSync(join(tmpdir(), 'lumio-preview-reject-'));
+    try {
+      await assert.rejects(runLauncher({ root, env: {}, bots: 6, playerCount: 2, fleetPerProcess: 1,
+        playerBotScenario: 'movement-sync-preview', ...shape }), /playerBotScenario|movement-sync-preview/);
+      assert.equal(existsSync(join(root, '.run')), false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+});
 
 test('launcher preflight keeps custom DS, client, and snapshot selections on the frozen room', () => {
   const root = resolve(HERE, '..');

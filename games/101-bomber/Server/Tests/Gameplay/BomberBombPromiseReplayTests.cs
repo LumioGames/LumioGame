@@ -29,7 +29,7 @@ public sealed class BomberBombPromiseReplayTests
         var withheld = new HostVoxelWorldAdapter(scene.Native.NativeHandle, new VoxelFacadeNativeAbi(scene.Native)) { World = scene.World };
         using var binding = VoxelGameplayBinding.Bind(scene.Manager, withheld);
         scene.Manager.BindVoxelTick(withheld.PrepareVoxel, withheld.CommitVoxel);
-        // Explicit durable unknown fixture: the published mother is real, but
+        // Authored durable unknown fixture: the published mother is real, but
         // these flags do not claim an actual structural Unknown checkpoint.
         mother.SplitSubmittedMask.Value = 1;
         string token = $"split:{mother.Entity.ToHex()}:0";
@@ -88,7 +88,7 @@ public sealed class BomberBombPromiseReplayTests
         var config = BomberConfigBinding.For(world);
         var runtime = world.Single<BomberWorldRuntime>();
         ulong chain = checked(runtime.NextChainId.Value + 1);
-        // Explicit durable unknown fixture, separate from the real queued
+        // Authored durable unknown fixture, separate from the real queued
         // placement test whose CaptureSnapshot correctly refuses pending creates.
         var row = new BomberFrenzy.Promise($"frenzy:{participant.Entity.ToHex()}:{chain:x16}",
             life.Entity.ToHex(), life.LifeGeneration.Value, participant.MatchId.Value, chain,

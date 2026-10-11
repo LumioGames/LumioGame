@@ -221,7 +221,10 @@ public sealed class SpectatorReplicaHostTests
             new CreateRecord("player", self, new[] { new FieldValue(nameof(LogicTransform), "localPosition", "1,0,2") }) },
         Array.Empty<FieldChange>(), Array.Empty<DestroyRecord>(), Array.Empty<ClientRpcRecord>());
     private static WorldChangeMessage Delta(params FieldChange[] fields) => new(2, 0, Array.Empty<CreateRecord>(), fields, Array.Empty<DestroyRecord>(), Array.Empty<ClientRpcRecord>());
-    private static FieldValue[] MatchFields() => new[] { new FieldValue("BomberMatchState", "phase", 0) };
+    private static FieldValue[] MatchFields() => new[] {
+        new FieldValue(nameof(WorldSaveComponent), "tickRate", 20UL),
+        new FieldValue("BomberMatchState", "phase", 0),
+    };
     private static byte[] Welcome() => WireCodec.EncodePack(new WelcomeMessage(7, Self, 9) { ControlledLife = Self, ControlMode = AttachmentControlMode.Controlled }, WireProfile.SuccessorBindingV1);
     internal static void Fault(BrowserSessionOwner owner)
     {

@@ -1,6 +1,9 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
+using System.Text.Json;
+using Lumio.Config.Generated.Server;
 using Lumio.Bomber.Gameplay.Config;
 using Lumio.Bomber.Gameplay.Contracts.Components;
 using Lumio.Bomber.Gameplay.Contracts.EntityTypes;
@@ -96,13 +99,113 @@ public sealed class BomberTerrainCorrectiveTests
     [Fact]
     public void EffectiveSoftRowsDetermineInitialMaximum()
     {
-        using var fixture = new BomberObjectBudgetTests.AuthoredFixture(("chest", "SoftOuter", "random_slots", "2"));
-        var config = BomberConfigBinding.Read(fixture.Compile());
+        using var controlFixture = new BomberObjectBudgetTests.AuthoredFixture(("game", "default", "match_duration_ms", "360000"));
+        using var fixture = new BomberObjectBudgetTests.AuthoredFixture(("game", "default", "match_duration_ms", "360000"),
+            ("chest", "SoftOuter", "random_slots", "2"));
+        string controlExport = controlFixture.Compile(), export = fixture.Compile();
+        var control = BomberConfigBinding.Read(controlExport);
+        var config = BomberConfigBinding.Read(export);
+        _ = BomberConfigBinding.Load(controlExport);
+        _ = BomberConfigBinding.Load(export);
+        AssertPrivatePair(control, config, "SoftOuter", 1488);
         var layout = M2InitialLayout.Plan(19);
-        var baseline = BomberTerrainBudget.Calculate(BomberConfigBinding.Read(), layout).InitialOutputCeiling;
+        var baseline = BomberTerrainBudget.Calculate(control, layout).InitialOutputCeiling;
         int outerSoft = layout.Cells.Count(c => c.Kind == M2CellKind.Soft && Math.Max(Math.Abs(c.X - 9), Math.Abs(c.Z - 9)) >= 6);
         Assert.True(outerSoft > 0);
         Assert.Equal(baseline + outerSoft, BomberTerrainBudget.Calculate(config, layout).InitialOutputCeiling);
+    }
+
+    [Theory]
+    [InlineData("SoftOuter", "250", "30")]
+    [InlineData("SoftMiddle", "1000", "0")]
+    public void EffectiveTwoOutputSoftRowsFailClosedBeforeWorldAttachment(string name, string drop, string kick)
+    {
+        using var fixture = new BomberObjectBudgetTests.AuthoredFixture(("game", "default", "match_duration_ms", "420000"),
+            ("chest", name, "random_slots", "2"), ("chest", name, "drop_permille", drop), ("chest", name, "kick_permille", kick));
+        string export = fixture.Compile();
+        var valid = BomberConfigBinding.Read();
+        Assert.Equal(420000u, valid.Game.MatchDurationMs);
+        Assert.Equal(8, valid.Game.PlayerCount);
+        Assert.Equal(19, valid.Map.Width);
+        Assert.Equal(19, valid.Map.Depth);
+        Assert.Equal(20u, valid.Game.TickRateHz);
+        Assert.Equal(1607, valid.ObjectBudgets.PickupCapacity);
+        ulong match = Ticks.FromMilliseconds(valid.Game.MatchDurationMs, valid.Game.TickRateHz);
+        ulong final = Ticks.FromMilliseconds(valid.FinalCircle.DurationMs, valid.Game.TickRateHz);
+        ulong lead = Ticks.FromMilliseconds(valid.Regeneration.StopBeforeFinalMs, valid.Game.TickRateHz);
+        ulong first = Ticks.FromMilliseconds(valid.Regeneration.FirstTriggerMs, valid.Game.TickRateHz);
+        ulong interval = Ticks.FromMilliseconds(valid.Regeneration.IntervalMs, valid.Game.TickRateHz);
+        Assert.Equal((8400UL, 2300UL, 1200UL, 160UL, 160UL), (match, final, lead, first, interval));
+        ulong stop = match - final - lead;
+        Assert.Equal(4900UL, stop);
+        ulong waves = 1 + (stop - 1 - first) / interval;
+        Assert.Equal(30UL, waves);
+        Assert.Equal(240UL, waves * 4 * (ulong)valid.Regeneration.MaxMirrorOrbits);
+        Assert.Equal(1712, 361 * 2 + 240 * 4 + 5 * 6);
+
+        using var sentinel = new BomberTerrainProductionTests.Scene(1025u << 8);
+        byte[] snapshot = sentinel.Manager.CaptureSnapshot();
+        var floor = sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 0, 5));
+        var obstacle = sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 1, 5));
+        const string expected = "object_budgets.max_pickup_entities: required=1712, provisioned=1607.";
+        Assert.Equal(expected, Assert.Throws<InvalidOperationException>(() => BomberConfigBinding.Read(export)).Message);
+        Assert.Equal(snapshot, sentinel.Manager.CaptureSnapshot());
+        Assert.Equal(floor, sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 0, 5)));
+        Assert.Equal(obstacle, sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 1, 5)));
+        Assert.Equal(expected, Assert.Throws<InvalidOperationException>(() => BomberConfigBinding.Load(export)).Message);
+        Assert.Equal(snapshot, sentinel.Manager.CaptureSnapshot());
+        Assert.Equal(floor, sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 0, 5)));
+        Assert.Equal(obstacle, sentinel.Native.ReadCell(new VoxelWorldCoordinate(6, 1, 5)));
+    }
+
+    private static void AssertPrivatePair(IBomberConfig control, IBomberConfig mutated, string selectedRow, int requiredPickups)
+    {
+        var production = BomberConfigBinding.Read();
+        Assert.Equal(420000u, production.Game.MatchDurationMs);
+        foreach (var config in new[] { control, mutated })
+        {
+            Assert.Equal(360000u, config.Game.MatchDurationMs);
+            Assert.Equal(8, config.Game.PlayerCount);
+            Assert.Equal(19, config.Map.Width);
+            Assert.Equal(19, config.Map.Depth);
+            Assert.Equal(20u, config.Game.TickRateHz);
+            Assert.Equal((2784, 1607, 336), (config.ObjectBudgets.BombCapacity, config.ObjectBudgets.PickupCapacity, config.ObjectBudgets.FireZoneCapacity));
+            Assert.Equal(production.ObjectBudgetRules, config.ObjectBudgetRules);
+            Assert.Equal(production.Map, config.Map);
+            foreach (PropertyInfo table in typeof(BomberTypedTables).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(p => p.Name is not ("Game" or "Chest")))
+                Assert.Equal(JsonSerializer.Serialize(table.GetValue(production.Tables)), JsonSerializer.Serialize(table.GetValue(config.Tables)));
+            foreach (PropertyInfo column in typeof(GameRow).GetProperties().Where(p => p.Name != nameof(GameRow.MatchDurationMs)))
+                Assert.Equal(column.GetValue(production.Game), column.GetValue(config.Game));
+            ulong match = Ticks.FromMilliseconds(config.Game.MatchDurationMs, config.Game.TickRateHz);
+            ulong final = Ticks.FromMilliseconds(config.FinalCircle.DurationMs, config.Game.TickRateHz);
+            ulong lead = Ticks.FromMilliseconds(config.Regeneration.StopBeforeFinalMs, config.Game.TickRateHz);
+            ulong first = Ticks.FromMilliseconds(config.Regeneration.FirstTriggerMs, config.Game.TickRateHz);
+            ulong interval = Ticks.FromMilliseconds(config.Regeneration.IntervalMs, config.Game.TickRateHz);
+            Assert.Equal((7200UL, 2300UL, 1200UL, 160UL, 160UL), (match, final, lead, first, interval));
+            Assert.Equal(3700UL, match - final - lead);
+            ulong waves = 1 + (match - final - lead - 1 - first) / interval;
+            Assert.Equal(23UL, waves);
+            Assert.Equal(184UL, waves * 4 * (ulong)config.Regeneration.MaxMirrorOrbits);
+            Assert.Equal(4, BomberResourceRewardRules.Maximum(config, config.Tables.Chest.Rows.Single(r => r.Name == "Gold")));
+            Assert.Equal(6, BomberResourceRewardRules.Maximum(config, config.Chest));
+            Assert.Equal(5, config.Tables.CircleStages.Rows.Count(r => r.SpawnChest));
+        }
+        Assert.Equal(1127, 361 + 736 + 30);
+        Assert.Equal(1488, 722 + 736 + 30);
+        Assert.Equal(1127, control.ObjectBudgets.RequiredPickups);
+        Assert.Equal(requiredPickups, mutated.ObjectBudgets.RequiredPickups);
+        Assert.Equal(control.Game, mutated.Game);
+        Assert.Equal(control.Tables.Chest.Rows.Count, mutated.Tables.Chest.Rows.Count);
+        foreach (ChestRow row in control.Tables.Chest.Rows)
+        {
+            var other = mutated.Tables.Chest.Rows.Single(r => r.Id == row.Id);
+            if (row.Name != selectedRow) { Assert.Equal(row, other); continue; }
+            Assert.Equal(1, row.RandomSlots);
+            Assert.Equal(2, other.RandomSlots);
+            foreach (PropertyInfo column in typeof(ChestRow).GetProperties().Where(p => p.Name != nameof(ChestRow.RandomSlots)))
+                Assert.Equal(column.GetValue(row), column.GetValue(other));
+        }
     }
 
     [Theory]
@@ -252,9 +355,17 @@ public sealed class BomberTerrainCorrectiveTests
     [InlineData("Wood", 1026u, 2, true)]
     public void EffectiveMultiOutputRowsReserveBeforeNativeMutation(string name, uint block, int free, bool accepted)
     {
-        using var fixture = new BomberObjectBudgetTests.AuthoredFixture(("chest", name, "random_slots", "2"),
+        using var controlFixture = new BomberObjectBudgetTests.AuthoredFixture(("game", "default", "match_duration_ms", "360000"),
             ("chest", name, "drop_permille", "1000"), ("chest", name, "kick_permille", "0"));
-        using var scene = new BomberTerrainProductionTests.Scene(block << 8, configDirectory: fixture.Compile());
+        using var fixture = new BomberObjectBudgetTests.AuthoredFixture(("game", "default", "match_duration_ms", "360000"), ("chest", name, "random_slots", "2"),
+            ("chest", name, "drop_permille", "1000"), ("chest", name, "kick_permille", "0"));
+        string controlExport = controlFixture.Compile(), export = fixture.Compile();
+        var control = BomberConfigBinding.Read(controlExport);
+        var config = BomberConfigBinding.Read(export);
+        _ = BomberConfigBinding.Load(controlExport);
+        _ = BomberConfigBinding.Load(export);
+        AssertPrivatePair(control, config, name, name == "SoftMiddle" ? 1488 : 1127);
+        using var scene = new BomberTerrainProductionTests.Scene(block << 8, configDirectory: export);
         int limit = BomberConfigBinding.For(scene.World).ObjectBudgets.PickupCapacity;
         for (int i = 0; i < limit - free; i++) scene.World.Commands.Create<BomberPickupItemEntity>();
         scene.Manager.Tick();
