@@ -4089,3 +4089,14 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - 本轮实际AOT包已产出；正式闭包、consumer/guard/页面/截图服务字节仍NOT_RUN；无性能或handfeel PASS。20Hz、8人6Bot、voxel、协议/额度保持；Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED、handfeel FAIL_PENDING_USER，officialPublication=false。本段由Root审核后只追加账本，历史checkpoint保全；提交/推送将记入实际append收据。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段精确输入身份见f1-coordination-checkpoint290-append-01/inputs-01.json；包括原启动阶段快照与后续实际终态，发布闭包另记。
+
+### checkpoint291 — wholeHost真实工具构建与publication输入阻断（2026-10-11 UTC）
+
+- 承接checkpoint290，Root提前读取未冻结tool plan时发现collector7259→9242身份漂移，当时未写执行授权、实际build未启动；旧7259完整保全，final02冻结后才真实正常build，不把准备时点漂移写成正常构建失败。wholeHost normal PID33488/raw0/noTimeout，6585 before/after inputs0漂移；receipt3320737B/e60bff9c…，真实DLL194048B/281aafd9be537f96b0d4a4430bf48bcac1d2961f51b404237480e8aedf391740。Root进一步独立校验303 current Csc binding inputs0漂移、6585原before/after与原plan一致后限定采纳新DLL/normal build/Csc：root-actual-whole-host-tool-build-adoption-01.json4958B/ff94947ef5f1a4cd6cfc8594c1fcb4a7bfff6efdb5ecc79cca034fcfb08c0255，仅允许后续raw facts读取，未等同reader执行、闭包或签名语义PASS。
+- 实际Csc binlog replay PID19780/raw0/noTimeout/readback0漂移；唯一Csc Sources四项为candidate02 Program d6e8f641…及三generated文件，167 References逐真实before/after身份绑定。实际DefaultSdkResolver/Csc command选SDK10.0.400，区别来源保留，不冒称同原产品build工具链。51 import路径仅CURRENT_READBACK_ONLY，原binlog路径/ordinal保留，不宣称build-instant byte identity。初bind错误假定csc.dll退出1原件保全，新02按实际csc.exe绑定，不改原replay raw0。
+- fill02工具经独审后Root限定采纳，actualfill22748/raw0/noTimeout/自身inputs0漂移；新closure-inputs.actual-01.json身份8fd5e188…，Root实际2399 current inputs0漂移、685 source限定绑定。仅READ_EXISTING_ACTUAL_PACKAGE_ONLY_NOT_SEMANTIC_OR_OWNER_ACCEPTANCE，source/Host编译/helper实际闭包门继续分别核实，不移旧PASS。
+- publication只读4396/raw1/noTimeout/自身inputs0漂移，在common03 Presentation门因executable=null的statSync明确阻断，原stderr/receipt保全。正常Presentation install33080真实observed Node，build34096原receipt/process executable null继续保留；source-proven launch filename资格正在准备，不能补造observed executable/imagehash或覆写原进程记录，不重复build/AOT、不删检查。具体后续派生stage未采纳，不以进程是否存活猜结果。
+- 新consumer三处小metadata派生由Root adoption3319B/2903507…限定采纳，实际Dual04/SDK4来源取代历史metadata，全部算法原样保留；consumer/guard/launch均未执行。工具/材料/原错误与校验身份见本段inputs-01.json。
+- 当前fullClosure、性能、preview均未PASS；C#私有run02仍8PASS/2Session startup timeout/0skip，失败原件单列保全。20Hz、8人6Bot、voxel、协议/额度保持；Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED、handfeel FAIL_PENDING_USER、officialPublication=false。本段经Root审核后只追加账本，CP290及更早文本保全；提交/推送另记实际收据。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段精确当前原件身份见f1-coordination-checkpoint291-append-01/inputs-01.json。新正常工具构建与失败publication均保留各自限定口径，后续全闭包和启动另记。
