@@ -3997,3 +3997,18 @@ analyzer03对wrong-pump/incomplete-batch/incomplete-facade/wrong-clock/非bool a
 - 用户开发高帧率诉求继续执行；源码无FPS cap，尚无实际heap grow/GC/audio limit命中证据，本段没有调高tick/协议/额度/补算/音频/诊断上限，没有新包前台计时或用户手感通过。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
 
 证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段真实原件路径/字节/SHA见f1-coordination-checkpoint283-append-01/inputs-01.json。
+
+### checkpoint284 — 当前协调/Client/carry静态语义采纳与consumer预检（2026-10-11 UTC）
+
+- 承接checkpoint283；Game f7、Client73d、Runtime正常编译base1f3d+freeze04与后提交77a、私有SDK3/36779、AOT04身份保持。Root采纳本次实际静态证明，仅供新的私有candidate绑定，不授予正式SDK、浏览器执行、性能或Owner通过。
+- provider11实际PID32520/raw0/noTimeout/input0，11checks全true。当前实际CoreLib输入getter完整body为ldc.i4.s12;ret；三writer完整指令/locals/header/EH与全部分支目的在唯一getter调用→常量12的精确3B缩减映射下匹配。Phase267B保持，Completed1749→1746、Stopped200→197；未把有限规范化写成原字节完全相同，provider10原raw1保全。
+- API9本次Root采纳79f94361…：四公开API精确签名含in/byref、Options4/Status25/Record9 getters、四Host direct roots、真实Native now-nanos构造/字段/调用链、trace默认关闭与owner边界静态成立；没有执行时钟/浏览器开销结论。coord12 Root采纳5503478c…：本次provider/MVID、event1 keyword1独立、event2 scalar33/event3 scalar3、7exclusive+residual finally、既有循环计数、默认关闭/Stopped不重启、bounded keyword2 collector、scalar callback/idle Drain、终态与Configure/Start路由及support=true CoreLib绑定共12checks通过，非当前新网页capture证明。
+- Client当前7项直接数据流/控制流静态成立：同32B buffer的LE五字段0/8/16/20/24、Kind2、checked精确packet长度、唯一packet/ref offset全段、reply精确长度门后全buffer复制含非0status、直接异常/Check分支、当前Kind3/generic路径；Root限定采纳a1de7a5e…。delegate/格式token未独立完整解析、优化前历史字节比较未本轮建立，缺口原样保留。carry当前client/server各805B/343指令的6项caller guards、连续tick与tick0门、reset、垂直carry第四候选、None/重复/可用性及成功写回成立，Root限定采纳b48874b0…；generic TypeSpec/helper/外部SDK语义不代证。原205033B extraction-only未改。
+- managed09与native05实际结果用于同plan/source绑定：43 pairs/49 boot assets，managed13checks/failures0/input0；native17checks、44objects/真实linker/boot闭合。runtimeBothPdbFresh只指两normal compile PDB与当前物理/EmbeddedSource证明，linked Ecs/Gas PDB仍UNAVAILABLE，不升级为linked源码checksum。新Host closure7c85da94…与fresh artifact contract491b8922…已Root限定采纳。
+- consumer-precheck06真实PID33484/raw1/noTimeout/input0，因3861源码绑定不包含正常seal工具而拒绝，949B原stderr83b41245…保全。consumer私有工具05保留全部门；normal-tools补充07 Roottrue/f68ea7cc…仅绑定当前Game f7的seal-browser-resources.mjs16640B/4f9bd18b…与launcher.mjs90102B/fe4851e0…两真实源，pastAotInputClaim=false，不伪扩历史AOT/Csc库存。
+- 新consumer-inputs.root-actual-07采用实际同源闭包与上述补充；正常readonly precheck07 PID28604/raw0/noTimeout/input0，输出PRECHECK_PASS_NO_COPY、43 managed/49 boot/3 loader guards。随后copy/seal/guard的真实结果见下条，现场尚待启动与实测。
+- 后续正常copy07 PID29376/raw0/noTimeout/input0建立新的407-leaf私有consumer；正常seal07 PID34196/raw0/noTimeout，finalize07 PID29788/raw0/noTimeout/input0，148资源与407物理叶逐字节封件；原旧现场/日志/封件保全。guard-binding07 PID33888/raw0/noTimeout/input0，13782绑定artifact/5685外部旧记录保全，新candidate4100281B/0426e38baac11cd620ba76f412338a865451e53f074c35ca919ef4db9b878831，新19154–19157端口与2h allocation独立；当前尚未签发/验证/启动，浏览器计时待实测。
+- 用户开发期高帧率诉求继续；本段未调高任何性能上限，未改20Hz/协议/额度/补算/预测语义/8人6Bot/体素/受保护预算。当前静态或预检PASS均不是前台同步高帧率、音频连续性或手感PASS。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER。
+
+证据根C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01；本段当前实际原件路径/字节/SHA见f1-coordination-checkpoint284-draft-01/inputs-01.json与f1-coordination-checkpoint284-append-01/input-identities-01.json。
+Root于本次实际readback后追加。PR60于本段前实际读回Draft/OPEN、head acac34955452675e031b19677b4ee8ddf7268d76；本段走该Docs分支提交，不合main。
