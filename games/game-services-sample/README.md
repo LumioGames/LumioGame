@@ -12,7 +12,7 @@ R-00833。浏览器只需要普通 HTML、ES modules 和 WebAssembly。入口是
 - `Client/`：调用实际 S SDK，接收父容器已过滤的投影；头像昵称首次授权、账号登录、两份存档选择由真实 Platform 父 UI 负责。拒绝资料权限仍可匿名游玩。
 - `Tools/`：自己的纯规则测试、真实 R/Native/TLS 集成探针、纯 HTML 浏览器探针、打包和攻击考卷。没有引用 Engine 的 tests/fixtures/samples。
 
-规则插件使用根统一的 `GameRulePluginProject=true` 专项生产 profile（net10/C#14/文档/分析器/警告即错误）；不能使用双 TFM 或测试 profile 伪装生产插件。根构建/CI/知识导航由 I 接线。
+规则插件使用根统一的 `GameRulePluginProject=true` 专项生产 profile（net10/C#14/文档/分析器/警告即错误），并进入根 solution 和公开 CI；不能使用双 TFM 或测试 profile 伪装生产插件。真实规则目录测试与 Native 宿主探针由具备私有源码和正式产物的集成作业执行。
 
 ## 正式状态与资格
 
@@ -66,7 +66,7 @@ node games/game-services-sample/Tools/package-rules.mjs --engine '<冻结Engine�
 node games/game-services-sample/Tools/package.mjs --browser-sdk '<正式SDK安装根目录>' --manifest-sha256 '<外部钉定的manifest SHA256>' --contract '<Engine唯一game-services-v1.json>' --platform-origin 'https://<实际可信平台origin>' --out '<新的游戏静态发布目录>'
 ```
 
-静态发布消费已可信安装的完整官方浏览器 SDK 制品，要求外部 manifest pin 与 Engine 唯一合同；不接受源码树或缺依赖回退。工具逐文件校验字节、依赖、生产 WASM 和执行预算，再原样保留 `vendor/core`、`vendor/lumio`、`vendor/manifest.json` 全布局。Client 在 `Client/`，根 `index.html` 通过 base 指向该目录以对接正式 H 入口。包内没有规则 DLL、catalog、完整服务器状态、随机材料、证书或 Key。规则制品独立，完整 DLL 清单和原字节 SHA-256 写入冻结 `RulePluginArtifact`。输出目录必须为空，工具不会覆盖既有发布。
+静态发布消费已可信安装的完整官方浏览器 SDK 制品，要求外部 manifest pin 与 Engine 唯一合同；不接受源码树或缺依赖回退。工具逐文件校验字节、依赖、生产 WASM 和执行预算，再原样保留 `vendor/core`、`vendor/lumio`、`vendor/manifest.json` 全布局。根 `index.html` 显式加载 `Client/` 下的模块和样式；模块内资源相对 `import.meta.url` 定位，适用于正式隔离宿主的 `base-uri none` 策略。包内没有规则 DLL、catalog、完整服务器状态、随机材料、证书或 Key。规则制品独立，完整 DLL 清单和原字节 SHA-256 写入冻结 `RulePluginArtifact`。输出目录必须为空，工具不会覆盖既有发布。
 
 打包守护测试要求 `GAME_SAMPLE_BROWSER_SDK`、`GAME_SAMPLE_BROWSER_SDK_MANIFEST_SHA256` 和 `LUMIO_ENGINE_ROOT` 指向实际材料，再运行 `node --test games/game-services-sample/Tools/package.test.mjs`；缺材料失败，不跳过。
 
