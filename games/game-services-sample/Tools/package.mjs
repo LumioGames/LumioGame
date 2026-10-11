@@ -45,7 +45,7 @@ const entries = [];
 async function put(relative, bytes) { await fs.mkdir(path.dirname(path.join(output, relative)), { recursive: true }); await fs.writeFile(path.join(output, relative), bytes); entries.push({ path: relative, bytes: bytes.length, sha256: digest(bytes) }); }
 for (const [relative, bytes] of files) await put('vendor/' + relative, bytes);
 for (const name of ['index.html', 'style.css', 'app.mjs', 'session.mjs']) await put('Client/' + name, await fs.readFile(path.join(sample, 'Client', name)));
-await put('index.html', Buffer.from((await fs.readFile(path.join(sample, 'Client/index.html'), 'utf8')).replace('<head>', '<head><base href="./Client/">')));
+await put('index.html', Buffer.from((await fs.readFile(path.join(sample, 'Client/index.html'), 'utf8')).replace('href="./style.css"', 'href="./Client/style.css"').replace('src="./app.mjs"', 'src="./Client/app.mjs"')));
 await put('Client/publication.json', Buffer.from(JSON.stringify({ platformOrigin: origin }) + '\n'));
 await fs.writeFile(path.join(output, 'publication-manifest.json'), JSON.stringify({ sdkManifestSha256: pin, contractSha256: manifest.contractSha256, files: entries }, null, 2) + '\n');
 console.log(JSON.stringify({ output, files: entries.length, sdkManifestSha256: pin, contractSha256: manifest.contractSha256 }));

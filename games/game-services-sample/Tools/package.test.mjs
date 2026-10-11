@@ -18,6 +18,10 @@ test('actual whole published SDK packs without source repositories', async () =>
     assert.deepEqual(await fs.readFile(path.join(temp, 'game/vendor/manifest.json')), await fs.readFile(path.join(sdk, 'manifest.json')));
     assert.deepEqual(await fs.readFile(path.join(temp, 'game/vendor/lumio/ai.js')), await fs.readFile(path.join(sdk, 'lumio/ai.js')));
     assert.equal(await fs.readFile(path.join(temp, 'game/Client/app.mjs'), 'utf8'), await fs.readFile(fileURLToPath(new URL('../Client/app.mjs', import.meta.url)), 'utf8'));
+    const entry = await fs.readFile(path.join(temp, 'game/index.html'), 'utf8');
+    assert.doesNotMatch(entry, /<base\b/i, 'formal isolated host uses base-uri none');
+    assert.match(entry, /href="\.\/Client\/style\.css"/);
+    assert.match(entry, /src="\.\/Client\/app\.mjs"/);
   } finally { await fs.rm(temp, { recursive: true, force: true }); }
 });
 test('missing WASM and changed bytes in actual published archive fail', async () => {
