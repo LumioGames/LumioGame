@@ -4140,3 +4140,15 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - 20Hz、8人6Bot、voxel与协议/额度保持；Owner OPEN、PR280 NEVER_MERGE、F3 NOT_ADOPTED、handfeel FAIL_PENDING_USER、performance UNPROVEN、audio NOT_OBSERVED、officialPublication=false。实际可见帧/静态包限定PASS不构成持键、音频连续性或用户手感通过。
 
 精确本轮原件身份见C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint295-draft-01/inputs.root-04.json；trace分析report5577B/a6a3de11f46f2e72ec60855fbcd04f59978137c99c0854d4b3346d79bc970f4d。
+
+### checkpoint296 — 开发补帧上限实测、DS独立玩法故障与重启拒绝（2026-10-11 UTC）
+
+- 沿用checkpoint295同一当前私有页面/包组合：Game bde0dadfe0e79777b4250a046bada14ee2c61ce9、Runtime 4a8db8df23b909a7481ccbb786565c9dfe86adce、Client73d/SDK4/Dual04/AOT5/PresentationP2；实际main.js63153B/7e34ab9e43a78b9e6f8da0a491c30fe3356e13c6f1e5d7adde6aebb26aa831fa、presentation.js1155465B/395c415becf3ddd5d8c06318c5f45c1c1552810bab1438dc8ce18617cff2a722，身份承接已实际HTTP原件，不冒新构建。本段只测私有catch-up knobs，未改服务器20Hz或游戏源。
+- 启动idle trace的5/250、10/500、20/1000、64/3200均实际configured=true，但不同启动authority时刻/history、两参数同时改变、窗口长短不等；不池化、不当匹配因果试验、不选最佳参数。累计5/250峰值SessionTick489.6ms，短idle10/500为1422.1ms、20/1000为1980.2ms、64/3200早期为11020.3ms。20与64各7frames/8pumps，raw RAF只有6间隔，max分别1971.6/11026.6ms；两份hidden0、truncated=false、diagnosticFailures0。正常分析PID34364/raw0/inputMismatch0，未重复构建或巨大IL哈希。
+- 64终段原件528711B/a18b19c2839c29caa545ae0056c9a77fa434e3b4518299acd6f895e4b165cc0a延伸至178.9108s，ordinal10 SessionTick单次76259.5ms，JS同步括号76259.9ms；first64/replay0、123 authority stage、history141→187<capacity256、retained22761102→29057712。它证实同步长阻塞，elapsed不冒称纯CPU、全部Rebuild耗时或死锁。telemetry window-stop/drop52导致delta.complete=false，不能补造成本百分比；下一ordinal11状态faulted/disposed，但Session errorcode未在trace捕获。
+- 所有这些idle原件无有效key/moveIntent/held，managed primary/secondary均0/0；coordinationCost均null，绝不记0。admission.movesPerHeldPump、backward/stopOvershoot/facing、Bot/远端同步卡顿与audio连续性均UNPROVEN/NOT_OBSERVED；前台工具超时不能单独诊断死锁。大补帧与更长停顿相容，仍须默认5/250下真实Start recording及有效短A/D重新分段测内部成本，不能称高帧率或移动手感通过。
+- DS独立证据：04:14:23.065Z/tick18115 runtime_tick失败，原栈BOMBER_EXECUTE_FAULT tick18114→BomberResults.ValidateMatch206→Publish122→BombSystem.PublishResults635→BomberEffectBusiness.Consume161→ExecuteCore43/Execute27；随后host_abort1011与Bot1 peer_close1011，最终Bot1 PID30936退出1。当前断言两支为survived但EliminatedTick非0，或nonsurvivor EliminatedTick为0/>EndTick，原日志缺offending row。登记独立玩法故障，不能归因64档、900秒超时、正常轮次结束或挪入移动表现用例修订。
+- 第二次正常启动hidden wrapper35988于04:19:54.0269294Z，新run movement-f1-authority-baseline-20261011-01-72130d5b4d745ea3、新prefix与freshPG已生成；04:20:31.009Z首故障为normal verify-release拒绝SDK4额外server/win-x64/hostentry_fault.log，wrapper最终raw1。实际terminal session53472退出1，未SERVING、未浏览器采样。故障日志2186B/5e9a53f6e541ae148f556883340d9e1a07f92d883bae3fb919339fe690215a81原地保留；不删/挪日志绕守卫。此前仅准备的normal-restart计划不构成实际门通过；新部署隔离仍在准备，未copy/run/release。
+- Owner OPEN / PR280 NEVER_MERGE / F3 NOT_ADOPTED / handfeel FAIL_PENDING_USER / officialPublication=false；8人6Bot、体素、协议、额度与受保护端口不改，本段仅追加账本。
+
+精确原件索引：C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint296-draft-01/inputs.root-02.json。
