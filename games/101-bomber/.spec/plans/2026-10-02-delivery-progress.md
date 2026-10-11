@@ -4116,3 +4116,14 @@ Root补充实际readback：sem03测试字节已在behavior-test-before-productio
 - 默认5步/250ms、开发上限1–64步/1–3200ms待同机前台比较，未假定最大值最佳；20Hz、8人6Bot、voxel、协议/额度保持。Owner ADR142/18085/schema OPEN、ADR159 Draft、PR280 NEVER_MERGE、F3 NOT_ADOPTED/F4 NOT_OPENED、handfeel FAIL_PENDING_USER，officialPublication=false。当前结论仅源码/实际包限定证据，不含页面性能、音频或用户手感通过。
 
 精确实际输入身份见C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint293-append-01/inputs-01.json；本段经Root审阅仅追加，历史checkpoint与失败原件完整保全。
+
+### checkpoint294 — 当前 API/协调/追帧参数语义及真实消费封装（2026-10-11 UTC）
+
+- 延续实际 Game bde0dadfe0e79777b4250a046bada14ee2c61ce9、Runtime 4a8db8df23b909a7481ccbb786565c9dfe86adce、SDK4/Dual04/AOT5；本段未重建 AOT。Root 对当前 API/协调完整 178 个 PE/WebCIL 方法体重新逐 range/hash/hex 读回，限定 API9、协调12采纳，原 raw/未知 generic/outside helpers 保留；Host 结构与已审调用方组合单独记录，不声称 universal transitive 全闭包或运行性能。
+- 当前 Host/Session 参数独审及 Root 限定26项采纳；Session109完整当前方法体、3个跨程序集调用的完整签名/实际身份已重核。默认5步/250ms；开发参数允许1–64步及1–3200ms。实际 Session 达到每泵最大步数后清掉未补完 remainder，时间上限另行裁剪 elapsed；这证明逻辑追帧保护，不能称浏览器有5FPS限帧或音频根因。Root caps04仅修正前一新文档中的102文字为实际109，原件保留。最大参数是否改善仍须前台数据。
+- 原 consumer 预检 PID33280/raw1 因两网页辅助源不在 source685/AOT2390 中而阻断。仅两固定 post-AOT leaf 的当前 Git clean-filter/commit内容、字节、6个实际 Git 收据补证，经 Root 正反重构与独审采纳；原685/2390不改，不编造编译瞬间身份，其余门保留。当前 consumer09 预检 PID27540/raw0/noTimeout/0漂移，43 managed对、49 boot、3 loader guard通过。
+- 正常 consumer09 复制 PID26672/raw0/noTimeout/0漂移（15.317s），新 owned consumer副本落地；正常源码 sealer PID24296/raw0/noTimeout/0漂移（.353s），148 manifest资源已写。独审1955 unique当前依赖0漂移，43对/49boot/3loader与 overlays byte匹配。Root 启动时四路径用了正斜杠、生成plan用了反斜杠，原 args深比较会拒绝；actual receipt/plan保全未重写。新7317B/37ab58a0…仅证明这一次四路径同址、三file双拼写同bytesSHA、directory canonical并附两leaf，明确非递归目录hash。finalizer/guard/launch当前仍NOT_RUN，不以正常sealer raw0代替完整启动资格。
+- 新 bounded action collector经完整正反重构和独审限定采纳，真实记录 scope/cwd/PID/raw/timeout/输入漂移/声明输出；parent launch timestamp和文件身份不冒充OS start/image。READ_ONLY标签非无副作用证明。Root释放诊断会话缓存，原大 raw、失败日志与旧封件不删。
+- 20Hz、8人6Bot、voxel、协议/额度不变；Owner ADR142/18085/schema OPEN，ADR159 Draft，PR280 NEVER_MERGE，F3 NOT_ADOPTED/F4 NOT_OPENED，handfeel FAIL_PENDING_USER，officialPublication=false。新页面未启动，浏览器性能、音频和用户手感均未通过；C#旧8PASS/2Session startup timeout原失败单列保全。
+
+精确当前输入身份见 C:/Work/LumioGames/LumioGame/.run/20261008-movement-review-02/browser/movement-lab-live-01/f1-coordination-checkpoint294-append-01/inputs-01.json；本段仅追加，历史 checkpoint与原始收据保全。
