@@ -1,12 +1,12 @@
 ---
 name: game-services-chat
-description: 服务器权威 HTML 聊天样例——最小官方 SDK 验收游戏；接入或验证聊天示例时查
+description: 服务器权威 HTML 聊天样例（Lumio SDK 验证）——最小官方 SDK 验收游戏；接入或验证示例时查
 metadata:
   type: doc
   status: 实施中
 ---
 
-# Lumio 聊天室（服务器权威聊天样例）
+# Lumio SDK 验证（服务器权威聊天样例）
 
 位于 [`games/chat-services-sample/`](../../../../games/chat-services-sample/README.md)。目标是以最小的官方游戏验证游戏服务 SDK：昵称头像授权（`game_display`/`game_leaderboard` 两个冻结用途）、服务器权威动作（`begin`/`send`，幂等操作引用）、cumulative 发言榜（`chat_messages/all_time`）与游客/账号一致的云进度。
 
