@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lumio 聊天室 · 权威游戏样例</title><link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script></head>
+<body><main><header><span class="eyebrow">LUMIO · 服务器权威聊天样例</span><h1>Lumio 聊天室</h1><p>进入聊天室发言，服务器确认每一条消息并统计发言榜。</p></header>
+<section class="status" aria-live="polite"><span id="mode">正在连接</span><span id="player">匿名玩家</span><p id="message">等待平台建立正式游戏连接…</p></section>
+<section class="stats"><div><strong id="count">—</strong><span>我已发送（正式）</span></div><div><strong id="cap">20</strong><span>云端保留最近</span></div></section>
+<section class="composer"><input id="box" maxlength="200" autocomplete="off" placeholder="说点什么（1–200 字）" disabled><button id="send" disabled>发言</button><button id="begin" disabled>进入聊天室</button></section>
+<section><h2>我的云消息</h2><ol id="msgs"><li>进入聊天室后，服务器确认的消息会显示在这里。</li></ol></section>
+<nav aria-label="游戏服务"><button id="login" disabled>登录 / 绑定存档</button><button id="permissions" disabled>资料授权</button><button id="ranks" disabled>查看发言排行榜</button><button id="recover" disabled>查询未确认操作</button><button id="trial">离线试玩</button><button id="reconnect" disabled>重读正式进度</button></nav>
+<section><h2>发言排行榜</h2><ol id="rows"><li>点击查看服务器确认的发言数。</li></ol></section>
+<footer>首次昵称头像授权由平台在游戏画面内显示；拒绝后仍可匿名发言并保存云进度。消息内容与发言数由服务器裁决，客户端只提交发言意图。离线试玩只在页面临时显示，不保存、不计入排行榜。当前版本每人可见自己的正式消息与全服发言榜；互见消息流属于后续版本。</footer>
+</main></body></html>

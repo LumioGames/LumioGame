@@ -1,0 +1,203 @@
+{
+  "source": "catalog.json; only frozen permission field IDs; I supplies current scope/release/registrationId/revision and SchemaJson from the selected catalog view",
+  "rows": [
+    {
+      "exitId": "initialize",
+      "jsonPointer": "/state/view",
+      "viewSchemaId": "chat_view",
+      "bindings": {
+        "/started": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/messageCount": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/canSend": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent/*": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        }
+      }
+    },
+    {
+      "exitId": "state_get",
+      "jsonPointer": "/view",
+      "viewSchemaId": "chat_view",
+      "bindings": {
+        "/started": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/messageCount": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/canSend": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent/*": {
+          "fieldId": "state.view",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        }
+      }
+    },
+    {
+      "exitId": "action_perform",
+      "jsonPointer": "/result",
+      "viewSchemaId": "chat_view",
+      "bindings": {
+        "/started": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/messageCount": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/canSend": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent/*": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        }
+      }
+    },
+    {
+      "exitId": "operation_get",
+      "jsonPointer": "/result",
+      "viewSchemaId": "chat_view",
+      "bindings": {
+        "/started": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/messageCount": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/canSend": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent/*": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        }
+      }
+    },
+    {
+      "exitId": "operation_close",
+      "jsonPointer": "/result",
+      "viewSchemaId": "chat_view",
+      "bindings": {
+        "/started": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/messageCount": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/canSend": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        },
+        "/recent/*": {
+          "fieldId": "operation.result",
+          "semanticRevision": 1,
+          "subjectBinding": "session"
+        }
+      }
+    },
+    {
+      "exitId": "binding_get",
+      "jsonPointer": "/source/summary",
+      "viewSchemaId": "binding_summary",
+      "bindings": {
+        "/stateExists": {
+          "fieldId": "binding.candidate_summary",
+          "semanticRevision": 1,
+          "subjectBinding": "binding",
+          "subjectPath": "/source"
+        }
+      }
+    },
+    {
+      "exitId": "binding_get",
+      "jsonPointer": "/target/summary",
+      "viewSchemaId": "binding_summary",
+      "bindings": {
+        "/stateExists": {
+          "fieldId": "binding.candidate_summary",
+          "semanticRevision": 1,
+          "subjectBinding": "binding",
+          "subjectPath": "/target"
+        }
+      }
+    },
+    {
+      "exitId": "binding_get",
+      "jsonPointer": "/operationReceipt/result",
+      "viewSchemaId": "binding_receipt",
+      "bindings": {}
+    },
+    {
+      "exitId": "binding_choose",
+      "jsonPointer": "/result",
+      "viewSchemaId": "binding_receipt",
+      "bindings": {}
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "gameId": "d5f3c2a1-4b6e-4f8a-9c0d-1e2b3a4f5c6d",
+  "environment": "test",
+  "releaseId": "chat_1",
+  "ruleVersion": "chat_rules_v1",
+  "serviceId": "chat_rules",
+  "stateSchemaId": "chat_v1",
+  "viewSchemaId": "chat_view",
+  "authorityId": "platform_1",
+  "rules": {
+    "prepare": "POST /api/game-rules/v1/prepare",
+    "evaluate": "POST /api/game-rules/v1/evaluate",
+    "project": "POST /api/game-rules/v1/project",
+    "migrate": "POST /api/game-rules/v1/migrate",
+    "bind": "POST /api/game-rules/v1/bind"
+  },
+  "board": {
+    "boardId": "chat_messages",
+    "aggregation": "cumulative",
+    "unit": "integer",
+    "seasons": [
+      {
+        "seasonId": "all_time",
+        "startsAt": null,
+        "endsAt": null
+      }
+    ]
+  },
+  "clientEntry": "Client/index.html",
+  "pluginEntryType": "Lumio.GameServices.Chat.ChatRules",
+  "catalog": "catalog.json",
+  "initializationAction": "begin"
+}
