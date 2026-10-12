@@ -67,6 +67,19 @@ public sealed class CatalogTests
         }
     }
     [Fact]
+    public async Task ChatOneMigrateProbePassesPolicyAndDispatcherThroughRegisteredSchemas()
+    {
+        var codec = new RuleWireCodec();
+        using var catalog = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(SampleRoot, "Server/catalog.json")));
+        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v1", "chat_view");
+        byte[] input = JsonSerializer.SerializeToUtf8Bytes(new Lumio.GameServices.Contracts.RuleMigrateRequest
+        { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings, Subject = Fixtures.Subject(Fixtures.Snapshot(1)), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v2" });
+        policy.ValidateRequest("migrate", input);
+        var result = await new RulePluginDispatcher(new ChatRules(), codec).InvokeAsync("migrate", input, CancellationToken.None);
+        policy.ValidateResponse("migrate", input, result);
+        Assert.Equal("chat_v2", JsonDocument.Parse(result).RootElement.GetProperty("result").GetProperty("changes").GetProperty("upserts")[0].GetProperty("schemaVersion").GetString());
+    }
+    [Fact]
     public void DeploymentBoardUsesTheFrozenPublicConfigurationSchema()
     {
         using var deployment = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(SampleRoot, "Server/deployment.json")));

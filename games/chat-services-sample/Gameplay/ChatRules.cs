@@ -16,6 +16,7 @@ namespace Lumio.GameServices.Chat;
 public sealed class ChatRules : IGameRulePlugin
 {
     private const string Schema = "chat_v1";
+    private const string SchemaV2 = "chat_v2";
     private const string RoomNamespace = "chat_room_v1";
     private const string Board = "chat_messages";
     private const string Season = "all_time";
@@ -79,8 +80,14 @@ public sealed class ChatRules : IGameRulePlugin
     public ValueTask<RulePluginResult<RuleMigrateAppliedResponse, RuleMigrateDeniedResponse>> MigrateAsync(RuleMigrateRequest request, RulePluginInvocationContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(RulePluginResult<RuleMigrateAppliedResponse, RuleMigrateDeniedResponse>.Denied(new()
-        { Entrypoint = "migrate", Bindings = request.Bindings, RequestDigest = context.RequestDigest, Denial = new() { GameReason = "migration_unavailable" } }));
+        if (request.FromStateSchemaId != Schema || request.ToStateSchemaId != SchemaV2 || !request.Subject.StateExists)
+            return ValueTask.FromResult(RulePluginResult<RuleMigrateAppliedResponse, RuleMigrateDeniedResponse>.Denied(new()
+            { Entrypoint = "migrate", Bindings = request.Bindings, RequestDigest = context.RequestDigest, Denial = new() { GameReason = "migration_unavailable" } }));
+        // chat_v2 is a forward-compatible reshape: the state document keeps its exact data.
+        var source = request.Subject.Snapshot.State.Documents.Single();
+        return ValueTask.FromResult(RulePluginResult<RuleMigrateAppliedResponse, RuleMigrateDeniedResponse>.Applied(new()
+        { Entrypoint = "migrate", Bindings = request.Bindings, RequestDigest = context.RequestDigest,
+            Result = new() { Changes = new() { Upserts = [new RuleStateDocument { DocumentId = source.DocumentId, SchemaVersion = SchemaV2, Data = source.Data }], Deletes = [] } } }));
     }
 
     /// <inheritdoc />
