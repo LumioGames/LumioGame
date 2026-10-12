@@ -31,7 +31,17 @@ node --test games/chat-services-sample/Tools/ui.test.mjs
 
 显式原生集成（HostProbe / browser-probe / 攻击考卷）复用 `../game-services-sample/Tools/` 的入口与材料要求；缺库即失败、不 skip。
 
-界面与打包验证（不依赖正式平台会话）：`node --test games/chat-services-sample/Tools/package.test.mjs games/chat-services-sample/Tools/ui-browser.test.mjs`。通过 `LUMIO_CHAT_BROWSER_SDK`、`LUMIO_CHAT_SDK_MANIFEST_SHA256`、`LUMIO_CHAT_CONTRACT` 指定匹配的正式 SDK 与唯一合同，`LUMIO_CHAT_PLAYWRIGHT` 指定本机 Playwright 模块；本地默认指向浮动聊天验收材料。浏览器夹具仅在测试 HTTP 服务内替换应用入口，标注「UI 夹具 · 非正式会话」，截图写入本地 `.sdd/floating-chat-ui-screenshots/`，夹具与截图不进入发布包。
+Repository Policy CI 执行 `client.test.mjs` 与无外部依赖的 `ui.test.mjs`，覆盖操作确认、资料失效后的原草稿确认、头像与表情行为。完整打包和浏览器验证是显式材料集成测试，不在该 CI 中运行，也不依赖正式平台会话：
+
+```sh
+export LUMIO_CHAT_BROWSER_SDK='<正式 SDK 安装根目录，包含 manifest.json>'
+export LUMIO_CHAT_SDK_MANIFEST_SHA256='<外部核验的 SDK manifest SHA256>'
+export LUMIO_CHAT_CONTRACT='<Engine 唯一 game-services-v1.json>'
+export LUMIO_CHAT_PLAYWRIGHT='<已安装的 @playwright/test 模块路径或可解析模块名>'
+node --test games/chat-services-sample/Tools/package.test.mjs games/chat-services-sample/Tools/ui-browser.test.mjs
+```
+
+PowerShell 使用 `$env:变量名='值'` 设置相同变量。所有材料必须显式提供；没有机器路径或 SDK pin 默认值，缺材料即失败并提示设置方法，不跳过。Playwright 模块还须已安装 Chromium（在对应依赖目录运行 `npx playwright install chromium`）。浏览器夹具仅在测试 HTTP 服务内替换应用入口，标注「UI 夹具 · 非正式会话」，截图写入本地 `.sdd/floating-chat-ui-screenshots/`，夹具与截图不进入发布包。
 
 ## 发布
 

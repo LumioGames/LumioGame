@@ -6,7 +6,10 @@ import http from 'node:http';
 import { createRequire } from 'node:module';
 import { buildFixturePackage } from './package-test-helper.mjs';
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.LUMIO_CHAT_PLAYWRIGHT ?? 'C:/Users/g923/.codex/worktrees/floating-chat/LumioPlatform/web/node_modules/@playwright/test');
+if (!process.env.LUMIO_CHAT_PLAYWRIGHT?.trim()) throw Error('Set LUMIO_CHAT_PLAYWRIGHT to the installed Playwright module, and install its Chromium browser; see games/chat-services-sample/README.md. Browser tests never skip missing materials.');
+let chromium;
+try { ({ chromium } = require(process.env.LUMIO_CHAT_PLAYWRIGHT)); }
+catch (error) { throw Error('LUMIO_CHAT_PLAYWRIGHT could not load. Supply an installed Playwright module as described in games/chat-services-sample/README.md.', { cause: error }); }
 
 // This replaces app.mjs only in the test HTTP server. No fixture is included in the publication.
 const fixture = `
@@ -14,7 +17,7 @@ import { createSession } from './session.mjs';
 import { createChatView, createOperationTracker } from './view.mjs';
 const label = document.createElement('span'); label.textContent = 'UI 夹具 · 非正式会话'; label.style.cssText = 'position:absolute;top:1px;right:4px;font-size:8px;color:#7b5b21'; document.querySelector('header').append(label);
 const p = { playerId: 'fixture_player', anonymousName: '匿名玩家', consentRevision: 0, policyRevision: 1 };
-let status = 'committed';
+let status = 'committed', intent;
 const state = { revision: 1, schemaVersion: 'chat_v1', updatedAt: 1800000000000, view: { started: true, canSend: true, messageCount: 2, recent: ['你好，今天也一起积攒灵光 🌿', '[精灵:开心]'] } };
 const calls = [];
 const sdk = { unresolvedOperations: [], dispose() {}, setOnline() {}, async request(method, body) {
@@ -23,11 +26,22 @@ const sdk = { unresolvedOperations: [], dispose() {}, setOnline() {}, async requ
  if (method === 'getState') return structuredClone(state);
  if (method === 'getProfile') return p;
  if (method === 'leaderboardTop') return { rows: [{rank:1,value:12,profile:p}] };
- if (method === 'performAction') { if(status === 'committed') {state.view.messageCount++;state.view.recent.push(body.arguments.text);state.revision++;} return {status,error:{code:'fixture_rejected'}}; }
-} };
+ if (method === 'performAction') { intent = body; if(status === 'committed') {state.view.messageCount++;state.view.recent.push(body.arguments.text);state.revision++;}
+   if (status === 'pending') { sdk.unresolvedOperations.push({operationId:body.operationId,operationEpoch:body.operationEpoch}); view.invalidate(); session.invalidate(); }
+   if (status === 'pending-begin') sdk.unresolvedOperations.push({operationId:body.operationId,operationEpoch:body.operationEpoch});
+   return {status: status === 'pending-begin' ? 'pending' : status,error:{code:'fixture_rejected'}}; }
+}, async recover() {if(status==='pending-begin'){state.view.started=true;state.view.canSend=true;state.revision++;sdk.unresolvedOperations.length=0;return {status:'committed'};} return {status:'pending'};} };
 const operations = createOperationTracker(sdk);
 const view = createChatView(document, sdk, operations), session = createSession(operations.sdk, value => view.render(value)); view.bind(session);
-window.fixture = {session,calls,reject:()=>status='rejected',empty:()=>{state.view.recent=[];session.reconcile({method:'getState',result:state})}};
+window.fixture = {session,calls,reject:()=>status='rejected',pending:()=>status='pending',partial:()=>{
+ status='pending-begin'; view.invalidate();session.invalidate();state.view.started=false;state.view.canSend=false;
+ session.reconcile({method:'getState',result:state});
+},restoreProfile:()=>session.reconcile({method:'getProfile',result:p}),commit:()=>{
+ const operation = sdk.unresolvedOperations[0]; sdk.unresolvedOperations.length=0;
+ const event={method:'getOperation',operation,result:{status:'committed'}}; operations.reconcile(event); session.reconcile(event);
+ state.view.messageCount++;state.view.recent.push(intent.arguments.text);state.revision++;
+ session.reconcile({method:'getState',result:state});session.reconcile({method:'getProfile',result:p});
+},empty:()=>{state.view.recent=[];session.reconcile({method:'getState',result:state})}};
 await session.start();
 `;
 test('browser UI: compact layouts, real text safety, IME, stickers, draft rejection and reduced motion', async () => {
@@ -75,6 +89,28 @@ test('browser UI: compact layouts, real text safety, IME, stickers, draft reject
     await page.evaluate(() => window.fixture.reject()); await page.locator('#box').fill('拒绝后留在输入框'); await page.locator('#send').click();
     await page.waitForFunction(() => !document.getElementById('send').disabled);
     assert.equal(await page.locator('#box').inputValue(), '拒绝后留在输入框'); assert.match(await page.locator('#message').textContent(), /fixture_rejected/);
+    for (const edited of [false, true]) {
+      await page.evaluate(() => window.fixture.pending());
+      await page.locator('#box').fill('资料更新中的原草稿'); await page.locator('#send').click();
+      await page.waitForFunction(() => window.fixture.session.current.profile === null);
+      assert.equal(await page.locator('#box').inputValue(), '资料更新中的原草稿');
+      if (edited) await page.locator('#box').evaluate(el => { el.value = '后来编辑的新草稿'; });
+      await page.evaluate(() => window.fixture.commit());
+      assert.equal(await page.locator('#box').inputValue(), edited ? '后来编辑的新草稿' : '');
+      assert.equal(await page.locator('#recover').isHidden(), true);
+      await page.waitForFunction(() => !document.getElementById('send').disabled);
+    }
+    await page.evaluate(() => window.fixture.partial());
+    assert.equal(await page.locator('#begin').isVisible(), true);
+    assert.equal(await page.locator('#begin').isDisabled(), true);
+    const writes = await page.evaluate(() => window.fixture.calls.filter(call => call.method === 'performAction').length);
+    await page.locator('#begin').evaluate(el => el.onclick());
+    assert.equal(await page.evaluate(() => window.fixture.calls.filter(call => call.method === 'performAction').length), writes);
+    await page.evaluate(() => window.fixture.restoreProfile());
+    assert.equal(await page.locator('#begin').isDisabled(), false);
+    await page.locator('#begin').click();
+    await page.waitForFunction(() => window.fixture.session.current.view.started && !window.fixture.session.current.pending.length);
+    assert.equal(await page.evaluate(() => window.fixture.calls.filter(call => call.method === 'performAction').length), writes + 1);
     const position = await page.locator('.header-spirit').evaluate(el => getComputedStyle(el).backgroundPosition);
     await page.waitForFunction(previous => getComputedStyle(document.querySelector('.header-spirit')).backgroundPosition !== previous, position, { timeout: 1500 });
     await page.emulateMedia({reducedMotion:'reduce'}); await page.evaluate(() => window.fixture.empty());
