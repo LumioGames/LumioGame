@@ -46,7 +46,7 @@ async function runPage(options = {}) {
     setTimeout(callback, delay) { const id=++timerId; timers.set(id,{callback,delay}); return id; }, clearTimeout(id) { timers.delete(id); },
     WebSocket: class { constructor() { sockets.push(this); throw new Error('Game must not construct WebSocket'); } },
     async fetch(url,init) {
-      if (String(url).endsWith('/api/game/config') || String(url).endsWith('client-config.json')) return options.configResponse
+      if (String(url).endsWith('/api/game/config') || String(url).endsWith('client-config.json')) return options.configEndpointResponse?.(String(url),init) ?? options.configResponse
         ?? { ok:true, text:async()=> options.configWait ? await options.configWait : '{"files":{}}' };
       if (String(url).endsWith('official-catalog.json')) return options.catalog ?? { ok:true,text:async()=>fs.readFileSync(path.join(ROOT,'Server/Assets/Maps/official-catalog.json'),'utf8') };
       fetchCalls.push({ url:String(url),init });
@@ -750,11 +750,12 @@ function testNode() { return { hidden:false, disabled:false, textContent:'', chi
 test('public room entry ignores injected launch and preserves fresh authenticated platform binding', async()=>{
  const nodes=new Map(['room','room-count','room-status','room-seats','room-fill','room-wait','room-character','room-selection-status','stage-note','player-info','player-controls','player-state','player-self'].map(id=>[id,testNode()]));
  const state={connectionState:'active',inputEnabled:true,inputOpen:false,selfId:'1',phase:'WaitingForWorldReady',room:{capacity:8,humans:1,bots:0,fillEnabled:false,nextBotJoinTick:'0',authorityTick:'100',tickRateHz:20,players:[{id:'1',name:'Alice',isBot:false,isSelf:true}]}};
- const commands=[];const release={...LAUNCH,gameReleaseId:'exact-test-release',loginName:'Alice'};
- const p=await runPage({publicPlayer:true,nodes,launch:release,runtime:{state:'active'},exports:{
+ const commands=[];const configRequests=[];const release={...LAUNCH,gameReleaseId:'exact-test-release',loginName:'Alice'};
+ const p=await runPage({publicPlayer:true,nodes,launch:release,runtime:{state:'active'},configEndpointResponse(url){configRequests.push(url);return{ok:true,text:async()=>'{"files":{}}'};},exports:{
   SendMove(){return true;},PlaceBomb(){return true;},BombButton(){return true;},UseActiveSkill(){return true;},SelectCharacter(){return true;},SetBotFill(enabled){commands.push(enabled);return true;},PlayerState(){return JSON.stringify(state);},SelectionConfig(){return JSON.stringify({characters:[{name:'duck'}]});}
  }});
  assert.equal(p.admissions.length,1);assert.deepEqual(JSON.parse(p.admissions[0][0]),release);
+ assert.deepEqual(configRequests,['./client-config.json']);
  assert.deepEqual(p.fetchCalls.map(f=>f.url),['/api/account/me','/api/games/bomber/launch']);
  assert.equal(p.fetchCalls[1].init.credentials,'same-origin');assert.equal(p.fetchCalls[1].init.headers['X-CSRF-Token'],'test-csrf');
  assert.equal(p.runtime.ready,1);assert.equal(nodes.get('room').hidden,false);assert.equal(nodes.get('room-count').textContent,'1 / 8');
@@ -836,4 +837,18 @@ test('canceling admission backoff retires its callback and cannot boot another h
 for (const status of [401,403]) test(`account HTTP ${status} never retries or requests an admission`, async () => {
   const { page } = await admissionPage({ accountStatus:status });
   assert.equal(page.admissions.length,0);assert.equal(page.fetchCalls.length,1);assert.equal(page.timers.size,0);assert.equal(page.spectator.status,'failed');
+});
+test('local spectator reads the selected profile carrier from its launcher before admission', async () => {
+  const selected = '{"files":{"client/Game.json":"selected-local-profile-carrier"}}';
+  const requests = [];
+  const page = await runPage({ pathname:'/spectator/', configEndpointResponse(url, init) {
+    requests.push({ url, init });
+    return url === '/api/game/config' ? { ok:true,text:async()=>selected } : { ok:false,status:404 };
+  } });
+  assert.equal(page.admissions.length,1,'the local launcher carrier must permit normal spectator startup');
+  assert.deepEqual(page.runtime.configurations,[selected]);
+  assert.deepEqual(requests.map(row=>row.url),['/api/game/config']);
+  assert.equal(requests[0].init.credentials,'same-origin');
+  assert.equal(requests[0].init.cache,'no-store');
+  assert.equal(page.fetchCalls.length,0,'local spectator uses its existing local launch entry');
 });
