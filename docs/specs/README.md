@@ -28,6 +28,7 @@
 | 文档 | 状态 | 一句话 |
 |---|---|---|
 | [bomber/design.md](bomber/design.md) | 设计中 | 体素炸弹人完整设计稿：默认12人·23×23、五角色、帽子加心与Boss、四分钟决赛圈；M2一槽六种特殊炸弹及护城河地形为正式目标，旧19/8包络仅作迁移依据——首发产品(阶梯①) |
+| [bomber/room.md](bomber/room.md) | 实施中 | 8人19图测试服沿用现有DS房间，默认等待真人、手动每3秒补一名botxxx，房间名单与补位倒计时来自权威复制 |
 | [bomber/stage0-kernel-contract.md](bomber/stage0-kernel-contract.md) | 设计中·v3.0.0 草案 | 炸弹人上引擎 A–D 契约：当前组件、完整身份、输入、GAS、圈与技能、配表、上游接缝和真实骨架冻结门——拆实现卡前查 |
 | [bomber/stage0-test-matrix.md](bomber/stage0-test-matrix.md) | 设计中·v3.0.0 草案 | 炸弹人 A–D 的 109 条验收矩阵及最低证据，覆盖骨架、规则、圈、技能、旁观、回放与遥测——写测试与验收前查 |
 | [bedwars/direction.md](bedwars/direction.md) | 设计中(方向级) | 起床战争俯视改编方向稿:以水平空隙替代垂直落差——阶梯 ② |
