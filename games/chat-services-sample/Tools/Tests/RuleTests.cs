@@ -139,12 +139,24 @@ public sealed class RuleTests
         Assert.Single(initialized.AppliedValue!.Decision.State.Upserts);
     }
     [Fact]
-    public async Task FirstSchemaHasNoMigration()
+    public async Task SelfOrUnknownMigrationsAreDenied()
     {
         var result = await new ChatRules().MigrateAsync(new() { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings,
             Subject = Fixtures.Subject(Fixtures.Snapshot(1)), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v1" }, Fixtures.Context, CancellationToken.None);
         Assert.False(result.IsApplied);
         Assert.Equal("migration_unavailable", result.DeniedValue!.Denial.GameReason);
+    }
+    [Fact]
+    public async Task ChatOneMigratesForwardToChatTwoWithoutDataChanges()
+    {
+        var result = await new ChatRules().MigrateAsync(new() { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings,
+            Subject = Fixtures.Subject(Fixtures.Snapshot(2, new[] { new { seq = 1, text = "你好" } })), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v2" }, Fixtures.Context, CancellationToken.None);
+        Assert.True(result.IsApplied);
+        var state = Assert.Single(result.AppliedValue!.Result.Changes.Upserts);
+        Assert.Equal("chat_v2", state.SchemaVersion);
+        Assert.Equal("chat", state.DocumentId);
+        Assert.Equal(2, state.Data.GetProperty("messageCount").GetInt64());
+        Assert.Equal("你好", state.Data.GetProperty("recent")[0].GetProperty("text").GetString());
     }
     [Fact]
     public async Task BindingPreservesRankHistoryAndRebuildsTheCombinedTotal()
