@@ -3,7 +3,7 @@ name: game-services-chat
 description: 服务器权威 HTML 聊天样例——最小官方 SDK 验收游戏；接入或验证聊天示例时查
 metadata:
   type: doc
-  status: 开发中
+  status: 实施中
 ---
 
 # Lumio 聊天室（服务器权威聊天样例）
