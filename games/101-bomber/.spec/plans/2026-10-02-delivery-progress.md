@@ -4563,3 +4563,30 @@ Host Csc 读取 PID7372 与编译 PE/PDB 读取 PID19580 均 raw0；337 个当�
 - PR280 再读仍 OPEN Draft，head a5e8d9706c0f9665f4124655aff22fce63bcdbbd；与 Runtime 新 main 的实际 merge-base --is-ancestor 立即采集 exit1，确认未混入。PR280 NEVER_MERGE、F3 NOT_ADOPTED、ADR142/18085/production schema OPEN 和 handfeel NOT_COMPLETE 保持；本段不改变20Hz、八席/六Bot、voxel、协议或额度。
 - 本账本从 Game a5495a3 建独立短期分支，仅追加 checkpoint327–329；检查旧字节完全为前缀、结构 lint 与 diff-check，正常 PR 受保护合入后再补包含新账本 HEAD 的独立恢复库并清本次唯一账本 worktree/refs。最终实际 main、清理数量与文件身份落新证据根 final-completed-cleanup-08.json / final-completed-cleanup-08.md，不为记录自身删除再递归开 PR。没有新客户端/服务器页面字节；用户此前“这一版就先这样”仅对应已采纳源码，最终移动手感仍未验收完成。
 - 验证实际结果：父仓 lint OK，三组现有 Node 测试共48/48、0 skipped，diff-check通过。Bomber 原 strict lint 实际 exit1/12 findings（旧账本11个本地证据/文字链接与既有.sdd文档根）；将同一工作树账本暂换为a5495a3原字节基线后复跑，findings逐字相等，恢复新账本字节SHA实核，noNewLintFindings=true。两份原RED输出与对比收据均保全，没有修改旧checkpoint、隐藏历史问题或以根lint冒充全部Bomber检查全绿。
+
+
+### Checkpoint330 — 用户确认暂停写入后的全工作区保全清理（2026-10-12）
+
+- 用户继续要求“全部清理干净”，明确回答“没人写了 你帮忙合并清理把”，据此继续此前完成项清理并保全剩余未完成内容。新证据根C:/Work/LumioGames/.cleanup/20261012-all-repositories-02；重新fetch/inventory覆盖13主目录，实际剩余213登记工作树。所有refs及worktree HEAD先做bundle、独立empty-bare恢复和对象检查，另保全index、binary diff及主检出非ignored untracked原字节；Engine原shallow边界继续实核保全，不声称恢复边界之前的历史。
+- 实际另归档200个非primary工作树：第一批20，第二批102，重新核定的pending分支75，最后三份特殊源2+1。whole-directory move完整保留源码、未提交修改、生成物、SDK、日志、缓存与旧fault；每次先复制private Git admin并逐文件SHA复核，再解除登记，不把未提交内容或非main祖先自动视为已合入。非main分支原refs保留在独立恢复库和未被删除的分支中，未强行合入实验代码。
+- 原两份Server目录的临时Engine软链在目标已被保全移走后形成既有失效链接，原status警告保留，再在同一实际HEAD上重读并封存。10月2日遗留的Orca preparation锁先保全其private admin/锁文件及全目录，核定无在用进程后才解除该精确登记；不是停止Runner或回收正在运行的构建。Sample probe原Engine/.git已经指向不存在的.git/modules/Engine，原fatal输出保留；只对该已知源以parent-only状态审计，原SDK所有文件和坏指针一起封存，未冒称修好了SDK Git历史或绕过产品检查。一次process guard识别到本次只读审计命令本身，先保留，审计命令结束后新批次实际完成；原HELD收据不覆盖。
+- 此段不修改协议、额度、20Hz、八席/六Bot、voxel、受保护端口或生产schema，不杀/重启任何他人进程、Runner、构建。原官方0.0.4-main.2b22672完整305文件包和旧页面/fault/seal继续保全，没有新包或新页面字节。
+
+### Checkpoint331 — 13个primary恢复干净main与未提交内容独立恢复（2026-10-12）
+
+- Game、Engine、Architecture、Sample、Server五份dirty primary的原untracked逐文件SHA与备份复核，另按真实status -z逐文件复制modified tracked原始字节；随后各自产生独立stash bundle，在新的empty bare恢复并核实stash commit才继续切换/更新main。ignored旧日志、封件和完整包保持原处。Game原f14bd502→74430e75，Architecture原7d846f→1d82cdc，Server原024ffd→206a576正常ff-only；本段未将这些未提交源码采纳到主干。
+- Sample真实源码差异仅MineAbility新增Gas using，该项已在main b43c025存在；原修改与生成物仍完整保全。其Engine子模块原0.0.2 nupkg曾被修改，先独立保存该模块allrefs/原binary patch/物理字节并stash恢复核验，再切到父仓已提交的80ec8e9257d39856a90bbe430bcd511a3fd0bf06（官方v0.0.4）；首次ff后M Engine原输出保留，完成真实pin checkout后父/子均clean，没有改parent gitlink或私换SDK DLL。
+- Engine primary的ff-only实际拒绝，定位本地ea829856与ecece8a4两条未推送提交；先保存原head为codex/preserved-engine-local-main-20261012及已有独立bundle/stash，不reset丢历史。核定main精确旧OID后暂detach origin/main，用compare-and-swap更新本地main，再切回main；两个本地提交均保留，并单独评审，不拿拒绝当成功。所有13主目录此时均已核实clean main；最终实际HEAD另由final-all-local-cleanup-08.json逐仓记录。
+
+### Checkpoint332 — 缓存修复正常合入与timer Owner冲突保持未采纳（2026-10-12）
+
+- ea829856为既有Bot打包隔离NuGet缓存遗漏：主Bot build带NUGET_PACKAGES，net10补构缺少相同变量。在独立worktree以main1d82为基线新增真实defaultBuilders.bot调用边界测试，模拟SDK仅存在于任务隔离缓存；原main确实在bot-net10子构建失败，原RED日志保全。只迁入该缓存修复（reconcile入参贯穿并传入子构建env），实际GREEN并验证最终Bot程序集取net10输出，没有迁入timer改动。
+- 候选0b23da033b2dfa7f73eac373cee67a37bbf28abe的Windows两文件suite为35项/34通过/0失败/1既有文件权限用例因Windows不可观察而skip。直接WSL读取Windows工作树时Git预检一项失败，原输出保留；一次内联WSL克隆参数失败也保留。改用保存脚本在Linux独立clone核实同一HEAD，原35项全部通过、0失败、0跳过，不删断言。云端build实际SUCCESS，其他完整作业按原PR profile SKIPPED，未称全量引擎或正式完整包验收。
+- 正常exact-head PR501实际合入f2edd5047a6fe215c2a4d09e4267927ade711785/UTC02:16:47Z；Engine与Architecture两个primary分别fetch及ff-only到同一真实main，均clean。本次为既有隔离机制修复，知识豁免，不改公共契约/ABI/wire，不新增发布tag，不部署DS。
+- ecece8a4将timer Resource owner检查由true改false，与Accepted ADR132决策3“timer使用同样的owner与Mutex”直接冲突，不因“全部合并”自行裁定架构门。完整1行patch、原commit/branch、bundle及实际非main祖先exit1单列保全为engine-timer-owner-pending-01.patch/proof，Owner门OPEN，未采用。PR280仍NEVER_MERGE/F3 NOT_ADOPTED，ADR142/18085/production schema OPEN及最终handfeel NOT_COMPLETE保持。
+
+### Checkpoint333 — 最后引用与账本收口边界（2026-10-12）
+
+- 本轮已归档200个旧worktree，另清理真正main祖先、未绑定worktree且无Open PR的精确branch refs；先核实独立恢复库存在同一commit，再fresh Github保护/OpenPR/head及exact lease删除。未合入分支、旧草稿PR和Owner候选没有靠删除检查或强行merge消除；必要恢复索引、bundle/stash与原fault都保留。实际删除计数以各执行summary及final-all-local-cleanup-08.json为准，不把already-absent remote或归档目录算物理删除。
+- 本账本从74430e75另建独立短期分支，仅追加330–333并验证旧字节前缀。正常protected PR合入后，为新的账本/缓存候选HEAD补独立恢复，再收回本次两份临时worktree和对应分支；主目录继续main clean。最后实际注册worktree总数、primary HEAD、待审分支清单和保全位置落final-all-local-cleanup-08.json/.md，不为记录自身删除递归新建PR。
+- 移動表现及正式部署未在本清理段复测，不把工作区干净当手感通过或全部旧PR已合入。Game既有SDK0.0.4-main.ecece8a≠required0.0.5-main.0e2fc74的Bomber CI失败与旧strict lint问题继续保留；只做根lint/既有Node验证及账本追加审查，不放宽版本守卫/Owner门。
