@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using Lumio.GameRuntime.Config;
@@ -163,6 +164,8 @@ public static class SpectatorDump
         string? matchId = null;
         string? matchPhase = null;
         string? characterName = null;
+        string? selectedCharacterName = null;
+        RoomStateDto? room = null;
         long? availableBombs = null;
         ulong? tickRateHz = null;
         bool playerSelf = false;
@@ -189,6 +192,7 @@ public static class SpectatorDump
                     playerSelf = true;
                     BomberPlayerState player = world.Get<BomberPlayerState>(self.Id);
                     uint character = world.Get<BomberSkillState>(self.Id).CharacterId.Value;
+                    if (player.NextCharacterId.Value > 0) selectedCharacterName = CharacterName(world, checked((uint)player.NextCharacterId.Value));
                     if (BomberConfigBinding.For(world).Tables.Characters.TryGet(character, out var row)) characterName = row.Name;
                     if (!player.Participant.Value.IsDefault) participantId = player.Participant.Value.ToHex();
                     lifePhase = ((BomberLifePhase)player.LifePhase.Value).ToString();
@@ -208,13 +212,42 @@ public static class SpectatorDump
                 });
             }
         }
+        if (world is not null && world.Each<BomberMatchState>().Any()) room = ProjectRoom(world, selfId, participantId, authorityTick);
         bool inputOpen = inputEnabled && playerSelf && matchPhase is "Warmup" or "Running" or "FinalCircle"
             && lifePhase is "Protected" or "Vulnerable";
         return JsonSerializer.Serialize(new PlayerStateDto
         {
             connectionState = connectionState, inputEnabled = inputEnabled, inputOpen = inputOpen, selfId = selfId, participantId = participantId, matchId = matchId, phase = matchPhase,
-            lifePhase = lifePhase, characterName = characterName, availableBombs = availableBombs, authorityTick = authorityTick, appliedInputSequence = appliedInputSequence, tickRateHz = tickRateHz, bombs = bombs,
+            lifePhase = lifePhase, characterName = characterName, selectedCharacterName = selectedCharacterName, room = room, availableBombs = availableBombs, authorityTick = authorityTick, appliedInputSequence = appliedInputSequence, tickRateHz = tickRateHz, bombs = bombs,
         }, SpectatorJsonContext.Default.PlayerStateDto);
+    }
+
+
+    private static RoomStateDto ProjectRoom(World world, string? selfId, string? participantId, string authorityTick)
+    {
+        var config = BomberConfigBinding.For(world);
+        var runtime = world.Single<BomberWorldRuntime>();
+        var match = world.Single<BomberMatchState>();
+        var roster = new List<RoomPlayerDto>();
+        var representedLives = new HashSet<NetEntityId>();
+        foreach (var participant in world.Each<BomberParticipantState>().Where(p => p.MatchId.Value == match.MatchId.Value).OrderBy(p => p.Slot.Value))
+        {
+            NetEntityId life = participant.CurrentLife.Value;
+            representedLives.Add(life);
+            string name = participant.IsBot.Value ? participant.BotName.Value : string.Empty;
+            if (!life.IsDefault && world.IsLive(life)) name = world.Get<IdentityComponent>(life).Name.Value;
+            roster.Add(new RoomPlayerDto { id = participant.Entity.ToHex(), name = name, isBot = participant.IsBot.Value,
+                isSelf = participant.Entity.ToHex() == participantId || life.ToHex() == selfId });
+        }
+        foreach (var player in world.Each<BomberPlayerState>().OrderBy(p => p.ParticipantIndex.Value).ThenBy(p => p.Entity.ToHex(), StringComparer.Ordinal))
+        {
+            if (representedLives.Contains(player.Entity) || !player.Participant.Value.IsDefault && world.IsLive(player.Participant.Value)) continue;
+            roster.Add(new RoomPlayerDto { id = player.Entity.ToHex(), name = world.Get<IdentityComponent>(player.Entity).Name.Value,
+                isBot = player.IsBot.Value, isSelf = player.Entity.ToHex() == selfId });
+        }
+        return new RoomStateDto { capacity = checked((int)config.Game.PlayerCount), humans = roster.Count(p => !p.isBot), bots = roster.Count(p => p.isBot),
+            fillEnabled = runtime.BotFillEnabled.Value, nextBotJoinTick = runtime.BotNextJoinTick.Value.ToString(CultureInfo.InvariantCulture),
+            authorityTick = authorityTick, tickRateHz = config.Game.TickRateHz, players = roster };
     }
 
     private static void AppendBombIdentity(StringBuilder json, BomberBombState bomb)

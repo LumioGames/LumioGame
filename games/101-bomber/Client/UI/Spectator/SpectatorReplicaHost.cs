@@ -180,6 +180,15 @@ public sealed class SpectatorReplicaHost : IDisposable
         throw new ArgumentException("bomb_button_phase_invalid", nameof(phase));
     }
     public bool UseActiveSkill() { var input = new UseActiveSkillAbility.Input(); return Activate<UseActiveSkillAbility, UseActiveSkillAbility.Input>(in input); }
+    public bool SetBotFill(bool enabled)
+    {
+        if (_closing) throw new ObjectDisposedException(nameof(SpectatorReplicaHost));
+        World world = World ?? throw new InvalidOperationException("player_input_not_ready");
+        if (world.Single<BomberMatchState>().Phase.Value != (int)BomberMatchPhase.WaitingForWorldReady)
+            throw new InvalidOperationException("room_fill_closed");
+        var input = new SetBotFillAbility.Input { Enabled = enabled };
+        return Activate<SetBotFillAbility, SetBotFillAbility.Input>(in input);
+    }
     public bool SelectCharacter(string characterId)
     {
         if (_closing) throw new ObjectDisposedException(nameof(SpectatorReplicaHost));

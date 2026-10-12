@@ -39,13 +39,14 @@ async function runPage(options = {}) {
   };
   const sandbox = { ...voxel, ...replica, console: Object.fromEntries(['log','error','warn','info'].map(k=>[k,(...args)=>logged.push(args.map(String).join(' '))])),
     location: { search:options.search ?? '', pathname:options.pathname ?? '/games/bomber/', hostname:options.hostname ?? '127.0.0.1', protocol:options.protocol ?? 'http:', href:'http://127.0.0.1/games/bomber/' },
-    document: { body:{classList:{add(){},remove(){}}}, getElementById(id) { return options.game?.nodes.get(id) ?? ({ status,legend,enter,blocks:options.blocks ? {} : null,field:{width:640,height:480,getContext:()=>ctx} })[id] ?? null; } },
+    document: { addEventListener() {}, removeEventListener() {}, querySelector() { return {textContent:''}; }, querySelectorAll() { return []; }, createElement() { return testNode(); }, body:{classList:{add(){},remove(){}}}, getElementById(id) { return options.nodes?.get(id) ?? options.game?.nodes.get(id) ?? ({ status,legend,enter,blocks:options.blocks ? {} : null,field:{width:640,height:480,getContext:()=>ctx} })[id] ?? null; } },
+    addEventListener() {}, removeEventListener() {}, setInterval() { return 1; }, clearInterval() {},
     URL,URLSearchParams,TextEncoder,TextDecoder,Uint8Array,Uint32Array,DataView,ArrayBuffer,Date,Math,JSON,Number,String,AbortController,
     performance: { now: () => clock.value },
     setTimeout(callback, delay) { const id=++timerId; timers.set(id,{callback,delay}); return id; }, clearTimeout(id) { timers.delete(id); },
     WebSocket: class { constructor() { sockets.push(this); throw new Error('Game must not construct WebSocket'); } },
     async fetch(url,init) {
-      if (String(url).endsWith('/api/game/config')) return options.configResponse
+      if (String(url).endsWith('/api/game/config') || String(url).endsWith('client-config.json')) return options.configResponse
         ?? { ok:true, text:async()=> options.configWait ? await options.configWait : '{"files":{}}' };
       if (String(url).endsWith('official-catalog.json')) return options.catalog ?? { ok:true,text:async()=>fs.readFileSync(path.join(ROOT,'Server/Assets/Maps/official-catalog.json'),'utf8') };
       fetchCalls.push({ url:String(url),init });
@@ -59,9 +60,16 @@ async function runPage(options = {}) {
   if (options.injectLaunch !== false) sandbox.__lumioLaunch=options.launch ?? LAUNCH;
   const context=vm.createContext(sandbox); vm.runInContext('window=globalThis;',context);
   if (options.game) { Object.assign(sandbox, options.game.bindings); sandbox.importGameView = () => options.game.import(context); }
-  const source=MAIN_SOURCE.replace(/^import [\s\S]*? from ["'][^"']+["'];\s*/gm,'').replace('import("./blocks-view.mjs")','globalThis.importBlocks()');
+  // The composition harness defaults to the read-only spectator surface; player entry has its own contract tests.
+  const source=(options.publicPlayer ? MAIN_SOURCE : MAIN_SOURCE.replace('const PLAYER_MODE = HARNESS_PLAYER_MODE || PLATFORM_GAME_SLUG !== null;', 'const PLAYER_MODE = false;')).replace(/^import [\s\S]*? from ["'][^"']+["'];\s*/gm,'').replace('import("./blocks-view.mjs")','globalThis.importBlocks()');
   const pageSource = options.game ? source.replace("import('./game-view.mjs')", 'globalThis.importGameView()') : source;
-  vm.runInContext(pageSource,context);
+  if (options.publicPlayer) {
+    vm.runInContext(fs.readFileSync(new URL('./room-view.mjs',import.meta.url),'utf8').replace(/export /g,''),context);
+    vm.runInContext(fs.readFileSync(new URL('./player-controls.mjs',import.meta.url),'utf8').replace(/export /g,''),context);
+    sandbox.importPlayerControls=async()=>({createPlayerInput:sandbox.createPlayerInput});
+    sandbox.lumio={ready(){runtime.ready=(runtime.ready??0)+1;}};
+  }
+  vm.runInContext(pageSource.replace("import('./player-controls.mjs')",'globalThis.importPlayerControls()'),context);
   await drain();
   return { runtime,admissions,sockets,rendered,logged,fetchCalls,handles,timers,win:sandbox,spectator:sandbox.__lumioSpectator,legend,enter,
     evalInPage:code=>vm.runInContext(code,context),
@@ -368,6 +376,7 @@ test("player startup requires both new GAS exports and presentation callbacks se
       DumpPositions() { return '[]'; }, MapDimensions() { return '{}'; }, PlayerState() { return '{}'; },
       SendMove() { sent.push('move'); return true; }, PlaceBomb() { sent.push('bomb'); return true; },
       BombButton(phase) { sent.push(`bomb-edge:${phase}`); return true; },
+      SetBotFill(enabled) { sent.push(`fill:${enabled}`); return true; },
       UseActiveSkill() { sent.push('skill'); return true; }, SelectCharacter(id) { sent.push(`character:${id}`); return true; },
       PresentationState() { return '{}'; }, SelectionConfig() { return '{}'; },
     },
@@ -449,11 +458,11 @@ test("player startup requires both new GAS exports and presentation callbacks se
 
 
 
-test('first character choice finishes before Platform launch or Session boot', async () => {
+test('room entry connects through Platform before any character choice', async () => {
   const calls = []; let choose;
   const selection = new Promise(resolve => choose = resolve);
   const context = vm.createContext({ TextEncoder, AbortController, calls, selection, performance: { now: () => 0 },
-    async finish() {}, setStatus() {}, paint() {}, readQuery() { return {}; },
+    async finish() {}, setStatus() {}, paint() {}, notifyPlatformReady() {}, roomView:null, readQuery() { return {}; },
     async loadWasmExports() { calls.push('wasm'); return true; },
     async loadSelectedConfig() { calls.push('config'); },
     async chooseFirstCharacter() { calls.push('choose'); return selection; },
@@ -467,16 +476,16 @@ test('first character choice finishes before Platform launch or Session boot', a
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
   const running = context.start(); await drain();
-  assert.deepEqual(calls, ['wasm', 'config', 'choose']);
+  assert.deepEqual(calls, ['wasm', 'config', 'launch', 'boot', 'pump']);
   choose('duck'); await running;
-  assert.deepEqual(calls, ['wasm', 'config', 'choose', 'launch', 'boot', 'pump']);
-  assert.equal(vm.runInContext('selectedCharacter', context), 'duck');
+  assert.deepEqual(calls, ['wasm', 'config', 'launch', 'boot', 'pump']);
+  assert.equal(vm.runInContext('selectedCharacter', context), null);
 });
 
-test('a closed pre-admission selection cannot launch after a late confirmation', async () => {
+test('room connection does not depend on a pre-admission selection', async () => {
   const calls=[]; let choose;
   const context=vm.createContext({TextEncoder,AbortController,calls,performance:{now:()=>0},selection:new Promise(resolve=>choose=resolve),
-    async finish(){},setStatus(){},paint(){},readQuery(){return{};},
+    async finish(){},setStatus(){},paint(){},notifyPlatformReady(){},roomView:null,readQuery(){return{};},
     async loadWasmExports(){return true;},async loadSelectedConfig(){},async chooseFirstCharacter(){return context.selection;},
     async obtainLaunch(){calls.push('launch');return LAUNCH;},async loadCatalog(){return'{}';},pageAllowsLoopback(){return true;},
     csharp:{async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
@@ -484,7 +493,7 @@ test('a closed pre-admission selection cannot launch after a late confirmation',
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
   const running=context.start();await drain();vm.runInContext('terminal=true;connectionAttempt++;',context);
-  choose('cat');await running;assert.deepEqual(calls,[]);
+  choose('cat');await running;assert.deepEqual(calls,['launch','boot']);
 });
 
 function initialChoiceContext() {
@@ -492,7 +501,7 @@ function initialChoiceContext() {
   const context=vm.createContext({Date, sent, csharp:{selectCharacter(id){sent.push(id);return true;}}});
   vm.runInContext(`const PLAYER_MODE=true,active=true; let selectedCharacter='duck',initialSelectionPending=true,initialSelectionSent=false;
     const player={replica:{inputEnabled:false,selfId:null,phase:'Warmup'},selectionsSent:0};
-    const gameView=null,playerInput=null,spectator={};function setStatus(){}`,context);
+    const gameView=null,playerInput=null,spectator={},roomView=null;function setStatus(){}`,context);
   vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function commitInitialSelection()'),MAIN_SOURCE.indexOf('async function initializePage')),context);
   return context;
 }
@@ -535,7 +544,7 @@ function pendingSelectionPage(replica) {
   vm.runInContext(`const PLAYER_MODE=true,GAME_VIEW=true,active=true;
     let selectedCharacter='duck',initialSelectionPending=true,initialSelectionSent=false;
     const player={replica:null,selectionsSent:0},spectator={positions:[]},voxelGrid={};
-    const playerInput=null; let gameView={update(frame){frames.push(frame);},inputBlocked(){return false;}};
+    const playerInput=null,roomView=null; let gameView={update(frame){frames.push(frame);},inputBlocked(){return false;}};
     let gameViewLoading=null,gameViewGeneration=0;
     const csharp={playerState(){return JSON.stringify(replica);},
       presentationState(){return JSON.stringify({selfId:replica.selfId,tick:'25698',players:[{id:'remote'}]});},
@@ -704,4 +713,50 @@ test('a stale asynchronous GameView import cannot revive a replaced handle or a 
   await page.evalInPage("finish('closed')"); retiredCallback.callback(); await drain();
   assert.equal(current.disposeCount, 1); assert.equal(page.timers.size, 0);
   assert.equal(fixture.nodes.get('presentation').hidden, true); assert.equal(page.win.__lumioPresentation.status, 'closed');
+});
+ test('room fill uses published GAS export while gameplay input remains closed', () => {
+  const calls = [];
+  const context = vm.createContext({ Date, calls });
+  vm.runInContext(`const PLAYER_MODE=true,active=true;const player={replica:{phase:'WaitingForWorldReady',inputEnabled:true,inputOpen:false,selfId:'self'}};
+    let initialSelectionPending=false; const gameView=null,playerInput=null,spectator={};function setStatus(){}`,context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('function sendPlayerCommand(kind'),MAIN_SOURCE.indexOf('async function initializePage')),context);
+  assert.equal(context.sendPlayerCommand('room',()=>{ calls.push(true); return true; }),true);
+  assert.deepEqual(calls,[true]);
+  vm.runInContext("player.replica.phase='Running'",context);
+  assert.equal(context.sendPlayerCommand('room',()=>{ calls.push(false); return true; }),false);
+  assert.deepEqual(calls,[true]);
+});
+
+test('initial room selection accepts the replicated owner latch before Warmup', () => {
+  const context = initialChoiceContext();
+  vm.runInContext("player.replica={inputEnabled:true,selfId:'self',phase:'WaitingForWorldReady',characterName:null,selectedCharacterName:'duck'}",context);
+  context.commitInitialSelection();
+  assert.equal(vm.runInContext('initialSelectionPending',context),false);
+  assert.deepEqual(context.sent,[]);
+});
+test('submitted room change waits for matching authority instead of accepting an older choice', () => {
+  const context = initialChoiceContext();
+  vm.runInContext("initialSelectionSent=true;player.replica={inputEnabled:true,selfId:'self',phase:'WaitingForWorldReady',characterName:null,selectedCharacterName:'cat'}",context);
+  context.commitInitialSelection();
+  assert.equal(vm.runInContext('initialSelectionPending',context),true);
+  assert.equal(vm.runInContext('selectedCharacter',context),'duck');
+  assert.deepEqual(context.sent,[]);
+});
+
+function testNode() { return { hidden:false, disabled:false, textContent:'', children:[], listeners:{},
+ append(...items){this.children.push(...items);}, replaceChildren(...items){this.children=items;},
+ addEventListener(event,fn){this.listeners[event]=fn;}, removeEventListener(){}, querySelectorAll(){return[];}, querySelector(){return null;}, setAttribute(){} }; }
+test('public room entry ignores injected launch and preserves fresh authenticated platform binding', async()=>{
+ const nodes=new Map(['room','room-count','room-status','room-seats','room-fill','room-wait','room-character','room-selection-status','stage-note','player-info','player-controls','player-state','player-self'].map(id=>[id,testNode()]));
+ const state={connectionState:'active',inputEnabled:true,inputOpen:false,selfId:'1',phase:'WaitingForWorldReady',room:{capacity:8,humans:1,bots:0,fillEnabled:false,nextBotJoinTick:'0',authorityTick:'100',tickRateHz:20,players:[{id:'1',name:'Alice',isBot:false,isSelf:true}]}};
+ const commands=[];const release={...LAUNCH,gameReleaseId:'exact-test-release',loginName:'Alice'};
+ const p=await runPage({publicPlayer:true,nodes,launch:release,runtime:{state:'active'},exports:{
+  SendMove(){return true;},PlaceBomb(){return true;},BombButton(){return true;},UseActiveSkill(){return true;},SelectCharacter(){return true;},SetBotFill(enabled){commands.push(enabled);return true;},PlayerState(){return JSON.stringify(state);},SelectionConfig(){return JSON.stringify({characters:[{name:'duck'}]});}
+ }});
+ assert.equal(p.admissions.length,1);assert.deepEqual(JSON.parse(p.admissions[0][0]),release);
+ assert.deepEqual(p.fetchCalls.map(f=>f.url),['/api/account/me','/api/games/bomber/launch']);
+ assert.equal(p.fetchCalls[1].init.credentials,'same-origin');assert.equal(p.fetchCalls[1].init.headers['X-CSRF-Token'],'test-csrf');
+ assert.equal(p.runtime.ready,1);assert.equal(nodes.get('room').hidden,false);assert.equal(nodes.get('room-count').textContent,'1 / 8');
+ assert.equal(nodes.get('stage-note').hidden,false);nodes.get('room-fill').listeners.click();assert.deepEqual(commands,[true]);
+ assert.equal(state.room.fillEnabled,false);assert.match(nodes.get('room-status').textContent,/确认/);
 });

@@ -1,3 +1,4 @@
+import { createRoomView } from "./room-view.mjs";
 import { createReplicaVoxelGrid } from "./replica-voxel-grid.mjs";
 import {
   unavailableVoxelGrid,
@@ -32,9 +33,37 @@ const spectator = {
   },
 };
 window.__lumioSpectator = spectator;
-const PLAYER_MODE = Boolean(window.__lumioPlayerConfig);
+// Two player entries share this bundle. The local harness (Tools/launcher.mjs
+// --player) injects window.__lumioPlayerConfig and serves the published output at
+// a loopback /play/ URL; its launch endpoint is local tooling, never public. The
+// Platform hosts the same published output at /games/<slug>/ for logged-in
+// players, so a page whose own path names a game is the formal player entry
+// (character selection, inputs, fresh platform launch per session). A path that
+// names no game keeps the local spectator behaviour.
+const HARNESS_PLAYER_MODE = Boolean(window.__lumioPlayerConfig);
+// Declared here (before first use below); gameSlugFromPath itself is hoisted but
+// reads these consts, so they must be initialized before the module top runs it.
+const GAME_PATH = /^\/games\/([^/]+)\/(?:index\.html)?$/;
+const GAME_SLUG = /^[A-Za-z0-9_-][A-Za-z0-9._~-]*$/;
+const PLATFORM_GAME_SLUG = gameSlugFromPath(typeof location !== "undefined" ? location.pathname : "");
+const PLAYER_MODE = HARNESS_PLAYER_MODE || PLATFORM_GAME_SLUG !== null;
+let playerLabel = HARNESS_PLAYER_MODE ? window.__lumioPlayerConfig.label ?? null : null;
+// One lumio:ready to the Platform play container. The page sends it when its own
+// entry state is interactive: the wasm runtime and the frozen client config are
+// loaded and the player can act (the selection screen for a player entry). The
+// container's "entering game" mask covers the iframe until then, so waiting for a
+// live session instead would deadlock the selection screen behind the mask. A
+// page that settles in a terminal failure sends it too, so the mask never
+// outlives the page. Outside the container the SDK refuses and that is fine.
+let platformReadySent = false;
+function notifyPlatformReady() {
+  if (platformReadySent || typeof window.lumio !== "object" || !window.lumio) return;
+  platformReadySent = true;
+  try { window.lumio.ready(); } catch { /* not embedded in a Platform container */ }
+}
 const player = { inputsSent: 0, movesSent: 0, bombsSent: 0, skillsSent: 0, selectionsSent: 0, lastInput: null, replica: null };
 let playerInput;
+let roomView;
 let selectedCharacter = null;
 let initialSelectionPending = false;
 let initialSelectionSent = false;
@@ -118,8 +147,9 @@ function setStatus(status, detail) {
   if ((status === "failed" || status === "error") && detail) spectator.lastError = String(detail);
   if (statusEl) {
     statusEl.textContent = detail ? `${status}: ${detail}` : status;
-    statusEl.hidden = GAME_VIEW && (status === 'active' || status === 'selecting');
+    statusEl.hidden = PLAYER_MODE || (GAME_VIEW && status === 'active');
   }
+  roomView?.update(player.replica, status);
   const enter = document.getElementById('enter');
   if (enter && GAME_VIEW) enter.hidden = !['failed', 'closed', 'superseded'].includes(status);
 }
@@ -277,7 +307,7 @@ function paint(positions) {
       ctx.fillStyle = '#202628';
       ctx.font = 'bold 15px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(window.__lumioPlayerConfig.label ?? 'You', x, y - scale * 0.7);
+      ctx.fillText(playerLabel ?? 'You', x, y - scale * 0.7);
     }
   }
   // No replicated color field exists in the current Bomber declaration. Keep
@@ -423,6 +453,7 @@ function applyDump(raw) {
     if (PLAYER_MODE && csharp.playerState) {
       player.replica = JSON.parse(csharp.playerState());
       commitInitialSelection();
+      roomView?.update(player.replica, spectator.status);
       const stateEl = document.getElementById('player-state');
       if (stateEl) stateEl.textContent = `${player.replica.phase ?? 'Joining'} | ${spectator.positions.filter(p => p.type === 'player').length}/8 players`;
       const self = spectator.positions.find(p => p.self);
@@ -443,6 +474,10 @@ function applyDump(raw) {
 }
 
 function updateGamePresentation() {
+  if (PLAYER_MODE && (!player.replica?.phase || player.replica.phase === 'WaitingForWorldReady')) {
+    gameView?.suspend('waiting-room');
+    return;
+  }
   if (!gameView) {
     if (gameViewLoading) return;
     const generation = gameViewGeneration;
@@ -516,13 +551,14 @@ function bindExports(api) {
   csharp.presentationState = () => api.PresentationState();
   csharp.ownerPresentation = typeof api.OwnerPresentation === 'function' ? () => api.OwnerPresentation() : undefined;
   if (PLAYER_MODE) {
-      for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'PlayerState', 'SelectionConfig'])
+      for (const name of ['SendMove', 'PlaceBomb', 'BombButton', 'UseActiveSkill', 'SelectCharacter', 'SetBotFill', 'PlayerState', 'SelectionConfig'])
       if (typeof api[name] !== 'function') throw new Error('Player input export missing: ' + name);
     csharp.sendMove = (primary, secondary, turn) => api.SendMove(primary, secondary, turn);
     csharp.placeBomb = () => api.PlaceBomb();
     csharp.bombButton = phase => api.BombButton(phase);
     csharp.useActiveSkill = () => api.UseActiveSkill();
     csharp.selectCharacter = id => api.SelectCharacter(id);
+    csharp.setBotFill = enabled => api.SetBotFill(enabled);
     csharp.selectionConfig = () => api.SelectionConfig();
     csharp.playerState = () => api.PlayerState();
   }
@@ -591,9 +627,6 @@ function readQuery() {
 // the same bundle launches whichever game the Platform serves it as. A path that
 // is not /games/<slug>/ (or /games/<slug>/index.html) names no game, and the page
 // says so instead of falling back to some default game.
-const GAME_PATH = /^\/games\/([^/]+)\/(?:index\.html)?$/;
-const GAME_SLUG = /^[A-Za-z0-9_-][A-Za-z0-9._~-]*$/;
-
 function gameSlugFromPath(pathname) {
   const match = GAME_PATH.exec(typeof pathname === "string" ? pathname : "");
   if (!match) return null;
@@ -645,7 +678,7 @@ function admittedRoomId(launch) {
 }
 
 async function launchFromPlatform(signal) {
-  if (PLAYER_MODE) {
+  if (HARNESS_PLAYER_MODE) {
     const response = await fetch(window.__lumioPlayerConfig.launchEndpoint, {
       method: 'POST', headers: { 'X-Lumio-Player': '1' }, credentials: 'same-origin', signal,
     });
@@ -670,12 +703,11 @@ async function launchFromPlatform(signal) {
   if (typeof body.wsUrl !== "string" || typeof body.admissionCredential !== "string") {
     throw new Error("launch_failed");
   }
-  return {
-    wsUrl: body.wsUrl,
-    subprotocol: body.subprotocol,
-    admissionCredential: body.admissionCredential,
-    roomId: body.roomId,
-  };
+  // The whole platform-port launch body travels to the session unchanged: the
+  // audience, game, release, contract, room and allocation bindings ride along
+  // for the managed session instead of being trimmed to four fields here.
+  if (typeof body.loginName === "string" && body.loginName) playerLabel = body.loginName;
+  return body;
 }
 
 let connectionAttempt = 0;
@@ -721,6 +753,9 @@ async function finish(status) {
 
 function failLaunch(error) {
   spectator.lastError = error?.code ?? error?.message ?? 'launch_failed';
+  // The page settled (its own failure state is visible and retryable), so the
+  // container's loading mask must lift even though no session ever opened.
+  notifyPlatformReady();
   void finish('failed').catch(error => console.error('[lumio-session] close failed', error));
   setStatus('failed', spectator.lastError);
   console.error('[lumio-session]', spectator.lastError);
@@ -784,7 +819,10 @@ async function obtainLaunch(query, signal) {
 let selectedConfigLoaded = false;
 async function loadSelectedConfig(signal) {
   if (selectedConfigLoaded) return;
-  const response = await fetch('/api/game/config', { signal, cache: 'no-store', credentials: 'same-origin' });
+  // The version-bound {files} carrier generated by Tools/make-client-config.mjs
+  // sits next to this page inside the published bundle (the local harness serves
+  // the same cut at /api/game/config; the published page reads its own release).
+  const response = await fetch(HARNESS_PLAYER_MODE ? '/api/game/config' : './client-config.json', { signal, cache: 'no-store', credentials: 'same-origin' });
   if (!response.ok) throw new Error('selected_client_config_unavailable');
   const bundle = await response.text();
   signal.throwIfAborted();
@@ -802,16 +840,21 @@ async function start() {
     active = false;
     setStatus('starting');
     paint([]);
-    if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) return;
+    if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) {
+      // The page settled without a runtime (static/file: or a broken publish):
+      // the container mask must lift onto this page's own visible state.
+      notifyPlatformReady();
+      return;
+    }
     const abort = new AbortController();
     launchAbort = abort;
     await loadSelectedConfig(abort.signal);
     if (terminal || attempt !== connectionAttempt) return;
-    if (PLAYER_MODE && selectedCharacter === null) {
-      const choice = await chooseFirstCharacter();
-      if (terminal || attempt !== connectionAttempt) return;
-      selectedCharacter = choice;
-    }
+    // The wasm runtime and the version-bound config are up: the player's entry
+    // screen (character selection, or the spectator field) is interactive, so
+    // the container's loading mask lifts here — before, not after, the session.
+    notifyPlatformReady();
+    if (PLAYER_MODE) roomView?.configure(JSON.parse(csharp.selectionConfig()));
     if (terminal || attempt !== connectionAttempt) return;
     initialSelectionPending = PLAYER_MODE && selectedCharacter !== null;
     initialSelectionSent = false;
@@ -846,9 +889,10 @@ async function chooseFirstCharacter() {
 
 function commitInitialSelection() {
   if (!initialSelectionPending) return;
-  if (player.replica?.characterName) {
+  const confirmedCharacter = player.replica?.selectedCharacterName || player.replica?.characterName;
+  if (confirmedCharacter && (!initialSelectionSent || confirmedCharacter === selectedCharacter)) {
     // An already-bound reconnect keeps the server's current character.
-    selectedCharacter = player.replica.characterName;
+    selectedCharacter = confirmedCharacter;
     initialSelectionPending = false;
     return;
   }
@@ -861,7 +905,10 @@ function commitInitialSelection() {
 
 function sendPlayerCommand(kind, publishRequest) {
   if (!PLAYER_MODE || !active) return false;
-  if (kind === 'character') {
+  if (kind === 'room') {
+    if (player.replica?.phase !== 'WaitingForWorldReady'
+      || !player.replica?.inputEnabled || !player.replica?.selfId) return false;
+  } else if (kind === 'character') {
     if (!['WaitingForWorldReady', 'Warmup', 'Results'].includes(player.replica?.phase)
       || !player.replica?.inputEnabled || !player.replica?.selfId) return false;
   } else if (initialSelectionPending || !player.replica?.inputOpen || gameView?.inputBlocked()) return false;
@@ -885,14 +932,29 @@ function sendPlayerCommand(kind, publishRequest) {
 
 async function initializePage() {
   if (PLAYER_MODE) {
-    document.body.classList.add('player-page');
-    const label = window.__lumioPlayerConfig.label;
-    const title = label ? `Lumio Bomber | ${label}` : 'Lumio Bomber';
-    document.title = title;
-    document.querySelector('h1').textContent = title;
+    document.body.classList.add('player-page', 'room-page');
+    roomView = createRoomView({
+      onFill: enabled => sendPlayerCommand('room', () => csharp.setBotFill(enabled)),
+      onCharacter: id => {
+        if (!sendPlayerCommand('character', () => csharp.selectCharacter(id))) return false;
+        selectedCharacter = id;
+        initialSelectionPending = true;
+        initialSelectionSent = true;
+        return true;
+      },
+    });
+    roomView.update(null, 'starting');
+    // Harness pages carry their slot label; platform players are titled by the
+    // page itself and their login name arrives with the first platform launch.
+    const label = HARNESS_PLAYER_MODE ? window.__lumioPlayerConfig.label : playerLabel;
+    if (label) {
+      const title = `Lumio Bomber | ${label}`;
+      document.title = title;
+      document.querySelector('h1').textContent = title;
+    }
     document.getElementById('player-controls').hidden = false;
     document.getElementById('player-info').hidden = false;
-    document.getElementById('enter').textContent = 'Reconnect';
+    document.getElementById('enter').textContent = '重新连接';
     canvas.width = canvas.height = 760;
     const { createPlayerInput } = await import('./player-controls.mjs');
     playerInput = createPlayerInput({
@@ -904,6 +966,10 @@ async function initializePage() {
       useSkill: () => sendPlayerCommand('skill', () => csharp.useActiveSkill()),
     });
   }
+  // The Platform entry is staged: only the frozen Legacy8 / 19×19 room is wired
+  // to a real DS; the unaccepted rule work stays unclaimed on the page itself.
+  const stageNote = document.getElementById('stage-note');
+  if (stageNote && PLATFORM_GAME_SLUG) stageNote.hidden = false;
   document.getElementById('enter')?.addEventListener('click', () => { void start(); });
   await start();
 }

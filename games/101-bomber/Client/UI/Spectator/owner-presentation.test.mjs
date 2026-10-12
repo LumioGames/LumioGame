@@ -14,7 +14,7 @@ test('render callback uses only the small owner export and retires with its view
     SessionState() { throw new Error('render must not serialize session stats'); }, WorldHandleBytes() {}, ReadBox() {},
     DumpPositions() {}, MapDimensions() {}, WorldInstanceId() {}, ConnectionState() {}, LastApplyError() {},
     PresentationState() { dumps++; return '{}'; }, OwnerPresentation() { reads++; return JSON.stringify(dto); },
-    SendMove() {}, PlaceBomb() {}, BombButton() {}, UseActiveSkill() {}, SelectCharacter() {}, PlayerState() {}, SelectionConfig() {},
+    SendMove() {}, PlaceBomb() {}, BombButton() {}, UseActiveSkill() {}, SelectCharacter() {}, SetBotFill() {}, PlayerState() {}, SelectionConfig() {},
   }, importGameView: async () => ({ createGameView(value) { callbacks = value; return { update() {} }; } }),
     setStatus() {}, console, sendPlayerCommand() {},
   });
@@ -22,7 +22,7 @@ test('render callback uses only the small owner export and retires with its view
     let gameView,gameViewLoading,gameViewGeneration=0,gameViewOwnerGeneration=0;
     let connectionAttempt=1,currentSessionGeneration='2',terminal=false,active=true;
     let selectedCharacter=null,initialSelectionPending=false,playerInput=null;
-    const player={replica:{inputOpen:true}},voxelGrid={};`, context);
+    const player={replica:{inputOpen:true,phase:'Running'}},voxelGrid={};`, context);
   vm.runInContext(slice('function bindExports(api)', 'async function loadWasmExports'), context);
   vm.runInContext(slice('function updateGamePresentation()', 'const csharp = {')
     .replace("import('./game-view.mjs')", 'globalThis.importGameView()'), context);

@@ -373,6 +373,8 @@ internal sealed class PlayerStateDto
     public required string? phase { get; init; }
     public required string? lifePhase { get; init; }
     public required string? characterName { get; init; }
+    public required string? selectedCharacterName { get; init; }
+    public required RoomStateDto? room { get; init; }
     public required long? availableBombs { get; init; }
     public required string authorityTick { get; init; }
     public required string appliedInputSequence { get; init; }
@@ -427,4 +429,23 @@ internal sealed class LoadedModuleDto
     public required string? name { get; init; }
     public required Guid mvid { get; init; }
     public required string path { get; init; }
+}
+
+internal sealed class RoomStateDto
+{
+    public required int capacity { get; init; }
+    public required int humans { get; init; }
+    public required int bots { get; init; }
+    public required bool fillEnabled { get; init; }
+    public required string nextBotJoinTick { get; init; }
+    public required string authorityTick { get; init; }
+    public required ulong tickRateHz { get; init; }
+    public required List<RoomPlayerDto> players { get; init; }
+}
+internal sealed class RoomPlayerDto
+{
+    public required string id { get; init; }
+    public required string name { get; init; }
+    public required bool isBot { get; init; }
+    public required bool isSelf { get; init; }
 }

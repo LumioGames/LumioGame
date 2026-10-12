@@ -90,6 +90,7 @@ public static partial class SpectatorExports
     [JSExport] public static bool PlaceBomb() => (s_client ?? throw new InvalidOperationException("spectator_not_started")).PlaceBomb();
     [JSExport] public static bool BombButton(int phase) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).BombButton(phase);
     [JSExport] public static bool UseActiveSkill() => (s_client ?? throw new InvalidOperationException("spectator_not_started")).UseActiveSkill();
+    [JSExport] public static bool SetBotFill(bool enabled) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).SetBotFill(enabled);
     [JSExport] public static bool SelectCharacter(string id) => (s_client ?? throw new InvalidOperationException("spectator_not_started")).SelectCharacter(id);
     [JSExport] public static string PlayerState() => s_client?.PlayerState() ?? SpectatorDump.DumpPlayerState(null, "closed", false, "0", "0");
     [JSExport] public static string PresentationState() => s_client?.PresentationState() ?? PresentationDump.Dump(null, "0");

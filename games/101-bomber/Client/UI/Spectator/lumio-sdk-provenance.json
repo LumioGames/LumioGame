@@ -1,0 +1,8 @@
+{
+  "sourceRepository": "LumioGames/LumioPlatform",
+  "sourceCommit": "8ce546f045b4569239b288ff7de1ad45383830a9",
+  "sourcePath": "packages/lumio-sdk/lumio.js",
+  "sha256": "702000dc328c8eb5d2297710aa52857c02fefcf0abef82d5508166b30324ff8a",
+  "integrationGuide": "docs/GAME_SDK.md",
+  "copiedWithoutModification": true
+}

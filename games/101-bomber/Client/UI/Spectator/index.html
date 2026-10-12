@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lumio Spectator</title>
+  <title>帽王乱斗 · Lumio Bomber</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./spectator.css">
   <link rel="stylesheet" href="./presentation/presentation.css">
@@ -27,7 +27,16 @@
     <div id="game-labels"></div>
     <div id="game-hud"></div>
   </div>
-  <h1>Lumio Spectator</h1>
+  <h1>帽王乱斗 · Lumio Bomber</h1>
+  <section id="room" hidden aria-labelledby="room-title">
+    <header class="room-header"><div><p class="room-eyebrow">八人房间 · 19×19</p><h2 id="room-title">帽王乱斗</h2></div><strong id="room-count">— / 8</strong></header>
+    <p id="room-status" role="status" aria-live="polite">正在连接房间…</p>
+    <ol id="room-seats" aria-label="房间席位"></ol>
+    <div class="room-selection"><label for="room-character">角色</label><select id="room-character" disabled><option value="">选择角色</option></select><span id="room-selection-status">请选择角色</span></div>
+    <div class="room-actions"><button id="room-fill" type="button" disabled>机器人补齐</button><button id="room-wait" type="button" disabled>等待真人</button></div>
+    <p class="room-help">默认等待真人；开启补齐后，每 3 秒加入一位机器人，满 8 人自动开局。</p>
+  </section>
+  <details id="stage-note" hidden><summary>阶段说明</summary><p>阶段入口：Legacy8 · 19×19（12/16 人、成长/战斗角色/缩圈/结算与同房下一局未验收；19 图中央补给关闭）</p></details>
   <p id="status">starting</p>
   <button id="enter" type="button">Enter game</button>
   <div id="player-info" hidden><span id="player-state"></span><span id="player-self"></span></div>
@@ -48,6 +57,7 @@
   <canvas id="blocks"></canvas>
   <div id="blocks-hud"></div>
   <div id="blocks-cams"></div>
+  <script src="./lumio.js"></script>
   <script type="module" src="./main.js"></script>
 </body>
 </html>

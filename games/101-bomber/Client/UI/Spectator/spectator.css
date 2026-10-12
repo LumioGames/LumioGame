@@ -53,3 +53,30 @@ body.presentation-mode { margin: 0; padding: 0; max-width: none; overflow: hidde
 .presentation-mode .sel-sub { display: none; }
 .presentation-mode .terrain-pending #game-stage { visibility: hidden; }
 @media (pointer: fine) { .presentation-mode #player-controls { display: none; } }
+[hidden] { display: none !important; }
+body.room-page { max-width: none; padding: 0; margin: 0; min-height: 100dvh; background: #e9f5f2; }
+.room-page > h1, .room-page #field, .room-page #player-info, .room-page #player-controls, .room-page #legend { display: none; }
+#room { position: relative; z-index: 12; box-sizing: border-box; width: min(680px, calc(100% - 32px)); margin: 7vh auto 32px; padding: 28px; background: #fffef9; border: 2px solid #223a34; border-radius: 20px; box-shadow: 0 8px 0 #c3ddd2; color: #223a34; }
+.room-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.room-header h2 { margin: 4px 0; font-size: 32px; }
+.room-eyebrow { margin: 0; font-size: 13px; color: #557267; }
+#room-count { padding: 8px 14px; background: #e1f1e9; border-radius: 12px; font-size: 24px; white-space: nowrap; }
+#room-status { min-height: 24px; font-weight: 600; line-height: 1.5; }
+#room-seats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; gap: 10px; padding: 0; margin: 20px 0; }
+.room-seat { padding: 16px 12px; border: 1px solid #c5d7ce; border-radius: 12px; overflow-wrap: anywhere; font-size: 14px; }
+.room-seat.is-self { border-color: #167756; background: #e1f5e8; font-weight: 600; }
+.room-seat.is-bot { background: #f3eee0; }
+.room-seat.is-empty { color: #74887f; border-style: dashed; background: #fafbf7; }
+.room-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.room-selection select { min-width: 150px; min-height: 40px; padding: 6px 12px; border: 1px solid #9fb9aa; border-radius: 8px; background: #fff; font: inherit; }
+#room-selection-status { font-size: 13px; color: #557267; }
+.room-actions { display: flex; gap: 12px; }
+.room-actions button { min-height: 44px; flex: 1; border: 1px solid #167756; border-radius: 10px; padding: 10px; background: #167756; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.room-actions #room-wait { background: #fff; color: #167756; }
+.room-actions button:disabled { opacity: .45; cursor: default; }
+.room-help { margin: 14px 0 0; font-size: 12px; color: #557267; line-height: 1.6; }
+#stage-note { position: fixed; left: 12px; bottom: 10px; z-index: 15; max-width: min(560px, calc(100% - 24px)); padding: 5px 10px; border-radius: 8px; background: #fffef9e8; color: #557267; font-size: 11px; }
+#stage-note summary { cursor: pointer; }
+#stage-note p { line-height: 1.5; margin: 8px 0; }
+.room-page #enter { position: fixed; z-index: 14; top: 12px; right: 12px; left: auto; transform: none; }
+@media (max-width: 480px) { #room { margin-top: 5vh; padding: 20px 16px; } .room-header h2 { font-size: 26px; } .room-seat { padding: 12px 8px; } }
