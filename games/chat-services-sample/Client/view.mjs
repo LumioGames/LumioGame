@@ -41,17 +41,20 @@ export function createOperationTracker(sdk) {
 
 export function createChatController(session, { operations, notify = () => {}, clearDraft = () => {}, onBusy = () => {},
   delay = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
-  let busy = false, generation = 0, identity, attempt;
+  let busy = false, generation = 0, mode, playerId, attempt;
   const alive = captured => captured === generation && session.current.mode === 'official';
   function confirmed(operation) {
     const state = session.current;
-    return alive(operation.generation) && operation.receipt?.status === 'committed' && !state.pending.length && (operation.action === 'begin'
-      ? state.view?.started === true : state.view?.messageCount > operation.count);
+    return attempt === operation && state.mode === 'official' && operation.playerId
+      && state.profile?.playerId === operation.playerId && operation.receipt?.status === 'committed'
+      && !state.pending.length && (operation.action === 'begin'
+        ? state.view?.started === true : state.view?.messageCount > operation.count && state.view.recent?.includes(operation.text));
   }
   function finish(operation) {
     if (!confirmed(operation)) return false;
     if (operation.action === 'send') clearDraft(operation.text);
-    attempt = undefined; notify(operation.action === 'begin' ? '已进入我的云消息' : '消息已由服务器确认'); return true;
+    operation.finished = true; attempt = undefined;
+    notify(operation.action === 'begin' ? '已进入我的云消息' : '消息已由服务器确认'); return true;
   }
   async function recoverOperation(operation) {
     for (const wait of [0, 400, 1000, 1800]) {
@@ -62,7 +65,7 @@ export function createChatController(session, { operations, notify = () => {}, c
       if (!alive(operation.generation)) return false;
       if (!session.current.pending.length) break;
     }
-    if (finish(operation)) return true;
+    if (operation.finished || finish(operation)) return true;
     if (alive(operation.generation)) {
       notify(session.current.pending.length ? `结果尚未确认（${operation.receipt?.status ?? 'unknown'}），请查询原操作；不要重复发送。`
         : operation.receipt?.error?.code ?? operation.failure ?? '服务器未确认本次操作，草稿已保留。');
@@ -80,31 +83,45 @@ export function createChatController(session, { operations, notify = () => {}, c
       if (session.current.view?.messageCount > count) { clearDraft(text); notify('离线试玩消息 · 不保存'); return true; }
       return false;
     }
-    if (state.mode !== 'official' || !state.view || (action === 'send' && !state.view.canSend) || (action === 'begin' && state.view.started)) return false;
-    const operation = { action, text, count: state.view.messageCount, generation };
+    if (state.mode !== 'official' || !state.profile?.playerId || !state.view || (action === 'send' && !state.view.canSend) || (action === 'begin' && state.view.started)) return false;
+    const operation = { action, text, count: state.view.messageCount, playerId: state.profile?.playerId, generation };
     const previousReceipt = operations?.current;
     attempt = operation; busy = true; onBusy(true);
     try {
-      try { await session.act(action, action === 'send' ? { text } : {}); }
+      try {
+        const actionResult = session.act(action, action === 'send' ? { text } : {});
+        if (operations?.current !== previousReceipt) operation.receipt = operations.current;
+        await actionResult;
+      }
       catch (error) { operation.failure = errorMessage(error); }
       if (operations?.current !== previousReceipt) operation.receipt = operations.current;
-      if (!alive(operation.generation)) return false;
+      if (!alive(operation.generation)) return operation.finished || finish(operation);
       if (!session.current.pending.length && !confirmed(operation)) operation.failure ??= session.current.message;
       return await recoverOperation(operation);
     } finally { busy = false; onBusy(false); }
   }
   return {
     observe(state) {
-      const next = `${state.mode}:${state.profile?.playerId ?? ''}`;
-      if (next !== identity) { generation++; identity = next; attempt = undefined; }
+      const nextPlayer = state.profile?.playerId;
+      if (state.mode !== mode || (nextPlayer && playerId && nextPlayer !== playerId)) {
+        generation++; attempt = undefined;
+      }
+      mode = state.mode;
+      // A temporarily absent projection is not evidence that the player changed.
+      if (nextPlayer) playerId = nextPlayer;
+      if (attempt) finish(attempt);
     },
+    invalidate() { generation++; },
     cancel() { generation++; attempt = undefined; },
     submit: text => act('send', text.trim()), begin: () => act('begin'),
     async recover() {
       if (busy || session.current.mode !== 'official') return false;
       busy = true; onBusy(true);
       try {
-        if (attempt) return await recoverOperation(attempt);
+        if (attempt) {
+          attempt.generation = generation;
+          return await recoverOperation(attempt);
+        }
         await session.recover();
         if (session.current.pending.length) notify('结果尚未确认，请继续查询原操作；不要重复发送。');
         return !session.current.pending.length;
@@ -170,10 +187,11 @@ export function createChatView(document, sdk, operations) {
     element('player').textContent = name(state.profile); element('count').textContent = state.view?.messageCount ?? '—';
     element('identity-avatar').replaceChildren(avatar(state.profile));
     const official = state.mode === 'official', trial = state.mode === 'trial', pending = state.pending.length > 0;
+    const writable = trial || official && !!state.profile?.playerId;
     element('begin').hidden = !official || !state.view || state.view.started;
-    element('begin').disabled = busy || pending || !official || !state.view || state.view.started;
-    element('send').disabled = busy || pending || !(official || trial) || !state.view?.canSend;
-    element('box').disabled = !(official || trial) || !state.view?.canSend;
+    element('begin').disabled = busy || pending || !writable || !official || !state.view || state.view.started;
+    element('send').disabled = busy || pending || !writable || !state.view?.canSend;
+    element('box').disabled = !writable || !state.view?.canSend;
     element('emoji').disabled = element('send').disabled;
     element('send').setAttribute('aria-busy', String(busy));
     for (const id of ['login', 'permissions', 'ranks']) element(id).disabled = !official || busy;
@@ -210,7 +228,7 @@ export function createChatView(document, sdk, operations) {
   const handle = action => async () => { try { await action(); } catch (error) { notify(errorMessage(error)); } };
   return {
     render(value) { state = value; controller?.observe(value); avatars.project([value.profile, ...value.rows.map(row => row.profile)].filter(Boolean)); draw(); notify(value.message); },
-    invalidate() { avatars.invalidate(); controller?.cancel(); },
+    invalidate() { avatars.invalidate(); controller?.invalidate(); },
     bind(value) {
       session = value;
       controller = createChatController(session, { operations, notify, clearDraft: text => { if (element('box').value.trim() === text) element('box').value = ''; }, onBusy: value => { busy = value; draw(); } });
