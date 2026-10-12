@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup><GameRulePluginProject>true</GameRulePluginProject></PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup><ProjectReference Include="$(LUMIO_ENGINE_ROOT)/engine/managed/Lumio.GameServices.Contracts/Lumio.GameServices.Contracts.csproj" /></ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

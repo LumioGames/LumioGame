@@ -77,6 +77,9 @@ jobs:
       - name: Server-authoritative HTML sample client tests
         working-directory: game
         run: node --test games/game-services-sample/Tools/client.test.mjs
+      - name: Server-authoritative HTML chat sample client tests
+        working-directory: game
+        run: node --test games/chat-services-sample/Tools/client.test.mjs
       - name: dotnet build
         id: build
         working-directory: game
