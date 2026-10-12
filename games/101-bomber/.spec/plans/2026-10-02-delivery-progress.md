@@ -4590,3 +4590,11 @@ Host Csc 读取 PID7372 与编译 PE/PDB 读取 PID19580 均 raw0；337 个当�
 - 本轮已归档200个旧worktree，另清理真正main祖先、未绑定worktree且无Open PR的精确branch refs；先核实独立恢复库存在同一commit，再fresh Github保护/OpenPR/head及exact lease删除。未合入分支、旧草稿PR和Owner候选没有靠删除检查或强行merge消除；必要恢复索引、bundle/stash与原fault都保留。实际删除计数以各执行summary及final-all-local-cleanup-08.json为准，不把already-absent remote或归档目录算物理删除。
 - 本账本从74430e75另建独立短期分支，仅追加330–333并验证旧字节前缀。正常protected PR合入后，为新的账本/缓存候选HEAD补独立恢复，再收回本次两份临时worktree和对应分支；主目录继续main clean。最后实际注册worktree总数、primary HEAD、待审分支清单和保全位置落final-all-local-cleanup-08.json/.md，不为记录自身删除递归新建PR。
 - 移動表现及正式部署未在本清理段复测，不把工作区干净当手感通过或全部旧PR已合入。Game既有SDK0.0.4-main.ecece8a≠required0.0.5-main.0e2fc74的Bomber CI失败与旧strict lint问题继续保留；只做根lint/既有Node验证及账本追加审查，不放宽版本守卫/Owner门。
+
+
+### Checkpoint334 — 清理期间新就绪PR71核实合入与最后工作区收口（2026-10-12）
+
+- PR72的330–333账本在根README policy、Build and test实际SUCCESS后正常合入abc4de54a11bfe01b2ba3f4556c26b5c9b559b7b；primary正常ff-only且clean，Bomber三项原SDK版本不匹配FAIL继续保留。后读到清理期间新出现的就绪PR71（chat-services-sample），并非此前未通过的旧实验PR；原ade73f8候选两项根检查已成功，因main已推进先保存原diff，再使用正常update-branch，而非force覆盖。
+- update-branch返回后的首个readback仍是旧ade73f8，异步原输出保留；实际fetch与checkout核实新head4a5e0aa2c4172065b3e31c75fe58beea6bedef78，base为abc4de54。只读审查其纯规则、状态/排行闭集、主体派生资格key、限长与客户端会话失效路径；该head本地规则测试29/29和客户端11/11、0 skipped，真实Codec/CatalogPolicy/Dispatcher生产链被执行，根lint/diff-check通过。未做新PG/Native/浏览器部署或手感验收，不把公开仓验证当私有整链验收。
+- 新head的README policy与Build and test再次实际SUCCESS后，PR71普通exact-head合入；实际merge/head/UTC原readback在chat-pr71-postmerge-08.json，primary同步main。新增聊天样例属于Game拥有的规则插件/客户端/目录/测试，知识落点已随PR入game-services-chat.md及根导航，状态仍实施中；不改Bomber生产schema、既有20Hz/额度或Owner门。
+- 清理新补的完整恢复覆盖最终三个临时工作副本与新main，随后正常删除/归档本次工作树及精确分支；之前PR72旧source分支也在独立恢复后清理。最终所有13主目录必须main、HEAD=origin/main、porcelain为空、每个Git common仅primary登记才声明工作区干净。原未完成源码、Open PR、timer Owner候选与PR280均保全，未声称全部旧PR已合入。实际本轮/累计数量、最终main、页/包未变及Owner/手感状态写入final-all-local-cleanup-08.json/.md，不再递归开账本PR。
