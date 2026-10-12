@@ -26,9 +26,12 @@ export LUMIO_ENGINE_ROOT='<Engine 当前冻结合同树>'
 export LUMIO_SERVER_ROOT='<含真实 RuleService 的 Server 树>'
 dotnet test --project games/chat-services-sample/Tools/Tests/Lumio.GameServices.Chat.Tests.csproj
 node --test games/chat-services-sample/Tools/client.test.mjs
+node --test games/chat-services-sample/Tools/ui.test.mjs
 ```
 
 显式原生集成（HostProbe / browser-probe / 攻击考卷）复用 `../game-services-sample/Tools/` 的入口与材料要求；缺库即失败、不 skip。
+
+界面与打包验证（不依赖正式平台会话）：`node --test games/chat-services-sample/Tools/package.test.mjs games/chat-services-sample/Tools/ui-browser.test.mjs`。通过 `LUMIO_CHAT_BROWSER_SDK`、`LUMIO_CHAT_SDK_MANIFEST_SHA256`、`LUMIO_CHAT_CONTRACT` 指定匹配的正式 SDK 与唯一合同，`LUMIO_CHAT_PLAYWRIGHT` 指定本机 Playwright 模块；本地默认指向浮动聊天验收材料。浏览器夹具仅在测试 HTTP 服务内替换应用入口，标注「UI 夹具 · 非正式会话」，截图写入本地 `.sdd/floating-chat-ui-screenshots/`，夹具与截图不进入发布包。
 
 ## 发布
 
