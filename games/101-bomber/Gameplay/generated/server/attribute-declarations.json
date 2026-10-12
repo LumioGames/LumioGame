@@ -1722,6 +1722,13 @@
     "visibility": "room-public"
   },
   {
+    "attributeId": "BomberParticipantState.botName",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "utf8-string",
+    "visibility": "room-public"
+  },
+  {
     "attributeId": "BomberParticipantState.currentLife",
     "persistence": "persistent",
     "replication": "replicated",
@@ -1832,6 +1839,13 @@
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberParticipantState.isBot",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
     "visibility": "room-public"
   },
   {
@@ -2166,6 +2180,20 @@
     "visibility": "server-only"
   },
   {
+    "attributeId": "BomberPlayerState.botLastBombTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberPlayerState.botTargetCell",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "i32",
+    "visibility": "server-only"
+  },
+  {
     "attributeId": "BomberPlayerState.eliminatedTick",
     "persistence": "persistent",
     "replication": "replicated",
@@ -2198,6 +2226,13 @@
     "persistence": "persistent",
     "replication": "replicated",
     "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberPlayerState.isBot",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
     "visibility": "room-public"
   },
   {
@@ -3693,6 +3728,27 @@
   },
   {
     "attributeId": "BomberWorldRuntime.bombPlacementTick",
+    "persistence": "persistent",
+    "replication": "not-replicated",
+    "valueType": "u64",
+    "visibility": "server-only"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.botFillEnabled",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "bool",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.botNextJoinTick",
+    "persistence": "persistent",
+    "replication": "replicated",
+    "valueType": "u64",
+    "visibility": "room-public"
+  },
+  {
+    "attributeId": "BomberWorldRuntime.botSequence",
     "persistence": "persistent",
     "replication": "not-replicated",
     "valueType": "u64",

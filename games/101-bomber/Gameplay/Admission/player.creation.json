@@ -3,12 +3,54 @@
   "declarationId": 101,
   "successorDeclarationId": 101,
   "slotCount": {
-    "op": "Convert",
+    "op": "Select",
     "type": "u32",
-    "value": {
-      "op": "ConfigScalar",
-      "type": "i32",
-      "key": "game.100001.player_count"
+    "condition": {
+      "op": "Select",
+      "type": "bool",
+      "condition": {
+        "op": "ExistingWorldField",
+        "type": "bool",
+        "key": "Lumio.Bomber.Gameplay.Contracts.Components.BomberWorldRuntime.BotFillEnabled"
+      },
+      "whenTrue": {
+        "op": "Select",
+        "type": "bool",
+        "condition": {
+          "op": "Compare",
+          "type": "bool",
+          "comparison": "Less",
+          "left": { "op": "Literal", "type": "u64", "value": "0" },
+          "right": {
+            "op": "ExistingWorldField",
+            "type": "u64",
+            "key": "Lumio.Bomber.Gameplay.Contracts.Components.BomberWorldRuntime.BotNextJoinTick"
+          }
+        },
+        "whenTrue": {
+          "op": "Compare",
+          "type": "bool",
+          "comparison": "LessOrEqual",
+          "left": {
+            "op": "ExistingWorldField",
+            "type": "u64",
+            "key": "Lumio.Bomber.Gameplay.Contracts.Components.BomberWorldRuntime.BotNextJoinTick"
+          },
+          "right": { "op": "CutTick", "type": "u64" }
+        },
+        "whenFalse": { "op": "Literal", "type": "bool", "value": false }
+      },
+      "whenFalse": { "op": "Literal", "type": "bool", "value": false }
+    },
+    "whenTrue": { "op": "Literal", "type": "u32", "value": "0" },
+    "whenFalse": {
+      "op": "Convert",
+      "type": "u32",
+      "value": {
+        "op": "ConfigScalar",
+        "type": "i32",
+        "key": "game.100001.player_count"
+      }
     }
   },
   "assignments": [

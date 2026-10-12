@@ -6,6 +6,9 @@ namespace Lumio.Bomber.Gameplay.Contracts.Components;
 [EcsComponent]
 public sealed partial class BomberWorldRuntime : Component
 {
+    [Persist] public Sync<bool> BotFillEnabled = new(Scope.Room, Authority.Server);
+    [Persist] public Sync<ulong> BotNextJoinTick = new(Scope.Room, Authority.Server);
+    [Persist] public Sync<ulong> BotSequence = new(Scope.None, Authority.Server);
     [Persist] public Sync<ulong> NextHfsmMachineKey = new(Scope.None, Authority.Server);
     [Persist] public Sync<ulong> NextEventSequence = new(Scope.None, Authority.Server);
     [Persist] public Sync<ulong> NextChainId = new(Scope.None, Authority.Server);

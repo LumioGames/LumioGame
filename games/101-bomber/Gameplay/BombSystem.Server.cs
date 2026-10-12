@@ -18,6 +18,7 @@ namespace Lumio.Bomber.Gameplay;
 /// <summary>Owns the server-side bomb lifecycle; no second Tick path is introduced.</summary>
 [System(TickPhase.ProcessorPlan)]
 [After(typeof(BomberFoundationSystem))]
+[After(typeof(BomberRoomBotSystem))]
 public sealed class BombSystem : EcsSystem
 {
     public override void Execute(World world)

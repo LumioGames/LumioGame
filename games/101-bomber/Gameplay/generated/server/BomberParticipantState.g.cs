@@ -8,6 +8,10 @@ namespace Lumio.Bomber.Gameplay.Contracts.Components;
 
 public sealed partial class BomberParticipantState : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
+    partial void OnIsBotChanging(bool old, bool @new, ChangeReason reason);
+    partial void OnIsBotChanged(bool old, bool @new, ChangeReason reason);
+    partial void OnBotNameChanging(string old, string @new, ChangeReason reason);
+    partial void OnBotNameChanged(string old, string @new, ChangeReason reason);
     partial void OnSlotChanging(int old, int @new, ChangeReason reason);
     partial void OnSlotChanged(int old, int @new, ChangeReason reason);
     partial void OnMatchIdChanging(ulong old, ulong @new, ChangeReason reason);
@@ -84,40 +88,42 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     void IGeneratedComponent.BindFields(ISyncHost host)
     {
-        Slot = Slot.Bound(host, this, 0, "BomberParticipantState.slot");
-        MatchId = MatchId.Bound(host, this, 1, "BomberParticipantState.matchId");
-        CurrentLife = CurrentLife.Bound(host, this, 2, "BomberParticipantState.currentLife");
-        LastLife = LastLife.Bound(host, this, 3, "BomberParticipantState.lastLife");
-        LifeGeneration = LifeGeneration.Bound(host, this, 4, "BomberParticipantState.lifeGeneration");
-        LifePhase = LifePhase.Bound(host, this, 5, "BomberParticipantState.lifePhase");
-        DeathTick = DeathTick.Bound(host, this, 6, "BomberParticipantState.deathTick");
-        RespawnAtTick = RespawnAtTick.Bound(host, this, 7, "BomberParticipantState.respawnAtTick");
-        EliminatedTick = EliminatedTick.Bound(host, this, 8, "BomberParticipantState.eliminatedTick");
-        PendingFinalRespawn = PendingFinalRespawn.Bound(host, this, 9, "BomberParticipantState.pendingFinalRespawn");
-        NextCharacterId = NextCharacterId.Bound(host, this, 10, "BomberParticipantState.nextCharacterId");
-        SelectedForMatchCharacterId = SelectedForMatchCharacterId.Bound(host, this, 11, "BomberParticipantState.selectedForMatchCharacterId");
-        DeathStructurePending = DeathStructurePending.Bound(host, this, 12, "BomberParticipantState.deathStructurePending");
-        DeathStructureLife = DeathStructureLife.Bound(host, this, 13, "BomberParticipantState.deathStructureLife");
-        DeathStructureGeneration = DeathStructureGeneration.Bound(host, this, 14, "BomberParticipantState.deathStructureGeneration");
-        DeathStructureTick = DeathStructureTick.Bound(host, this, 15, "BomberParticipantState.deathStructureTick");
-        TerminalLife = TerminalLife.Bound(host, this, 16, "BomberParticipantState.terminalLife");
-        TerminalGeneration = TerminalGeneration.Bound(host, this, 17, "BomberParticipantState.terminalGeneration");
-        TerminalMatchId = TerminalMatchId.Bound(host, this, 18, "BomberParticipantState.terminalMatchId");
-        TerminalOccurrenceTick = TerminalOccurrenceTick.Bound(host, this, 19, "BomberParticipantState.terminalOccurrenceTick");
-        TerminalCaptureTick = TerminalCaptureTick.Bound(host, this, 20, "BomberParticipantState.terminalCaptureTick");
-        TerminalDestructionTick = TerminalDestructionTick.Bound(host, this, 21, "BomberParticipantState.terminalDestructionTick");
-        DeathConsumedCount = DeathConsumedCount.Bound(host, this, 22, "BomberParticipantState.deathConsumedCount");
-        SuccessorPending = SuccessorPending.Bound(host, this, 23, "BomberParticipantState.successorPending");
-        DeathDropPending = DeathDropPending.Bound(host, this, 24, "BomberParticipantState.deathDropPending");
-        DeathCellX = DeathCellX.Bound(host, this, 25, "BomberParticipantState.deathCellX");
-        DeathCellZ = DeathCellZ.Bound(host, this, 26, "BomberParticipantState.deathCellZ");
-        FrenzyLife = FrenzyLife.Bound(host, this, 27, "BomberParticipantState.frenzyLife");
-        FrenzyGeneration = FrenzyGeneration.Bound(host, this, 28, "BomberParticipantState.frenzyGeneration");
-        FrenzyUntilTick = FrenzyUntilTick.Bound(host, this, 29, "BomberParticipantState.frenzyUntilTick");
-        FrenzyLastPlacementTick = FrenzyLastPlacementTick.Bound(host, this, 30, "BomberParticipantState.frenzyLastPlacementTick");
-        TerminalBaseSample.Bound(host, this, 31, "BomberParticipantState.terminalBaseSample");
-        TerminalCurrentSample.Bound(host, this, 32, "BomberParticipantState.terminalCurrentSample");
-        FrenzyBombPromises.Bound(host, this, 33, "BomberParticipantState.frenzyBombPromises");
+        IsBot = IsBot.Bound(host, this, 0, "BomberParticipantState.isBot");
+        BotName = BotName.Bound(host, this, 1, "BomberParticipantState.botName");
+        Slot = Slot.Bound(host, this, 2, "BomberParticipantState.slot");
+        MatchId = MatchId.Bound(host, this, 3, "BomberParticipantState.matchId");
+        CurrentLife = CurrentLife.Bound(host, this, 4, "BomberParticipantState.currentLife");
+        LastLife = LastLife.Bound(host, this, 5, "BomberParticipantState.lastLife");
+        LifeGeneration = LifeGeneration.Bound(host, this, 6, "BomberParticipantState.lifeGeneration");
+        LifePhase = LifePhase.Bound(host, this, 7, "BomberParticipantState.lifePhase");
+        DeathTick = DeathTick.Bound(host, this, 8, "BomberParticipantState.deathTick");
+        RespawnAtTick = RespawnAtTick.Bound(host, this, 9, "BomberParticipantState.respawnAtTick");
+        EliminatedTick = EliminatedTick.Bound(host, this, 10, "BomberParticipantState.eliminatedTick");
+        PendingFinalRespawn = PendingFinalRespawn.Bound(host, this, 11, "BomberParticipantState.pendingFinalRespawn");
+        NextCharacterId = NextCharacterId.Bound(host, this, 12, "BomberParticipantState.nextCharacterId");
+        SelectedForMatchCharacterId = SelectedForMatchCharacterId.Bound(host, this, 13, "BomberParticipantState.selectedForMatchCharacterId");
+        DeathStructurePending = DeathStructurePending.Bound(host, this, 14, "BomberParticipantState.deathStructurePending");
+        DeathStructureLife = DeathStructureLife.Bound(host, this, 15, "BomberParticipantState.deathStructureLife");
+        DeathStructureGeneration = DeathStructureGeneration.Bound(host, this, 16, "BomberParticipantState.deathStructureGeneration");
+        DeathStructureTick = DeathStructureTick.Bound(host, this, 17, "BomberParticipantState.deathStructureTick");
+        TerminalLife = TerminalLife.Bound(host, this, 18, "BomberParticipantState.terminalLife");
+        TerminalGeneration = TerminalGeneration.Bound(host, this, 19, "BomberParticipantState.terminalGeneration");
+        TerminalMatchId = TerminalMatchId.Bound(host, this, 20, "BomberParticipantState.terminalMatchId");
+        TerminalOccurrenceTick = TerminalOccurrenceTick.Bound(host, this, 21, "BomberParticipantState.terminalOccurrenceTick");
+        TerminalCaptureTick = TerminalCaptureTick.Bound(host, this, 22, "BomberParticipantState.terminalCaptureTick");
+        TerminalDestructionTick = TerminalDestructionTick.Bound(host, this, 23, "BomberParticipantState.terminalDestructionTick");
+        DeathConsumedCount = DeathConsumedCount.Bound(host, this, 24, "BomberParticipantState.deathConsumedCount");
+        SuccessorPending = SuccessorPending.Bound(host, this, 25, "BomberParticipantState.successorPending");
+        DeathDropPending = DeathDropPending.Bound(host, this, 26, "BomberParticipantState.deathDropPending");
+        DeathCellX = DeathCellX.Bound(host, this, 27, "BomberParticipantState.deathCellX");
+        DeathCellZ = DeathCellZ.Bound(host, this, 28, "BomberParticipantState.deathCellZ");
+        FrenzyLife = FrenzyLife.Bound(host, this, 29, "BomberParticipantState.frenzyLife");
+        FrenzyGeneration = FrenzyGeneration.Bound(host, this, 30, "BomberParticipantState.frenzyGeneration");
+        FrenzyUntilTick = FrenzyUntilTick.Bound(host, this, 31, "BomberParticipantState.frenzyUntilTick");
+        FrenzyLastPlacementTick = FrenzyLastPlacementTick.Bound(host, this, 32, "BomberParticipantState.frenzyLastPlacementTick");
+        TerminalBaseSample.Bound(host, this, 33, "BomberParticipantState.terminalBaseSample");
+        TerminalCurrentSample.Bound(host, this, 34, "BomberParticipantState.terminalCurrentSample");
+        FrenzyBombPromises.Bound(host, this, 35, "BomberParticipantState.frenzyBombPromises");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -125,81 +131,85 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     void IGeneratedComponent.InvokeFieldChanging(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnSlotChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 1) OnMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 2) OnCurrentLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 3) OnLastLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 4) OnLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 5) OnLifePhaseChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 6) OnDeathTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnRespawnAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 8) OnEliminatedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 9) OnPendingFinalRespawnChanging((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 10) OnNextCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnSelectedForMatchCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 12) OnDeathStructurePendingChanging((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 13) OnDeathStructureLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 14) OnDeathStructureGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 15) OnDeathStructureTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 16) OnTerminalLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 17) OnTerminalGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 18) OnTerminalMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 19) OnTerminalOccurrenceTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnTerminalCaptureTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 21) OnTerminalDestructionTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 22) OnDeathConsumedCountChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 23) OnSuccessorPendingChanging((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 24) OnDeathDropPendingChanging((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 25) OnDeathCellXChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 26) OnDeathCellZChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 27) OnFrenzyLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 28) OnFrenzyGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 29) OnFrenzyUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 30) OnFrenzyLastPlacementTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 31) OnTerminalBaseSampleChanging((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
-        if (ordinal == 32) OnTerminalCurrentSampleChanging((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
-        if (ordinal == 33) OnFrenzyBombPromisesChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 0) OnIsBotChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotNameChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 2) OnSlotChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 3) OnMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 4) OnCurrentLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 5) OnLastLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 6) OnLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnLifePhaseChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnDeathTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 9) OnRespawnAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnEliminatedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnPendingFinalRespawnChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 12) OnNextCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnSelectedForMatchCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnDeathStructurePendingChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 15) OnDeathStructureLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 16) OnDeathStructureGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnDeathStructureTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 18) OnTerminalLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 19) OnTerminalGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 20) OnTerminalMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 21) OnTerminalOccurrenceTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 22) OnTerminalCaptureTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnTerminalDestructionTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 24) OnDeathConsumedCountChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 25) OnSuccessorPendingChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 26) OnDeathDropPendingChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 27) OnDeathCellXChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 28) OnDeathCellZChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 29) OnFrenzyLifeChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 30) OnFrenzyGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 31) OnFrenzyUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 32) OnFrenzyLastPlacementTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 33) OnTerminalBaseSampleChanging((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
+        if (ordinal == 34) OnTerminalCurrentSampleChanging((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
+        if (ordinal == 35) OnFrenzyBombPromisesChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnSlotChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 1) OnMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 2) OnCurrentLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 3) OnLastLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 4) OnLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 5) OnLifePhaseChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 6) OnDeathTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnRespawnAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 8) OnEliminatedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 9) OnPendingFinalRespawnChanged((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 10) OnNextCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnSelectedForMatchCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 12) OnDeathStructurePendingChanged((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 13) OnDeathStructureLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 14) OnDeathStructureGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 15) OnDeathStructureTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 16) OnTerminalLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 17) OnTerminalGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 18) OnTerminalMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 19) OnTerminalOccurrenceTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnTerminalCaptureTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 21) OnTerminalDestructionTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 22) OnDeathConsumedCountChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 23) OnSuccessorPendingChanged((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 24) OnDeathDropPendingChanged((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 25) OnDeathCellXChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 26) OnDeathCellZChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 27) OnFrenzyLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 28) OnFrenzyGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 29) OnFrenzyUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 30) OnFrenzyLastPlacementTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 31) OnTerminalBaseSampleChanged((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
-        if (ordinal == 31) foreach (var change in ContainerChanges.Diff((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!)) OnTerminalBaseSampleItemChanged(change, reason);
-        if (ordinal == 32) OnTerminalCurrentSampleChanged((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
-        if (ordinal == 32) foreach (var change in ContainerChanges.Diff((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!)) OnTerminalCurrentSampleItemChanged(change, reason);
-        if (ordinal == 33) OnFrenzyBombPromisesChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 33) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnFrenzyBombPromisesItemChanged(change, reason);
+        if (ordinal == 0) OnIsBotChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotNameChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 2) OnSlotChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 3) OnMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 4) OnCurrentLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 5) OnLastLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 6) OnLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnLifePhaseChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnDeathTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 9) OnRespawnAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnEliminatedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnPendingFinalRespawnChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 12) OnNextCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnSelectedForMatchCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnDeathStructurePendingChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 15) OnDeathStructureLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 16) OnDeathStructureGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnDeathStructureTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 18) OnTerminalLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 19) OnTerminalGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 20) OnTerminalMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 21) OnTerminalOccurrenceTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 22) OnTerminalCaptureTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnTerminalDestructionTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 24) OnDeathConsumedCountChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 25) OnSuccessorPendingChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 26) OnDeathDropPendingChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 27) OnDeathCellXChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 28) OnDeathCellZChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 29) OnFrenzyLifeChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 30) OnFrenzyGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 31) OnFrenzyUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 32) OnFrenzyLastPlacementTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 33) OnTerminalBaseSampleChanged((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
+        if (ordinal == 33) foreach (var change in ContainerChanges.Diff((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!)) OnTerminalBaseSampleItemChanged(change, reason);
+        if (ordinal == 34) OnTerminalCurrentSampleChanged((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!, reason);
+        if (ordinal == 34) foreach (var change in ContainerChanges.Diff((IReadOnlyList<long>)oldValue!, (IReadOnlyList<long>)newValue!)) OnTerminalCurrentSampleItemChanged(change, reason);
+        if (ordinal == 35) OnFrenzyBombPromisesChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 35) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnFrenzyBombPromisesItemChanged(change, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -226,6 +236,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
         if (writer is IPredictionFieldWriter) return;
+        writer.WriteBoolean("BomberParticipantState.isBot", IsBot.Value);
+        writer.WriteString("BomberParticipantState.botName", BotName.Value);
         writer.WriteInt32("BomberParticipantState.slot", Slot.Value);
         writer.WriteUInt64("BomberParticipantState.matchId", MatchId.Value);
         writer.WriteNetEntityId("BomberParticipantState.currentLife", CurrentLife.Value);
@@ -266,6 +278,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
     {
         if (writer is IPredictionFieldWriter prediction)
         {
+            prediction.WritePredictionField("BomberParticipantState.isBot", IsBot.Value);
+            prediction.WritePredictionField("BomberParticipantState.botName", BotName.Value);
             prediction.WritePredictionField("BomberParticipantState.slot", Slot.Value);
             prediction.WritePredictionField("BomberParticipantState.matchId", MatchId.Value);
             prediction.WritePredictionField("BomberParticipantState.currentLife", CurrentLife.Value);
@@ -302,6 +316,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
             prediction.WritePredictionField("BomberParticipantState.frenzyBombPromises", FrenzyBombPromises);
             return;
         }
+        writer.WriteBoolean("BomberParticipantState.isBot", IsBot.Value);
+        writer.WriteString("BomberParticipantState.botName", BotName.Value);
         writer.WriteInt32("BomberParticipantState.slot", Slot.Value);
         writer.WriteUInt64("BomberParticipantState.matchId", MatchId.Value);
         writer.WriteNetEntityId("BomberParticipantState.currentLife", CurrentLife.Value);
@@ -317,6 +333,10 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadBoolean("BomberParticipantState.isBot", out bool isBotRestore))
+            IsBot.SetSilent(isBotRestore);
+        if (reader.TryReadString("BomberParticipantState.botName", out string botNameRestore))
+            BotName.SetSilent(botNameRestore);
         if (reader.TryReadInt32("BomberParticipantState.slot", out int slotRestore))
             Slot.SetSilent(slotRestore);
         if (reader.TryReadUInt64("BomberParticipantState.matchId", out ulong matchIdRestore))
@@ -389,6 +409,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     object? IGeneratedComponent.ReadField(string fieldId)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal)) return IsBot.Value;
+        if (string.Equals(fieldId, "botName", StringComparison.Ordinal)) return BotName.Value;
         if (string.Equals(fieldId, "slot", StringComparison.Ordinal)) return Slot.Value;
         if (string.Equals(fieldId, "matchId", StringComparison.Ordinal)) return MatchId.Value;
         if (string.Equals(fieldId, "currentLife", StringComparison.Ordinal)) return CurrentLife.Value;
@@ -428,6 +450,18 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     void IGeneratedComponent.WriteField(string fieldId, object? value, bool silent)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal))
+        {
+            if (silent) IsBot.SetSilent((bool)value!);
+            else IsBot.Value = (bool)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "botName", StringComparison.Ordinal))
+        {
+            if (silent) BotName.SetSilent((string)value!);
+            else BotName.Value = (string)value!;
+            return;
+        }
         if (string.Equals(fieldId, "slot", StringComparison.Ordinal))
         {
             if (silent) Slot.SetSilent((int)value!);
@@ -633,6 +667,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     bool IGeneratedSyncMetadata.TryGetSyncField(string fieldId, out ISyncField field)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal)) { field = IsBot; return true; }
+        if (string.Equals(fieldId, "botName", StringComparison.Ordinal)) { field = BotName; return true; }
         if (string.Equals(fieldId, "slot", StringComparison.Ordinal)) { field = Slot; return true; }
         if (string.Equals(fieldId, "matchId", StringComparison.Ordinal)) { field = MatchId; return true; }
         if (string.Equals(fieldId, "currentLife", StringComparison.Ordinal)) { field = CurrentLife; return true; }
@@ -670,6 +706,8 @@ public sealed partial class BomberParticipantState : IGeneratedComponent, IGener
 
     void IGeneratedComponent.ResetToDefault()
     {
+        IsBot.SetSilent(false);
+        BotName.SetSilent(string.Empty);
         Slot.SetSilent(0);
         MatchId.SetSilent(0UL);
         CurrentLife.SetSilent(default!);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Lumio.GameRuntime.Ecs;
 using Lumio.GameRuntime.Gas;
 using Lumio.GameRuntime.Primitives;
@@ -8,17 +9,26 @@ using Lumio.Wire;
 using Lumio.Bomber.Gameplay.Config;
 using Lumio.Bomber.Gameplay.Contracts.Components;
 using Lumio.Bomber.Gameplay.EntityTypes;
+using Lumio.Bomber.Gameplay.Components.Identity;
 
 namespace Lumio.Bomber.Gameplay;
 
-/// <summary>Consumes Runtime-owned successor continuity; never manufactures a binding or transfer result.</summary>
+/// <summary>Restores unowned bot lives and consumes Runtime-owned continuity for admitted humans.</summary>
 internal static class BomberSuccessorLifecycle
 {
-    internal static bool PrepareDeath(World world, BomberParticipantState participant, NetEntityId oldLife, out bool controlled)
+    internal static bool PrepareDeath(World world, BomberParticipantState participant, NetEntityId oldLife, out bool retainLifeTuple)
     {
+        if (participant.IsBot.Value)
+        {
+            // Retain the old life tuple for the ordinary restoration Effect;
+            // an unowned bot has no Runtime connection or binding to transfer.
+            retainLifeTuple = true;
+            return true;
+        }
         // Headless rule fixtures have no admitted owner and therefore no connection to transfer.
         // Once admitted, a disconnected Life retains its nonzero Runtime connection generation.
-        controlled = world.Get<ObserverComponent>(oldLife).ConnectionGeneration != 0;
+        bool controlled = world.Get<ObserverComponent>(oldLife).ConnectionGeneration != 0;
+        retainLifeTuple = controlled;
         if (!controlled) return true;
         BomberSuccessorState state = world.Get<BomberSuccessorState>(participant.Entity);
         if (state.ReservationSlot.Value != 0) return true;
@@ -53,6 +63,11 @@ internal static class BomberSuccessorLifecycle
         foreach (BomberParticipantState participant in world.Each<BomberParticipantState>())
         {
             BomberSuccessorState state = world.Get<BomberSuccessorState>(participant.Entity);
+            if (participant.IsBot.Value)
+            {
+                AdvanceBot(world, match, config, participant, state);
+                continue;
+            }
             if (state.ReservationSlot.Value == 0)
             {
                 if (!state.DormantLife.Value.IsDefault) TryLand(world, match, config, participant, state);
@@ -108,6 +123,46 @@ internal static class BomberSuccessorLifecycle
         }
     }
 
+    private static void AdvanceBot(World world, BomberMatchState match, IBomberConfig config,
+        BomberParticipantState participant, BomberSuccessorState state)
+    {
+        if (!state.DormantLife.Value.IsDefault && state.DormantLife.Value == participant.CurrentLife.Value)
+        {
+            TryLand(world, match, config, participant, state);
+            return;
+        }
+        if (!participant.SuccessorPending.Value || world.Tick < participant.RespawnAtTick.Value ||
+            participant.LifePhase.Value != (int)BomberLifePhase.AwaitingRespawn ||
+            match.Phase.Value is (int)BomberMatchPhase.Podium or (int)BomberMatchPhase.Results) return;
+        BomberPlayerState? pending = world.Each<BomberPlayerState>().SingleOrDefault(p =>
+            p.IsBot.Value && p.Participant.Value == participant.Entity && p.LifeGeneration.Value > participant.LifeGeneration.Value);
+        state.Eligible.Value = true;
+        if (pending is null)
+        {
+            if (state.NextLifeGeneration.Value <= participant.LifeGeneration.Value)
+            {
+                state.NextLifeGeneration.Value = participant.NextLifeGeneration();
+                state.IntentGeneration.Value = checked(state.IntentGeneration.Value + 1);
+            }
+            ConfigureDormant(world, participant, state, world.Commands.Create<PlayerEntity>(), config, state.IntentGeneration.Value);
+            return;
+        }
+        state.DormantLife.Value = pending.Entity;
+        if (state.RestoreOutcome.Value == 1 && state.Target.Value == pending.Entity &&
+            state.EffectWorldId.Value == state.RestoreHandleWorld.Value &&
+            state.EffectInstanceId.Value == state.RestoreHandleInstance.Value &&
+            state.EffectGeneration.Value == state.RestoreHandleGeneration.Value)
+        {
+            participant.CurrentLife.Value = pending.Entity;
+            participant.LifeGeneration.Value = pending.LifeGeneration.Value;
+            state.RestoreHandleGeneration.Value = 0;
+            TryLand(world, match, config, participant, state);
+            return;
+        }
+        if (state.RestoreOutcome.Value == 2) state.RestoreHandleGeneration.Value = 0;
+        if (state.RestoreHandleGeneration.Value == 0) SubmitRestore(world, participant, state, pending.Entity, config);
+    }
+
     private static void TryLand(World world, BomberMatchState match, IBomberConfig config,
         BomberParticipantState participant, BomberSuccessorState state)
     {
@@ -155,6 +210,8 @@ internal static class BomberSuccessorLifecycle
         state.RestoreOutcome.Value = 0;
         state.TransferRequest.Value = 0;
         BomberPlayerState player = order.Get<BomberPlayerState>();
+        player.IsBot.Value = participant.IsBot.Value;
+        if (participant.IsBot.Value) order.Get<IdentityComponent>().Name.Value = participant.BotName.Value;
         player.Participant.Value = participant.Entity;
         player.ParticipantIndex.Value = participant.Slot.Value;
         player.LifeGeneration.Value = state.NextLifeGeneration.Value;

@@ -60,14 +60,14 @@ internal sealed class BomberAdmissionFixture : IWorldSubsystem
     }
 
     internal SuccessorAdmissionPlanResult TryEnqueue(string connection, string account, string room, string entityType, WireProfile profile,
-        long grantBytes = GrantBytes, Action<WorldManager>? beforeValidate = null)
+        long grantBytes = GrantBytes, Action<WorldManager>? beforeValidate = null, string bindingAction = "admit")
     {
         ulong id = ++sequence;
         string text = id.ToString(CultureInfo.InvariantCulture);
         string incarnation = manager.WorldIncarnation.ToHex();
         var context = new SuccessorAdmissionContext(incarnation, text, connection,
             new NetEntityId(manager.World.InstanceId, id).ToHex(), "1", account, room, profile.SuccessorProfileId(),
-            manager.World.InstanceId, manager.World.Tick.ToString(CultureInfo.InvariantCulture), "admit", entityType);
+            manager.World.InstanceId, manager.World.Tick.ToString(CultureInfo.InvariantCulture), bindingAction, entityType);
         var capacity = new SuccessorAdmissionPublication(context.AdmissionId, "4096", "8388608", "256", "8388608", "1", "65536");
         Assert.InRange(charged + grantBytes, 0, ProcessBytes);
         charged += grantBytes; // Debit before the trusted Host grant is opened.
@@ -110,8 +110,12 @@ internal sealed class BomberAdmissionFixture : IWorldSubsystem
             return new(validation.Status, null, validation.Code);
         }
         pending.Add(new(plan, grantId, reservationId, frames, snapshotReceipt.RetainedBytes));
-        manager.Enqueue(new AdmitConnectionMessage(connection, account, room, entityType)
-            { RequestId = id, Profile = profile, Publication = plan.Capacity, AdmissionPlan = plan });
+        WorldMessage request = bindingAction == "admit"
+            ? new AdmitConnectionMessage(connection, account, room, entityType)
+                { RequestId = id, Profile = profile, Publication = plan.Capacity, AdmissionPlan = plan }
+            : new RebindConnectionMessage(connection, account, room, bindingAction)
+                { RequestId = id, Profile = profile, Publication = plan.Capacity, AdmissionPlan = plan };
+        manager.Enqueue(request);
         return new("Acquired", plan, null!);
     }
 

@@ -8,6 +8,12 @@ namespace Lumio.Bomber.Gameplay.Contracts.Components;
 
 public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
+    partial void OnBotFillEnabledChanging(bool old, bool @new, ChangeReason reason);
+    partial void OnBotFillEnabledChanged(bool old, bool @new, ChangeReason reason);
+    partial void OnBotNextJoinTickChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBotNextJoinTickChanged(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBotSequenceChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBotSequenceChanged(ulong old, ulong @new, ChangeReason reason);
     partial void OnNextHfsmMachineKeyChanging(ulong old, ulong @new, ChangeReason reason);
     partial void OnNextHfsmMachineKeyChanged(ulong old, ulong @new, ChangeReason reason);
     partial void OnNextEventSequenceChanging(ulong old, ulong @new, ChangeReason reason);
@@ -118,48 +124,51 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     void IGeneratedComponent.BindFields(ISyncHost host)
     {
-        NextHfsmMachineKey = NextHfsmMachineKey.Bound(host, this, 0, "BomberWorldRuntime.nextHfsmMachineKey");
-        NextEventSequence = NextEventSequence.Bound(host, this, 1, "BomberWorldRuntime.nextEventSequence");
-        NextChainId = NextChainId.Bound(host, this, 2, "BomberWorldRuntime.nextChainId");
-        NextVoxelTransactionSequence = NextVoxelTransactionSequence.Bound(host, this, 3, "BomberWorldRuntime.nextVoxelTransactionSequence");
-        BombPlacementTick = BombPlacementTick.Bound(host, this, 4, "BomberWorldRuntime.bombPlacementTick");
-        BombPlacementMatchId = BombPlacementMatchId.Bound(host, this, 5, "BomberWorldRuntime.bombPlacementMatchId");
-        TerrainInitialMatchId = TerrainInitialMatchId.Bound(host, this, 6, "BomberWorldRuntime.terrainInitialMatchId");
-        TerrainReservedPickups = TerrainReservedPickups.Bound(host, this, 7, "BomberWorldRuntime.terrainReservedPickups");
-        InitialResourcePlan = InitialResourcePlan.Bound(host, this, 8, "BomberWorldRuntime.initialResourcePlan");
-        InitialResourceCursor = InitialResourceCursor.Bound(host, this, 9, "BomberWorldRuntime.initialResourceCursor");
-        InitialResourcePhase = InitialResourcePhase.Bound(host, this, 10, "BomberWorldRuntime.initialResourcePhase");
-        BarrelBombPromises = BarrelBombPromises.Bound(host, this, 11, "BomberWorldRuntime.barrelBombPromises");
-        RegenerationMatchId = RegenerationMatchId.Bound(host, this, 12, "BomberWorldRuntime.regenerationMatchId");
-        RegenerationNextTick = RegenerationNextTick.Bound(host, this, 13, "BomberWorldRuntime.regenerationNextTick");
-        NextResourceGeneration = NextResourceGeneration.Bound(host, this, 14, "BomberWorldRuntime.nextResourceGeneration");
-        RegenerationPromises = RegenerationPromises.Bound(host, this, 15, "BomberWorldRuntime.regenerationPromises");
-        IceBridgePromises = IceBridgePromises.Bound(host, this, 16, "BomberWorldRuntime.iceBridgePromises");
-        FireTrailPromises = FireTrailPromises.Bound(host, this, 17, "BomberWorldRuntime.fireTrailPromises");
-        SupplyAnnouncedMatchId = SupplyAnnouncedMatchId.Bound(host, this, 18, "BomberWorldRuntime.supplyAnnouncedMatchId");
-        SupplyIssuedMatchId = SupplyIssuedMatchId.Bound(host, this, 19, "BomberWorldRuntime.supplyIssuedMatchId");
-        SupplyPending = SupplyPending.Bound(host, this, 20, "BomberWorldRuntime.supplyPending");
-        ParticipantIds.Bound(host, this, 21, "BomberWorldRuntime.participantIds");
-        BombPlacementCells.Bound(host, this, 22, "BomberWorldRuntime.bombPlacementCells");
-        BombPlacementParticipants.Bound(host, this, 23, "BomberWorldRuntime.bombPlacementParticipants");
-        PendingVoxelTransactionIds.Bound(host, this, 24, "BomberWorldRuntime.pendingVoxelTransactionIds");
-        PendingVoxelSubmittedTicks.Bound(host, this, 25, "BomberWorldRuntime.pendingVoxelSubmittedTicks");
-        PendingVoxelMatchIds.Bound(host, this, 26, "BomberWorldRuntime.pendingVoxelMatchIds");
-        PendingSections.Bound(host, this, 27, "BomberWorldRuntime.pendingSections");
-        PendingCellOffsets.Bound(host, this, 28, "BomberWorldRuntime.pendingCellOffsets");
-        PendingExpectedRevisions.Bound(host, this, 29, "BomberWorldRuntime.pendingExpectedRevisions");
-        PendingOldBlocks.Bound(host, this, 30, "BomberWorldRuntime.pendingOldBlocks");
-        PendingNewBlocks.Bound(host, this, 31, "BomberWorldRuntime.pendingNewBlocks");
-        PendingKinds.Bound(host, this, 32, "BomberWorldRuntime.pendingKinds");
-        PendingParticipants.Bound(host, this, 33, "BomberWorldRuntime.pendingParticipants");
-        PendingSourceLives.Bound(host, this, 34, "BomberWorldRuntime.pendingSourceLives");
-        PendingSourceLifeGenerations.Bound(host, this, 35, "BomberWorldRuntime.pendingSourceLifeGenerations");
-        PendingSourceBombs.Bound(host, this, 36, "BomberWorldRuntime.pendingSourceBombs");
-        PendingChests.Bound(host, this, 37, "BomberWorldRuntime.pendingChests");
-        PendingChainIds.Bound(host, this, 38, "BomberWorldRuntime.pendingChainIds");
-        TerrainPendingDetails.Bound(host, this, 39, "BomberWorldRuntime.terrainPendingDetails");
-        TerrainRewards.Bound(host, this, 40, "BomberWorldRuntime.terrainRewards");
-        InitialBarrelReservations.Bound(host, this, 41, "BomberWorldRuntime.initialBarrelReservations");
+        BotFillEnabled = BotFillEnabled.Bound(host, this, 0, "BomberWorldRuntime.botFillEnabled");
+        BotNextJoinTick = BotNextJoinTick.Bound(host, this, 1, "BomberWorldRuntime.botNextJoinTick");
+        BotSequence = BotSequence.Bound(host, this, 2, "BomberWorldRuntime.botSequence");
+        NextHfsmMachineKey = NextHfsmMachineKey.Bound(host, this, 3, "BomberWorldRuntime.nextHfsmMachineKey");
+        NextEventSequence = NextEventSequence.Bound(host, this, 4, "BomberWorldRuntime.nextEventSequence");
+        NextChainId = NextChainId.Bound(host, this, 5, "BomberWorldRuntime.nextChainId");
+        NextVoxelTransactionSequence = NextVoxelTransactionSequence.Bound(host, this, 6, "BomberWorldRuntime.nextVoxelTransactionSequence");
+        BombPlacementTick = BombPlacementTick.Bound(host, this, 7, "BomberWorldRuntime.bombPlacementTick");
+        BombPlacementMatchId = BombPlacementMatchId.Bound(host, this, 8, "BomberWorldRuntime.bombPlacementMatchId");
+        TerrainInitialMatchId = TerrainInitialMatchId.Bound(host, this, 9, "BomberWorldRuntime.terrainInitialMatchId");
+        TerrainReservedPickups = TerrainReservedPickups.Bound(host, this, 10, "BomberWorldRuntime.terrainReservedPickups");
+        InitialResourcePlan = InitialResourcePlan.Bound(host, this, 11, "BomberWorldRuntime.initialResourcePlan");
+        InitialResourceCursor = InitialResourceCursor.Bound(host, this, 12, "BomberWorldRuntime.initialResourceCursor");
+        InitialResourcePhase = InitialResourcePhase.Bound(host, this, 13, "BomberWorldRuntime.initialResourcePhase");
+        BarrelBombPromises = BarrelBombPromises.Bound(host, this, 14, "BomberWorldRuntime.barrelBombPromises");
+        RegenerationMatchId = RegenerationMatchId.Bound(host, this, 15, "BomberWorldRuntime.regenerationMatchId");
+        RegenerationNextTick = RegenerationNextTick.Bound(host, this, 16, "BomberWorldRuntime.regenerationNextTick");
+        NextResourceGeneration = NextResourceGeneration.Bound(host, this, 17, "BomberWorldRuntime.nextResourceGeneration");
+        RegenerationPromises = RegenerationPromises.Bound(host, this, 18, "BomberWorldRuntime.regenerationPromises");
+        IceBridgePromises = IceBridgePromises.Bound(host, this, 19, "BomberWorldRuntime.iceBridgePromises");
+        FireTrailPromises = FireTrailPromises.Bound(host, this, 20, "BomberWorldRuntime.fireTrailPromises");
+        SupplyAnnouncedMatchId = SupplyAnnouncedMatchId.Bound(host, this, 21, "BomberWorldRuntime.supplyAnnouncedMatchId");
+        SupplyIssuedMatchId = SupplyIssuedMatchId.Bound(host, this, 22, "BomberWorldRuntime.supplyIssuedMatchId");
+        SupplyPending = SupplyPending.Bound(host, this, 23, "BomberWorldRuntime.supplyPending");
+        ParticipantIds.Bound(host, this, 24, "BomberWorldRuntime.participantIds");
+        BombPlacementCells.Bound(host, this, 25, "BomberWorldRuntime.bombPlacementCells");
+        BombPlacementParticipants.Bound(host, this, 26, "BomberWorldRuntime.bombPlacementParticipants");
+        PendingVoxelTransactionIds.Bound(host, this, 27, "BomberWorldRuntime.pendingVoxelTransactionIds");
+        PendingVoxelSubmittedTicks.Bound(host, this, 28, "BomberWorldRuntime.pendingVoxelSubmittedTicks");
+        PendingVoxelMatchIds.Bound(host, this, 29, "BomberWorldRuntime.pendingVoxelMatchIds");
+        PendingSections.Bound(host, this, 30, "BomberWorldRuntime.pendingSections");
+        PendingCellOffsets.Bound(host, this, 31, "BomberWorldRuntime.pendingCellOffsets");
+        PendingExpectedRevisions.Bound(host, this, 32, "BomberWorldRuntime.pendingExpectedRevisions");
+        PendingOldBlocks.Bound(host, this, 33, "BomberWorldRuntime.pendingOldBlocks");
+        PendingNewBlocks.Bound(host, this, 34, "BomberWorldRuntime.pendingNewBlocks");
+        PendingKinds.Bound(host, this, 35, "BomberWorldRuntime.pendingKinds");
+        PendingParticipants.Bound(host, this, 36, "BomberWorldRuntime.pendingParticipants");
+        PendingSourceLives.Bound(host, this, 37, "BomberWorldRuntime.pendingSourceLives");
+        PendingSourceLifeGenerations.Bound(host, this, 38, "BomberWorldRuntime.pendingSourceLifeGenerations");
+        PendingSourceBombs.Bound(host, this, 39, "BomberWorldRuntime.pendingSourceBombs");
+        PendingChests.Bound(host, this, 40, "BomberWorldRuntime.pendingChests");
+        PendingChainIds.Bound(host, this, 41, "BomberWorldRuntime.pendingChainIds");
+        TerrainPendingDetails.Bound(host, this, 42, "BomberWorldRuntime.terrainPendingDetails");
+        TerrainRewards.Bound(host, this, 43, "BomberWorldRuntime.terrainRewards");
+        InitialBarrelReservations.Bound(host, this, 44, "BomberWorldRuntime.initialBarrelReservations");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -167,115 +176,121 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     void IGeneratedComponent.InvokeFieldChanging(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnNextHfsmMachineKeyChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 1) OnNextEventSequenceChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 2) OnNextChainIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 3) OnNextVoxelTransactionSequenceChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 4) OnBombPlacementTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 5) OnBombPlacementMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 6) OnTerrainInitialMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnTerrainReservedPickupsChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 8) OnInitialResourcePlanChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 9) OnInitialResourceCursorChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnInitialResourcePhaseChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnBarrelBombPromisesChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 12) OnRegenerationMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 13) OnRegenerationNextTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 14) OnNextResourceGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 15) OnRegenerationPromisesChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 16) OnIceBridgePromisesChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 17) OnFireTrailPromisesChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 18) OnSupplyAnnouncedMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 19) OnSupplyIssuedMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnSupplyPendingChanging((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 21) OnParticipantIdsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 22) OnBombPlacementCellsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 23) OnBombPlacementParticipantsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 24) OnPendingVoxelTransactionIdsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 25) OnPendingVoxelSubmittedTicksChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 26) OnPendingVoxelMatchIdsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 27) OnPendingSectionsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 28) OnPendingCellOffsetsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 29) OnPendingExpectedRevisionsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 30) OnPendingOldBlocksChanging((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
-        if (ordinal == 31) OnPendingNewBlocksChanging((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
-        if (ordinal == 32) OnPendingKindsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 33) OnPendingParticipantsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 34) OnPendingSourceLivesChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 35) OnPendingSourceLifeGenerationsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 36) OnPendingSourceBombsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 37) OnPendingChestsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 38) OnPendingChainIdsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 39) OnTerrainPendingDetailsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 40) OnTerrainRewardsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 41) OnInitialBarrelReservationsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 0) OnBotFillEnabledChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotNextJoinTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 2) OnBotSequenceChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnNextHfsmMachineKeyChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 4) OnNextEventSequenceChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 5) OnNextChainIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 6) OnNextVoxelTransactionSequenceChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnBombPlacementTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 8) OnBombPlacementMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 9) OnTerrainInitialMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnTerrainReservedPickupsChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 11) OnInitialResourcePlanChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 12) OnInitialResourceCursorChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnInitialResourcePhaseChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnBarrelBombPromisesChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 15) OnRegenerationMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 16) OnRegenerationNextTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnNextResourceGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 18) OnRegenerationPromisesChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 19) OnIceBridgePromisesChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 20) OnFireTrailPromisesChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 21) OnSupplyAnnouncedMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 22) OnSupplyIssuedMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnSupplyPendingChanging((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 24) OnParticipantIdsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 25) OnBombPlacementCellsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 26) OnBombPlacementParticipantsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 27) OnPendingVoxelTransactionIdsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 28) OnPendingVoxelSubmittedTicksChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 29) OnPendingVoxelMatchIdsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 30) OnPendingSectionsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 31) OnPendingCellOffsetsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 32) OnPendingExpectedRevisionsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 33) OnPendingOldBlocksChanging((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
+        if (ordinal == 34) OnPendingNewBlocksChanging((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
+        if (ordinal == 35) OnPendingKindsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 36) OnPendingParticipantsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 37) OnPendingSourceLivesChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 38) OnPendingSourceLifeGenerationsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 39) OnPendingSourceBombsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 40) OnPendingChestsChanging((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 41) OnPendingChainIdsChanging((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 42) OnTerrainPendingDetailsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 43) OnTerrainRewardsChanging((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 44) OnInitialBarrelReservationsChanging((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnNextHfsmMachineKeyChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 1) OnNextEventSequenceChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 2) OnNextChainIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 3) OnNextVoxelTransactionSequenceChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 4) OnBombPlacementTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 5) OnBombPlacementMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 6) OnTerrainInitialMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnTerrainReservedPickupsChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 8) OnInitialResourcePlanChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 9) OnInitialResourceCursorChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnInitialResourcePhaseChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnBarrelBombPromisesChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 12) OnRegenerationMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 13) OnRegenerationNextTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 14) OnNextResourceGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 15) OnRegenerationPromisesChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 16) OnIceBridgePromisesChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 17) OnFireTrailPromisesChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 18) OnSupplyAnnouncedMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 19) OnSupplyIssuedMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnSupplyPendingChanged((string)oldValue!, (string)newValue!, reason);
-        if (ordinal == 21) OnParticipantIdsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 21) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnParticipantIdsItemChanged(change, reason);
-        if (ordinal == 22) OnBombPlacementCellsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 22) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnBombPlacementCellsItemChanged(change, reason);
-        if (ordinal == 23) OnBombPlacementParticipantsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 23) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnBombPlacementParticipantsItemChanged(change, reason);
-        if (ordinal == 24) OnPendingVoxelTransactionIdsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 24) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnPendingVoxelTransactionIdsItemChanged(change, reason);
-        if (ordinal == 25) OnPendingVoxelSubmittedTicksChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 25) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingVoxelSubmittedTicksItemChanged(change, reason);
-        if (ordinal == 26) OnPendingVoxelMatchIdsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 26) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingVoxelMatchIdsItemChanged(change, reason);
-        if (ordinal == 27) OnPendingSectionsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 27) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingSectionsItemChanged(change, reason);
-        if (ordinal == 28) OnPendingCellOffsetsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 28) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnPendingCellOffsetsItemChanged(change, reason);
-        if (ordinal == 29) OnPendingExpectedRevisionsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 29) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingExpectedRevisionsItemChanged(change, reason);
-        if (ordinal == 30) OnPendingOldBlocksChanged((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
-        if (ordinal == 30) foreach (var change in ContainerChanges.Diff((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!)) OnPendingOldBlocksItemChanged(change, reason);
-        if (ordinal == 31) OnPendingNewBlocksChanged((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
-        if (ordinal == 31) foreach (var change in ContainerChanges.Diff((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!)) OnPendingNewBlocksItemChanged(change, reason);
-        if (ordinal == 32) OnPendingKindsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 32) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnPendingKindsItemChanged(change, reason);
-        if (ordinal == 33) OnPendingParticipantsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 33) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingParticipantsItemChanged(change, reason);
-        if (ordinal == 34) OnPendingSourceLivesChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 34) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingSourceLivesItemChanged(change, reason);
-        if (ordinal == 35) OnPendingSourceLifeGenerationsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 35) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingSourceLifeGenerationsItemChanged(change, reason);
-        if (ordinal == 36) OnPendingSourceBombsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 36) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingSourceBombsItemChanged(change, reason);
-        if (ordinal == 37) OnPendingChestsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
-        if (ordinal == 37) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingChestsItemChanged(change, reason);
-        if (ordinal == 38) OnPendingChainIdsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
-        if (ordinal == 38) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingChainIdsItemChanged(change, reason);
-        if (ordinal == 39) OnTerrainPendingDetailsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 39) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnTerrainPendingDetailsItemChanged(change, reason);
-        if (ordinal == 40) OnTerrainRewardsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
-        if (ordinal == 40) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnTerrainRewardsItemChanged(change, reason);
-        if (ordinal == 41) OnInitialBarrelReservationsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
-        if (ordinal == 41) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnInitialBarrelReservationsItemChanged(change, reason);
+        if (ordinal == 0) OnBotFillEnabledChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotNextJoinTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 2) OnBotSequenceChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnNextHfsmMachineKeyChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 4) OnNextEventSequenceChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 5) OnNextChainIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 6) OnNextVoxelTransactionSequenceChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 7) OnBombPlacementTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 8) OnBombPlacementMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 9) OnTerrainInitialMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnTerrainReservedPickupsChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 11) OnInitialResourcePlanChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 12) OnInitialResourceCursorChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnInitialResourcePhaseChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnBarrelBombPromisesChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 15) OnRegenerationMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 16) OnRegenerationNextTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnNextResourceGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 18) OnRegenerationPromisesChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 19) OnIceBridgePromisesChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 20) OnFireTrailPromisesChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 21) OnSupplyAnnouncedMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 22) OnSupplyIssuedMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnSupplyPendingChanged((string)oldValue!, (string)newValue!, reason);
+        if (ordinal == 24) OnParticipantIdsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 24) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnParticipantIdsItemChanged(change, reason);
+        if (ordinal == 25) OnBombPlacementCellsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 25) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnBombPlacementCellsItemChanged(change, reason);
+        if (ordinal == 26) OnBombPlacementParticipantsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 26) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnBombPlacementParticipantsItemChanged(change, reason);
+        if (ordinal == 27) OnPendingVoxelTransactionIdsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 27) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnPendingVoxelTransactionIdsItemChanged(change, reason);
+        if (ordinal == 28) OnPendingVoxelSubmittedTicksChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 28) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingVoxelSubmittedTicksItemChanged(change, reason);
+        if (ordinal == 29) OnPendingVoxelMatchIdsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 29) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingVoxelMatchIdsItemChanged(change, reason);
+        if (ordinal == 30) OnPendingSectionsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 30) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingSectionsItemChanged(change, reason);
+        if (ordinal == 31) OnPendingCellOffsetsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 31) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnPendingCellOffsetsItemChanged(change, reason);
+        if (ordinal == 32) OnPendingExpectedRevisionsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 32) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingExpectedRevisionsItemChanged(change, reason);
+        if (ordinal == 33) OnPendingOldBlocksChanged((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
+        if (ordinal == 33) foreach (var change in ContainerChanges.Diff((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!)) OnPendingOldBlocksItemChanged(change, reason);
+        if (ordinal == 34) OnPendingNewBlocksChanged((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!, reason);
+        if (ordinal == 34) foreach (var change in ContainerChanges.Diff((IReadOnlyList<uint>)oldValue!, (IReadOnlyList<uint>)newValue!)) OnPendingNewBlocksItemChanged(change, reason);
+        if (ordinal == 35) OnPendingKindsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 35) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnPendingKindsItemChanged(change, reason);
+        if (ordinal == 36) OnPendingParticipantsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 36) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingParticipantsItemChanged(change, reason);
+        if (ordinal == 37) OnPendingSourceLivesChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 37) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingSourceLivesItemChanged(change, reason);
+        if (ordinal == 38) OnPendingSourceLifeGenerationsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 38) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingSourceLifeGenerationsItemChanged(change, reason);
+        if (ordinal == 39) OnPendingSourceBombsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 39) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingSourceBombsItemChanged(change, reason);
+        if (ordinal == 40) OnPendingChestsChanged((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!, reason);
+        if (ordinal == 40) foreach (var change in ContainerChanges.Diff((IReadOnlyList<NetEntityId>)oldValue!, (IReadOnlyList<NetEntityId>)newValue!)) OnPendingChestsItemChanged(change, reason);
+        if (ordinal == 41) OnPendingChainIdsChanged((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!, reason);
+        if (ordinal == 41) foreach (var change in ContainerChanges.Diff((IReadOnlyList<ulong>)oldValue!, (IReadOnlyList<ulong>)newValue!)) OnPendingChainIdsItemChanged(change, reason);
+        if (ordinal == 42) OnTerrainPendingDetailsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 42) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnTerrainPendingDetailsItemChanged(change, reason);
+        if (ordinal == 43) OnTerrainRewardsChanged((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!, reason);
+        if (ordinal == 43) foreach (var change in ContainerChanges.Diff((IReadOnlyList<string>)oldValue!, (IReadOnlyList<string>)newValue!)) OnTerrainRewardsItemChanged(change, reason);
+        if (ordinal == 44) OnInitialBarrelReservationsChanged((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!, reason);
+        if (ordinal == 44) foreach (var change in ContainerChanges.Diff((IReadOnlyList<int>)oldValue!, (IReadOnlyList<int>)newValue!)) OnInitialBarrelReservationsItemChanged(change, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -302,6 +317,9 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
         if (writer is IPredictionFieldWriter) return;
+        writer.WriteBoolean("BomberWorldRuntime.botFillEnabled", BotFillEnabled.Value);
+        writer.WriteUInt64("BomberWorldRuntime.botNextJoinTick", BotNextJoinTick.Value);
+        writer.WriteUInt64("BomberWorldRuntime.botSequence", BotSequence.Value);
         writer.WriteUInt64("BomberWorldRuntime.nextHfsmMachineKey", NextHfsmMachineKey.Value);
         writer.WriteUInt64("BomberWorldRuntime.nextEventSequence", NextEventSequence.Value);
         writer.WriteUInt64("BomberWorldRuntime.nextChainId", NextChainId.Value);
@@ -350,6 +368,9 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
     {
         if (writer is IPredictionFieldWriter prediction)
         {
+            prediction.WritePredictionField("BomberWorldRuntime.botFillEnabled", BotFillEnabled.Value);
+            prediction.WritePredictionField("BomberWorldRuntime.botNextJoinTick", BotNextJoinTick.Value);
+            prediction.WritePredictionField("BomberWorldRuntime.botSequence", BotSequence.Value);
             prediction.WritePredictionField("BomberWorldRuntime.nextHfsmMachineKey", NextHfsmMachineKey.Value);
             prediction.WritePredictionField("BomberWorldRuntime.nextEventSequence", NextEventSequence.Value);
             prediction.WritePredictionField("BomberWorldRuntime.nextChainId", NextChainId.Value);
@@ -394,12 +415,20 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
             prediction.WritePredictionField("BomberWorldRuntime.initialBarrelReservations", InitialBarrelReservations);
             return;
         }
+        writer.WriteBoolean("BomberWorldRuntime.botFillEnabled", BotFillEnabled.Value);
+        writer.WriteUInt64("BomberWorldRuntime.botNextJoinTick", BotNextJoinTick.Value);
         writer.WriteUInt64("BomberWorldRuntime.supplyAnnouncedMatchId", SupplyAnnouncedMatchId.Value);
         writer.WriteUInt64("BomberWorldRuntime.supplyIssuedMatchId", SupplyIssuedMatchId.Value);
     }
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadBoolean("BomberWorldRuntime.botFillEnabled", out bool botFillEnabledRestore))
+            BotFillEnabled.SetSilent(botFillEnabledRestore);
+        if (reader.TryReadUInt64("BomberWorldRuntime.botNextJoinTick", out ulong botNextJoinTickRestore))
+            BotNextJoinTick.SetSilent(botNextJoinTickRestore);
+        if (reader.TryReadUInt64("BomberWorldRuntime.botSequence", out ulong botSequenceRestore))
+            BotSequence.SetSilent(botSequenceRestore);
         if (reader.TryReadUInt64("BomberWorldRuntime.nextHfsmMachineKey", out ulong nextHfsmMachineKeyRestore))
             NextHfsmMachineKey.SetSilent(nextHfsmMachineKeyRestore);
         if (reader.TryReadUInt64("BomberWorldRuntime.nextEventSequence", out ulong nextEventSequenceRestore))
@@ -488,6 +517,9 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     object? IGeneratedComponent.ReadField(string fieldId)
     {
+        if (string.Equals(fieldId, "botFillEnabled", StringComparison.Ordinal)) return BotFillEnabled.Value;
+        if (string.Equals(fieldId, "botNextJoinTick", StringComparison.Ordinal)) return BotNextJoinTick.Value;
+        if (string.Equals(fieldId, "botSequence", StringComparison.Ordinal)) return BotSequence.Value;
         if (string.Equals(fieldId, "nextHfsmMachineKey", StringComparison.Ordinal)) return NextHfsmMachineKey.Value;
         if (string.Equals(fieldId, "nextEventSequence", StringComparison.Ordinal)) return NextEventSequence.Value;
         if (string.Equals(fieldId, "nextChainId", StringComparison.Ordinal)) return NextChainId.Value;
@@ -535,6 +567,24 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     void IGeneratedComponent.WriteField(string fieldId, object? value, bool silent)
     {
+        if (string.Equals(fieldId, "botFillEnabled", StringComparison.Ordinal))
+        {
+            if (silent) BotFillEnabled.SetSilent((bool)value!);
+            else BotFillEnabled.Value = (bool)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "botNextJoinTick", StringComparison.Ordinal))
+        {
+            if (silent) BotNextJoinTick.SetSilent((ulong)value!);
+            else BotNextJoinTick.Value = (ulong)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "botSequence", StringComparison.Ordinal))
+        {
+            if (silent) BotSequence.SetSilent((ulong)value!);
+            else BotSequence.Value = (ulong)value!;
+            return;
+        }
         if (string.Equals(fieldId, "nextHfsmMachineKey", StringComparison.Ordinal))
         {
             if (silent) NextHfsmMachineKey.SetSilent((ulong)value!);
@@ -770,6 +820,9 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     bool IGeneratedSyncMetadata.TryGetSyncField(string fieldId, out ISyncField field)
     {
+        if (string.Equals(fieldId, "botFillEnabled", StringComparison.Ordinal)) { field = BotFillEnabled; return true; }
+        if (string.Equals(fieldId, "botNextJoinTick", StringComparison.Ordinal)) { field = BotNextJoinTick; return true; }
+        if (string.Equals(fieldId, "botSequence", StringComparison.Ordinal)) { field = BotSequence; return true; }
         if (string.Equals(fieldId, "nextHfsmMachineKey", StringComparison.Ordinal)) { field = NextHfsmMachineKey; return true; }
         if (string.Equals(fieldId, "nextEventSequence", StringComparison.Ordinal)) { field = NextEventSequence; return true; }
         if (string.Equals(fieldId, "nextChainId", StringComparison.Ordinal)) { field = NextChainId; return true; }
@@ -797,6 +850,9 @@ public sealed partial class BomberWorldRuntime : IGeneratedComponent, IGenerated
 
     void IGeneratedComponent.ResetToDefault()
     {
+        BotFillEnabled.SetSilent(false);
+        BotNextJoinTick.SetSilent(0UL);
+        BotSequence.SetSilent(0UL);
         NextHfsmMachineKey.SetSilent(0UL);
         NextEventSequence.SetSilent(0UL);
         NextChainId.SetSilent(0UL);

@@ -131,7 +131,7 @@ internal static class BomberEffectBusiness
             NetEntityId life = participant.DeathStructureLife.Value;
             if (participant.CurrentLife.Value != life || participant.LifeGeneration.Value != participant.DeathStructureGeneration.Value || !world.IsLive(life))
                 throw new InvalidOperationException("Death structure intent no longer identifies its live old body.");
-            if (!BomberSuccessorLifecycle.PrepareDeath(world, participant, life, out bool controlled)) continue;
+            if (!BomberSuccessorLifecycle.PrepareDeath(world, participant, life, out bool retainLifeTuple)) continue;
             AttributeComponent attributes = world.Get<AttributeComponent>(life);
             participant.TerminalLife.Value = life;
             participant.TerminalGeneration.Value = participant.DeathStructureGeneration.Value;
@@ -150,7 +150,7 @@ internal static class BomberEffectBusiness
             BomberDeathDrops.Partition(world, match, participant);
             participant.SuccessorPending.Value = participant.LifePhase.Value == (int)BomberLifePhase.AwaitingRespawn;
             participant.DeathConsumedCount.Value = checked(participant.DeathConsumedCount.Value + 1);
-            if (!controlled) participant.CurrentLife.Value = default;
+            if (!retainLifeTuple) participant.CurrentLife.Value = default;
             participant.DeathStructurePending.Value = false;
             BomberFavoriteFireZones.SourceTerminal(world, life);
             world.Commands.Destroy(life);

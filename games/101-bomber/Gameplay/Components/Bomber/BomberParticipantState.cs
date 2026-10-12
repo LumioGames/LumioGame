@@ -6,6 +6,8 @@ namespace Lumio.Bomber.Gameplay.Contracts.Components;
 [EcsComponent]
 public sealed partial class BomberParticipantState : Component
 {
+    [Persist] public Sync<bool> IsBot = new(Scope.Room, Authority.Server);
+    [Persist] public Sync<string> BotName = new(Scope.Room, Authority.Server) { Value = "" };
     [Persist] public Sync<int> Slot = new(Scope.Room, Authority.Server);
     [Persist] public Sync<ulong> MatchId = new(Scope.Room, Authority.Server);
     [Persist] public Sync<NetEntityId> CurrentLife = new(Scope.Room, Authority.Server);

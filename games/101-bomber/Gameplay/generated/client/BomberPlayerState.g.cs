@@ -8,6 +8,12 @@ namespace Lumio.Bomber.Gameplay.Contracts.Components;
 
 public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedSyncMetadata, IGeneratedOperationComponent
 {
+    partial void OnIsBotChanging(bool old, bool @new, ChangeReason reason);
+    partial void OnIsBotChanged(bool old, bool @new, ChangeReason reason);
+    partial void OnBotTargetCellChanging(int old, int @new, ChangeReason reason);
+    partial void OnBotTargetCellChanged(int old, int @new, ChangeReason reason);
+    partial void OnBotLastBombTickChanging(ulong old, ulong @new, ChangeReason reason);
+    partial void OnBotLastBombTickChanged(ulong old, ulong @new, ChangeReason reason);
     partial void OnLifePhaseChanging(int old, int @new, ChangeReason reason);
     partial void OnLifePhaseChanged(int old, int @new, ChangeReason reason);
     partial void OnParticipantChanging(NetEntityId old, NetEntityId @new, ChangeReason reason);
@@ -67,33 +73,36 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.BindFields(ISyncHost host)
     {
-        LifePhase = LifePhase.Bound(host, this, 0, "BomberPlayerState.lifePhase");
-        Participant = Participant.Bound(host, this, 1, "BomberPlayerState.participant");
-        LifeGeneration = LifeGeneration.Bound(host, this, 2, "BomberPlayerState.lifeGeneration");
-        Facing = Facing.Bound(host, this, 3, "BomberPlayerState.facing");
-        NextCharacterId = NextCharacterId.Bound(host, this, 4, "BomberPlayerState.nextCharacterId");
-        ParticipantIndex = ParticipantIndex.Bound(host, this, 5, "BomberPlayerState.participantIndex");
-        RespawnAtTick = RespawnAtTick.Bound(host, this, 6, "BomberPlayerState.respawnAtTick");
-        ProtectedUntilTick = ProtectedUntilTick.Bound(host, this, 7, "BomberPlayerState.protectedUntilTick");
-        EliminatedTick = EliminatedTick.Bound(host, this, 8, "BomberPlayerState.eliminatedTick");
-        HatCount = HatCount.Bound(host, this, 9, "BomberPlayerState.hatCount");
-        MaximumHealth = MaximumHealth.Bound(host, this, 10, "BomberPlayerState.maximumHealth");
-        RestoreIntent = RestoreIntent.Bound(host, this, 11, "BomberPlayerState.restoreIntent");
-        RestorePending = RestorePending.Bound(host, this, 12, "BomberPlayerState.restorePending");
-        RestoredIntent = RestoredIntent.Bound(host, this, 13, "BomberPlayerState.restoredIntent");
-        GoldenHeartCount = GoldenHeartCount.Bound(host, this, 14, "BomberPlayerState.goldenHeartCount");
-        InputMemoryMatchId = InputMemoryMatchId.Bound(host, this, 15, "BomberPlayerState.inputMemoryMatchId");
-        PendingTurnDirection = PendingTurnDirection.Bound(host, this, 16, "BomberPlayerState.pendingTurnDirection");
-        PendingTurnUntilTick = PendingTurnUntilTick.Bound(host, this, 17, "BomberPlayerState.pendingTurnUntilTick");
-        LastMoveDirection = LastMoveDirection.Bound(host, this, 18, "BomberPlayerState.lastMoveDirection");
-        LastMoveTick = LastMoveTick.Bound(host, this, 19, "BomberPlayerState.lastMoveTick");
-        LastAssistTick = LastAssistTick.Bound(host, this, 20, "BomberPlayerState.lastAssistTick");
-        AssistToleranceMilli = AssistToleranceMilli.Bound(host, this, 21, "BomberPlayerState.assistToleranceMilli");
-        PendingPlaceUntilTick = PendingPlaceUntilTick.Bound(host, this, 22, "BomberPlayerState.pendingPlaceUntilTick");
-        BombButtonMode = BombButtonMode.Bound(host, this, 23, "BomberPlayerState.bombButtonMode");
-        BombButtonStartedTick = BombButtonStartedTick.Bound(host, this, 24, "BomberPlayerState.bombButtonStartedTick");
-        BombButtonLastInputTick = BombButtonLastInputTick.Bound(host, this, 25, "BomberPlayerState.bombButtonLastInputTick");
-        BombButtonLifeGeneration = BombButtonLifeGeneration.Bound(host, this, 26, "BomberPlayerState.bombButtonLifeGeneration");
+        IsBot = IsBot.Bound(host, this, 0, "BomberPlayerState.isBot");
+        BotTargetCell = BotTargetCell.Bound(host, this, 1, "BomberPlayerState.botTargetCell");
+        BotLastBombTick = BotLastBombTick.Bound(host, this, 2, "BomberPlayerState.botLastBombTick");
+        LifePhase = LifePhase.Bound(host, this, 3, "BomberPlayerState.lifePhase");
+        Participant = Participant.Bound(host, this, 4, "BomberPlayerState.participant");
+        LifeGeneration = LifeGeneration.Bound(host, this, 5, "BomberPlayerState.lifeGeneration");
+        Facing = Facing.Bound(host, this, 6, "BomberPlayerState.facing");
+        NextCharacterId = NextCharacterId.Bound(host, this, 7, "BomberPlayerState.nextCharacterId");
+        ParticipantIndex = ParticipantIndex.Bound(host, this, 8, "BomberPlayerState.participantIndex");
+        RespawnAtTick = RespawnAtTick.Bound(host, this, 9, "BomberPlayerState.respawnAtTick");
+        ProtectedUntilTick = ProtectedUntilTick.Bound(host, this, 10, "BomberPlayerState.protectedUntilTick");
+        EliminatedTick = EliminatedTick.Bound(host, this, 11, "BomberPlayerState.eliminatedTick");
+        HatCount = HatCount.Bound(host, this, 12, "BomberPlayerState.hatCount");
+        MaximumHealth = MaximumHealth.Bound(host, this, 13, "BomberPlayerState.maximumHealth");
+        RestoreIntent = RestoreIntent.Bound(host, this, 14, "BomberPlayerState.restoreIntent");
+        RestorePending = RestorePending.Bound(host, this, 15, "BomberPlayerState.restorePending");
+        RestoredIntent = RestoredIntent.Bound(host, this, 16, "BomberPlayerState.restoredIntent");
+        GoldenHeartCount = GoldenHeartCount.Bound(host, this, 17, "BomberPlayerState.goldenHeartCount");
+        InputMemoryMatchId = InputMemoryMatchId.Bound(host, this, 18, "BomberPlayerState.inputMemoryMatchId");
+        PendingTurnDirection = PendingTurnDirection.Bound(host, this, 19, "BomberPlayerState.pendingTurnDirection");
+        PendingTurnUntilTick = PendingTurnUntilTick.Bound(host, this, 20, "BomberPlayerState.pendingTurnUntilTick");
+        LastMoveDirection = LastMoveDirection.Bound(host, this, 21, "BomberPlayerState.lastMoveDirection");
+        LastMoveTick = LastMoveTick.Bound(host, this, 22, "BomberPlayerState.lastMoveTick");
+        LastAssistTick = LastAssistTick.Bound(host, this, 23, "BomberPlayerState.lastAssistTick");
+        AssistToleranceMilli = AssistToleranceMilli.Bound(host, this, 24, "BomberPlayerState.assistToleranceMilli");
+        PendingPlaceUntilTick = PendingPlaceUntilTick.Bound(host, this, 25, "BomberPlayerState.pendingPlaceUntilTick");
+        BombButtonMode = BombButtonMode.Bound(host, this, 26, "BomberPlayerState.bombButtonMode");
+        BombButtonStartedTick = BombButtonStartedTick.Bound(host, this, 27, "BomberPlayerState.bombButtonStartedTick");
+        BombButtonLastInputTick = BombButtonLastInputTick.Bound(host, this, 28, "BomberPlayerState.bombButtonLastInputTick");
+        BombButtonLifeGeneration = BombButtonLifeGeneration.Bound(host, this, 29, "BomberPlayerState.bombButtonLifeGeneration");
     }
 
     void IGeneratedComponent.InvokePostAttribute() => PostAttribute();
@@ -101,64 +110,70 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.InvokeFieldChanging(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnLifePhaseChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 1) OnParticipantChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 2) OnLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 3) OnFacingChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 4) OnNextCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 5) OnParticipantIndexChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 6) OnRespawnAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnProtectedUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 8) OnEliminatedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 9) OnHatCountChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnMaximumHealthChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnRestoreIntentChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 12) OnRestorePendingChanging((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 13) OnRestoredIntentChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 14) OnGoldenHeartCountChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 15) OnInputMemoryMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 16) OnPendingTurnDirectionChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 17) OnPendingTurnUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 18) OnLastMoveDirectionChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 19) OnLastMoveTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnLastAssistTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 21) OnAssistToleranceMilliChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 22) OnPendingPlaceUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 23) OnBombButtonModeChanging((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 24) OnBombButtonStartedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 25) OnBombButtonLastInputTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 26) OnBombButtonLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 0) OnIsBotChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotTargetCellChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 2) OnBotLastBombTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnLifePhaseChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnParticipantChanging((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 5) OnLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 6) OnFacingChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 7) OnNextCharacterIdChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnParticipantIndexChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnRespawnAtTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnProtectedUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnEliminatedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 12) OnHatCountChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnMaximumHealthChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnRestoreIntentChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 15) OnRestorePendingChanging((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 16) OnRestoredIntentChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnGoldenHeartCountChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 18) OnInputMemoryMatchIdChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 19) OnPendingTurnDirectionChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 20) OnPendingTurnUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 21) OnLastMoveDirectionChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 22) OnLastMoveTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnLastAssistTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 24) OnAssistToleranceMilliChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 25) OnPendingPlaceUntilTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 26) OnBombButtonModeChanging((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 27) OnBombButtonStartedTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 28) OnBombButtonLastInputTickChanging((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 29) OnBombButtonLifeGenerationChanging((ulong)oldValue!, (ulong)newValue!, reason);
     }
 
     void IGeneratedComponent.InvokeFieldChanged(int ordinal, object? oldValue, object? newValue, ChangeReason reason)
     {
-        if (ordinal == 0) OnLifePhaseChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 1) OnParticipantChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
-        if (ordinal == 2) OnLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 3) OnFacingChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 4) OnNextCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 5) OnParticipantIndexChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 6) OnRespawnAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 7) OnProtectedUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 8) OnEliminatedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 9) OnHatCountChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 10) OnMaximumHealthChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 11) OnRestoreIntentChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 12) OnRestorePendingChanged((bool)oldValue!, (bool)newValue!, reason);
-        if (ordinal == 13) OnRestoredIntentChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 14) OnGoldenHeartCountChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 15) OnInputMemoryMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 16) OnPendingTurnDirectionChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 17) OnPendingTurnUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 18) OnLastMoveDirectionChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 19) OnLastMoveTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 20) OnLastAssistTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 21) OnAssistToleranceMilliChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 22) OnPendingPlaceUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 23) OnBombButtonModeChanged((int)oldValue!, (int)newValue!, reason);
-        if (ordinal == 24) OnBombButtonStartedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 25) OnBombButtonLastInputTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
-        if (ordinal == 26) OnBombButtonLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 0) OnIsBotChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 1) OnBotTargetCellChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 2) OnBotLastBombTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 3) OnLifePhaseChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 4) OnParticipantChanged((NetEntityId)oldValue!, (NetEntityId)newValue!, reason);
+        if (ordinal == 5) OnLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 6) OnFacingChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 7) OnNextCharacterIdChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 8) OnParticipantIndexChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 9) OnRespawnAtTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 10) OnProtectedUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 11) OnEliminatedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 12) OnHatCountChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 13) OnMaximumHealthChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 14) OnRestoreIntentChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 15) OnRestorePendingChanged((bool)oldValue!, (bool)newValue!, reason);
+        if (ordinal == 16) OnRestoredIntentChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 17) OnGoldenHeartCountChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 18) OnInputMemoryMatchIdChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 19) OnPendingTurnDirectionChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 20) OnPendingTurnUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 21) OnLastMoveDirectionChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 22) OnLastMoveTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 23) OnLastAssistTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 24) OnAssistToleranceMilliChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 25) OnPendingPlaceUntilTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 26) OnBombButtonModeChanged((int)oldValue!, (int)newValue!, reason);
+        if (ordinal == 27) OnBombButtonStartedTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 28) OnBombButtonLastInputTickChanged((ulong)oldValue!, (ulong)newValue!, reason);
+        if (ordinal == 29) OnBombButtonLifeGenerationChanged((ulong)oldValue!, (ulong)newValue!, reason);
     }
 
     bool IGeneratedComponent.DispatchClientWrite(in SyncWrite write)
@@ -185,6 +200,9 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
     void IGeneratedComponent.CapturePersist(IPersistWriter writer)
     {
         if (writer is IPredictionFieldWriter) return;
+        writer.WriteBoolean("BomberPlayerState.isBot", IsBot.Value);
+        writer.WriteInt32("BomberPlayerState.botTargetCell", BotTargetCell.Value);
+        writer.WriteUInt64("BomberPlayerState.botLastBombTick", BotLastBombTick.Value);
         writer.WriteInt32("BomberPlayerState.lifePhase", LifePhase.Value);
         writer.WriteNetEntityId("BomberPlayerState.participant", Participant.Value);
         writer.WriteUInt64("BomberPlayerState.lifeGeneration", LifeGeneration.Value);
@@ -218,6 +236,9 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
     {
         if (writer is IPredictionFieldWriter prediction)
         {
+            prediction.WritePredictionField("BomberPlayerState.isBot", IsBot.Value);
+            prediction.WritePredictionField("BomberPlayerState.botTargetCell", BotTargetCell.Value);
+            prediction.WritePredictionField("BomberPlayerState.botLastBombTick", BotLastBombTick.Value);
             prediction.WritePredictionField("BomberPlayerState.lifePhase", LifePhase.Value);
             prediction.WritePredictionField("BomberPlayerState.participant", Participant.Value);
             prediction.WritePredictionField("BomberPlayerState.lifeGeneration", LifeGeneration.Value);
@@ -247,6 +268,7 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
             prediction.WritePredictionField("BomberPlayerState.bombButtonLifeGeneration", BombButtonLifeGeneration.Value);
             return;
         }
+        writer.WriteBoolean("BomberPlayerState.isBot", IsBot.Value);
         writer.WriteInt32("BomberPlayerState.lifePhase", LifePhase.Value);
         writer.WriteNetEntityId("BomberPlayerState.participant", Participant.Value);
         writer.WriteUInt64("BomberPlayerState.lifeGeneration", LifeGeneration.Value);
@@ -270,6 +292,12 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.RestorePersist(IPersistReader reader)
     {
+        if (reader.TryReadBoolean("BomberPlayerState.isBot", out bool isBotRestore))
+            IsBot.SetSilent(isBotRestore);
+        if (reader.TryReadInt32("BomberPlayerState.botTargetCell", out int botTargetCellRestore))
+            BotTargetCell.SetSilent(botTargetCellRestore);
+        if (reader.TryReadUInt64("BomberPlayerState.botLastBombTick", out ulong botLastBombTickRestore))
+            BotLastBombTick.SetSilent(botLastBombTickRestore);
         if (reader.TryReadInt32("BomberPlayerState.lifePhase", out int lifePhaseRestore))
             LifePhase.SetSilent(lifePhaseRestore);
         if (reader.TryReadNetEntityId("BomberPlayerState.participant", out NetEntityId participantRestore))
@@ -328,6 +356,9 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     object? IGeneratedComponent.ReadField(string fieldId)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal)) return IsBot.Value;
+        if (string.Equals(fieldId, "botTargetCell", StringComparison.Ordinal)) return BotTargetCell.Value;
+        if (string.Equals(fieldId, "botLastBombTick", StringComparison.Ordinal)) return BotLastBombTick.Value;
         if (string.Equals(fieldId, "lifePhase", StringComparison.Ordinal)) return LifePhase.Value;
         if (string.Equals(fieldId, "participant", StringComparison.Ordinal)) return Participant.Value;
         if (string.Equals(fieldId, "lifeGeneration", StringComparison.Ordinal)) return LifeGeneration.Value;
@@ -360,6 +391,24 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.WriteField(string fieldId, object? value, bool silent)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal))
+        {
+            if (silent) IsBot.SetSilent((bool)value!);
+            else IsBot.Value = (bool)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "botTargetCell", StringComparison.Ordinal))
+        {
+            if (silent) BotTargetCell.SetSilent((int)value!);
+            else BotTargetCell.Value = (int)value!;
+            return;
+        }
+        if (string.Equals(fieldId, "botLastBombTick", StringComparison.Ordinal))
+        {
+            if (silent) BotLastBombTick.SetSilent((ulong)value!);
+            else BotLastBombTick.Value = (ulong)value!;
+            return;
+        }
         if (string.Equals(fieldId, "lifePhase", StringComparison.Ordinal))
         {
             if (silent) LifePhase.SetSilent((int)value!);
@@ -526,6 +575,9 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     bool IGeneratedSyncMetadata.TryGetSyncField(string fieldId, out ISyncField field)
     {
+        if (string.Equals(fieldId, "isBot", StringComparison.Ordinal)) { field = IsBot; return true; }
+        if (string.Equals(fieldId, "botTargetCell", StringComparison.Ordinal)) { field = BotTargetCell; return true; }
+        if (string.Equals(fieldId, "botLastBombTick", StringComparison.Ordinal)) { field = BotLastBombTick; return true; }
         if (string.Equals(fieldId, "lifePhase", StringComparison.Ordinal)) { field = LifePhase; return true; }
         if (string.Equals(fieldId, "participant", StringComparison.Ordinal)) { field = Participant; return true; }
         if (string.Equals(fieldId, "lifeGeneration", StringComparison.Ordinal)) { field = LifeGeneration; return true; }
@@ -559,6 +611,9 @@ public sealed partial class BomberPlayerState : IGeneratedComponent, IGeneratedS
 
     void IGeneratedComponent.ResetToDefault()
     {
+        IsBot.SetSilent(false);
+        BotTargetCell.SetSilent(0);
+        BotLastBombTick.SetSilent(0UL);
         LifePhase.SetSilent(0);
         Participant.SetSilent(default!);
         LifeGeneration.SetSilent(0UL);

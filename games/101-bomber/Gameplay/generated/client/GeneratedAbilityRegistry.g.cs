@@ -14,6 +14,7 @@ public static class GeneratedAbilityRegistry
         if (abilityType == typeof(global::Lumio.Bomber.Gameplay.PickupAbility)) return 3u;
         if (abilityType == typeof(global::Lumio.Bomber.Gameplay.PlaceBombAbility)) return 2u;
         if (abilityType == typeof(global::Lumio.Bomber.Gameplay.SelectCharacterAbility)) return 5u;
+        if (abilityType == typeof(global::Lumio.Bomber.Gameplay.SetBotFillAbility)) return 8u;
         if (abilityType == typeof(global::Lumio.Bomber.Gameplay.UseActiveSkillAbility)) return 4u;
         return 0u;
     }
@@ -31,6 +32,7 @@ public static class GeneratedAbilityRegistry
         registry.RegisterAbility<global::Lumio.Bomber.Gameplay.PickupAbility, global::Lumio.Bomber.Gameplay.PickupAbility.Input>(3u);
         registry.RegisterAbility<global::Lumio.Bomber.Gameplay.PlaceBombAbility, global::Lumio.Bomber.Gameplay.PlaceBombAbility.Input>(2u);
         registry.RegisterAbility<global::Lumio.Bomber.Gameplay.SelectCharacterAbility, global::Lumio.Bomber.Gameplay.SelectCharacterAbility.Input>(5u);
+        registry.RegisterAbility<global::Lumio.Bomber.Gameplay.SetBotFillAbility, global::Lumio.Bomber.Gameplay.SetBotFillAbility.Input>(8u);
         registry.RegisterAbility<global::Lumio.Bomber.Gameplay.UseActiveSkillAbility, global::Lumio.Bomber.Gameplay.UseActiveSkillAbility.Input>(4u);
     }
 

@@ -5,5 +5,5 @@ namespace Lumio.Bomber.Gameplay;
 internal static class GeneratedSyncTable
 {
     internal static readonly string Side = "Client";
-    internal static readonly int FieldCount = 536;
+    internal static readonly int FieldCount = 544;
 }
