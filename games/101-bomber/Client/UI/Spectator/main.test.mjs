@@ -26,7 +26,7 @@ async function runPage(options = {}) {
   const status = { textContent: '' }, legend = { innerHTML: '' }, enter = { hidden: false, addEventListener() {} };
   const exports = {
     ConfigureConfig(value) { runtime.configurations ??= []; runtime.configurations.push(value); if (options.configError) throw new Error(options.configError); },
-    async Boot(...args) { admissions.push(args); await options.bootWait; if (options.bootError) throw new Error(options.bootError); },
+    async Boot(...args) { admissions.push(args); await options.onBoot?.(runtime, admissions.length); await options.bootWait; if (options.bootError) throw new Error(options.bootError); },
     async Close() { runtime.closes++; await options.closeWait; },
     Tick() { runtime.ticks++; if (runtime.tickError) throw new Error(runtime.tickError); },
     TickRateHz() { return 30; }, SessionState() { return JSON.stringify({ state: runtime.state, notServingCloses: runtime.notServingCloses ?? 0, lastError: runtime.error ?? '', sentInputs: 0 }); },
@@ -50,6 +50,7 @@ async function runPage(options = {}) {
         ?? { ok:true, text:async()=> options.configWait ? await options.configWait : '{"files":{}}' };
       if (String(url).endsWith('official-catalog.json')) return options.catalog ?? { ok:true,text:async()=>fs.readFileSync(path.join(ROOT,'Server/Assets/Maps/official-catalog.json'),'utf8') };
       fetchCalls.push({ url:String(url),init });
+      if (options.fetchResponse) return options.fetchResponse(String(url),init,fetchCalls);
       if (String(url).endsWith('/me')) return { ok:true,headers:{ get:()=> 'test-csrf' } };
       return { ok:true,json:async()=>options.launchWait ? await options.launchWait : options.launch ?? LAUNCH };
     },
@@ -474,7 +475,7 @@ test('room entry connects through Platform before any character choice', async (
   });
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`, context);
-  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start('), MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')), context);
   const running = context.start(); await drain();
   assert.deepEqual(calls, ['wasm', 'config', 'launch', 'boot', 'pump']);
   choose('duck'); await running;
@@ -491,7 +492,7 @@ test('room connection does not depend on a pre-admission selection', async () =>
     csharp:{async boot(){calls.push('boot');}},pumpSession(){},async releaseReplica(){},failLaunch(error){throw error;}});
   vm.runInContext(`const PLAYER_MODE=true; let selectedCharacter=null; let initialSelectionPending=false;
     let initialSelectionSent=false; let terminal=false,active=false,connectionAttempt=0,runtimeClosed=true,booting=Promise.resolve(),launchAbort=null,nextPumpAt=0;`,context);
-  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start()'),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
+  vm.runInContext(MAIN_SOURCE.slice(MAIN_SOURCE.indexOf('async function start('),MAIN_SOURCE.indexOf('async function chooseFirstCharacter(')),context);
   const running=context.start();await drain();vm.runInContext('terminal=true;connectionAttempt++;',context);
   choose('cat');await running;assert.deepEqual(calls,['launch','boot']);
 });
@@ -764,4 +765,75 @@ test('public room entry ignores injected launch and preserves fresh authenticate
  assert.match(nodes.get('room-status').textContent,/未确认.*重试.*等待真人/);
  assert.equal(state.room.fillEnabled,false);assert.equal(state.room.players.length,1);
  nodes.get('room-fill').listeners.click();assert.deepEqual(commands,[true,true]);
+});
+const ADMISSION_REFUSED = 'reason=tick_exception phase=dispatch generation=1 txn=close=1008 exception=admission_refused';
+const PROTOCOL_CLOSE = 'reason=tick_exception phase=dispatch generation=1 txn=close=1008 exception=protocol_violation';
+async function admissionPage({ refuse = 1, accountStatus = 200, launchStatus = 200, closeReason = ADMISSION_REFUSED } = {}) {
+  const nodes = new Map(['room','room-count','room-status','room-seats','room-fill','room-wait','room-character','room-selection-status','stage-note','player-info','player-controls','player-state','player-self'].map(id => [id,testNode()]));
+  const launches = []; let csrfCalls = 0;
+  const page = await runPage({ publicPlayer: true, nodes, runtime: { handle: [] },
+    onBoot(runtime, ordinal) { runtime.state = ordinal <= refuse ? 'faulted' : 'active'; runtime.error = ordinal <= refuse ? closeReason : ''; },
+    fetchResponse(url) {
+      if (url.endsWith('/me')) { csrfCalls++; return { ok: accountStatus === 200, status: accountStatus, headers: { get: () => `csrf-${csrfCalls}` } }; }
+      const body = { ...LAUNCH, serverAudience:'test-audience',gameId:'101-bomber',gameReleaseId:'schema17-test',contractId:'test-contract',allocationId:'allocation-test',admissionExpiresAt:123456,accountId:'test-account',loginName:'Alice',admissionCredential:`fresh-test-credential-${launches.length + 1}` };
+      launches.push(body); return { ok: launchStatus === 200, status: launchStatus, json: async() => body };
+    },
+    exports: { SendMove(){},PlaceBomb(){},BombButton(){},UseActiveSkill(){},SelectCharacter(){},SetBotFill(){},PlayerState(){return '{}';},SelectionConfig(){return '{}';} },
+  });
+  return { page, nodes, launches, csrfCalls: () => csrfCalls };
+}
+test('pre-active admission_refused retires its host and obtains fresh authenticated launch after 500ms', async () => {
+  const { page, launches, csrfCalls } = await admissionPage();
+  assert.equal(page.admissions.length,1); assert.equal(page.runtime.closes,1);
+  assert.equal([...page.timers.values()][0]?.delay,500);
+  await page.tick();
+  assert.equal(page.admissions.length,2); assert.equal(csrfCalls(),2); assert.equal(page.spectator.status,'active');
+  assert.equal(page.runtime.closes,1,'completed cleanup is not repeated on the fresh start');
+  assert.notEqual(launches[0].admissionCredential,launches[1].admissionCredential);
+  assert.equal(Object.keys(launches[1]).length,12);
+  assert.deepEqual(JSON.parse(page.admissions[1][0]),launches[1]);
+  assert.deepEqual(page.fetchCalls.filter(f=>f.url.endsWith('/launch')).map(f=>f.init.headers['X-CSRF-Token']),['csrf-1','csrf-2']);
+  assert.ok(page.fetchCalls.every(f=>f.init.credentials==='same-origin'));
+  assert.ok(page.logged.every(line=>!line.includes('fresh-test-credential')));
+});
+test('pre-active admission refusal exhausts exactly three fresh launches and shows room unavailable', async () => {
+  const { page, nodes, csrfCalls } = await admissionPage({ refuse:10 });
+  await page.tick(); await page.tick();
+  assert.equal(page.admissions.length,3); assert.equal(csrfCalls(),3); assert.equal(page.runtime.closes,3);
+  assert.equal(page.timers.size,0); assert.equal(page.spectator.status,'failed');
+  assert.equal(nodes.get('room-status').textContent,'房间已满或暂不可加入');
+  assert.equal(nodes.get('room-fill').disabled,true);
+});
+for (const status of [401,403]) test(`launch HTTP ${status} remains terminal without startup retry`, async () => {
+  const { page, csrfCalls } = await admissionPage({ launchStatus:status });
+  assert.equal(page.admissions.length,0);assert.equal(csrfCalls(),1);assert.equal(page.timers.size,0);
+  assert.equal(page.fetchCalls.filter(f=>f.url.endsWith('/launch')).length,1);
+  assert.equal(page.spectator.status,'failed');
+});
+test('active session protocol violation is terminal and never fetches another admission', async () => {
+  const { page, csrfCalls } = await admissionPage({ refuse:0 });
+  assert.equal(page.spectator.status,'active'); page.runtime.state='faulted';page.runtime.error=PROTOCOL_CLOSE;
+  await page.tick();assert.equal(page.spectator.status,'failed');assert.equal(page.admissions.length,1);assert.equal(csrfCalls(),1);assert.equal(page.timers.size,0);
+});
+test('pre-active protocol and signature failures do not use admission-refused retry', async () => {
+  for (const closeReason of [PROTOCOL_CLOSE, 'reason=tick_exception phase=dispatch generation=1 txn=close=1008 exception=signature_invalid', 'certificate validation failed']) {
+    const { page } = await admissionPage({ closeReason });
+    assert.equal(page.admissions.length,1);assert.equal(page.timers.size,0);assert.equal(page.spectator.status,'failed');
+  }
+});
+test('active admission-refused close stays terminal after the startup reached Active', async () => {
+  const { page } = await admissionPage({ refuse:0 });
+  page.runtime.state='faulted';page.runtime.error=ADMISSION_REFUSED;
+  await page.tick();assert.equal(page.admissions.length,1);assert.equal(page.timers.size,0);assert.equal(page.spectator.status,'failed');
+});
+test('canceling admission backoff retires its callback and cannot boot another host', async () => {
+  const { page } = await admissionPage();
+  const retired=[...page.timers.values()][0];assert.equal(retired.delay,500);
+  await page.evalInPage("finish('closed')");
+  retired.callback();await drain();
+  assert.equal(page.admissions.length,1);assert.equal(page.timers.size,0);assert.equal(page.spectator.status,'closed');
+});
+for (const status of [401,403]) test(`account HTTP ${status} never retries or requests an admission`, async () => {
+  const { page } = await admissionPage({ accountStatus:status });
+  assert.equal(page.admissions.length,0);assert.equal(page.fetchCalls.length,1);assert.equal(page.timers.size,0);assert.equal(page.spectator.status,'failed');
 });

@@ -77,7 +77,7 @@ public sealed class BrowserSessionOwner : IDisposable
         while (socket.State == WebSocketState.Open)
         {
             var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
-            if (result.MessageType == WebSocketMessageType.Close) { await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "closed", CancellationToken.None); break; }
+            if (result.MessageType == WebSocketMessageType.Close) { if (socket.State == WebSocketState.CloseReceived) await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "closed", CancellationToken.None); break; }
             if (!result.EndOfMessage) throw new InvalidOperationException("unexpected oversized test input");
             lock (_received) _received.Add(buffer.AsSpan(0, result.Count).ToArray());
         }
@@ -86,6 +86,8 @@ public sealed class BrowserSessionOwner : IDisposable
     {
         _accepted.GetAwaiter().GetResult().SendAsync(frame, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
     }
+    public void PeerClose(int code, string reason) => _accepted.GetAwaiter().GetResult()
+        .CloseOutputAsync((WebSocketCloseStatus)code, reason, CancellationToken.None).GetAwaiter().GetResult();
     public void Authorize(ulong authority = 999, NetEntityId? self = null, ulong generation = 9)
     {
         _generation = generation;

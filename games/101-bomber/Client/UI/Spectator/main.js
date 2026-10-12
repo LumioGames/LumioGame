@@ -149,7 +149,7 @@ function setStatus(status, detail) {
     statusEl.textContent = detail ? `${status}: ${detail}` : status;
     statusEl.hidden = PLAYER_MODE || (GAME_VIEW && status === 'active');
   }
-  roomView?.update(player.replica, status);
+  roomView?.update(player.replica, status, detail);
   const enter = document.getElementById('enter');
   if (enter && GAME_VIEW) enter.hidden = !['failed', 'closed', 'superseded'].includes(status);
 }
@@ -715,6 +715,8 @@ let runtimeClosed = true;
 let terminal = false;
 let active = false;
 let pumpTimer = null;
+let roomRetryTimer = null;
+let roomStartup = { attempt: 1, everActive: false };
 let nextPumpAt = 0;
 let closing = Promise.resolve();
 let closePending = false;
@@ -747,6 +749,7 @@ async function finish(status) {
   launchAbort?.abort();
   launchAbort = null;
   if (pumpTimer !== null) { clearTimeout(pumpTimer); pumpTimer = null; }
+  if (roomRetryTimer !== null) { clearTimeout(roomRetryTimer); roomRetryTimer = null; }
   setStatus(status);
   await releaseReplica();
 }
@@ -761,6 +764,34 @@ function failLaunch(error) {
   console.error('[lumio-session]', spectator.lastError);
 }
 
+function isAdmissionRefused(diagnostic) {
+  return typeof diagnostic === 'string' &&
+    /(?:^| )reason=tick_exception(?: |$)/.test(diagnostic) &&
+    /(?:^| )phase=dispatch(?: |$)/.test(diagnostic) &&
+    /(?:^| )txn=close=1008(?: |$)/.test(diagnostic) &&
+    /(?:^| )exception=admission_refused(?: |$)/.test(diagnostic);
+}
+
+async function retryRoomEntry() {
+  const nextStartup = { attempt: roomStartup.attempt + 1, everActive: false };
+  const cleanup = finish('retrying');
+  const retiredAttempt = connectionAttempt;
+  await cleanup;
+  if (retiredAttempt !== connectionAttempt) return;
+  console.info('[lumio-session] startup admission_refused; next attempt', nextStartup.attempt);
+  roomRetryTimer = setTimeout(() => {
+    roomRetryTimer = null;
+    if (retiredAttempt === connectionAttempt) void start(nextStartup);
+  }, 500);
+}
+
+async function finishRoomAdmission() {
+  const cleanup = finish('failed');
+  const retiredAttempt = connectionAttempt;
+  await cleanup;
+  if (retiredAttempt === connectionAttempt) setStatus('failed', 'room_admission_refused');
+}
+
 function pumpSession(attempt) {
   if (terminal || attempt !== connectionAttempt) return;
   try {
@@ -770,8 +801,14 @@ function pumpSession(attempt) {
     spectator.notServingCloses = state.notServingCloses ?? 0;
     player.inputsSent = state.sentInputs ?? 0;
     active = state.state === 'active';
+    if (active) roomStartup.everActive = true;
     if (['faulted', 'closed', 'superseded'].includes(state.state)) {
       spectator.lastError = state.lastError || '';
+      if (PLAYER_MODE && !roomStartup.everActive && state.state === 'faulted' && isAdmissionRefused(state.lastError)) {
+        const recovery = roomStartup.attempt < 3 ? retryRoomEntry() : finishRoomAdmission();
+        void recovery.catch(error => failLaunch(error));
+        return;
+      }
       void finish(state.state === 'faulted' ? 'failed' : state.state).catch(error => console.error('[lumio-session] close failed', error));
       return;
     }
@@ -830,7 +867,7 @@ async function loadSelectedConfig(signal) {
   selectedConfigLoaded = true;
 }
 
-async function start() {
+async function start(startup = { attempt: 1, everActive: false }) {
   const cleanup = finish('closed');
   const attempt = connectionAttempt;
   try {
@@ -838,6 +875,7 @@ async function start() {
     if (attempt !== connectionAttempt) return;
     terminal = false;
     active = false;
+    roomStartup = startup;
     setStatus('starting');
     paint([]);
     if (!await loadWasmExports() || terminal || attempt !== connectionAttempt) {

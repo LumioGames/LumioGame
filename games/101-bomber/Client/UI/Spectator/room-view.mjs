@@ -25,7 +25,7 @@ export function createRoomView({ onFill, onCharacter, now = () => performance.no
     pendingCharacter = choice.value;
     update(lastState, lastConnection);
   });
-  function update(state, connection = 'starting') {
+  function update(state, connection = 'starting', detail) {
     lastState = state;
     lastConnection = connection;
     const room = state?.room;
@@ -62,7 +62,9 @@ export function createRoomView({ onFill, onCharacter, now = () => performance.no
     if (confirmedCharacter && pendingCharacter === null) choice.value = confirmedCharacter;
     get('room-selection-status').textContent = pendingCharacter ? '等待服务器确认角色…' : confirmedCharacter ? '已选择' : '请选择角色';
     let status;
-    if (['failed', 'faulted', 'error'].includes(connection)) status = '连接失败，请重新连接';
+    if (connection === 'failed' && detail === 'room_admission_refused') status = '房间已满或暂不可加入';
+    else if (connection === 'retrying') status = '房间暂不可加入，正在重试…';
+    else if (['failed', 'faulted', 'error'].includes(connection)) status = '连接失败，请重新连接';
     else if (connection !== 'active' || !room) status = ['closed', 'superseded'].includes(connection) ? '连接已关闭，请重新连接' : '正在连接房间…';
     else if (!waiting) status = state.phase === 'Warmup' ? '满员，比赛准备中' : '比赛进行中';
     else if (full) status = '房间满员，等待比赛开始';
