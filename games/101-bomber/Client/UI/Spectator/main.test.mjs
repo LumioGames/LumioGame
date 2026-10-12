@@ -759,4 +759,9 @@ test('public room entry ignores injected launch and preserves fresh authenticate
  assert.equal(p.runtime.ready,1);assert.equal(nodes.get('room').hidden,false);assert.equal(nodes.get('room-count').textContent,'1 / 8');
  assert.equal(nodes.get('stage-note').hidden,false);nodes.get('room-fill').listeners.click();assert.deepEqual(commands,[true]);
  assert.equal(state.room.fillEnabled,false);assert.match(nodes.get('room-status').textContent,/确认/);
+ await p.tick(5000);
+ assert.equal(nodes.get('room-fill').disabled,false);
+ assert.match(nodes.get('room-status').textContent,/未确认.*重试.*等待真人/);
+ assert.equal(state.room.fillEnabled,false);assert.equal(state.room.players.length,1);
+ nodes.get('room-fill').listeners.click();assert.deepEqual(commands,[true,true]);
 });

@@ -10,14 +10,14 @@ function setup() {
     append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; },
     addEventListener(event, fn) { this.listeners[event] = fn; }, setAttribute(key, value) { this[key] = value; } }; }
   for (const id of ['room', 'room-count', 'room-status', 'room-seats', 'room-fill', 'room-wait', 'room-character', 'room-selection-status']) nodes.set(id, node(id));
-  const commands = [];
+  const commands = []; const clock = { value: 0 };
   const context = vm.createContext({ Math, Number, String, BigInt, document: { getElementById: id => nodes.get(id), createElement: node } });
   vm.runInContext(source, context);
   assert.equal(typeof context.createRoomView, 'function', 'the entry must provide the real room renderer');
-  const view = context.createRoomView({ onFill: enabled => { commands.push(enabled); return true; }, onCharacter: id => { commands.push(id); return true; } });
+  const view = context.createRoomView({ now: () => clock.value, onFill: enabled => { commands.push(enabled); return true; }, onCharacter: id => { commands.push(id); return true; } });
   const human = { id: '1', name: 'Alice', isBot: false, isSelf: true };
   const state = { inputEnabled: true, selfId: '1', phase: 'WaitingForWorldReady', room: { capacity: 8, humans: 1, bots: 0, fillEnabled: false, nextBotJoinTick: '0', authorityTick: '100', tickRateHz: 20, players: [human] } };
-  return { nodes, commands, view, state };
+  return { nodes, commands, view, state, clock };
 }
 test('connecting shows eight empty seats without inventing roster or count', () => {
   const { view, nodes } = setup(); view.update(null, 'synchronizing');
@@ -79,4 +79,36 @@ test('compact choice displays established character labels without changing conf
   assert.equal(nodes.get('room-character').children[1].value, 'duck');
   assert.equal(nodes.get('room-character').children[1].textContent, '泡泡鸭');
   assert.equal(nodes.get('room-character').children[2].textContent, '飞腿袋鼠');
+});
+
+test('overwritten fill request becomes retryable after bounded confirmation wait without inventing state', () => {
+  const { view, nodes, commands, state, clock } = setup();
+  view.update(state, 'active'); nodes.get('room-fill').listeners.click();
+  assert.deepEqual(commands, [true]);
+  assert.equal(nodes.get('room-fill').disabled, true);
+  state.appliedInputSequence = '1';
+  state.room.authorityTick = '200';
+  clock.value = 4999; view.update(state, 'active');
+  assert.match(nodes.get('room-status').textContent, /等待服务器确认/);
+  clock.value = 5000; view.update(state, 'active');
+  assert.equal(state.room.fillEnabled, false);
+  assert.equal(state.room.players.length, 1);
+  assert.equal(nodes.get('room-fill').disabled, false);
+  assert.equal(nodes.get('room-wait').disabled, true);
+  assert.match(nodes.get('room-status').textContent, /未确认.*重试.*等待真人/);
+  nodes.get('room-fill').listeners.click();
+  assert.deepEqual(commands, [true, true]);
+  assert.match(nodes.get('room-status').textContent, /等待服务器确认/);
+  state.room.fillEnabled = true; state.room.nextBotJoinTick = '260'; view.update(state, 'active');
+  assert.match(nodes.get('room-status').textContent, /机器人补齐中/);
+  assert.doesNotMatch(nodes.get('room-status').textContent, /未确认/);
+});
+test('an overwritten wait request keeps actual filling visible and restores its retry control', () => {
+  const { view, nodes, state, clock } = setup();
+  state.room.fillEnabled = true; state.room.nextBotJoinTick = '160'; view.update(state, 'active');
+  nodes.get('room-wait').listeners.click(); clock.value = 5000; view.update(state, 'active');
+  assert.equal(state.room.fillEnabled, true);
+  assert.equal(nodes.get('room-fill').disabled, true);
+  assert.equal(nodes.get('room-wait').disabled, false);
+  assert.match(nodes.get('room-status').textContent, /未确认.*重试.*机器人补齐中/);
 });

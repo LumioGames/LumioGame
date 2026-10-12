@@ -1,6 +1,6 @@
 const CHARACTER_LABELS = { rabbit: '棉花兔', duck: '泡泡鸭', cat: '闪电猫', bear: '火焰熊', kangaroo: '飞腿袋鼠' };
 
-export function createRoomView({ onFill, onCharacter }) {
+export function createRoomView({ onFill, onCharacter, now = () => performance.now() }) {
   const get = id => document.getElementById(id);
   const root = get('room');
   const seats = get('room-seats');
@@ -8,12 +8,14 @@ export function createRoomView({ onFill, onCharacter }) {
   const wait = get('room-wait');
   const choice = get('room-character');
   let pendingFill = null;
+  let unconfirmedFill = null;
   let pendingCharacter = null;
   let lastState = null;
   let lastConnection = 'starting';
   function requestFill(enabled) {
     if ((enabled ? fill : wait).disabled || onFill(enabled) !== true) return;
-    pendingFill = enabled;
+    pendingFill = { enabled, requestedAt: now() };
+    unconfirmedFill = null;
     update(lastState, lastConnection);
   }
   fill.addEventListener('click', () => requestFill(true));
@@ -40,8 +42,15 @@ export function createRoomView({ onFill, onCharacter }) {
       return seat;
     });
     seats.replaceChildren(...rows);
-    if (!room || !waiting) pendingFill = null;
-    else if (pendingFill === room.fillEnabled) pendingFill = null;
+    if (!room || !waiting || connection !== 'active') {
+      pendingFill = null;
+      unconfirmedFill = null;
+    } else if (pendingFill?.enabled === room.fillEnabled) pendingFill = null;
+    else if (pendingFill !== null && now() - pendingFill.requestedAt >= 5000) {
+      unconfirmedFill = pendingFill.enabled;
+      pendingFill = null;
+    }
+    if (unconfirmedFill === room?.fillEnabled) unconfirmedFill = null;
     const confirmedCharacter = state?.selectedCharacterName || state?.characterName;
     if (!state) pendingCharacter = null;
     else if (pendingCharacter === confirmedCharacter) pendingCharacter = null;
@@ -63,7 +72,7 @@ export function createRoomView({ onFill, onCharacter }) {
       const seconds = Math.ceil(Number(remaining > 0n ? remaining : 0n) / room.tickRateHz);
       status = `机器人补齐中 · 下一位 ${seconds} 秒 · 真人 ${room.humans} / 机器人 ${room.bots}`;
     } else status = `等待真人加入 · 真人 ${room.humans} / 机器人 ${room.bots}`;
-    get('room-status').textContent = status;
+    get('room-status').textContent = ready && unconfirmedFill !== null ? `请求未确认，可重试 · ${status}` : status;
   }
   return {
     update,
