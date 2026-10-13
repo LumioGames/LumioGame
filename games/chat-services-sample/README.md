@@ -2,7 +2,7 @@
 
 验证游戏服务 SDK 的最小官方示例。浏览器只需要普通 HTML、ES modules 和 WebAssembly；入口是 `Client/index.html` 的 `<script type="module" src="./app.mjs">`。C# 仅用于私有服务器规则插件。
 
-玩家进入聊天室后可以发言。每条消息（1–200 字）由服务器裁决：`chat_v1` 状态保存发言总数与最近 20 条消息，每条被接受的消息向 `chat_messages/all_time` 累计榜贡献 1。首次昵称头像授权、登录与两份存档选择由平台父 UI 负责；拒绝资料授权仍可匿名聊天。本版本每人可见自己的正式消息与全服发言榜；跨玩家互见消息流不在本合同的公共操作闭集内，属于后续版本的产品增量。
+玩家进入聊天室后可以发言。每条消息（1–200 字）由服务器裁决：`chat_v2` 状态保存发言总数与最近 20 条消息，每条被接受的消息向 `chat_messages/all_time` 累计榜贡献 1。首次昵称头像授权、登录与两份存档选择由平台父 UI 负责；拒绝资料授权仍可匿名聊天。v1.2 起公共频道消息跨玩家互见（`channel_read`/`channel_summary` 读取面），登录账号可添加好友（`social_read`/`friend_request`/`friend_respond`/`friend_remove`）并与好友私聊（`send` 的 `dm` 频道）；消息文本经平台 omni-moderation 审核门（fail-closed），未读由真实消息事件驱动。
 
 ## 所有权
 
@@ -13,7 +13,7 @@
 
 ## 正式状态
 
-首次 initialize/project 的服务器空快照投影为「未进入」。`begin` 与 `send` 的 arguments 闭集：`begin` 必须是 `{}`；`send` 只接受 `{"text":"…"}`（1–200 字）。客户端不提交发言数、完成标记、时间或随机值。
+首次 initialize/project 的服务器空快照投影为「未进入」。`begin` 与 `send` 的 arguments 闭集：`begin` 必须是 `{}`；`send` 接受 `{"text":"…","channel":"public"}` 或 `{"text":"…","channel":"dm","channelId":"…"}`（文本 1–200 字；`channelId` 仅私聊频道携带，成员资格与好友关系由平台在规则调用前与提交前双重校验）。客户端不提交发言数、完成标记、时间或随机值。
 
 发言资格 key 为 `SHA-256(roomNamespace "/" seq)`；roomNamespace 在首次 `begin` 时由受信 game/environment/originSubjectId 派生，不同主体不共用。绑定保留全部 rank 事件原 ID，按 CanonicalQualificationKey 重建资格组，`messageCount` 取全部保留事件 value 之和；可见最近消息取所选主体一份，不回滚、不补发。
 
