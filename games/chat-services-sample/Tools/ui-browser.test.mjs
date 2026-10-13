@@ -17,8 +17,11 @@ import { createSession } from './session.mjs';
 import { createChatView, createOperationTracker } from './view.mjs';
 const label = document.createElement('span'); label.textContent = 'UI 夹具 · 非正式会话'; label.style.cssText = 'position:absolute;top:1px;right:4px;font-size:8px;color:#7b5b21'; document.querySelector('header').append(label);
 const p = { playerId: 'fixture_player', anonymousName: '匿名玩家', consentRevision: 0, policyRevision: 1 };
-let status = 'committed', intent;
-const state = { revision: 1, schemaVersion: 'chat_v1', updatedAt: 1800000000000, view: { started: true, canSend: true, messageCount: 2, recent: ['你好，今天也一起积攒灵光 🌿', '[精灵:开心]'] } };
+let status = 'committed', intent, seq = 2;
+const state = { revision: 1, schemaVersion: 'chat_v3', updatedAt: 1800000000000, view: { started: true, canSend: true, messageCount: 2, recent: [] } };
+const publicMessages = [
+ { messageId: 'fp1', channelId: 'public', seq: 1, sender: { playerId: 'fixture_guest', profile: { anonymousName: '游客小虾' }, accountLinked: false }, text: '大家好，路过浇浇水 🌿', sentAtMs: 1800000000000 },
+ { messageId: 'fp2', channelId: 'public', seq: 2, sender: { playerId: 'fixture_player', profile: p, accountLinked: true }, text: '[精灵:开心]', sentAtMs: 1800000060000 }];
 const calls = [];
 const sdk = { unresolvedOperations: [], dispose() {}, setOnline() {}, async request(method, body) {
  calls.push({method, body});
@@ -26,7 +29,11 @@ const sdk = { unresolvedOperations: [], dispose() {}, setOnline() {}, async requ
  if (method === 'getState') return structuredClone(state);
  if (method === 'getProfile') return p;
  if (method === 'leaderboardTop') return { rows: [{rank:1,value:12,profile:p}] };
- if (method === 'performAction') { intent = body; if(status === 'committed') {state.view.messageCount++;state.view.recent.push(body.arguments.text);state.revision++;}
+ if (method === 'channelRead') return { channelId: body.channelId, messages: structuredClone(publicMessages), nextCursor: null, hasMore: false, unread: 0 };
+ if (method === 'channelSummary') return { publicUnread: 0, dmChannels: [], friendRequests: { incoming: [], outgoing: [] }, totalUnread: 0 };
+ if (method === 'socialRead') return { friends: [], incoming: [], outgoing: [] };
+ if (method === 'performAction') { intent = body; if(status === 'committed') {state.view.messageCount++;state.view.recent.push(body.arguments.text);state.revision++;
+   publicMessages.push({ messageId: 'fp' + (publicMessages.length + 1), channelId: body.arguments.channel === 'dm' ? body.arguments.channelId : 'public', seq: ++seq, sender: { playerId: 'fixture_player', profile: p, accountLinked: true }, text: body.arguments.text, sentAtMs: 1800000180000 });}
    if (status === 'pending') { sdk.unresolvedOperations.push({operationId:body.operationId,operationEpoch:body.operationEpoch}); view.invalidate(); session.invalidate(); }
    if (status === 'pending-begin') sdk.unresolvedOperations.push({operationId:body.operationId,operationEpoch:body.operationEpoch});
    return {status: status === 'pending-begin' ? 'pending' : status,error:{code:'fixture_rejected'}}; }
@@ -40,9 +47,11 @@ window.fixture = {session,calls,reject:()=>status='rejected',pending:()=>status=
  const operation = sdk.unresolvedOperations[0]; sdk.unresolvedOperations.length=0;
  const event={method:'getOperation',operation,result:{status:'committed'}}; operations.reconcile(event); session.reconcile(event);
  state.view.messageCount++;state.view.recent.push(intent.arguments.text);state.revision++;
+ publicMessages.push({ messageId: 'fp' + (publicMessages.length + 1), channelId: 'public', seq: ++seq, sender: { playerId: 'fixture_player', profile: p, accountLinked: true }, text: intent.arguments.text, sentAtMs: 1800000180000 });
  session.reconcile({method:'getState',result:state});session.reconcile({method:'getProfile',result:p});
-},empty:()=>{state.view.recent=[];session.reconcile({method:'getState',result:state})}};
+},empty:async()=>{state.view.recent=[];publicMessages.length=0;session.reconcile({method:'getState',result:state});await session.readChannel('public', {});}};
 await session.start();
+await session.readChannel('public', { markRead: true });
 `;
 test('browser UI: compact layouts, real text safety, IME, stickers, draft rejection and reduced motion', async () => {
   const output = await buildFixturePackage(), screenshots = path.resolve('.sdd/floating-chat-ui-screenshots');
@@ -76,17 +85,32 @@ test('browser UI: compact layouts, real text safety, IME, stickers, draft reject
     }
     await page.setViewportSize({width:390,height:426}); await page.goto('http://127.0.0.1:' + server.address().port + '/Client/index.html');
     await page.waitForFunction(() => !!window.fixture);
+    // Public-channel double-message render smoke: two server messages, guest badge,
+    // own alignment, HH:MM time, and no raw playerIds in the rendered feed.
+    await page.locator('#pub .chat-message').nth(1).waitFor();
+    const feed = await page.evaluate(() => ({
+      rows: document.querySelectorAll('#pub .chat-message').length,
+      mine: document.querySelectorAll('#pub .chat-message.mine').length,
+      guest: document.querySelector('#pub .guest-tag')?.textContent ?? null,
+      time: /\b\d{2}:\d{2}\b/.test(document.getElementById('pub').textContent),
+      ids: /fixture_guest|fixture_player/.test(document.getElementById('pub').textContent),
+      read: window.fixture.calls.some(call => call.method === 'channelRead' && call.body.channelId === 'public'),
+    }));
+    assert.equal(feed.rows, 2); assert.equal(feed.mine, 1); assert.equal(feed.guest, '游客');
+    assert.equal(feed.time, true); assert.equal(feed.ids, false); assert.equal(feed.read, true);
     await page.locator('#box').fill('输入法草稿');
     await page.locator('#box').dispatchEvent('keydown', { key:'Enter',isComposing:true });
     assert.equal(await page.locator('#box').inputValue(), '输入法草稿');
     await page.locator('#emoji').click(); await page.locator('#stickers').getByRole('button', {name:'挥手'}).click();
     assert.match(await page.locator('#box').inputValue(), /\[精灵:挥手\]/);
     await page.locator('#send').click(); await page.waitForFunction(() => document.getElementById('box').value === '');
-    assert.equal(await page.locator('#msgs .sticker').count(), 2);
+    assert.equal(await page.locator('#pub .sticker').count(), 2);
+    const sendShape = await page.evaluate(() => { const args = window.fixture.calls.filter(call => call.method === 'performAction').map(call => call.body.arguments).at(-1); return { keys: Object.keys(args).sort(), channel: args.channel }; });
+    assert.deepEqual(sendShape, { keys: ['channel', 'text'], channel: 'public' });
     await page.locator('#box').fill('<img src=x onerror=alert(1)> مرحبا🌿'); await page.locator('#send').click();
     await page.waitForFunction(() => document.getElementById('box').value === '');
-    assert.equal(await page.locator('#msgs .bubble img').count(), 0);
-    assert.match(await page.locator('#msgs').textContent(), /<img src=x onerror=alert\(1\)> مرحبا🌿/);
+    assert.equal(await page.locator('#pub .bubble img').count(), 0);
+    assert.match(await page.locator('#pub').textContent(), /<img src=x onerror=alert\(1\)> مرحبا🌿/);
     await page.evaluate(() => window.fixture.reject()); await page.locator('#box').fill('拒绝后留在输入框'); await page.locator('#send').click();
     await page.waitForFunction(() => !document.getElementById('send').disabled);
     assert.equal(await page.locator('#box').inputValue(), '拒绝后留在输入框'); assert.match(await page.locator('#message').textContent(), /fixture_rejected/);
@@ -115,7 +139,8 @@ test('browser UI: compact layouts, real text safety, IME, stickers, draft reject
     const position = await page.locator('.header-spirit').evaluate(el => getComputedStyle(el).backgroundPosition);
     await page.waitForFunction(previous => getComputedStyle(document.querySelector('.header-spirit')).backgroundPosition !== previous, position, { timeout: 1500 });
     await page.emulateMedia({reducedMotion:'reduce'}); await page.evaluate(() => window.fixture.empty());
-    assert.equal(await page.locator('.empty-state .spirit').evaluate(el => getComputedStyle(el).animationName), 'none');
+    await page.locator('#pub .empty-state .spirit').waitFor();
+    assert.equal(await page.locator('#pub .empty-state .spirit').evaluate(el => getComputedStyle(el).animationName), 'none');
     await page.screenshot({ path:path.join(screenshots,'390x426-empty-reduced-motion.png') });
     assert.deepEqual(errors, []);
   } finally {
