@@ -2,7 +2,7 @@
 
 验证游戏服务 SDK 的最小官方示例。浏览器只需要普通 HTML、ES modules 和 WebAssembly；入口是 `Client/index.html` 的 `<script type="module" src="./app.mjs">`。C# 仅用于私有服务器规则插件。
 
-玩家进入聊天室后可以发言。每条消息（1–200 字）由服务器裁决：`chat_v2` 状态保存发言总数与最近 20 条消息，每条被接受的消息向 `chat_messages/all_time` 累计榜贡献 1。首次昵称头像授权、登录与两份存档选择由平台父 UI 负责；拒绝资料授权仍可匿名聊天。v1.2 起公共频道消息跨玩家互见（`channel_read`/`channel_summary` 读取面），登录账号可添加好友（`social_read`/`friend_request`/`friend_respond`/`friend_remove`）并与好友私聊（`send` 的 `dm` 频道）；消息文本经平台 omni-moderation 审核门（fail-closed），未读由真实消息事件驱动。
+玩家进入聊天室后可以发言。每条消息（1–200 字）由服务器裁决：`chat_v3` 状态保存发言总数与最近 20 条消息，每条被接受的消息向 `chat_messages/all_time` 累计榜贡献 1。首次昵称头像授权、登录与两份存档选择由平台父 UI 负责；拒绝资料授权仍可匿名聊天。v1.2 起公共频道消息跨玩家互见（`channel_read`/`channel_summary` 读取面），登录账号可添加好友（`social_read`/`friend_request`/`friend_respond`/`friend_remove`）并与好友私聊（`send` 的 `dm` 频道）；消息文本经平台 omni-moderation 审核门（fail-closed），未读由真实消息事件驱动。
 
 ## 所有权
 
