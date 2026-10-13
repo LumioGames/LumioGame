@@ -1,11 +1,70 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lumio 聊天室 · 权威游戏样例</title><link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script></head>
-<body><main><header><span class="eyebrow">LUMIO · 服务器权威聊天样例</span><h1>Lumio 聊天室</h1><p>进入聊天室发言，服务器确认每一条消息并统计发言榜。</p></header>
-<section class="status" aria-live="polite"><span id="mode">正在连接</span><span id="player">匿名玩家</span><p id="message">等待平台建立正式游戏连接…</p></section>
-<section class="stats"><div><strong id="count">—</strong><span>我已发送（正式）</span></div><div><strong id="cap">20</strong><span>云端保留最近</span></div></section>
-<section class="composer"><input id="box" maxlength="200" autocomplete="off" placeholder="说点什么（1–200 字）" disabled><button id="send" disabled>发言</button><button id="begin" disabled>进入聊天室</button></section>
-<section><h2>我的云消息</h2><ol id="msgs"><li>进入聊天室后，服务器确认的消息会显示在这里。</li></ol></section>
-<nav aria-label="游戏服务"><button id="login" disabled>登录 / 绑定存档</button><button id="permissions" disabled>资料授权</button><button id="ranks" disabled>查看发言排行榜</button><button id="recover" disabled>查询未确认操作</button><button id="trial">离线试玩</button><button id="reconnect" disabled>重读正式进度</button></nav>
-<section><h2>发言排行榜</h2><ol id="rows"><li>点击查看服务器确认的发言数。</li></ol></section>
-<footer>首次昵称头像授权由平台在游戏画面内显示；拒绝后仍可匿名发言并保存云进度。消息内容与发言数由服务器裁决，客户端只提交发言意图。离线试玩只在页面临时显示，不保存、不计入排行榜。当前版本每人可见自己的正式消息与全服发言榜；互见消息流属于后续版本。</footer>
-</main></body></html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lumio 聊天室</title><link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script></head>
+<body data-mode="connecting">
+<main class="chat-shell">
+  <header class="chat-header">
+    <span class="spirit animated header-spirit" aria-hidden="true"></span>
+    <div class="heading"><h1>Lumio 聊天室</h1><div class="connection"><i aria-hidden="true"></i><span id="mode">正在连接</span></div></div>
+    <span id="identity-avatar"></span><span id="player">匿名玩家</span>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="公共频道、好友与发言榜">
+    <button id="public-tab" role="tab" aria-selected="true" aria-controls="public-panel">公共</button>
+    <button id="friends-tab" role="tab" aria-selected="false" aria-controls="friends-panel">好友</button>
+    <button id="ranks" role="tab" aria-selected="false" aria-controls="leaderboard-panel" disabled>发言榜 <span aria-hidden="true">♧</span></button>
+    <span class="total">已发 <b id="count">—</b> 条</span>
+  </nav>
+  <div class="content">
+    <section id="public-panel" class="messages-panel" role="tabpanel" aria-labelledby="public-tab">
+      <ol id="pub" aria-label="公共频道消息"><li class="empty-state"><span class="spirit animated" aria-hidden="true"></span><strong>正在连接</strong><span>连接后即可看到公共频道消息。</span></li></ol>
+      <div id="friend-menu" class="popover friend-menu" role="dialog" aria-label="添加好友" hidden>
+        <div class="popover-heading"><span id="friend-menu-name">匿名玩家</span><button id="friend-menu-close" aria-label="关闭">✕</button></div>
+        <button id="friend-menu-add" class="menu-add" disabled>加好友</button>
+        <p id="friend-menu-hint" hidden></p>
+      </div>
+    </section>
+    <section id="friends-panel" class="friends-panel" role="tabpanel" aria-labelledby="friends-tab" hidden>
+      <div id="friends-signin" class="friends-signin" hidden>
+        <p>登录后可以添加好友、发起私聊。</p>
+        <button id="friends-login" disabled>登录 / 绑定存档</button>
+      </div>
+      <div id="friend-lists" class="friend-lists">
+        <div class="friend-heading"><h2>好友</h2><span>头像可进私聊</span></div>
+        <ol id="friends" aria-label="好友列表"></ol>
+        <div class="friend-heading"><h2>收到的申请</h2></div>
+        <ol id="requests-in" aria-label="收到的好友申请"></ol>
+        <div class="friend-heading"><h2>发出的申请</h2></div>
+        <ol id="requests-out" aria-label="发出的好友申请"></ol>
+      </div>
+      <div id="dm-view" class="dm-view" hidden>
+        <header class="dm-header"><button id="dm-back" aria-label="返回好友列表">‹ 好友</button><span id="dm-title">私聊</span><span class="dm-spacer" aria-hidden="true"></span></header>
+        <ol id="dm-msgs" aria-label="私聊消息"></ol>
+        <div class="input-row dm-row">
+          <label for="dm-box" class="sr-only">私聊内容（1–200 个字符）</label>
+          <input id="dm-box" maxlength="200" autocomplete="off" placeholder="和好友私聊…" disabled>
+          <button id="dm-send" aria-label="发送私聊" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8-3-8Z" stroke-linejoin="round"/><path d="M7 12h14"/></svg></button>
+        </div>
+      </div>
+    </section>
+    <section id="leaderboard-panel" class="leaderboard-panel" role="tabpanel" aria-labelledby="ranks" hidden>
+      <div class="rank-heading"><h2>发言排行榜</h2><span>服务器确认 · 全服累计</span></div>
+      <ol id="rows"><li class="rank-empty">打开榜单，读取服务器确认的发言数。</li></ol>
+    </section>
+  </div>
+  <div class="status-line" role="status" aria-live="polite"><span id="message">等待平台建立正式游戏连接…</span><button id="recover" hidden disabled>查询原操作</button></div>
+  <section id="composer" class="composer" aria-label="发送消息">
+    <button id="begin" class="begin" hidden disabled>进入聊天室</button>
+    <div id="emoji-panel" class="popover emoji-panel" hidden><div class="popover-heading">薄荷精灵表情 <span>随消息发送</span></div><div id="stickers"></div></div>
+    <nav id="services" class="popover services" aria-label="游戏服务" hidden>
+      <button id="login" disabled>登录 / 绑定存档</button><button id="permissions" disabled>资料授权</button><button id="trial" disabled>离线试玩</button><button id="reconnect" disabled>重读正式进度</button>
+      <p>授权由平台处理；拒绝后仍可匿名发言。离线试玩只保留在本页，不计入发言榜。</p>
+    </nav>
+    <div class="input-row">
+      <button id="emoji" class="icon-button" aria-label="精灵表情" aria-controls="emoji-panel" aria-expanded="false" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8 14c2 3 6 3 8 0"/><path d="M8 9h.01M16 9h.01" stroke-linecap="round" stroke-width="3"/></svg></button>
+      <label for="box" class="sr-only">消息内容（1–200 个字符）</label><input id="box" maxlength="200" autocomplete="off" placeholder="公共频道，对所有人可见…" disabled>
+      <button id="send" aria-label="发送消息" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8-3-8Z" stroke-linejoin="round"/><path d="M7 12h14"/></svg></button>
+    </div>
+    <footer><span>公共频道对所有人可见 · 发言由服务器确认</span><button id="more" aria-label="更多游戏服务" aria-controls="services" aria-expanded="false">更多 ···</button></footer>
+  </section>
+</main>
+</body></html>

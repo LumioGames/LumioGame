@@ -36,14 +36,14 @@ public sealed class RuleTests
     [Fact]
     public async Task SendRequiresEnteringTheRoomFirst()
     {
-        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Empty(), new { text = "你好" }), Fixtures.Context, CancellationToken.None);
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Empty(), new { text = "你好", channel = "public" }), Fixtures.Context, CancellationToken.None);
         Assert.False(result.IsApplied);
         Assert.Equal("not_started", result.DeniedValue!.Denial.GameReason);
     }
     [Fact]
     public async Task SendAppendsOneCumulativeContributionPerMessage()
     {
-        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(2), new { text = "你好" }), Fixtures.Context, CancellationToken.None);
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(2), new { text = "你好", channel = "public" }), Fixtures.Context, CancellationToken.None);
         Assert.True(result.IsApplied);
         var rank = Assert.Single(result.AppliedValue!.Decision.Rank);
         Assert.Equal("chat_messages", rank.BoardId);
@@ -62,7 +62,7 @@ public sealed class RuleTests
     public async Task SameSnapshotDifferentOperationIdYieldsTheSameCandidate()
     {
         var rules = new ChatRules();
-        var request = Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "一致" });
+        var request = Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "一致", channel = "public" });
         var first = await rules.EvaluateAsync(request, Fixtures.Context, CancellationToken.None);
         var second = await rules.EvaluateAsync(request with { Bindings = request.Bindings with { OperationId = "another_operation" } }, Fixtures.Context, CancellationToken.None);
         Assert.Equal(JsonSerializer.Serialize(first.AppliedValue!.Decision), JsonSerializer.Serialize(second.AppliedValue!.Decision));
@@ -71,24 +71,66 @@ public sealed class RuleTests
     [InlineData("score")][InlineData("nextState")][InlineData("count")][InlineData("complete")][InlineData("time")][InlineData("random")]
     public async Task FinalClientValuesAreRejected(string field)
     {
-        var args = JsonSerializer.Deserialize<JsonElement>("{\"" + field + "\":1,\"text\":\"你好\"}");
+        var args = JsonSerializer.Deserialize<JsonElement>("{\"" + field + "\":1,\"text\":\"你好\",\"channel\":\"public\"}");
         var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", arguments: args), Fixtures.Context, CancellationToken.None);
         Assert.False(result.IsApplied);
         Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
+    }
+    [Fact]
+    public async Task DirectSendsRequireAOpaqueChannelId()
+    {
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "私聊", channel = "dm" }), Fixtures.Context, CancellationToken.None);
+        Assert.False(result.IsApplied);
+        Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
+        var withId = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "私聊", channel = "dm", channelId = "dChannel_01" }), Fixtures.Context, CancellationToken.None);
+        Assert.True(withId.IsApplied);
+    }
+    [Theory]
+    [InlineData("team")][InlineData("PUBLIC")]
+    public async Task UnknownChannelKindsAreRejected(string channel)
+    {
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "你好", channel }), Fixtures.Context, CancellationToken.None);
+        Assert.False(result.IsApplied);
+        Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
+    }
+    [Fact]
+    public async Task PublicSendsRejectAStrayChannelId()
+    {
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(1), new { text = "你好", channel = "public", channelId = "dChannel_01" }), Fixtures.Context, CancellationToken.None);
+        Assert.False(result.IsApplied);
+        Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
+    }
+    [Fact]
+    public async Task MissingChannelKindIsRejected()
+    {
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(1), JsonSerializer.Deserialize<JsonElement>("{\"text\":\"你好\"}")), Fixtures.Context, CancellationToken.None);
+        Assert.False(result.IsApplied);
+        Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
+    }
+    [Theory]
+    [InlineData("chat_v1")][InlineData("chat_v2")]
+    public async Task RegistrationRevisionChangesMigrateThroughASchemaEdge(string from)
+    {
+        var result = await new ChatRules().MigrateAsync(new() { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings,
+            Subject = Fixtures.Subject(Fixtures.Snapshot(2, new[] { new { seq = 1, text = "你好" } }, from)), FromStateSchemaId = from, ToStateSchemaId = "chat_v3" }, Fixtures.Context, CancellationToken.None);
+        Assert.True(result.IsApplied);
+        var state = Assert.Single(result.AppliedValue!.Result.Changes.Upserts);
+        Assert.Equal("chat_v3", state.SchemaVersion);
+        Assert.Equal(2, state.Data.GetProperty("messageCount").GetInt64());
     }
     [Theory]
     [InlineData("")][InlineData("a201")]
     public async Task TextBoundsAreEnforced(string kind)
     {
         var text = kind == "a201" ? new string('好', 201) : "";
-        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", arguments: new { text }), Fixtures.Context, CancellationToken.None);
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", arguments: new { text, channel = "public" }), Fixtures.Context, CancellationToken.None);
         Assert.False(result.IsApplied);
         Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
     }
     [Fact]
     public async Task NonStringTextIsRejected()
     {
-        var args = JsonSerializer.Deserialize<JsonElement>("{\"text\":42}");
+        var args = JsonSerializer.Deserialize<JsonElement>("{\"text\":42,\"channel\":\"public\"}");
         var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", arguments: args), Fixtures.Context, CancellationToken.None);
         Assert.False(result.IsApplied);
         Assert.Equal("invalid_action", result.DeniedValue!.Denial.GameReason);
@@ -97,7 +139,7 @@ public sealed class RuleTests
     public async Task RecentListKeepsOnlyTheLastTwentyMessages()
     {
         var history = Enumerable.Range(1, 20).Select(seq => (object)new { seq, text = "消息" + seq }).ToArray();
-        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(20, history), new { text = "最新" }), Fixtures.Context, CancellationToken.None);
+        var result = await new ChatRules().EvaluateAsync(Fixtures.Action("send", Fixtures.Snapshot(20, history), new { text = "最新", channel = "public" }), Fixtures.Context, CancellationToken.None);
         var data = Assert.Single(result.AppliedValue!.Decision.State.Upserts).Data;
         Assert.Equal(21, data.GetProperty("messageCount").GetInt64());
         var recent = data.GetProperty("recent");
@@ -147,13 +189,13 @@ public sealed class RuleTests
         Assert.Equal("migration_unavailable", result.DeniedValue!.Denial.GameReason);
     }
     [Fact]
-    public async Task ChatOneMigratesForwardToChatTwoWithoutDataChanges()
+    public async Task ChatOneMigratesForwardToChatThreeWithoutDataChanges()
     {
         var result = await new ChatRules().MigrateAsync(new() { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings,
-            Subject = Fixtures.Subject(Fixtures.Snapshot(2, new[] { new { seq = 1, text = "你好" } })), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v2" }, Fixtures.Context, CancellationToken.None);
+            Subject = Fixtures.Subject(Fixtures.Snapshot(2, new[] { new { seq = 1, text = "你好" } }, "chat_v1")), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v3" }, Fixtures.Context, CancellationToken.None);
         Assert.True(result.IsApplied);
         var state = Assert.Single(result.AppliedValue!.Result.Changes.Upserts);
-        Assert.Equal("chat_v2", state.SchemaVersion);
+        Assert.Equal("chat_v3", state.SchemaVersion);
         Assert.Equal("chat", state.DocumentId);
         Assert.Equal(2, state.Data.GetProperty("messageCount").GetInt64());
         Assert.Equal("你好", state.Data.GetProperty("recent")[0].GetProperty("text").GetString());

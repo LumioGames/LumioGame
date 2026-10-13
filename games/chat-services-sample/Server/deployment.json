@@ -2,9 +2,9 @@
   "gameId": "d5f3c2a1-4b6e-4f8a-9c0d-1e2b3a4f5c6d",
   "environment": "test",
   "releaseId": "chat_1",
-  "ruleVersion": "chat_rules_v1",
+  "ruleVersion": "chat_rules_v2",
   "serviceId": "chat_rules",
-  "stateSchemaId": "chat_v1",
+  "stateSchemaId": "chat_v3",
   "viewSchemaId": "chat_view",
   "authorityId": "platform_1",
   "rules": {

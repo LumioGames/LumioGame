@@ -20,7 +20,7 @@ public sealed class CatalogTests
     {
         var codec = new RuleWireCodec();
         using var catalog = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(SampleRoot, "Server/catalog.json")));
-        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v1", "chat_view");
+        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v3", "chat_view");
         var input = Fixtures.Action("send", arguments: JsonSerializer.Deserialize<JsonElement>("{\"" + field + "\":42}"));
         var failure = Assert.Throws<RuleProtocolException>(() => policy.ValidateRequest("evaluate", JsonSerializer.SerializeToUtf8Bytes(input)));
         Assert.Equal("gs_rule_source_invalid", failure.Code);
@@ -30,11 +30,12 @@ public sealed class CatalogTests
     {
         var codec = new RuleWireCodec();
         using var catalog = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(SampleRoot, "Server/catalog.json")));
-        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v1", "chat_view");
+        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v3", "chat_view");
         foreach (var input in new[]
         {
             JsonSerializer.SerializeToUtf8Bytes(Fixtures.Action("begin", Fixtures.Empty())),
-            JsonSerializer.SerializeToUtf8Bytes(Fixtures.Action("send", Fixtures.Snapshot(2), new { text = "你好" })),
+            JsonSerializer.SerializeToUtf8Bytes(Fixtures.Action("send", Fixtures.Snapshot(2), new { text = "你好", channel = "public" })),
+            JsonSerializer.SerializeToUtf8Bytes(Fixtures.Action("send", Fixtures.Snapshot(2), new { text = "私聊", channel = "dm", channelId = "dChannel_01" })),
         })
         {
             policy.ValidateRequest("evaluate", input);
@@ -71,13 +72,13 @@ public sealed class CatalogTests
     {
         var codec = new RuleWireCodec();
         using var catalog = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(SampleRoot, "Server/catalog.json")));
-        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v1", "chat_view");
+        var policy = new RuleCatalogPolicy(codec, catalog.RootElement, "chat_v3", "chat_view");
         byte[] input = JsonSerializer.SerializeToUtf8Bytes(new Lumio.GameServices.Contracts.RuleMigrateRequest
-        { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings, Subject = Fixtures.Subject(Fixtures.Snapshot(1)), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v2" });
+        { Entrypoint = "migrate", Bindings = Fixtures.ServiceBindings, Subject = Fixtures.Subject(Fixtures.Snapshot(1, schemaVersion: "chat_v1")), FromStateSchemaId = "chat_v1", ToStateSchemaId = "chat_v3" });
         policy.ValidateRequest("migrate", input);
         var result = await new RulePluginDispatcher(new ChatRules(), codec).InvokeAsync("migrate", input, CancellationToken.None);
         policy.ValidateResponse("migrate", input, result);
-        Assert.Equal("chat_v2", JsonDocument.Parse(result).RootElement.GetProperty("result").GetProperty("changes").GetProperty("upserts")[0].GetProperty("schemaVersion").GetString());
+        Assert.Equal("chat_v3", JsonDocument.Parse(result).RootElement.GetProperty("result").GetProperty("changes").GetProperty("upserts")[0].GetProperty("schemaVersion").GetString());
     }
     [Fact]
     public void DeploymentBoardUsesTheFrozenPublicConfigurationSchema()

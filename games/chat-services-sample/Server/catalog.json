@@ -19,10 +19,23 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "channel": {
+            "enum": [
+              "public",
+              "dm"
+            ]
+          },
+          "channelId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 96,
+            "pattern": "^[A-Za-z0-9_-]+$"
           }
         },
         "required": [
-          "text"
+          "text",
+          "channel"
         ],
         "additionalProperties": false
       },
@@ -188,6 +201,85 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "chat_v3",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "const": "chat"
+                },
+                "schemaVersion": {
+                  "const": "chat_v3"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "messageCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "entitlementKey": {
+                      "type": "string",
+                      "minLength": 64,
+                      "maxLength": 64,
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "recent": {
+                      "type": "array",
+                      "maxItems": 20,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "seq",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "messageCount",
+                    "entitlementKey",
+                    "recent"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "documentId",
+                "schemaVersion",
+                "data"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "views": [
@@ -265,7 +357,11 @@
   "migrations": [
     {
       "fromStateSchemaId": "chat_v1",
-      "toStateSchemaId": "chat_v2"
+      "toStateSchemaId": "chat_v3"
+    },
+    {
+      "fromStateSchemaId": "chat_v2",
+      "toStateSchemaId": "chat_v3"
     }
   ],
   "deniedReasons": [
@@ -299,6 +395,8 @@
     }
   ],
   "bindingTargetStateSchemaIds": [
-    "chat_v1"
+    "chat_v1",
+    "chat_v2",
+    "chat_v3"
   ]
 }
